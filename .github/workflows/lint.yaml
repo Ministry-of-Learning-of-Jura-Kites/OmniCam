@@ -14,3 +14,4 @@ jobs:
         uses: creyD/prettier_action@v4.6
         with:
           prettier_options: --check **/*.{vue,ts,json,js,yaml,md}
+          prettier_plugins: "@prettier/prettier-plugin-sql"
