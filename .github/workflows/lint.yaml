@@ -10,8 +10,17 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Prettify code
-        uses: creyD/prettier_action@v4.6
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
         with:
-          prettier_options: --check **/*.{vue,ts,json,js,yaml,md}
-          prettier_plugins: "@prettier/prettier-plugin-sql"
+          node-version: '22'
+          cache: 'npm'
+      
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Check style
+        run: npm run style-check
+      
+      - name: Check lint
+        run: npm run lint

@@ -3,5 +3,8 @@ export default defineNuxtConfig({
   compatibilityDate: "2025-07-15",
   devtools: { enabled: true },
   srcDir: "frontend",
-  modules: ["@nuxtjs/tailwindcss"],
+  modules: [
+    "@nuxtjs/tailwindcss",
+    "@nuxt/eslint",
+  ],
 });
