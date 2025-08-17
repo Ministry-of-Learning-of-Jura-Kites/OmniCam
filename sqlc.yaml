@@ -1,0 +1,16 @@
+version: "2"
+plugins:
+  - name: golang
+    wasm:
+      url: https://downloads.sqlc.dev/plugin/sqlc-gen-go_1.5.0.wasm
+      sha256: 4ca52949f4dc04b55188439f5de0ae20af2a71e3534b87907f2a7f466bda59ec
+sql:
+  - schema: db/migrations
+    queries: db/queries
+    engine: postgresql
+    codegen:
+      - plugin: golang
+        out: db
+        options:
+          package: db
+          sql_package: pgx/v5

@@ -1,0 +1,26 @@
+{
+  "configurations": [
+    {
+      "name": "Nuxt: Debug Dev Server",
+      "type": "node",
+      "request": "launch",
+      "cwd": "${workspaceFolder}",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "dev"],
+      "console": "integratedTerminal",
+      "internalConsoleOptions": "neverOpen",
+      "autoAttachChildProcesses": true
+    },
+    {
+      "name": "Go: Debug Dev Server",
+      "type": "go",
+      "request": "launch",
+      "mode": "debug",
+      "env": {
+        "GIN_MODE": "debug"
+      },
+      "console": "integratedTerminal",
+      "program": "${workspaceFolder}/backend/main.go"
+    }
+  ]
+}
