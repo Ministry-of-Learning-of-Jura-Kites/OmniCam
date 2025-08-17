@@ -1,3 +1,4 @@
+-- name: GetGg :one
 SELECT
   *
 FROM

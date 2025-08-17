@@ -10,7 +10,7 @@ sql:
     engine: postgresql
     codegen:
       - plugin: golang
-        out: db
+        out: backend/pkg/db/sqlc-gen
         options:
-          package: db
+          package: db_sqlc_gen
           sql_package: pgx/v5
