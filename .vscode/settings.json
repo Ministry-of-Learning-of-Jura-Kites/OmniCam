@@ -1,0 +1,17 @@
+{
+  "runOnSave.commands": [
+    {
+      "globMatch": "db/**",
+      "command": "sqlc generate"
+    }
+  ],
+  "prettier.documentSelectors": ["**/*.sql"],
+  "[.*]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode",
+    "editor.formatOnSave": true
+  },
+  "[sql]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode",
+    "editor.formatOnSave": true
+  }
+}
