@@ -11,7 +11,8 @@
     "style-check": "prettier --check **/*.{vue,ts,json,js,yaml,md,sql}",
     "format": "prettier --write **/*.{vue,ts,json,js,yaml,md,sql}",
     "lint": "eslint .",
-    "lint:fix": "eslint . --fix"
+    "lint:fix": "eslint . --fix",
+    "sqlc": "sqlc generate"
   },
   "dependencies": {
     "@nuxtjs/tailwindcss": "^6.14.0",
