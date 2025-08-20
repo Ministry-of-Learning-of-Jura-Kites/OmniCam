@@ -16,7 +16,7 @@
       "type": "go",
       "request": "launch",
       "mode": "debug",
-      "output": "${workspaceFolder}/.vscode/debug_bin" ,
+      "output": "${workspaceFolder}/.vscode/debug_bin",
       "env": {
         "GIN_MODE": "debug"
       },
