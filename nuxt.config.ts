@@ -4,7 +4,19 @@ export default defineNuxtConfig({
   ssr: true,
   devtools: { enabled: true },
   srcDir: "frontend",
-  modules: ["@nuxtjs/tailwindcss", "@nuxt/eslint"],
+  modules: [
+    "@nuxtjs/tailwindcss",
+    "@nuxt/eslint",
+    ...(import.meta.dev ? ["@scalar/nuxt"] : []),
+  ],
+  ...(import.meta.dev && {
+    scalar: {
+      pathRouting: {
+        basePath: "/docs",
+      },
+      url: "/openapi.yaml",
+    },
+  }),
   app: {
     head: {
       link: [{ rel: "icon", type: "image/x-icon", href: "/favicon.ico" }],
