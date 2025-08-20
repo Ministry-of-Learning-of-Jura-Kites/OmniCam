@@ -1,18 +1,20 @@
 {
   // https://nuxt.com/docs/guide/concepts/typescript
   "files": [],
-  "references": [
-    {
-      "path": "./frontend/.nuxt/tsconfig.app.json"
-    },
-    {
-      "path": "./frontend/.nuxt/tsconfig.server.json"
-    },
-    {
-      "path": "./frontend/.nuxt/tsconfig.shared.json"
-    },
-    {
-      "path": "./frontend/.nuxt/tsconfig.node.json"
-    }
-  ]
+  // "references": [{ "path": "./frontend" }],
+  // "references": [
+  //   {
+  //     "path": "./frontend/.nuxt/tsconfig.app.json"
+  //   },
+  //   {
+  //     "path": "./frontend/.nuxt/tsconfig.server.json"
+  //   },
+  //   {
+  //     "path": "./frontend/.nuxt/tsconfig.shared.json"
+  //   },
+  //   {
+  //     "path": "./frontend/.nuxt/tsconfig.node.json"
+  //   }
+  // ]
+  "extends": "./.nuxt/tsconfig.json"
 }
