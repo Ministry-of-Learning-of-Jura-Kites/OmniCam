@@ -1,4 +1,6 @@
-<script setup lang="ts"></script>
+<script setup lang="ts">
+const { data } = await useFetch("/api/test");
+</script>
 <template>
-  <span class="bg-black">test</span>
+  <span class="bg-green-100">test {{ data }}</span>
 </template>
