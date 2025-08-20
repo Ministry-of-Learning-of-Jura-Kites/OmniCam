@@ -1,5 +1,5 @@
--- name: GetGg :one
-SELECT
-  *
-FROM
-  gg;
+--test
+Select
+*
+From
+user;

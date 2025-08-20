@@ -1,4 +1,4 @@
-CREATE TABLE "user" (
+CREATE TABLE user (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     email VARCHAR(255) NOT NULL UNIQUE,
     password VARCHAR(255) NOT NULL,
@@ -7,7 +7,7 @@ CREATE TABLE "user" (
     updated_at TIMESTAMPTZ DEFAULT now()
 );
 
-CREATE TABLE "project" (
+CREATE TABLE project (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     project_name VARCHAR(255) NOT NULL,
     description TEXT,
@@ -15,7 +15,7 @@ CREATE TABLE "project" (
     updated_at TIMESTAMPTZ DEFAULT now()
 );
 
-CREATE TABLE "model" (
+CREATE TABLE model (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     project_id UUID REFERENCES "Project"(id) ON DELETE CASCADE,
     name VARCHAR(255) NOT NULL,       -- filename or model name
