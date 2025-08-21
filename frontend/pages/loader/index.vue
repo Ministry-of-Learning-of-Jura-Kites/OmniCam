@@ -107,5 +107,5 @@ onMounted(() => {
 </script>
 
 <template>
-  <canvas ref="canvasRef" class="w-full h-screen"/>
+  <canvas ref="canvasRef" class="w-full h-screen" />
 </template>
