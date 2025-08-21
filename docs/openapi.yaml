@@ -1,0 +1,306 @@
+openapi: "3.1.1"
+info:
+  title: "OmniCam API overview"
+  "version": "1.0.0"
+servers:
+  - url: https://localhost:8080
+    description: Dev Server
+
+# Ignore login for now
+
+paths:
+  "/":
+    get:
+      summary: Show UI to select projects
+      description: List all projects user has access to
+      responses:
+        "200":
+          description:
+          content:
+            html:
+
+  "/projects/{projectId}":
+    get:
+      summary: Show UI to select models
+      description: all models in project
+      responses:
+        "200":
+          description:
+          content:
+            html:
+        "401":
+          description: Unauthorized
+          content:
+            html:
+
+  "/projects/{projectId}/models/{modelId}":
+    get:
+      summary: Show UI to manipulate cameras in model
+      description: Show UI to manipulate cameras in model
+      responses:
+        "200":
+          description:
+          content:
+            html:
+        "401":
+          description: Unauthorized
+          content:
+            html:
+
+  "/api/v1/projects":
+    get:
+      summary: List projects
+      description: List all projects user has access to
+      responses:
+        "200":
+          description: A list of users
+          content:
+            application/json:
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+    post:
+      summary: Create a new project
+      description: Create a new project
+      requestBody:
+        description: Project information
+        required: true
+        content:
+          application/json:
+      responses:
+        "200":
+          description: Project ID
+          content:
+            application/json:
+
+  "/api/v1/projects/{projectId}":
+    get:
+      summary: Get project
+      description: Retrieve detailed information about a project
+      parameters:
+        - name: projectId
+          in: path
+          required: true
+          description: ID of the project
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Project information
+          content:
+            application/json:
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+        "404":
+          description: Project not found
+          content:
+            application/json:
+    put:
+      summary: Edit a project (For example, add user to project)
+      description: Edit a project
+      parameters:
+        - name: projectId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        description: Edited project information
+        required: true
+        content:
+          application/json:
+      responses:
+        "200":
+          description: Successfully edited
+          content:
+            application/json:
+        "400":
+          description: Failed to edit
+          content:
+            application/json:
+    delete:
+      summary: Delete a project (Only owner can delete)
+      description: Delete a project
+      parameters:
+        - name: projectId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Successfully deleted
+          content:
+            application/json:
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+
+  "/api/v1/projects/{projectId}/models":
+    get:
+      summary: List models
+      description: List all models in a project
+      parameters:
+        - name: projectId
+          in: path
+          required: true
+          description: ID of the project
+          schema:
+            type: string
+      responses:
+        "200":
+          description: A list of models
+          content:
+            application/json:
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+    post:
+      summary: Create a new model
+      description: Create a new model inside the project
+      parameters:
+        - name: projectId
+          in: path
+          required: true
+          description: ID of the project
+          schema:
+            type: string
+      requestBody:
+        description: Model information
+        required: true
+        content:
+          application/json:
+      responses:
+        "200":
+          description: Model ID
+          content:
+            application/json:
+        "400":
+          description: Failed to create
+          content:
+            application/json:
+
+  "/api/v1/projects/{projectId}/models/{modelId}":
+    get:
+      summary: Get model
+      description: Retrieve model information
+      parameters:
+        - name: projectId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: modelId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Model information
+          content:
+            application/json:
+        "404":
+          description: Model not found
+          content:
+            application/json:
+    put:
+      summary: Edit model
+      description: Update model information
+      parameters:
+        - name: projectId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: modelId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        description: Edited model data
+        required: true
+        content:
+          application/json:
+      responses:
+        "200":
+          description: Successfully edited
+          content:
+            application/json:
+        "400":
+          description: Failed to edit
+          content:
+            application/json:
+    delete:
+      summary: Delete model
+      description: Delete a model from the project
+      parameters:
+        - name: projectId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: modelId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Successfully deleted
+          content:
+            application/json:
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+
+  "/api/v1/projects/{projectId}/models/{modelId}/user/{userId}/livestream":
+    websocket:
+      summary: Subscribe to user's workspace
+      parameters:
+        - name: projectId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: modelId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: string
+      websocket_messages_from_server:
+        PING:
+        SET_CAMERA:
+        ADD_CAMERA:
+        REMOVE_CAMERA:
+
+  "/api/v1/projects/{projectId}/clone":
+    post:
+      summary: Clone a project to new project
+      parameters:
+        - name: projectId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Successfully cloned, return new project ID
+          content:
+            application/json:
+        "401":
+          description: Unauthorized
+          content:
+            application/json:

@@ -1,7 +1,10 @@
 name: Lint
 
 on:
-  push:
+  pull_request:
+    types: [opened, synchronize, reopened]
+    branches:
+      - main
 
 jobs:
   build:
@@ -13,7 +16,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: "22"
+          node-version: "22.18.0"
           cache: "npm"
 
       - name: Restore and save cache for node_modules
