@@ -1,4 +1,5 @@
-import { env } from "~/env/server";
+// import { defineEventHandler } from "h3";
+import { env } from "../../env/server";
 
 export default defineEventHandler(() => {
   // console.info("ggg", process.env);

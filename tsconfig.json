@@ -1,7 +1,12 @@
 {
+<<<<<<< HEAD
   // https://nuxt.com/docs/guide/concepts/typescript
   "files": [],
   // "references": [{ "path": "./frontend" }],
+=======
+  // // https://nuxt.com/docs/guide/concepts/typescript
+  // "files": [],
+>>>>>>> a1d935d (test load 3d model with three.js)
   // "references": [
   //   {
   //     "path": "./frontend/.nuxt/tsconfig.app.json"
@@ -15,6 +20,11 @@
   //   {
   //     "path": "./frontend/.nuxt/tsconfig.node.json"
   //   }
+<<<<<<< HEAD
   // ]
   "extends": "./.nuxt/tsconfig.json"
+=======
+  // ],
+  "extends": "./frontend/.nuxt/tsconfig.json",
+>>>>>>> a1d935d (test load 3d model with three.js)
 }
