@@ -1,0 +1,41 @@
+name: OmniCam Services
+version: "3.8"
+
+services:
+  db:
+    image: postgres:17
+    container_name: omnicam_postgres
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: omnicam
+    ports:
+      - "5433:5432"
+    networks:
+      - net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  migrate:
+    image: migrate/migrate
+    volumes:
+      - ./db/migrations:/migrations
+    command:
+      [
+        "-path",
+        "/migrations",
+        "-database",
+        "postgres://postgres:password@db:5432/omnicam?sslmode=disable",
+        "up",
+      ]
+    networks:
+      - net
+    depends_on:
+      db:
+        condition: service_healthy
+
+networks:
+  net:
