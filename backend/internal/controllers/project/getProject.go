@@ -48,7 +48,7 @@ func (t *GetProjectRoute) getById(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"data": project})
 }
 
-func (t *GetProjectRoute) InitGetProjectRoute(router *gin.Engine) *gin.Engine {
+func (t *GetProjectRoute) InitGetProjectRoute(router gin.IRouter) gin.IRouter {
 	router.GET("/project/:projectId", t.getById)
 	router.GET("/project", t.getAll)
 	return router

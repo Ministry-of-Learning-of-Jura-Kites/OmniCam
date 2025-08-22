@@ -36,7 +36,7 @@ func (t *DeleteProjectRoute) delete(c *gin.Context) {
 
 }
 
-func (t *DeleteProjectRoute) InitDeleteProjectRoute(router *gin.Engine) *gin.Engine {
+func (t *DeleteProjectRoute) InitDeleteProjectRoute(router gin.IRouter) gin.IRouter {
 	router.DELETE("/project/:projectId", t.delete)
 	return router
 }

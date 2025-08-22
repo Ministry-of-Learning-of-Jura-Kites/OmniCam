@@ -9,7 +9,13 @@ import (
 	db_sqlc_gen "omnicam.com/backend/pkg/db/sqlc-gen"
 )
 
-func InitRoutes(logger *zap.Logger, env *config_env.AppEnv, db *db_sqlc_gen.Queries) *gin.Engine {
+type Dependencies struct {
+	Logger *zap.Logger
+	Env    *config_env.AppEnv
+	DB     *db_sqlc_gen.Queries
+}
+
+func InitRoutes(deps Dependencies, router gin.IRouter) {
 	// router := gin.New()
 
 	// // log gin by zap
@@ -18,49 +24,45 @@ func InitRoutes(logger *zap.Logger, env *config_env.AppEnv, db *db_sqlc_gen.Quer
 	// // log panics to zap
 	// router.Use(ginzap.RecoveryWithZap(logger, true))
 
-	router := gin.Default()
-
 	testRoute := controller_test.TestRoute{
-		Logger:  logger,
-		Env:     env,
-		Queries: db,
+		Logger:  deps.Logger,
+		Env:     deps.Env,
+		Queries: deps.DB,
 	}
 
 	getUserRoute := controller_test.GetUserRoute{
-		Logger: logger,
-		Env:    env,
-		DB:     db,
+		Logger: deps.Logger,
+		Env:    deps.Env,
+		DB:     deps.DB,
 	}
 	router.GET("/test", testRoute.Get)
 	router.GET("/user", getUserRoute.Get)
 
 	deleteProjectRoute := controller_project.DeleteProjectRoute{
-		Logger: logger,
-		Env:    env,
-		DB:     db,
+		Logger: deps.Logger,
+		Env:    deps.Env,
+		DB:     deps.DB,
 	}
 	deleteProjectRoute.InitDeleteProjectRoute(router)
 
 	getProjectRoute := controller_project.GetProjectRoute{
-		Logger: logger,
-		Env:    env,
-		DB:     db,
+		Logger: deps.Logger,
+		Env:    deps.Env,
+		DB:     deps.DB,
 	}
 	getProjectRoute.InitGetProjectRoute(router)
 
 	postProjectRoute := controller_project.PostProjectRoute{
-		Logger: logger,
-		Env:    env,
-		DB:     db,
+		Logger: deps.Logger,
+		Env:    deps.Env,
+		DB:     deps.DB,
 	}
 	postProjectRoute.InitCreateProjectRoute(router)
 
 	updateProjectRoute := controller_project.PutProjectRoute{
-		Logger: logger,
-		Env:    env,
-		DB:     db,
+		Logger: deps.Logger,
+		Env:    deps.Env,
+		DB:     deps.DB,
 	}
 	updateProjectRoute.InitUpdateProjectRoute(router)
-
-	return router
 }
