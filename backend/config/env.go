@@ -11,7 +11,8 @@ import (
 )
 
 type AppEnv struct {
-	Mode string `env:"MODE"`
+	Mode        string `env:"MODE"`
+	DatabaseUrl string `env:"DATABASE_URL"`
 }
 
 func InitAppEnv(logger *zap.Logger) *AppEnv {
