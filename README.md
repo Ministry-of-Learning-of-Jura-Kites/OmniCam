@@ -12,19 +12,25 @@ Golang -> v1.24.5
 
 To generate golang type interfaces and queries handler from sql
 
-`go install github.com/sqlc-dev/sqlc/cmd/sqlc@latest`
+```bash
+go install github.com/sqlc-dev/sqlc/cmd/sqlc@latest
+```
 
 ### golang-migrate
 
 To migrate database to newer version
 
-`go install -tags 'postgres' github.com/golang-migrate/migrate/v4/cmd/migrate@latest`
+```bash
+go install -tags 'postgres' github.com/golang-migrate/migrate/v4/cmd/migrate@latest
+```
 
 ### swagger-ui-cli
 
 To show swagger to test
 
-`go install -tags 'postgres' github.com/golang-migrate/migrate/v4/cmd/migrate@latest`
+```bash
+npm install -g swagger-ui-cli
+```
 
 ## Env
 
@@ -70,16 +76,24 @@ Please run style check and lint before commit if possible
 
 To check style
 
-`npm run style-check`
+```bash
+npm run style-check
+```
 
 To format
 
-`npm run format`
+```bash
+npm run format
+```
 
 To check lint
 
-`npm run lint`
+```bash
+npm run lint
+```
 
 To fix lint
 
-`npm run lint:fix`
+```bash
+npm run lint:fix
+```
