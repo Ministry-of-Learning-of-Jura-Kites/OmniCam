@@ -1,32 +1,68 @@
 CREATE TABLE "user" (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    email VARCHAR(255) NOT NULL UNIQUE,
-    password VARCHAR(255) NOT NULL,
-    name VARCHAR(255),
-    created_at TIMESTAMPTZ DEFAULT now(),
-    updated_at TIMESTAMPTZ DEFAULT now()
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  email VARCHAR(255) NOT NULL UNIQUE,
+  password VARCHAR(255) NOT NULL,
+  name VARCHAR(255),
+  profile_picture VARCHAR(255) NULL,
+  created_at TIMESTAMPTZ DEFAULT now(),
+  updated_at TIMESTAMPTZ DEFAULT now()
 );
 
 CREATE TABLE "project" (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    project_name VARCHAR(255) NOT NULL,
-    description TEXT,
-    created_at TIMESTAMPTZ DEFAULT now(),
-    updated_at TIMESTAMPTZ DEFAULT now()
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  description TEXT,
+  created_at TIMESTAMPTZ DEFAULT now(),
+  updated_at TIMESTAMPTZ DEFAULT now()
+);
+
+CREATE TABLE "user_to_project" (
+  project_id UUID NOT NULL REFERENCES "project" (id),
+  user_id UUID NOT NULL REFERENCES "user" (id),
+  PRIMARY KEY (project_id, user_id)
+);
+
+CREATE TYPE camera AS (
+  angle_x DOUBLE PRECISION,
+  angle_y DOUBLE PRECISION,
+  angle_z DOUBLE PRECISION,
+  pos_x DOUBLE PRECISION,
+  pos_y DOUBLE PRECISION,
+  pos_z DOUBLE PRECISION
 );
 
 CREATE TABLE "model" (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    project_id UUID REFERENCES "Project"(id) ON DELETE CASCADE,
-    name VARCHAR(255) NOT NULL,       -- filename or model name
-    file_path TEXT NOT NULL,          -- storage location
-    camera_angle_x FLOAT,             -- rotation angles (optional)
-    camera_angle_y FLOAT,
-    camera_angle_z FLOAT,
-    camera_pos_x FLOAT,               -- camera position in 3D space
-    camera_pos_y FLOAT,
-    camera_pos_z FLOAT,
-    version_id UUID DEFAULT gen_random_uuid(), -- version tracking
-    created_at TIMESTAMPTZ DEFAULT now(),
-    updated_at TIMESTAMPTZ DEFAULT now()
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  project_id UUID REFERENCES "project" (id) ON DELETE CASCADE,
+  -- filename or model name, conflictable
+  name VARCHAR(255) NOT NULL,
+  -- description, mutable
+  description TEXT NULL,
+  -- storage location, mutable
+  file_path TEXT NOT NULL,
+  -- cameras info, mutable
+  cameras camera[] DEFAULT '{}',
+  -- version tracking
+  version INT DEFAULT 0,
+  created_at TIMESTAMPTZ DEFAULT now(),
+  updated_at TIMESTAMPTZ DEFAULT now()
+);
+
+CREATE TABLE "user_model_snapshots" (
+  PRIMARY KEY (project_id, user_id),
+  -- immutable
+  user_id UUID NOT NULL REFERENCES "user" (id),
+  -- immutable
+  project_id UUID NOT NULL REFERENCES "project" (id) ON DELETE CASCADE,
+  -- filename or model name, conflictable
+  name VARCHAR(255) NOT NULL,
+  -- description, mutable
+  description TEXT NULL,
+  -- storage location, mutable
+  file_path TEXT NOT NULL,
+  -- cameras info, mutable
+  cameras camera[] DEFAULT '{}',
+  -- version tracking
+  version INT DEFAULT 0,
+  created_at TIMESTAMPTZ DEFAULT now(),
+  updated_at TIMESTAMPTZ DEFAULT now()
 );

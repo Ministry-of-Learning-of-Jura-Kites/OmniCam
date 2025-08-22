@@ -1,5 +1,0 @@
---test
-Select
-*
-From
-user;
