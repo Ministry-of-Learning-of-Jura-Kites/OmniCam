@@ -40,7 +40,7 @@ func (t *PostProjectRoute) post(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"data": data})
 }
 
-func (t *PostProjectRoute) InitCreateProjectRoute(router *gin.Engine) *gin.Engine {
+func (t *PostProjectRoute) InitCreateProjectRoute(router gin.IRouter) gin.IRouter {
 	router.POST("/project/:projectId", t.post)
 	return router
 }
