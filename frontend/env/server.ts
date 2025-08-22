@@ -6,3 +6,5 @@ export const env = createEnv({
     TEST: z.string().min(1),
   },
 });
+
+console.info("Server env validated");
