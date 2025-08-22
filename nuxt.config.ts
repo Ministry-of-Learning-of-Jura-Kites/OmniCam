@@ -15,4 +15,7 @@ export default defineNuxtConfig({
     public: "frontend/public",
   },
   serverDir: "frontend/server",
+  nitro: {
+    plugins: ["plugins/runtime-env.server.ts"],
+  },
 });
