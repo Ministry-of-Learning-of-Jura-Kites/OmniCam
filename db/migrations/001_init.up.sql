@@ -11,7 +11,7 @@ CREATE TABLE "user" (
 CREATE TABLE "project" (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   name VARCHAR(255) NOT NULL,
-  description TEXT NOT NULL DEFAULT "",
+  description TEXT NOT NULL DEFAULT '',
   created_at TIMESTAMPTZ DEFAULT now(),
   updated_at TIMESTAMPTZ DEFAULT now()
 );
@@ -23,6 +23,7 @@ CREATE TABLE "user_to_project" (
 );
 
 CREATE TYPE camera AS (
+  id UUID,
   angle_x DOUBLE PRECISION,
   angle_y DOUBLE PRECISION,
   angle_z DOUBLE PRECISION,
@@ -37,7 +38,7 @@ CREATE TABLE "model" (
   -- filename or model name, conflictable
   name VARCHAR(255) NOT NULL,
   -- description, mutable
-  description TEXT NOT NULL DEFAULT "",
+  description TEXT NOT NULL DEFAULT '',
   -- storage location, mutable
   file_path TEXT NOT NULL,
   -- cameras info, mutable
@@ -57,7 +58,7 @@ CREATE TABLE "user_model_snapshots" (
   -- filename or model name, conflictable
   name VARCHAR(255) NOT NULL,
   -- description, mutable
-  description TEXT NOT NULL DEFAULT "",
+  description TEXT NOT NULL DEFAULT '',
   -- storage location, mutable
   file_path TEXT NOT NULL,
   -- cameras info, mutable
