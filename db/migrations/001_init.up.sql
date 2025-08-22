@@ -3,7 +3,6 @@ CREATE TABLE "user" (
   email VARCHAR(255) NOT NULL UNIQUE,
   name VARCHAR(255) NOT NULL,
   password BYTEA NOT NULL,
-  profile_picture TEXT NULL,
   created_at TIMESTAMPTZ DEFAULT now(),
   updated_at TIMESTAMPTZ DEFAULT now()
 );
