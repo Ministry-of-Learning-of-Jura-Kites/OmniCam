@@ -1,15 +1,16 @@
 CREATE TABLE "user" (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   email VARCHAR(255) NOT NULL UNIQUE,
-  password VARCHAR(255) NOT NULL,
   name VARCHAR(255),
-  profile_picture VARCHAR(255) NULL,
+  password BYTEA NOT NULL,
+  profile_picture TEXT NULL,
   created_at TIMESTAMPTZ DEFAULT now(),
   updated_at TIMESTAMPTZ DEFAULT now()
 );
 
 CREATE TABLE "project" (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  name VARCHAR(255),
   description TEXT,
   created_at TIMESTAMPTZ DEFAULT now(),
   updated_at TIMESTAMPTZ DEFAULT now()
