@@ -1,0 +1,4 @@
+-- -- name: GetUserByEmail :one
+-- SELECT id, email, password, name, created_at, updated_at
+-- FROM user
+-- WHERE email = $1;
