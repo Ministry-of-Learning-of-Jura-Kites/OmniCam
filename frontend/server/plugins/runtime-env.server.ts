@@ -1,5 +1,5 @@
 import "~/env/server";
 
 export default defineNitroPlugin(() => {
-  console.log("Environment validated at runtime");
+  console.debug("Closing env nitro plugin");
 });
