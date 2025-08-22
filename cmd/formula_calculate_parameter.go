@@ -61,7 +61,7 @@ func main() {
 	if !ok {
 		log.Fatalln("No caller information")
 	}
-	rootpath := path.Dir(path.Dir(path.Dir(filename)))
+	rootpath := path.Dir(path.Dir(filename))
 
 	fileFormat := strings.ToLower(os.Args[1])
 
@@ -69,7 +69,7 @@ func main() {
 
 	resp, err := http.Get(url)
 	if err != nil {
-		panic(err)
+		log.Fatalln(err)
 	}
 	defer resp.Body.Close()
 
@@ -77,7 +77,7 @@ func main() {
 	reader.TrimLeadingSpace = true
 	records, err := reader.ReadAll()
 	if err != nil {
-		panic(err)
+		log.Fatalln(err)
 	}
 
 	var results []CameraParams
