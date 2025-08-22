@@ -54,7 +54,7 @@ func (t *PutProjectRoute) put(c *gin.Context) {
 
 }
 
-func (t *PutProjectRoute) InitUpdateProjectRoute(router *gin.Engine) *gin.Engine {
+func (t *PutProjectRoute) InitUpdateProjectRoute(router gin.IRouter) gin.IRouter {
 	router.PUT("/project/:projectId", t.put)
 	return router
 }
