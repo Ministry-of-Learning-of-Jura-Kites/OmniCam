@@ -1,5 +1,5 @@
---test
-Select
-*
-From
-user;
+-- name: Test :one
+SELECT
+  *
+FROM
+  "user";
