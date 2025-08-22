@@ -4,10 +4,14 @@ import (
 	"encoding/csv"
 	"encoding/json"
 	"fmt"
+	"log"
 	"math"
 	"net/http"
 	"os"
+	"path"
+	"runtime"
 	"strconv"
+	"strings"
 
 	"gopkg.in/yaml.v3"
 )
@@ -18,8 +22,6 @@ type CameraParams struct {
 	SensorName  string  `json:"sensor_name" yaml:"sensor_name"`
 	Aspect      float64 `json:"aspect" yaml:"aspect"`
 	FOV         float64 `json:"fov" yaml:"fov"`
-	Near        float64 `json:"near" yaml:"near"`
-	Far         float64 `json:"far" yaml:"far"`
 	PixelPitch  float64 `json:"pixel_pitch" yaml:"pixel_pitch"`
 	ResolutionW int     `json:"resolution_width" yaml:"resolution_width"`
 	ResolutionH int     `json:"resolution_height" yaml:"resolution_height"`
@@ -51,6 +53,18 @@ func parseInt(s string, def int) int {
 }
 
 func main() {
+	if len(os.Args) < 2 {
+		log.Fatalln("No file format specified")
+	}
+
+	_, filename, _, ok := runtime.Caller(0)
+	if !ok {
+		log.Fatalln("No caller information")
+	}
+	rootpath := path.Dir(path.Dir(path.Dir(filename)))
+
+	fileFormat := strings.ToLower(os.Args[1])
+
 	url := "https://raw.githubusercontent.com/EmberLightVFX/Camera-Sensor-Database/main/data/sensors.csv"
 
 	resp, err := http.Get(url)
@@ -68,8 +82,8 @@ func main() {
 
 	var results []CameraParams
 
-	// ข้าม header แถวแรก
 	for i, row := range records {
+		// ข้าม header แถวแรก
 		if i == 0 {
 			continue
 		}
@@ -98,8 +112,6 @@ func main() {
 			SensorName:  sensorName,
 			Aspect:      aspect,
 			FOV:         fov,
-			Near:        0.1,
-			Far:         1000,
 			PixelPitch:  pixelPitch,
 			ResolutionW: resW,
 			ResolutionH: resH,
@@ -109,43 +121,54 @@ func main() {
 		})
 	}
 
-	// save JSON
-	jf, _ := os.Create("../OmniCam/backend/data/camera_parameter.json")
-	defer jf.Close()
-	jEnc := json.NewEncoder(jf)
-	jEnc.SetIndent("", "  ")
-	jEnc.Encode(results)
+	outPath := path.Join(rootpath, fmt.Sprintf("/data/camera_parameter.%s", fileFormat))
 
-	// save YAML
-	yf, _ := os.Create("../OmniCam/backend/data/camera_parameter.yaml")
-	defer yf.Close()
-	yEnc := yaml.NewEncoder(yf)
-	yEnc.Encode(results)
-
-	// save CSV
-	cf, _ := os.Create("../OmniCam/backend/data/camera_parameter.csv")
-	defer cf.Close()
-	writer := csv.NewWriter(cf)
-	defer writer.Flush()
-
-	writer.Write([]string{"vendor", "camera", "sensor_name", "aspect", "fov", "near", "far", "pixel_pitch", "res_w", "res_h", "sensor_w_mm", "sensor_h_mm", "focal_length"})
-	for _, r := range results {
-		writer.Write([]string{
-			r.Vendor,
-			r.Camera,
-			r.SensorName,
-			fmt.Sprintf("%.4f", r.Aspect),
-			fmt.Sprintf("%.2f", r.FOV),
-			fmt.Sprintf("%.2f", r.Near),
-			fmt.Sprintf("%.2f", r.Far),
-			fmt.Sprintf("%.6f", r.PixelPitch),
-			fmt.Sprintf("%d", r.ResolutionW),
-			fmt.Sprintf("%d", r.ResolutionH),
-			fmt.Sprintf("%.2f", r.SensorWmm),
-			fmt.Sprintf("%.2f", r.SensorHmm),
-			fmt.Sprintf("%.2f", r.FocalLength),
-		})
+	outFile, err := os.Create(outPath)
+	if err != nil {
+		log.Fatalf("Error while creating file %v", err)
 	}
 
-	fmt.Println("Exported: camera_parameter.json, camera_parameter.yaml, camera_parameter.csv")
+	defer outFile.Close()
+
+	switch fileFormat {
+	case "json":
+		{
+			jEnc := json.NewEncoder(outFile)
+			jEnc.SetIndent("", "  ")
+			jEnc.Encode(results)
+		}
+	case "yaml":
+		{
+			yEnc := yaml.NewEncoder(outFile)
+			yEnc.Encode(results)
+		}
+	case "csv":
+		{
+			writer := csv.NewWriter(outFile)
+			defer writer.Flush()
+
+			writer.Write([]string{"vendor", "camera", "sensor_name", "aspect", "fov", "pixel_pitch", "res_w", "res_h", "sensor_w_mm", "sensor_h_mm", "focal_length"})
+			for _, r := range results {
+				writer.Write([]string{
+					r.Vendor,
+					r.Camera,
+					r.SensorName,
+					fmt.Sprintf("%.4f", r.Aspect),
+					fmt.Sprintf("%.2f", r.FOV),
+					fmt.Sprintf("%.6f", r.PixelPitch),
+					fmt.Sprintf("%d", r.ResolutionW),
+					fmt.Sprintf("%d", r.ResolutionH),
+					fmt.Sprintf("%.2f", r.SensorWmm),
+					fmt.Sprintf("%.2f", r.SensorHmm),
+					fmt.Sprintf("%.2f", r.FocalLength),
+				})
+			}
+		}
+	default:
+		{
+			log.Fatalln("Invalid file format")
+		}
+	}
+
+	fmt.Printf("Exported: %s\n", outPath)
 }
