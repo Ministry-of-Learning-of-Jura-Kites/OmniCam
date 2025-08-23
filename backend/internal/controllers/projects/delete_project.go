@@ -1,4 +1,4 @@
-package controller_project
+package controller_projects
 
 import (
 	"net/http"
@@ -17,7 +17,7 @@ type DeleteProjectRoute struct {
 }
 
 func (t *DeleteProjectRoute) delete(c *gin.Context) {
-	strId := c.Query("projectId")
+	strId := c.Param("projectId")
 
 	id, err := uuid.Parse(strId)
 	if err != nil {
@@ -32,11 +32,10 @@ func (t *DeleteProjectRoute) delete(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to delete project"})
 	}
 
-	c.JSON(http.StatusAccepted, gin.H{"message": "delete successfully", "data": data})
-
+	c.JSON(http.StatusAccepted, gin.H{"data": data})
 }
 
 func (t *DeleteProjectRoute) InitDeleteProjectRoute(router gin.IRouter) gin.IRouter {
-	router.DELETE("/project/:projectId", t.delete)
+	router.DELETE("/projects/:projectId", t.delete)
 	return router
 }

@@ -1,7 +1,8 @@
-package controller_project
+package controller_projects
 
 import (
 	"net/http"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
@@ -26,21 +27,27 @@ func (t *PostProjectRoute) post(c *gin.Context) {
 	err := c.ShouldBindJSON(&req)
 	if err != nil {
 		t.Logger.Debug("error while validating body", zap.Error(err))
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		c.JSON(http.StatusBadRequest, gin.H{})
 		return
 	}
 
-	data, err := t.DB.CreateProject(c, db_sqlc_gen.CreateProjectParams(req))
+	project, err := t.DB.CreateProject(c, db_sqlc_gen.CreateProjectParams(req))
 	if err != nil {
 		t.Logger.Error("error while creating project", zap.Error(err))
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		c.JSON(http.StatusInternalServerError, gin.H{})
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"data": data})
+	c.JSON(http.StatusOK, gin.H{"data": Project{
+		Id:          project.ID,
+		Name:        project.Name,
+		Description: project.Description,
+		CreatedAt:   project.CreatedAt.Time.Format(time.RFC3339),
+		UpdatedAt:   project.UpdatedAt.Time.Format(time.RFC3339),
+	}})
 }
 
 func (t *PostProjectRoute) InitCreateProjectRoute(router gin.IRouter) gin.IRouter {
-	router.POST("/project/:projectId", t.post)
+	router.POST("/projects", t.post)
 	return router
 }
