@@ -8,7 +8,7 @@ import (
 	"math"
 	"net/http"
 	"os"
-	"path"
+	"path/filepath"
 	"runtime"
 	"strconv"
 	"strings"
@@ -61,7 +61,7 @@ func main() {
 	if !ok {
 		log.Fatalln("No caller information")
 	}
-	rootpath := path.Dir(path.Dir(path.Dir(filename)))
+	rootpath := filepath.Dir(filepath.Dir(filepath.Dir(filename)))
 
 	fileFormat := strings.ToLower(os.Args[1])
 
@@ -121,7 +121,7 @@ func main() {
 		})
 	}
 
-	outPath := path.Join(rootpath, fmt.Sprintf("/data/camera_parameter.%s", fileFormat))
+	outPath := filepath.Join(rootpath, fmt.Sprintf("/data/camera_parameter.%s", fileFormat))
 
 	outFile, err := os.Create(outPath)
 	if err != nil {
