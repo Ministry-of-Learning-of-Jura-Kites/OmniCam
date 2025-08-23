@@ -28,7 +28,7 @@ func main() {
 
 	// get omnicam root path
 	// root/tools/clean_sql.go
-	rootpath := filepath.Dir(filepath.Dir(filename))
+	rootpath := filepath.Dir(filepath.Dir(filepath.Dir(filename)))
 
 	data, err := os.ReadFile(filepath.Join(rootpath, "sqlc.yaml"))
 	if err != nil {
@@ -46,21 +46,10 @@ func main() {
 		for _, cg := range sql.Codegen {
 			if cg.Out != "" {
 				fmt.Printf("Cleaning directory: %s\n", cg.Out)
-				if err := deleteContent(cg.Out); err != nil {
+				if err := os.RemoveAll(cg.Out); err != nil {
 					log.Fatalf("failed cleaning %s: %v", cg.Out, err)
 				}
 			}
 		}
 	}
-}
-
-func deleteContent(path string) error {
-	// return filepath.WalkDir(path, func(p string, d fs.DirEntry, err error) error {
-	// 	if err != nil {
-	// 		return err
-	// 	}
-	// 	os.Remov
-	// 	return nil
-	// })
-	return os.RemoveAll(path)
 }
