@@ -1,12 +1,16 @@
 -- name: UpdateProject :one
 UPDATE "project"
 SET
-  name = sqlc.arg (name)::VARCHAR,
-  description = sqlc.arg (description)::TEXT
+  name = COALESCE(NULLIF(sqlc.arg (name)::VARCHAR, ''), name),
+  description = COALESCE(
+    NULLIF(sqlc.arg (description)::TEXT, ''),
+    description
+  )
 WHERE
   id = sqlc.arg (id)::UUID
 RETURNING
   id,
   name,
   description,
-  created_at;
+  created_at,
+  updated_at;

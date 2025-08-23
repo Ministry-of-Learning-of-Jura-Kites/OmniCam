@@ -5,7 +5,7 @@ import (
 	"go.uber.org/zap"
 	config_env "omnicam.com/backend/config"
 	controller_test "omnicam.com/backend/internal/controllers"
-	controller_project "omnicam.com/backend/internal/controllers/project"
+	controller_projects "omnicam.com/backend/internal/controllers/projects"
 	db_sqlc_gen "omnicam.com/backend/pkg/db/sqlc-gen"
 )
 
@@ -38,28 +38,28 @@ func InitRoutes(deps Dependencies, router gin.IRouter) {
 	router.GET("/test", testRoute.Get)
 	router.GET("/user", getUserRoute.Get)
 
-	deleteProjectRoute := controller_project.DeleteProjectRoute{
+	deleteProjectRoute := controller_projects.DeleteProjectRoute{
 		Logger: deps.Logger,
 		Env:    deps.Env,
 		DB:     deps.DB,
 	}
 	deleteProjectRoute.InitDeleteProjectRoute(router)
 
-	getProjectRoute := controller_project.GetProjectRoute{
+	getProjectRoute := controller_projects.GetProjectRoute{
 		Logger: deps.Logger,
 		Env:    deps.Env,
 		DB:     deps.DB,
 	}
 	getProjectRoute.InitGetProjectRoute(router)
 
-	postProjectRoute := controller_project.PostProjectRoute{
+	postProjectRoute := controller_projects.PostProjectRoute{
 		Logger: deps.Logger,
 		Env:    deps.Env,
 		DB:     deps.DB,
 	}
 	postProjectRoute.InitCreateProjectRoute(router)
 
-	updateProjectRoute := controller_project.PutProjectRoute{
+	updateProjectRoute := controller_projects.PutProjectRoute{
 		Logger: deps.Logger,
 		Env:    deps.Env,
 		DB:     deps.DB,
