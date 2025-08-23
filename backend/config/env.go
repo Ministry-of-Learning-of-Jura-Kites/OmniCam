@@ -23,7 +23,9 @@ func InitAppEnv(logger *zap.Logger) *AppEnv {
 
 	var cfg AppEnv
 	// parse with generics
-	cfg, err := env.ParseAs[AppEnv]()
+	cfg, err := env.ParseAsWithOptions[AppEnv](env.Options{
+		RequiredIfNoDef: true,
+	})
 
 	if err != nil {
 		logger.Fatal("Error while reading env", zap.Error(err))

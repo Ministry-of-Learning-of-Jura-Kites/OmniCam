@@ -4,6 +4,8 @@ go 1.23.5
 
 require github.com/remvn/go-pgx-sqlc v0.0.0-20240927132518-359006043733
 
+require github.com/gin-contrib/cors v1.7.6 // indirect
+
 require (
 	github.com/bytedance/sonic v1.14.0 // indirect
 	github.com/bytedance/sonic/loader v0.3.0 // indirect
