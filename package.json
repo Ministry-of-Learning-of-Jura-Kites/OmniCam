@@ -13,7 +13,7 @@
     "format": "prettier --write **/*.{vue,ts,json,js,yaml,md,sql}",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
-    "sqlc": "go run tools/clean_sqlc.go && sqlc generate",
+    "sqlc": "go run ./tools/clean_sqlc && sqlc generate && echo done",
     "swagger": "serve -s docs -l 8000"
   },
   "dependencies": {
