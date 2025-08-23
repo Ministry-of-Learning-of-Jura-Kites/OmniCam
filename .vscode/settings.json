@@ -2,7 +2,7 @@
   "runOnSave.commands": [
     {
       "globMatch": "db/**",
-      "command": "sqlc generate"
+      "command": "npm run sqlc"
     }
   ],
   "[javascript]": {
