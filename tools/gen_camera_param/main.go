@@ -61,7 +61,7 @@ func main() {
 	if !ok {
 		log.Fatalln("No caller information")
 	}
-	rootpath := path.Dir(path.Dir(filename))
+	rootpath := path.Dir(path.Dir(path.Dir(filename)))
 
 	fileFormat := strings.ToLower(os.Args[1])
 
