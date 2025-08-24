@@ -2,7 +2,7 @@
   "runOnSave.commands": [
     {
       "globMatch": "db/**",
-      "command": "sqlc generate"
+      "command": "npm run sqlc"
     }
   ],
   "[javascript]": {
@@ -26,6 +26,10 @@
     "editor.formatOnSave": true
   },
   "[yaml]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode",
+    "editor.formatOnSave": true
+  },
+  "[dockercompose]": {
     "editor.defaultFormatter": "esbenp.prettier-vscode",
     "editor.formatOnSave": true
   },

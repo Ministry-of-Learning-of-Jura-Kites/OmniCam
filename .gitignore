@@ -26,3 +26,4 @@ logs
 sqlc-gen
 
 .vscode/debug_bin
+.vscode/debug_bin.exe
