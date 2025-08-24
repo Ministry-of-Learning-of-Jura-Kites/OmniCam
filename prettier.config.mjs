@@ -10,15 +10,16 @@ const prettierPluginEmbedConfig = {
   embeddedSqlTags: ["sql"],
 };
 
+/** @type {import('sql-formatter').DialectOptions} */
 const customDialect = {
   ...postgresql,
-  tokenizerOptions:{
+  tokenizerOptions: {
     ...postgresql.tokenizerOptions,
-    reservedDataTypes:[
+    reservedDataTypes: [
       ...postgresql.tokenizerOptions.reservedDataTypes,
-      "bytea"
-    ]
-  }
+      "bytea",
+    ],
+  },
 };
 
 /** @type {import('prettier-plugin-sql').SqlBaseOptions} */
@@ -27,7 +28,7 @@ const prettierPluginSqlConfig = {
   // language: "postgresql",
   dialect: JSON.stringify(customDialect),
   keywordCase: "upper",
-  functionCase: "lower",
+  functionCase: "upper",
   identifierCase: "lower",
   dataTypeCase: "upper",
   indentStyle: "standard",

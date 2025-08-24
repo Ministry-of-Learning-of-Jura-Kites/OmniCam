@@ -3,49 +3,49 @@ info:
   title: "OmniCam API overview"
   "version": "1.0.0"
 servers:
-  - url: https://localhost:8080
+  - url: http://localhost:8080
     description: Dev Server
 
 # Ignore login for now
 
 paths:
-  "/":
-    get:
-      summary: Show UI to select projects
-      description: List all projects user has access to
-      responses:
-        "200":
-          description:
-          content:
-            html:
+  # "/":
+  #   get:
+  #     summary: Show UI to select projects
+  #     description: List all projects user has access to
+  #     responses:
+  #       "200":
+  #         description:
+  #         content:
+  #           html:
 
-  "/projects/{projectId}":
-    get:
-      summary: Show UI to select models
-      description: all models in project
-      responses:
-        "200":
-          description:
-          content:
-            html:
-        "401":
-          description: Unauthorized
-          content:
-            html:
+  # "/projects/{projectId}":
+  #   get:
+  #     summary: Show UI to select models
+  #     description: all models in project
+  #     responses:
+  #       "200":
+  #         description:
+  #         content:
+  #           html:
+  #       "401":
+  #         description: Unauthorized
+  #         content:
+  #           html:
 
-  "/projects/{projectId}/models/{modelId}":
-    get:
-      summary: Show UI to manipulate cameras in model
-      description: Show UI to manipulate cameras in model
-      responses:
-        "200":
-          description:
-          content:
-            html:
-        "401":
-          description: Unauthorized
-          content:
-            html:
+  # "/projects/{projectId}/models/{modelId}":
+  #   get:
+  #     summary: Show UI to manipulate cameras in model
+  #     description: Show UI to manipulate cameras in model
+  #     responses:
+  #       "200":
+  #         description:
+  #         content:
+  #           html:
+  #       "401":
+  #         description: Unauthorized
+  #         content:
+  #           html:
 
   "/api/v1/projects":
     get:
@@ -56,10 +56,34 @@ paths:
           description: A list of users
           content:
             application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    id:
+                      type: string
+                    name:
+                      type: string
+                    description:
+                      type: string
+                    created_at:
+                      type: string
+                    updated_at:
+                      type: string
+                  required:
+                    - id
+                    - name
+                    - description
+                    - created_at
+                    - updated_at
         "401":
           description: Unauthorized
           content:
             application/json:
+              schema:
+                type: object
+                additionalProperties: false
     post:
       summary: Create a new project
       description: Create a new project
@@ -68,11 +92,29 @@ paths:
         required: true
         content:
           application/json:
+            type: object
+            properties:
+              name:
+                type: string
+              description:
+                type: string
+            required:
+              - id
+              - name
+              - description
+              - created_at
+              - updated_at
       responses:
         "200":
           description: Project ID
           content:
             application/json:
+              type: object
+              properties:
+                id:
+                  type: string
+              required:
+                - id
 
   "/api/v1/projects/{projectId}":
     get:
@@ -90,14 +132,39 @@ paths:
           description: Project information
           content:
             application/json:
+              items:
+                type: object
+                properties:
+                  id:
+                    type: string
+                  name:
+                    type: string
+                  description:
+                    type: string
+                  created_at:
+                    type: string
+                  updated_at:
+                    type: string
+                required:
+                  - id
+                  - name
+                  - description
+                  - created_at
+                  - updated_at
         "401":
           description: Unauthorized
           content:
             application/json:
+              schema:
+                type: object
+                additionalProperties: false
         "404":
           description: Project not found
           content:
             application/json:
+              schema:
+                type: object
+                additionalProperties: false
     put:
       summary: Edit a project (For example, add user to project)
       description: Edit a project
@@ -112,15 +179,47 @@ paths:
         required: true
         content:
           application/json:
+            items:
+              type: object
+              properties:
+                name:
+                  type: string
+                description:
+                  type: string
+              required:
+                - name
+                - description
       responses:
         "200":
           description: Successfully edited
           content:
             application/json:
+              items:
+                type: object
+                properties:
+                  id:
+                    type: string
+                  name:
+                    type: string
+                  description:
+                    type: string
+                  created_at:
+                    type: string
+                  updated_at:
+                    type: string
+                required:
+                  - id
+                  - name
+                  - description
+                  - created_at
+                  - updated_at
         "400":
           description: Failed to edit
           content:
             application/json:
+              schema:
+                type: object
+                additionalProperties: false
     delete:
       summary: Delete a project (Only owner can delete)
       description: Delete a project
@@ -135,10 +234,32 @@ paths:
           description: Successfully deleted
           content:
             application/json:
+              items:
+                type: object
+                properties:
+                  id:
+                    type: string
+                  name:
+                    type: string
+                  description:
+                    type: string
+                  created_at:
+                    type: string
+                  updated_at:
+                    type: string
+                required:
+                  - id
+                  - name
+                  - description
+                  - created_at
+                  - updated_at
         "401":
           description: Unauthorized
           content:
             application/json:
+              schema:
+                type: object
+                additionalProperties: false
 
   "/api/v1/projects/{projectId}/models":
     get:
@@ -160,6 +281,9 @@ paths:
           description: Unauthorized
           content:
             application/json:
+              schema:
+                type: object
+                additionalProperties: false
     post:
       summary: Create a new model
       description: Create a new model inside the project
@@ -184,6 +308,9 @@ paths:
           description: Failed to create
           content:
             application/json:
+              schema:
+                type: object
+                additionalProperties: false
 
   "/api/v1/projects/{projectId}/models/{modelId}":
     get:
@@ -209,6 +336,9 @@ paths:
           description: Model not found
           content:
             application/json:
+              schema:
+                type: object
+                additionalProperties: false
     put:
       summary: Edit model
       description: Update model information
@@ -237,6 +367,9 @@ paths:
           description: Failed to edit
           content:
             application/json:
+              schema:
+                type: object
+                additionalProperties: false
     delete:
       summary: Delete model
       description: Delete a model from the project
@@ -260,6 +393,9 @@ paths:
           description: Unauthorized
           content:
             application/json:
+              schema:
+                type: object
+                additionalProperties: false
 
   "/api/v1/projects/{projectId}/models/{modelId}/user/{userId}/livestream":
     websocket:
@@ -300,7 +436,31 @@ paths:
           description: Successfully cloned, return new project ID
           content:
             application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    id:
+                      type: string
+                    name:
+                      type: string
+                    description:
+                      type: string
+                    created_at:
+                      type: string
+                    updated_at:
+                      type: string
+                  required:
+                    - id
+                    - name
+                    - description
+                    - created_at
+                    - updated_at
         "401":
           description: Unauthorized
           content:
             application/json:
+              schema:
+                type: object
+                additionalProperties: false
