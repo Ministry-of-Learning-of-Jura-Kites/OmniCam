@@ -1,6 +1,6 @@
 <template>
   <LayoutModelsPage>
-    <Scene3D :modelId="modelId" />
+    <Scene3D :model-id="modelId" />
   </LayoutModelsPage>
 </template>
 

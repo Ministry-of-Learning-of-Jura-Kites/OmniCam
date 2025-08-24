@@ -57,14 +57,12 @@
 </template>
 
 <script setup>
-import Button from "./ui/Button.vue";
-import Badge from "./ui/Badge.vue";
-import Card from "./ui/Card.vue";
+import Button from "./ui/button/Button.vue";
+import Badge from "./ui/badge/Badge.vue";
+import Card from "./ui/card/Card.vue";
 
-// lucide-icons สำหรับ Vue
+// lucide-icons for Vue
 import {
-  Play,
-  Square,
   RotateCcw,
   Maximize,
   Download,
