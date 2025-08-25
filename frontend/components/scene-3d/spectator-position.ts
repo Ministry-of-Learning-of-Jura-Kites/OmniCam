@@ -49,54 +49,54 @@ function onKeyUp(e: KeyboardEvent) {
   }
 }
 
-function setup() {
-  setInterval(() => {
-    if (camera?.value == undefined) {
-      return;
+function update() {
+  if (camera?.value == undefined) {
+    requestAnimationFrame(update);
+    return;
+  }
+  for (const [key, isDown] of Object.entries(isKeyDown) as [
+    FunctionalityKey,
+    boolean,
+  ][]) {
+    if (!isDown) {
+      continue;
     }
-    for (const [key, isDown] of Object.entries(isKeyDown) as [
-      FunctionalityKey,
-      boolean,
-    ][]) {
-      if (!isDown) {
-        continue;
-      }
-      const forward = new THREE.Vector3();
-      camera.value.getWorldDirection(forward);
+    const forward = new THREE.Vector3();
+    camera.value.getWorldDirection(forward);
 
-      const up = new THREE.Vector3();
-      up.copy(camera.value.up).applyQuaternion(camera.value.quaternion);
+    const up = new THREE.Vector3();
+    up.copy(camera.value.up).applyQuaternion(camera.value.quaternion);
 
-      const right = new THREE.Vector3();
-      right.crossVectors(forward, up).normalize();
+    const right = new THREE.Vector3();
+    right.crossVectors(forward, up).normalize();
 
-      let deltaVec = new THREE.Vector3();
+    let deltaVec = new THREE.Vector3();
 
-      switch (key) {
-        case "KeyW":
-          deltaVec = forward.multiplyScalar(SPECTATOR_MOVING_SENTIVITY);
-          break;
-        case "KeyS":
-          deltaVec = forward.multiplyScalar(-SPECTATOR_MOVING_SENTIVITY);
-          break;
-        case "KeyA":
-          deltaVec = right.multiplyScalar(-SPECTATOR_MOVING_SENTIVITY);
-          break;
-        case "KeyD":
-          deltaVec = right.multiplyScalar(SPECTATOR_MOVING_SENTIVITY);
-          break;
-        case "Space":
-          deltaVec.y = SPECTATOR_MOVING_SENTIVITY;
-          break;
-        case "Shift":
-          deltaVec.y = -SPECTATOR_MOVING_SENTIVITY;
-          break;
-        default:
-          break;
-      }
-      cameraPosition.add(deltaVec);
+    switch (key) {
+      case "KeyW":
+        deltaVec = forward.multiplyScalar(SPECTATOR_MOVING_SENTIVITY);
+        break;
+      case "KeyS":
+        deltaVec = forward.multiplyScalar(-SPECTATOR_MOVING_SENTIVITY);
+        break;
+      case "KeyA":
+        deltaVec = right.multiplyScalar(-SPECTATOR_MOVING_SENTIVITY);
+        break;
+      case "KeyD":
+        deltaVec = right.multiplyScalar(SPECTATOR_MOVING_SENTIVITY);
+        break;
+      case "Space":
+        deltaVec.y = SPECTATOR_MOVING_SENTIVITY;
+        break;
+      case "Shift":
+        deltaVec.y = -SPECTATOR_MOVING_SENTIVITY;
+        break;
+      default:
+        break;
     }
-  }, 10);
+    cameraPosition.add(deltaVec);
+  }
+  requestAnimationFrame(update);
 }
 
 function onBlur(_e: FocusEvent) {
@@ -106,6 +106,6 @@ function onBlur(_e: FocusEvent) {
 export const SpectatorPosition = {
   onKeyUp,
   onKeyDown,
-  setup,
+  update,
   onBlur,
 };
