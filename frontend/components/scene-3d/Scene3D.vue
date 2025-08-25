@@ -13,7 +13,7 @@ defineProps<{
 }>();
 
 onMounted(() => {
-  SpectatorPosition.setup();
+  SpectatorPosition.update();
 });
 
 watch(
