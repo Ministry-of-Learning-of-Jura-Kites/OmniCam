@@ -1,50 +1,19 @@
 <script setup lang="ts">
 import { TresCanvas } from "@tresjs/core";
 import { Grid, Environment } from "@tresjs/cientos";
-import type { PerspectiveCamera } from "three";
 import { Euler } from "three";
+import { camera } from "./camera";
+import { SpectatorPosition } from "./spectator-position";
+import { SpectatorRotation } from "./spectator-rotation";
 
 defineProps<{
   modelId?: string | null;
   placeholderText?: string | null;
 }>();
 
-const camera: Ref<PerspectiveCamera | null> = ref(null);
-
-let lastX = 0;
-let lastY = 0;
-const isDragging = ref(false);
-
-function onPointerDown(e: PointerEvent) {
-  isDragging.value = true;
-  lastX = e.clientX;
-  lastY = e.clientY;
-}
-
-function onPointerUp(_e: PointerEvent) {
-  isDragging.value = false;
-}
-
-const maxPitch = Math.PI / 2 - 0.01;
-const minPitch = -Math.PI / 2 + 0.01;
-
-let yaw = 0;
-let pitch = 0;
-
-function onPointerMove(e: PointerEvent) {
-  if (!isDragging.value) return;
-  const deltaX = e.clientX - lastX;
-  yaw -= deltaX * 0.01;
-  camera.value!.rotation.y = yaw;
-
-  const deltaY = e.clientY - lastY;
-  pitch -= deltaY * 0.01;
-  pitch = Math.max(minPitch, Math.min(maxPitch, pitch));
-  camera.value!.rotation.x = pitch;
-
-  lastX = e.clientX;
-  lastY = e.clientY;
-}
+onMounted(() => {
+  SpectatorPosition.setup();
+});
 </script>
 
 <template>
@@ -52,9 +21,12 @@ function onPointerMove(e: PointerEvent) {
     <div class="w-full h-full bg-background">
       <TresCanvas
         clear-color="#0E0C29"
-        @pointerup="onPointerUp"
-        @pointerdown="onPointerDown"
-        @pointermove="onPointerMove"
+        tabindex="0"
+        @pointerup="SpectatorRotation.onPointerUp"
+        @pointerdown="SpectatorRotation.onPointerDown"
+        @pointermove="SpectatorRotation.onPointerMove"
+        @keydown="SpectatorPosition.onKeyDown"
+        @keyup="SpectatorPosition.onKeyUp"
       >
         <!-- Camera -->
         <TresPerspectiveCamera
