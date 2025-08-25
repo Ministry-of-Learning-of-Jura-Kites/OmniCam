@@ -1,18 +1,21 @@
-import { camera } from "./camera";
+import { SPECTATOR_MOVING_SENTIVITY } from "~/constants";
+import { camera, cameraPosition } from "./refs";
 
 import * as THREE from "three";
+import { ca } from "zod/v4/locales";
 
-const functionalityKeys = ["a", "w", "s", "d", " ", "Shift"] as const;
+const functionalityKeys = [
+  "KeyA",
+  "KeyW",
+  "KeyS",
+  "KeyD",
+  "Space",
+  "Shift",
+] as const;
 
 type FunctionalityKey = (typeof functionalityKeys)[number];
 
-const isKeyDown: Record<FunctionalityKey, boolean> = functionalityKeys.reduce(
-  (acc, key) => {
-    acc[key] = false;
-    return acc;
-  },
-  {} as Record<FunctionalityKey, boolean>,
-);
+let isKeyDown: Partial<Record<FunctionalityKey, boolean>> = {};
 
 function isFunctionalityKey(key: string): key is FunctionalityKey {
   return (functionalityKeys as readonly string[]).includes(key);
@@ -22,8 +25,13 @@ function onKeyDown(e: KeyboardEvent) {
   if (camera?.value == undefined || e.repeat) {
     return;
   }
-  if (isFunctionalityKey(e.key)) {
-    isKeyDown[e.key] = true;
+
+  // console.log("press", e.code);
+  if (e.code == "ShiftLeft" || e.code == "ShiftRight") {
+    isKeyDown["Shift"] = true;
+  }
+  if (isFunctionalityKey(e.code)) {
+    isKeyDown[e.code] = true;
   }
 }
 
@@ -31,8 +39,13 @@ function onKeyUp(e: KeyboardEvent) {
   if (camera?.value == undefined) {
     return;
   }
-  if (isFunctionalityKey(e.key)) {
-    isKeyDown[e.key] = false;
+
+  // console.log("release", e.code);
+  if (e.code == "ShiftLeft" || e.code == "ShiftRight") {
+    isKeyDown["Shift"] = false;
+  }
+  if (isFunctionalityKey(e.code)) {
+    isKeyDown[e.code] = false;
   }
 }
 
@@ -60,34 +73,39 @@ function setup() {
       let deltaVec = new THREE.Vector3();
 
       switch (key) {
-        case "w":
-          deltaVec = forward.multiplyScalar(0.1);
+        case "KeyW":
+          deltaVec = forward.multiplyScalar(SPECTATOR_MOVING_SENTIVITY);
           break;
-        case "s":
-          deltaVec = forward.multiplyScalar(-0.1);
+        case "KeyS":
+          deltaVec = forward.multiplyScalar(-SPECTATOR_MOVING_SENTIVITY);
           break;
-        case "a":
-          deltaVec = right.multiplyScalar(-0.1);
+        case "KeyA":
+          deltaVec = right.multiplyScalar(-SPECTATOR_MOVING_SENTIVITY);
           break;
-        case "d":
-          deltaVec = right.multiplyScalar(0.1);
+        case "KeyD":
+          deltaVec = right.multiplyScalar(SPECTATOR_MOVING_SENTIVITY);
           break;
-        case " ":
-          deltaVec.y = 0.1;
+        case "Space":
+          deltaVec.y = SPECTATOR_MOVING_SENTIVITY;
           break;
         case "Shift":
-          deltaVec.y = -0.1;
+          deltaVec.y = -SPECTATOR_MOVING_SENTIVITY;
           break;
         default:
           break;
       }
-      camera.value.position.add(deltaVec);
+      cameraPosition.add(deltaVec);
     }
   }, 10);
+}
+
+function onBlur(_e: FocusEvent) {
+  isKeyDown = {};
 }
 
 export const SpectatorPosition = {
   onKeyUp,
   onKeyDown,
   setup,
+  onBlur,
 };

@@ -2,9 +2,10 @@
 import { TresCanvas } from "@tresjs/core";
 import { Grid, Environment } from "@tresjs/cientos";
 import { Euler } from "three";
-import { camera } from "./camera";
+import { camera, tresCanvasParent, cameraPosition } from "./refs";
 import { SpectatorPosition } from "./spectator-position";
 import { SpectatorRotation } from "./spectator-rotation";
+import AdjustableInput from "../adjustable-input/AdjustableInput.vue";
 
 defineProps<{
   modelId?: string | null;
@@ -14,24 +15,68 @@ defineProps<{
 onMounted(() => {
   SpectatorPosition.setup();
 });
+
+watch(
+  cameraPosition,
+  (pos) => {
+    if (camera.value) {
+      camera.value.position.set(pos.x, pos.y, pos.z);
+    }
+  },
+  { deep: true },
+);
 </script>
 
 <template>
   <ClientOnly>
-    <div class="w-full h-full bg-background">
+    <div class="w-full h-full bg-background relative" ref="tresCanvasParent">
+      <div
+        id="camera-props"
+        class="absolute top-0 right-0 z-10 text-white flex flex-col p-2"
+      >
+        <p>Camera</p>
+        <div class="flex">
+          <p>x:</p>
+          <AdjustableInput
+            v-model="cameraPosition.x"
+            class="text-right pl-2"
+          ></AdjustableInput>
+        </div>
+        <div class="flex">
+          <p>y:</p>
+          <AdjustableInput
+            v-model="cameraPosition.y"
+            class="text-right pl-2"
+          ></AdjustableInput>
+        </div>
+        <div class="flex">
+          <p>z:</p>
+          <AdjustableInput
+            v-model="cameraPosition.z"
+            class="text-right pl-2"
+          ></AdjustableInput>
+        </div>
+      </div>
       <TresCanvas
+        id="canvas"
+        ref="canvas"
+        resize-event="parent"
         clear-color="#0E0C29"
         tabindex="0"
-        @pointerup="SpectatorRotation.onPointerUp"
         @pointerdown="SpectatorRotation.onPointerDown"
-        @pointermove="SpectatorRotation.onPointerMove"
         @keydown="SpectatorPosition.onKeyDown"
         @keyup="SpectatorPosition.onKeyUp"
+        @blur="
+          (event: any) => {
+            SpectatorRotation.onBlur(event);
+            SpectatorPosition.onBlur(event);
+          }
+        "
       >
         <!-- Camera -->
         <TresPerspectiveCamera
           ref="camera"
-          :position="[4, 4, 4]"
+          :position="cameraPosition"
           :rotation="new Euler(0, 0, 0, 'YXZ')"
           :fov="75"
         />
@@ -64,16 +109,22 @@ onMounted(() => {
           :fade-strength="1"
           infinite-grid
         />
-
-        <!-- Camera controls from tresjs/cientos -->
-        <!-- <OrbitControls
-          :enable-pan="true"
-          :enable-zoom="true"
-          :enable-rotate="true"
-          :min-distance="2"
-          :max-distance="50"
-        /> -->
       </TresCanvas>
     </div>
   </ClientOnly>
 </template>
+
+<style>
+#canvas {
+  height: 100%;
+  width: 100%;
+  min-height: 0;
+}
+#camera-props {
+  text-shadow:
+    -1px -1px 0 black /* Top-left shadow */,
+    1px -1px 0 black /* Top-right shadow */,
+    -1px 1px 0 black /* Bottom-left shadow */,
+    1px 1px 0 black /* Bottom-right shadow */;
+}
+</style>

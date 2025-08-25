@@ -7,7 +7,7 @@ import CameraPanel from "@/components/CameraPanel.vue";
   <div class="flex flex-col h-screen">
     <TopBar />
     <div class="flex-1 flex">
-      <div class="flex-1">
+      <div class="flex-1 w-full h-full">
         <slot />
       </div>
       <CameraPanel />
