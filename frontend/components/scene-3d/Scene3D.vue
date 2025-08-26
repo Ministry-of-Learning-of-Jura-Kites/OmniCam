@@ -2,7 +2,12 @@
 import { TresCanvas } from "@tresjs/core";
 import { Grid, Environment } from "@tresjs/cientos";
 import { Euler } from "three";
-import { camera, tresCanvasParent, cameraPosition } from "./refs";
+import {
+  camera,
+  tresCanvasParent,
+  cameraPosition,
+  cameraRotation,
+} from "./refs";
 import { SpectatorPosition } from "./spectator-position";
 import { SpectatorRotation } from "./spectator-rotation";
 import AdjustableInput from "../adjustable-input/AdjustableInput.vue";
@@ -25,11 +30,21 @@ watch(
   },
   { deep: true },
 );
+
+watch(
+  cameraRotation,
+  (pos) => {
+    if (camera.value) {
+      camera.value.rotation.set(pos.x, pos.y, pos.z);
+    }
+  },
+  { deep: true },
+);
 </script>
 
 <template>
   <ClientOnly>
-    <div class="w-full h-full bg-background relative" ref="tresCanvasParent">
+    <div ref="tresCanvasParent" class="w-full h-full bg-background relative">
       <div
         id="camera-props"
         class="absolute top-0 right-0 z-10 text-white flex flex-col p-2"
@@ -37,24 +52,27 @@ watch(
         <p>Camera</p>
         <div class="flex">
           <p>x:</p>
-          <AdjustableInput
-            v-model="cameraPosition.x"
-            class="text-right pl-2"
-          ></AdjustableInput>
+          <AdjustableInput v-model="cameraPosition.x" class="text-right pl-2" />
         </div>
         <div class="flex">
           <p>y:</p>
-          <AdjustableInput
-            v-model="cameraPosition.y"
-            class="text-right pl-2"
-          ></AdjustableInput>
+          <AdjustableInput v-model="cameraPosition.y" class="text-right pl-2" />
         </div>
         <div class="flex">
           <p>z:</p>
-          <AdjustableInput
-            v-model="cameraPosition.z"
-            class="text-right pl-2"
-          ></AdjustableInput>
+          <AdjustableInput v-model="cameraPosition.z" class="text-right pl-2" />
+        </div>
+        <div class="flex">
+          <p>θ<sub>x</sub>:</p>
+          <AdjustableInput v-model="cameraRotation.x" class="text-right pl-2" />
+        </div>
+        <div class="flex">
+          <p>θ<sub>x</sub>:</p>
+          <AdjustableInput v-model="cameraRotation.y" class="text-right pl-2" />
+        </div>
+        <div class="flex">
+          <p>θ<sub>x</sub>:</p>
+          <AdjustableInput v-model="cameraRotation.z" class="text-right pl-2" />
         </div>
       </div>
       <TresCanvas

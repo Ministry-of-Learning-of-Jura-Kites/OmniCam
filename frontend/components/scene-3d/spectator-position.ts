@@ -2,7 +2,6 @@ import { SPECTATOR_MOVING_SENTIVITY } from "~/constants";
 import { camera, cameraPosition } from "./refs";
 
 import * as THREE from "three";
-import { ca } from "zod/v4/locales";
 
 const functionalityKeys = [
   "KeyA",
