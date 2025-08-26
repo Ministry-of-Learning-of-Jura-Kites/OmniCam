@@ -8,8 +8,8 @@ export const cameraPosition: Reactive<THREE.Vector3> = reactive(
   new THREE.Vector3(),
 );
 
-export const cameraRotation: Reactive<THREE.Vector3> = reactive(
-  new THREE.Vector3(),
+export const cameraRotation: Reactive<THREE.Euler> = reactive(
+  new THREE.Euler(0, 0, 0, "YXZ"),
 );
 
 export const tresCanvasParent: Ref<HTMLDivElement | null> = ref(null);
