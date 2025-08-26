@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { TresCanvas } from "@tresjs/core";
 import { Grid, Environment } from "@tresjs/cientos";
-import { Euler } from "three";
 import {
   camera,
   tresCanvasParent,
@@ -11,6 +10,7 @@ import {
 import { SpectatorPosition } from "./spectator-position";
 import { SpectatorRotation } from "./spectator-rotation";
 import AdjustableInput from "../adjustable-input/AdjustableInput.vue";
+import { SPECTATOR_ADJ_INPUT_SENTIVITY } from "~/constants";
 
 defineProps<{
   modelId?: string | null;
@@ -49,30 +49,60 @@ watch(
         id="camera-props"
         class="absolute top-0 right-0 z-10 text-white flex flex-col p-2"
       >
-        <p>Camera</p>
+        <p class="text-center w-full h-full">Spectator</p>
         <div class="flex">
           <p>x:</p>
-          <AdjustableInput v-model="cameraPosition.x" class="text-right pl-2" />
+          <AdjustableInput
+            v-model="cameraPosition.x"
+            class="right-adjustable-input"
+            :sliding-sensitivity="SPECTATOR_ADJ_INPUT_SENTIVITY"
+          />
         </div>
         <div class="flex">
           <p>y:</p>
-          <AdjustableInput v-model="cameraPosition.y" class="text-right pl-2" />
+          <AdjustableInput
+            v-model="cameraPosition.y"
+            class="right-adjustable-input"
+            :sliding-sensitivity="SPECTATOR_ADJ_INPUT_SENTIVITY"
+          />
         </div>
         <div class="flex">
           <p>z:</p>
-          <AdjustableInput v-model="cameraPosition.z" class="text-right pl-2" />
+          <AdjustableInput
+            v-model="cameraPosition.z"
+            class="right-adjustable-input"
+            :sliding-sensitivity="SPECTATOR_ADJ_INPUT_SENTIVITY"
+          />
         </div>
         <div class="flex">
           <p>θ<sub>x</sub>:</p>
-          <AdjustableInput v-model="cameraRotation.x" class="text-right pl-2" />
+          <AdjustableInput
+            v-model="cameraRotation.x"
+            class="right-adjustable-input"
+            :max="Math.PI / 2 - 0.01"
+            :min="-Math.PI / 2 + 0.01"
+            :sliding-sensitivity="SPECTATOR_ADJ_INPUT_SENTIVITY"
+          />
         </div>
         <div class="flex">
-          <p>θ<sub>x</sub>:</p>
-          <AdjustableInput v-model="cameraRotation.y" class="text-right pl-2" />
+          <p>θ<sub>y</sub>:</p>
+          <AdjustableInput
+            v-model="cameraRotation.y"
+            class="right-adjustable-input"
+            :max="Math.PI - 0.01"
+            :min="-Math.PI + 0.01"
+            :sliding-sensitivity="SPECTATOR_ADJ_INPUT_SENTIVITY"
+          />
         </div>
         <div class="flex">
-          <p>θ<sub>x</sub>:</p>
-          <AdjustableInput v-model="cameraRotation.z" class="text-right pl-2" />
+          <p>θ<sub>z</sub>:</p>
+          <AdjustableInput
+            v-model="cameraRotation.z"
+            class="right-adjustable-input"
+            :max="Math.PI - 0.01"
+            :min="-Math.PI + 0.01"
+            :sliding-sensitivity="SPECTATOR_ADJ_INPUT_SENTIVITY"
+          />
         </div>
       </div>
       <TresCanvas
@@ -95,7 +125,7 @@ watch(
         <TresPerspectiveCamera
           ref="camera"
           :position="cameraPosition"
-          :rotation="new Euler(0, 0, 0, 'YXZ')"
+          :rotation="cameraRotation"
           :fov="75"
         />
 
@@ -144,5 +174,22 @@ watch(
     1px -1px 0 black /* Top-right shadow */,
     -1px 1px 0 black /* Bottom-left shadow */,
     1px 1px 0 black /* Bottom-right shadow */;
+}
+</style>
+
+<style scoped>
+.right-adjustable-input {
+  width: 100%;
+  padding: 1px;
+  padding-left: 8px;
+}
+.right-adjustable-input :deep(span) {
+  text-align: right;
+  width: 100%;
+  display: block;
+}
+.right-adjustable-input :deep(input) {
+  text-align: right;
+  width: 100%;
 }
 </style>

@@ -1,5 +1,5 @@
 import { SPECTATOR_MOVING_SENTIVITY } from "~/constants";
-import { camera, cameraPosition } from "./refs";
+import { camera, cameraPosition, tresCanvasParent } from "./refs";
 
 import * as THREE from "three";
 
@@ -24,6 +24,8 @@ function onKeyDown(e: KeyboardEvent) {
   if (camera?.value == undefined || e.repeat) {
     return;
   }
+
+  tresCanvasParent?.value?.focus();
 
   // console.log("press", e.code);
   if (e.code == "ShiftLeft" || e.code == "ShiftRight") {
