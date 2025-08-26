@@ -1,5 +1,5 @@
 import { SPECTATOR_ROTAING_SENTIVITY } from "~/constants";
-import { camera, tresCanvasParent } from "./refs";
+import { cameraRotation, tresCanvasParent } from "./refs";
 
 const isDragging = ref(false);
 
@@ -9,7 +9,7 @@ const minPitch = -Math.PI / 2 + 0.01;
 let yaw = 0;
 let pitch = 0;
 
-async function onPointerDown(e: PointerEvent) {
+async function onPointerDown(_e: PointerEvent) {
   isDragging.value = true;
   document.addEventListener("pointermove", onPointerMove);
   document.addEventListener("pointerup", onPointerUp);
@@ -32,12 +32,12 @@ function onPointerMove(e: PointerEvent) {
 
   const deltaX = e.movementX;
   yaw -= deltaX * SPECTATOR_ROTAING_SENTIVITY;
-  camera.value!.rotation.y = yaw;
+  cameraRotation.y = yaw;
 
   const deltaY = e.movementY;
   pitch -= deltaY * SPECTATOR_ROTAING_SENTIVITY;
   pitch = Math.max(minPitch, Math.min(maxPitch, pitch));
-  camera.value!.rotation.x = pitch;
+  cameraRotation.x = pitch;
 }
 
 function onBlur(_e: FocusEvent) {
