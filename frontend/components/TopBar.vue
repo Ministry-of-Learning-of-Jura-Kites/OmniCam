@@ -1,3 +1,21 @@
+<script setup>
+import Button from "./ui/button/Button.vue";
+import Badge from "./ui/badge/Badge.vue";
+import Card from "./ui/card/Card.vue";
+
+import {
+  Play,
+  Square,
+  RotateCcw,
+  Maximize,
+  Download,
+  Upload,
+  Save,
+  User,
+  LogOut,
+} from "lucide-vue-next";
+</script>
+
 <template>
   <div
     class="h-16 bg-card border-b border-border px-6 flex items-center justify-between"
@@ -55,22 +73,3 @@
     </div>
   </div>
 </template>
-
-<script setup>
-import Button from "./ui/button/Button.vue";
-import Badge from "./ui/badge/Badge.vue";
-import Card from "./ui/card/Card.vue";
-
-// lucide-icons สำหรับ Vue
-import {
-  Play,
-  Square,
-  RotateCcw,
-  Maximize,
-  Download,
-  Upload,
-  Save,
-  User,
-  LogOut,
-} from "lucide-vue-next";
-</script>
