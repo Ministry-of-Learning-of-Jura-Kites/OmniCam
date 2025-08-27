@@ -1,9 +1,9 @@
 package controller_model
 
 import (
-	"fmt"
 	"net/http"
 	"os"
+	"path/filepath"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
@@ -48,14 +48,14 @@ func (t *PostModelRoutes) post(c *gin.Context) {
 		return
 	}
 
-	uploadDir := fmt.Sprintf(t.Env.ModelFilePath, projectId.String())
+	uploadDir := filepath.Join(t.Env.ModelFilePath, projectId.String())
 	err = os.MkdirAll(uploadDir, os.ModePerm)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to create uploads dir"})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to upload model file"})
 		return
 	}
 
-	filePath := fmt.Sprintf("%s/%s", uploadDir, file.Filename)
+	filePath := filepath.Join(uploadDir, file.Filename)
 	if err := c.SaveUploadedFile(file, filePath); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to save file"})
 		return
