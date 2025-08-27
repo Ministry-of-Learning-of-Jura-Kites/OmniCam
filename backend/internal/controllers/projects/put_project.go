@@ -6,6 +6,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgtype"
 	"go.uber.org/zap"
 	config_env "omnicam.com/backend/config"
 	db_sqlc_gen "omnicam.com/backend/pkg/db/sqlc-gen"
@@ -18,8 +19,8 @@ type PutProjectRoute struct {
 }
 
 type UpdateProjectRequest struct {
-	Name        string `json:"name,omitempty"`
-	Description string `json:"description,omitempty"`
+	Name        *string `json:"name,omitempty"`
+	Description *string `json:"description,omitempty"`
 }
 
 func (t *PutProjectRoute) put(c *gin.Context) {
@@ -40,12 +41,23 @@ func (t *PutProjectRoute) put(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid projectId"})
 		return
 	}
+	params := db_sqlc_gen.UpdateProjectParams{
+		ID: id,
+	}
 
-	project, err := t.DB.UpdateProject(c, db_sqlc_gen.UpdateProjectParams{
-		Name:        req.Name,
-		Description: req.Description,
-		ID:          id,
-	})
+	if req.Name != nil {
+		params.Name = pgtype.Text{String: *req.Name, Valid: true}
+	} else {
+		params.Name = pgtype.Text{Valid: false}
+	}
+
+	if req.Description != nil {
+		params.Description = pgtype.Text{String: *req.Description, Valid: true}
+	} else {
+		params.Description = pgtype.Text{Valid: false}
+	}
+
+	project, err := t.DB.UpdateProject(c, params)
 	if err != nil {
 		t.Logger.Error("error while updating project", zap.Error(err))
 		c.JSON(http.StatusInternalServerError, gin.H{})

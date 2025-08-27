@@ -1,10 +1,13 @@
 package controller_projects
 
 import (
+	"errors"
 	"net/http"
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/jackc/pgerrcode"
+	"github.com/jackc/pgx/v5/pgconn"
 	"go.uber.org/zap"
 	config_env "omnicam.com/backend/config"
 	db_sqlc_gen "omnicam.com/backend/pkg/db/sqlc-gen"
@@ -33,6 +36,13 @@ func (t *PostProjectRoute) post(c *gin.Context) {
 
 	project, err := t.DB.CreateProject(c, db_sqlc_gen.CreateProjectParams(req))
 	if err != nil {
+		var pgErr *pgconn.PgError
+		if errors.As(err, &pgErr) && pgErr.Code == pgerrcode.UniqueViolation {
+			c.JSON(http.StatusBadRequest, gin.H{
+				"error": "project with this name already exists",
+			})
+			return
+		}
 		t.Logger.Error("error while creating project", zap.Error(err))
 		c.JSON(http.StatusInternalServerError, gin.H{})
 		return
