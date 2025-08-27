@@ -29,7 +29,7 @@ func (t *DeleteModelRoute) delete(c *gin.Context) {
 	model, err := t.DB.GetModelByID(c, modelId)
 	if err != nil {
 		t.Logger.Error("failed to get model", zap.Error(err))
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to get model"})
+		c.JSON(http.StatusNotFound, gin.H{})
 		return
 	}
 
