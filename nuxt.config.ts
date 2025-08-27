@@ -1,6 +1,5 @@
 // https://nuxt.com/docs/api/configuration/nuxt-config
 import tailwindcss from "@tailwindcss/vite";
-
 export default defineNuxtConfig({
   css: ["~/assets/css/tailwind.css"],
   vite: {
@@ -40,4 +39,7 @@ export default defineNuxtConfig({
       extensions: ["vue"],
     },
   ],
+  routeRules: {
+    "/projects": { redirect: "/" },
+  },
 });
