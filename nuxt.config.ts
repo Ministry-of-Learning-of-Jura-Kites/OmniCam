@@ -40,4 +40,8 @@ export default defineNuxtConfig({
       extensions: ["vue"],
     },
   ],
+  routeRules: {
+    "/projects/:projectId/models": { redirect: "/projects/:projectId" },
+    "/projects": { redirect: "/" },
+  },
 });
