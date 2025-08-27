@@ -5,7 +5,17 @@ import Button from "./ui/button/Button.vue";
 import Input from "./ui/input/Input.vue";
 import Label from "./ui/label/Label.vue";
 import Badge from "./ui/badge/Badge.vue";
-import { Camera, Plus, Trash2, Eye, Settings } from "lucide-vue-next";
+import {
+  Camera,
+  Plus,
+  Trash2,
+  Eye,
+  Settings,
+  ChevronLeft,
+  ChevronDown,
+} from "lucide-vue-next";
+
+const isCameraPropertiesOpen = ref(true);
 
 interface CameraData {
   id: string;
@@ -68,53 +78,57 @@ const selectedCameraData = computed(() =>
       </Button>
     </div>
 
-    <!-- Camera List -->
-    <div class="space-y-2 mb-6">
-      <Card
-        v-for="camera in cameras"
-        :key="camera.id"
-        :class="[
-          'cursor-pointer transition-colors',
-          selectedCamera === camera.id
-            ? 'bg-survey-surface border-primary'
-            : 'hover:bg-survey-surface-hover',
-        ]"
-        @click="selectedCamera = camera.id"
+    <!-- Camera Dropdown -->
+    <div class="mb-3">
+      <Label for="camera-select" class="mb-1 block">Select Camera</Label>
+      <select
+        id="camera-select"
+        v-model="selectedCamera"
+        class="w-full border rounded px-3 py-2 bg-background text-foreground"
       >
-        <CardContent class="p-3">
-          <div class="flex items-center justify-between">
-            <div>
-              <div class="font-medium">{{ camera.name }}</div>
-              <div class="text-sm text-muted-foreground">
-                FOV: {{ camera.fov }}°
-              </div>
-            </div>
-            <div class="flex gap-1">
-              <Button size="sm" variant="ghost">
-                <Eye class="h-3 w-3" />
-              </Button>
-              <Button
-                size="sm"
-                variant="ghost"
-                @click.stop="deleteCamera(camera.id)"
-              >
-                <Trash2 class="h-3 w-3" />
-              </Button>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+        <option v-for="camera in cameras" :key="camera.id" :value="camera.id">
+          {{ camera.name }} (FOV: {{ camera.fov }}°)
+        </option>
+      </select>
+      <div class="flex gap-2 mt-2">
+        <Button size="sm" variant="ghost" :disabled="!selectedCamera">
+          <Eye class="h-3 w-3" />
+          Preview
+        </Button>
+        <Button
+          size="sm"
+          variant="ghost"
+          :disabled="!selectedCamera"
+          @click="deleteCamera(selectedCamera!)"
+        >
+          <Trash2 class="h-3 w-3" />
+          Delete
+        </Button>
+      </div>
+    </div>
+
+    <div class="mb-3">
+      <Badge variant="secondary" class="w-full justify-center">
+        {{ cameras.length }} Camera{{ cameras.length !== 1 ? "s" : "" }} Active
+      </Badge>
     </div>
 
     <!-- Camera Properties -->
     <Card v-if="selectedCameraData">
-      <CardHeader>
+      <CardHeader
+        class="cursor-pointer flex items-center justify-between"
+        @click="isCameraPropertiesOpen = !isCameraPropertiesOpen"
+      >
         <CardTitle class="text-base flex items-center gap-2">
           <Settings class="h-4 w-4" />
           Camera Properties
         </CardTitle>
+        <span class="text-sm">
+          <ChevronDown v-if="isCameraPropertiesOpen" class="inline h-4 w-4" />
+          <ChevronLeft v-else class="inline h-4 w-4"
+        /></span>
       </CardHeader>
-      <CardContent class="space-y-4">
+      <CardContent v-if="isCameraPropertiesOpen" class="space-y-4">
         <div>
           <Label for="camera-name">Name</Label>
           <Input id="camera-name" v-model="selectedCameraData.name" />
@@ -169,11 +183,5 @@ const selectedCameraData = computed(() =>
         </div>
       </CardContent>
     </Card>
-
-    <div class="mt-6">
-      <Badge variant="secondary" class="w-full justify-center">
-        {{ cameras.length }} Camera{{ cameras.length !== 1 ? "s" : "" }} Active
-      </Badge>
-    </div>
   </div>
 </template>
