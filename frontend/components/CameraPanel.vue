@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, reactive, computed } from "vue";
+import { ref, computed } from "vue";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 import Button from "./ui/button/Button.vue";
 import Input from "./ui/input/Input.vue";
@@ -55,11 +55,11 @@ const deleteCamera = (id: string) => {
   }
 };
 
-const updateCamera = (id: string, updates: Partial<CameraData>) => {
-  cameras.value = cameras.value.map((cam) =>
-    cam.id === id ? { ...cam, ...updates } : cam,
-  );
-};
+// const updateCamera = (id: string, updates: Partial<CameraData>) => {
+//   cameras.value = cameras.value.map((cam) =>
+//     cam.id === id ? { ...cam, ...updates } : cam,
+//   );
+// };
 
 const selectedCameraData = computed(() =>
   cameras.value.find((cam) => cam.id === selectedCamera.value),
@@ -139,24 +139,24 @@ const selectedCameraData = computed(() =>
             <Label for="pos-x">X</Label>
             <Input
               id="pos-x"
-              type="number"
               v-model.number="selectedCameraData.position.x"
+              type="number"
             />
           </div>
           <div>
             <Label for="pos-y">Y</Label>
             <Input
               id="pos-y"
-              type="number"
               v-model.number="selectedCameraData.position.y"
+              type="number"
             />
           </div>
           <div>
             <Label for="pos-z">Z</Label>
             <Input
               id="pos-z"
-              type="number"
               v-model.number="selectedCameraData.position.z"
+              type="number"
             />
           </div>
         </div>
@@ -165,10 +165,10 @@ const selectedCameraData = computed(() =>
           <Label for="fov">Field of View</Label>
           <Input
             id="fov"
+            v-model.number="selectedCameraData.fov"
             type="number"
             min="10"
             max="120"
-            v-model.number="selectedCameraData.fov"
           />
         </div>
 

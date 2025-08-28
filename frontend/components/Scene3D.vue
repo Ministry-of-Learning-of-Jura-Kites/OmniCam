@@ -54,7 +54,6 @@
 <script setup lang="ts">
 import { TresCanvas } from "@tresjs/core";
 import { OrbitControls, Grid, Environment } from "@tresjs/cientos";
-import { ref } from "vue";
 
 defineProps<{
   modelId?: string | null;

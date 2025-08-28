@@ -4,8 +4,6 @@ import Badge from "./ui/badge/Badge.vue";
 import Card from "./ui/card/Card.vue";
 
 import {
-  Play,
-  Square,
   RotateCcw,
   Maximize,
   Download,
@@ -24,7 +22,7 @@ import {
     <div class="flex items-center gap-4">
       <Card class="px-3 py-1 bg-survey-surface">
         <div class="flex items-center gap-2">
-          <div class="w-2 h-2 bg-survey-accent rounded-full"></div>
+          <div class="w-2 h-2 bg-survey-accent rounded-full" />
           <span class="text-sm font-medium">Survey Project 01</span>
           <Badge variant="secondary" class="ml-2"> Active </Badge>
         </div>
@@ -43,7 +41,7 @@ import {
         Fullscreen
       </Button>
 
-      <div class="h-6 w-px bg-border mx-2"></div>
+      <div class="h-6 w-px bg-border mx-2" />
 
       <Button size="sm">
         <Upload class="h-4 w-4 mr-2" />
