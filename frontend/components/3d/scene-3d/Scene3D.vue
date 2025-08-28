@@ -1,96 +1,78 @@
 <script setup lang="ts">
 import { TresCanvas } from "@tresjs/core";
 import { Grid, Environment } from "@tresjs/cientos";
-import {
-  tresCanvasParent,
-  spectatorCameraPosition,
-  spectatorCameraRotation,
-  tresContext,
-  draggableObjects,
-  currentCameraPosition,
-  currentCameraRotation,
-} from "./refs";
-import { SpectatorPosition } from "./spectator-position";
-import { SpectatorRotation } from "./spectator-rotation";
+import { useSpectatorPosition } from "./use-spectator-position";
+import { useSpectatorRotation } from "./use-spectator-rotation";
 import AdjustableInput from "../../adjustable-input/AdjustableInput.vue";
 import { SPECTATOR_ADJ_INPUT_SENTIVITY } from "~/constants";
-import {
-  cameras,
-  spawnCameraHere,
-  switchToCam,
-  switchToSpectator,
-} from "./camera-management";
+import { useCameraManagement } from "./use-camera-management";
 import CameraObject from "../camera-object/CameraObject.vue";
-import Scene3dInner from "./Scene3dInner.vue";
+import Scene3dInner from "./inner/Scene3dInner.vue";
 import * as THREE from "three";
 import type { IUserData } from "./obj-event-handler";
+import { createSceneStates, SCENE_STATES_KEY } from "./use-scene-state";
+import { useCameraUpdate } from "./use-camera-update";
 
 defineProps<{
   modelId?: string | null;
   placeholderText?: string | null;
 }>();
 
+const sceneStates = createSceneStates();
+
+provide(SCENE_STATES_KEY, sceneStates);
+
+const spectatorPosition = useSpectatorPosition(sceneStates);
+const spectatorRotation = useSpectatorRotation(sceneStates);
+
+const cameraManagement = useCameraManagement(sceneStates);
+
+useCameraUpdate(sceneStates);
+
 onMounted(() => {
   // start loop to move camera from key press
-  SpectatorPosition.update();
+  spectatorPosition.update();
 
   // for testing
   if (typeof window !== "undefined") {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (window as any).spawnCameraHereNaja = spawnCameraHere;
+    (window as any).spawnCameraHereNaja = cameraManagement.spawnCameraHere;
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (window as any).switchToCamNaja = switchToCam;
+    (window as any).switchToCamNaja = cameraManagement.switchToCam;
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (window as any).switchToSpectatorNaja = switchToSpectator;
+    (window as any).switchToSpectatorNaja = cameraManagement.switchToSpectator;
   }
 });
 
 const raycaster = new THREE.Raycaster();
 const mouse = new THREE.Vector2();
 
-watch(
-  currentCameraPosition,
-  (pos) => {
-    if (tresContext.value?.camera) {
-      tresContext.value.camera.position.set(pos.x, pos.y, pos.z);
-    }
-  },
-  { deep: true },
-);
-
-watch(
-  currentCameraRotation,
-  (pos) => {
-    if (tresContext.value?.camera) {
-      tresContext.value.camera.rotation.set(pos.x, pos.y, pos.z);
-    }
-  },
-  { deep: true },
-);
-
 function onCanvasPointer(event: PointerEvent) {
-  const ele = tresContext.value!.renderer.domElement;
+  const ele = sceneStates.tresContext.value!.renderer.domElement;
   const rect = ele.getBoundingClientRect();
 
   mouse.x = ((event.clientX - rect.left) / rect.width!) * 2 - 1;
   mouse.y = -((event.clientY - rect.top) / rect.height!) * 2 + 1;
 
-  raycaster.setFromCamera(mouse, tresContext.value!.camera!);
+  raycaster.setFromCamera(mouse, sceneStates.tresContext.value!.camera!);
 
-  const intersects = raycaster.intersectObjects([...draggableObjects], false);
+  const intersects = raycaster.intersectObjects(
+    [...sceneStates.draggableObjects],
+    false,
+  );
   if (intersects.length > 0) {
     const foundObj = intersects[0];
     const userData = foundObj?.object.userData as IUserData;
     userData.handleEvent.call(userData, event.type, event);
   } else {
     if (event.type == "pointerdown") {
-      SpectatorRotation.onPointerDown(event);
+      spectatorRotation.onPointerDown(event);
     }
   }
 }
 
 watch(
-  tresContext,
+  sceneStates.tresContext,
   (context) => {
     context?.renderer.domElement.addEventListener(
       "pointerdown",
@@ -106,37 +88,32 @@ watch(
 
     context?.renderer.domElement.addEventListener(
       "keydown",
-      SpectatorPosition.onKeyDown,
+      spectatorPosition.onKeyDown,
     );
 
     context?.renderer.domElement.addEventListener(
       "keyup",
-      SpectatorPosition.onKeyUp,
+      spectatorPosition.onKeyUp,
     );
 
     context?.renderer.domElement.addEventListener(
       "blur",
       (event: FocusEvent) => {
-        SpectatorRotation.onBlur(event);
-        SpectatorPosition.onBlur(event);
+        spectatorRotation.onBlur(event);
+        spectatorPosition.onBlur(event);
       },
     );
   },
   { once: true },
 );
-
-// watch(
-//   tresCanvasParent,
-//   (parent) => {
-//     parent?.addEventListener("mousemove", onMouseMove);
-//   },
-//   { once: true },
-// );
 </script>
 
 <template>
   <ClientOnly>
-    <div ref="tresCanvasParent" class="w-full h-full bg-background relative">
+    <div
+      :ref="sceneStates.tresCanvasParent"
+      class="w-full h-full bg-background relative"
+    >
       <div
         id="camera-props"
         class="absolute top-0 right-0 z-10 text-white flex flex-col p-2"
@@ -145,7 +122,7 @@ watch(
         <div class="flex">
           <p>x:</p>
           <AdjustableInput
-            v-model="spectatorCameraPosition.x"
+            v-model="sceneStates.spectatorCameraPosition.x"
             class="right-adjustable-input"
             :sliding-sensitivity="SPECTATOR_ADJ_INPUT_SENTIVITY"
           />
@@ -153,7 +130,7 @@ watch(
         <div class="flex">
           <p>y:</p>
           <AdjustableInput
-            v-model="spectatorCameraPosition.y"
+            v-model="sceneStates.spectatorCameraPosition.y"
             class="right-adjustable-input"
             :sliding-sensitivity="SPECTATOR_ADJ_INPUT_SENTIVITY"
           />
@@ -161,7 +138,7 @@ watch(
         <div class="flex">
           <p>z:</p>
           <AdjustableInput
-            v-model="spectatorCameraPosition.z"
+            v-model="sceneStates.spectatorCameraPosition.z"
             class="right-adjustable-input"
             :sliding-sensitivity="SPECTATOR_ADJ_INPUT_SENTIVITY"
           />
@@ -169,7 +146,7 @@ watch(
         <div class="flex">
           <p>θ<sub>x</sub>:</p>
           <AdjustableInput
-            v-model="spectatorCameraRotation.x"
+            v-model="sceneStates.spectatorCameraRotation.x"
             class="right-adjustable-input"
             :max="Math.PI / 2 - 0.01"
             :min="-Math.PI / 2 + 0.01"
@@ -179,7 +156,7 @@ watch(
         <div class="flex">
           <p>θ<sub>y</sub>:</p>
           <AdjustableInput
-            v-model="spectatorCameraRotation.y"
+            v-model="sceneStates.spectatorCameraRotation.y"
             class="right-adjustable-input"
             :max="Math.PI - 0.01"
             :min="-Math.PI + 0.01"
@@ -189,7 +166,7 @@ watch(
         <div class="flex">
           <p>θ<sub>z</sub>:</p>
           <AdjustableInput
-            v-model="spectatorCameraRotation.z"
+            v-model="sceneStates.spectatorCameraRotation.z"
             class="right-adjustable-input"
             :max="Math.PI - 0.01"
             :min="-Math.PI + 0.01"
@@ -199,21 +176,19 @@ watch(
       </div>
       <TresCanvas
         id="canvas"
-        ref="canvas"
         resize-event="parent"
         clear-color="#0E0C29"
         tabindex="0"
       >
         <!-- Camera -->
         <TresPerspectiveCamera
-          ref="spectatorCamera"
-          :position="currentCameraPosition"
-          :rotation="currentCameraRotation"
+          :position="sceneStates.currentCameraPosition.value"
+          :rotation="sceneStates.currentCameraRotation.value"
           :fov="75"
         />
 
         <CameraObject
-          v-for="[camId, cam] in Object.entries(cameras)"
+          v-for="[camId, cam] in Object.entries(sceneStates.cameras)"
           :key="camId"
           :name="cam.name"
           :position="cam.position"
@@ -226,7 +201,7 @@ watch(
         <TresDirectionalLight :position="[10, 10, 5]" :intensity="1" />
 
         <!-- 3D Objects -->
-        <TresMesh ref="meshRef" :position="[0, 0.5, 0]">
+        <TresMesh :position="[0, 0.5, 0]">
           <TresBoxGeometry />
           <TresMeshStandardMaterial
             :color="'#4a90e2'"
