@@ -2,8 +2,9 @@
 import * as THREE from "three";
 import { CameraUserData } from "../camera-object/camera-user-data";
 import { ARROW_CONFIG } from "~/constants";
-import { draggableObjects, type ObjWithUserData } from "../scene-3d/refs";
-import { useTresContext } from "@tresjs/core";
+import { useTresContext, type TresContext } from "@tresjs/core";
+import type { ObjWithUserData } from "../scene-3d/obj-event-handler";
+import { createSceneStates } from "../scene-3d/use-scene-state";
 
 const props = defineProps({
   direction: {
@@ -18,9 +19,17 @@ const props = defineProps({
     type: [String, Number] as PropType<string | number>,
     default: "red",
   },
+  draggableObjects: {
+    type: Set<THREE.Object3D>,
+    default: new Set(),
+  },
 });
 
-const context = useTresContext();
+// const context = useTresContext();
+
+const sceneStates = createSceneStates();
+
+const context = sceneStates.tresContext.value as TresContext;
 
 const arrow = new THREE.Group();
 
@@ -82,13 +91,13 @@ const componentDraggableMeshes: ObjWithUserData[] = [];
 for (const mesh of arrow.children) {
   const obj = mesh as ObjWithUserData;
   obj.userData = cameraUserData;
-  draggableObjects.add(obj);
+  sceneStates.draggableObjects.add(obj);
   componentDraggableMeshes.push(obj);
 }
 
 onUnmounted(() => {
   for (const mesh of componentDraggableMeshes) {
-    draggableObjects.delete(mesh);
+    sceneStates.draggableObjects.delete(mesh);
   }
 });
 </script>
