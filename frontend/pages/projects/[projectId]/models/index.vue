@@ -5,6 +5,6 @@ import Scene3D from "@/components/Scene3D.vue";
 
 <template>
   <LayoutModelsPage>
-    <Scene3D :modelId="null" placeholderText="Select a model to display" />
+    <Scene3D :model-id="null" placeholder-text="Select a model to display" />
   </LayoutModelsPage>
 </template>
