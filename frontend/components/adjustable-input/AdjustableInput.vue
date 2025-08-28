@@ -119,7 +119,7 @@ function handleClickOutside(e: MouseEvent) {
       ref="textValue"
       class="text-right w-full select-none"
       @pointerdown="onPointerDown"
-      >{{ roundTo(value ?? 0, 2) }}</span
+      >{{ (value ?? 0).toFixed(2) }}</span
     >
     <input
       v-if="isInputting"
