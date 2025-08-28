@@ -1,5 +1,9 @@
 import { SPECTATOR_ROTAING_SENTIVITY } from "~/constants";
-import { cameraRotation, tresCanvasParent } from "./refs";
+import {
+  currentCameraRotation,
+  isDraggingObject,
+  tresCanvasParent,
+} from "./refs";
 
 const isDragging = ref(false);
 
@@ -8,6 +12,7 @@ const minPitch = -Math.PI / 2 + 0.01;
 
 async function onPointerDown(_e: PointerEvent) {
   isDragging.value = true;
+
   document.addEventListener("pointermove", onPointerMove);
   document.addEventListener("pointerup", onPointerUp);
   await tresCanvasParent.value?.requestPointerLock();
@@ -25,21 +30,23 @@ function normalizeAngle(rad: number) {
 }
 
 function onPointerMove(e: PointerEvent) {
-  if (tresCanvasParent?.value == undefined) {
+  if (tresCanvasParent?.value == undefined || isDraggingObject.value) {
     return;
   }
 
-  if (!isDragging.value) return;
+  if (!isDragging.value || currentCameraRotation.value == null) return;
 
   const deltaX = e.movementX;
-  let yaw = cameraRotation.y - deltaX * SPECTATOR_ROTAING_SENTIVITY;
+  let yaw =
+    currentCameraRotation.value.y - deltaX * SPECTATOR_ROTAING_SENTIVITY;
   yaw = normalizeAngle(yaw);
-  cameraRotation.y = yaw;
+  currentCameraRotation.value.y = yaw;
 
   const deltaY = e.movementY;
-  let pitch = cameraRotation.x - deltaY * SPECTATOR_ROTAING_SENTIVITY;
+  let pitch =
+    currentCameraRotation.value.x - deltaY * SPECTATOR_ROTAING_SENTIVITY;
   pitch = Math.max(minPitch, Math.min(maxPitch, pitch));
-  cameraRotation.x = pitch;
+  currentCameraRotation.value.x = pitch;
 }
 
 function onBlur(_e: FocusEvent) {

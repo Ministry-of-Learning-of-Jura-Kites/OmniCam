@@ -1,5 +1,5 @@
 import { SPECTATOR_MOVING_SENTIVITY } from "~/constants";
-import { camera, cameraPosition, tresCanvasParent } from "./refs";
+import { currentCameraPosition, tresCanvasParent, tresContext } from "./refs";
 
 import * as THREE from "three";
 
@@ -21,7 +21,7 @@ function isFunctionalityKey(key: string): key is FunctionalityKey {
 }
 
 function onKeyDown(e: KeyboardEvent) {
-  if (camera?.value == undefined || e.repeat) {
+  if (tresContext.value?.camera == undefined || e.repeat) {
     return;
   }
 
@@ -37,7 +37,7 @@ function onKeyDown(e: KeyboardEvent) {
 }
 
 function onKeyUp(e: KeyboardEvent) {
-  if (camera?.value == undefined) {
+  if (tresContext.value?.camera == undefined) {
     return;
   }
 
@@ -51,10 +51,13 @@ function onKeyUp(e: KeyboardEvent) {
 }
 
 function update() {
-  if (camera?.value == undefined) {
+  if (tresContext.value?.camera == undefined) {
     requestAnimationFrame(update);
     return;
   }
+
+  const spectatorCamera = tresContext.value?.camera;
+
   for (const [key, isDown] of Object.entries(isKeyDown) as [
     FunctionalityKey,
     boolean,
@@ -63,10 +66,11 @@ function update() {
       continue;
     }
     const forward = new THREE.Vector3();
-    camera.value.getWorldDirection(forward);
+
+    spectatorCamera.getWorldDirection(forward);
 
     const up = new THREE.Vector3();
-    up.copy(camera.value.up).applyQuaternion(camera.value.quaternion);
+    up.copy(spectatorCamera.up).applyQuaternion(spectatorCamera.quaternion);
 
     const right = new THREE.Vector3();
     right.crossVectors(forward, up).normalize();
@@ -95,7 +99,7 @@ function update() {
       default:
         break;
     }
-    cameraPosition.add(deltaVec);
+    currentCameraPosition.value?.add(deltaVec);
   }
   requestAnimationFrame(update);
 }

@@ -1,6 +1,6 @@
 <script setup>
 import LayoutModelsPage from "@/layouts/modelsPage.vue";
-import Scene3D from "~/components/scene-3d/Scene3D.vue";
+import Scene3D from "~/components/3d/scene-3d/Scene3D.vue";
 import { useRoute } from "vue-router";
 
 const route = useRoute();
