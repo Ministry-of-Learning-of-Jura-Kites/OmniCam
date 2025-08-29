@@ -65,6 +65,7 @@ function handleClose() {
 
       <div class="flex flex-col gap-2 py-4">
         <template v-for="field in props.fields" :key="field.key">
+          <h2>{{ field.key }}</h2>
           <input
             v-if="field.type === 'text' || field.type === 'number'"
             v-model="form[field.key]"
