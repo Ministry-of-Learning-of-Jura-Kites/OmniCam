@@ -1,19 +1,26 @@
 import * as THREE from "three";
 import type { IUserData } from "~/types/obj-3d-user-data";
 import { ARROW_CONFIG } from "~/constants";
-import type { TresContext } from "@tresjs/core";
+import type { SceneStatesWithHelper } from "~/types/scene-states";
 
 export class CameraUserData implements IUserData {
   type: "x" | "y" | "z";
   obj: THREE.Mesh;
-  context: TresContext;
+  sceneStates: SceneStatesWithHelper;
+  camId: string;
 
   isDragging = false;
 
-  constructor(type: string, obj: THREE.Mesh, context: TresContext) {
+  constructor(
+    type: string,
+    obj: THREE.Mesh,
+    sceneStates: SceneStatesWithHelper,
+    camId: string,
+  ) {
     this.type = type as "x" | "y" | "z";
     this.obj = obj;
-    this.context = context;
+    this.sceneStates = sceneStates;
+    this.camId = camId;
   }
 
   handleEvent(eventType: string, event: Event) {
@@ -37,7 +44,7 @@ export class CameraUserData implements IUserData {
       return;
     }
 
-    const camera = this.context.camera.value!;
+    const camera = this.sceneStates.tresContext!.value!.camera!;
 
     const point = this.obj.position.clone();
 
@@ -61,11 +68,30 @@ export class CameraUserData implements IUserData {
 
     const projectedVector = endNDC.sub(pointNDC).normalize();
 
-    if (this.obj.position[this.type] != null) {
-      this.obj.position[this.type] +=
-        (projectedVector.x * event.movementX -
-          projectedVector.y * event.movementY) *
-        ARROW_CONFIG.DRAGGING_SENTIVITY;
+    // if (this.obj.position[this.type] != null) {
+    //   this.obj.position[this.type] +=
+    //     (projectedVector.x * event.movementX -
+    //       projectedVector.y * event.movementY) *
+    //     ARROW_CONFIG.DRAGGING_SENTIVITY;
+    // }
+
+    const cam = this.sceneStates!.cameras![this.camId]!;
+
+    const delta =
+      (projectedVector.x * event.movementX -
+        projectedVector.y * event.movementY) *
+      ARROW_CONFIG.DRAGGING_SENTIVITY;
+
+    switch (this.type) {
+      case "x":
+        cam.position.setX(cam.position.x + delta);
+        break;
+      case "y":
+        cam.position.setY(cam.position.y + delta);
+        break;
+      case "z":
+        cam.position.setZ(cam.position.z + delta);
+        break;
     }
   };
 

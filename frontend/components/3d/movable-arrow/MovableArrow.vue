@@ -2,7 +2,6 @@
 import * as THREE from "three";
 import { CameraUserData } from "../camera-object/camera-user-data";
 import { ARROW_CONFIG } from "~/constants";
-import { useTresContext } from "@tresjs/core";
 import type { Obj3DWithUserData } from "~/types/obj-3d-user-data";
 import { SCENE_STATES_KEY } from "~/components/3d/scene-states-provider/create-scene-states";
 
@@ -23,9 +22,13 @@ const props = defineProps({
     type: Set<THREE.Object3D>,
     default: new Set(),
   },
+  camId: {
+    type: String,
+    default: "",
+  },
 });
 
-const context = useTresContext();
+// const context = useTresContext();
 
 const sceneStates = inject(SCENE_STATES_KEY)!;
 
@@ -34,7 +37,8 @@ const arrow = new THREE.Group();
 const cameraUserData = new CameraUserData(
   props.direction,
   props.cameraMesh!,
-  context!,
+  sceneStates!,
+  props.camId,
 );
 
 const material = new THREE.MeshBasicMaterial({ color: props.color });

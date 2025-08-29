@@ -16,8 +16,6 @@ const props = defineProps({
 
 const sceneStates = inject(SCENE_STATES_KEY)!;
 
-// const cameraMesh = useTemplateRef<THREE.Mesh>("cameraMesh");
-
 const cameraMesh = ref<THREE.Mesh | null>(null);
 
 // watch(cameraMesh, (mesh) => {
@@ -51,18 +49,21 @@ const cameraMesh = ref<THREE.Mesh | null>(null);
       direction="x"
       :camera-mesh="cameraMesh"
       color="green"
+      :cam-id="props.camId"
     />
     <MovableArrow
       v-if="cameraMesh != null"
       direction="y"
       :camera-mesh="cameraMesh"
       color="red"
+      :cam-id="props.camId"
     />
     <MovableArrow
       v-if="cameraMesh != null"
       direction="z"
       :camera-mesh="cameraMesh"
       color="blue"
+      :cam-id="props.camId"
     />
   </TresMesh>
 </template>
