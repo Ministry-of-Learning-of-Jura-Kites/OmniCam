@@ -2,9 +2,9 @@
 import * as THREE from "three";
 import { CameraUserData } from "../camera-object/camera-user-data";
 import { ARROW_CONFIG } from "~/constants";
-import { useTresContext, type TresContext } from "@tresjs/core";
+import { useTresContext } from "@tresjs/core";
 import type { ObjWithUserData } from "../scene-3d/obj-event-handler";
-import { createSceneStates } from "../scene-3d/use-scene-state";
+import { SCENE_STATES_KEY } from "../scene-3d/use-scene-state";
 
 const props = defineProps({
   direction: {
@@ -25,18 +25,16 @@ const props = defineProps({
   },
 });
 
-// const context = useTresContext();
+const context = useTresContext();
 
-const sceneStates = createSceneStates();
-
-const context = sceneStates.tresContext.value as TresContext;
+const sceneStates = inject(SCENE_STATES_KEY)!;
 
 const arrow = new THREE.Group();
 
 const cameraUserData = new CameraUserData(
   props.direction,
   props.cameraMesh!,
-  context,
+  context!,
 );
 
 const material = new THREE.MeshBasicMaterial({ color: props.color });
@@ -92,6 +90,7 @@ for (const mesh of arrow.children) {
   const obj = mesh as ObjWithUserData;
   obj.userData = cameraUserData;
   sceneStates.draggableObjects.add(obj);
+  console.log(sceneStates.draggableObjects);
   componentDraggableMeshes.push(obj);
 }
 
