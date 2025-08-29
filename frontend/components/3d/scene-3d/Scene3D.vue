@@ -6,9 +6,9 @@ import { SPECTATOR_ADJ_INPUT_SENTIVITY } from "~/constants";
 import CameraObject from "../camera-object/CameraObject.vue";
 import Scene3dInner from "./inner/Scene3dInner.vue";
 import * as THREE from "three";
-import type { IUserData } from "~/types/obj-3d-user-data";
 import { SCENE_STATES_KEY } from "~/components/3d/scene-states-provider/create-scene-states";
 import { useCameraUpdate } from "./use-camera-update";
+import type { IUserData } from "~/types/obj-3d-user-data";
 
 defineProps<{
   modelId?: string | null;
@@ -21,7 +21,7 @@ useCameraUpdate(sceneStates);
 
 onMounted(() => {
   // start loop to move camera from key press
-  sceneStates.spectatorPosition.update();
+  sceneStates.spectatorPosition.refreshCameraState();
 
   // for testing
   if (typeof window !== "undefined") {
@@ -33,6 +33,8 @@ onMounted(() => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (window as any).switchToSpectatorNaja =
       sceneStates.cameraManagement.switchToSpectator;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (window as any).getCamsNaja = sceneStates.cameraManagement.getCams;
   }
 });
 
@@ -182,9 +184,8 @@ watch(
         <CameraObject
           v-for="[camId, cam] in Object.entries(sceneStates.cameras)"
           :key="camId"
+          :cam-id="camId"
           :name="cam.name"
-          :position="cam.position"
-          :rotation="cam.rotation"
         />
 
         <!-- Environment and lighting, from the tresjs/cientos library -->

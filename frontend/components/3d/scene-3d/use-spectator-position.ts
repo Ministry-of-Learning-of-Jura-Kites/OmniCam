@@ -21,7 +21,6 @@ export function useSpectatorPosition(sceneStates: SceneStates) {
   }
 
   function onKeyDown(e: KeyboardEvent) {
-    e.preventDefault();
     if (sceneStates.tresContext.value?.camera == undefined || e.repeat) {
       return;
     }
@@ -51,9 +50,9 @@ export function useSpectatorPosition(sceneStates: SceneStates) {
     }
   }
 
-  function update() {
+  function refreshCameraState() {
     if (sceneStates.tresContext.value?.camera == undefined) {
-      requestAnimationFrame(update);
+      requestAnimationFrame(refreshCameraState);
       return;
     }
     const spectatorCamera = sceneStates.tresContext.value?.camera;
@@ -95,7 +94,7 @@ export function useSpectatorPosition(sceneStates: SceneStates) {
       }
       sceneStates.currentCameraPosition.value?.add(deltaVec);
     }
-    requestAnimationFrame(update);
+    requestAnimationFrame(refreshCameraState);
   }
 
   function onBlur(_e: FocusEvent) {
@@ -105,7 +104,7 @@ export function useSpectatorPosition(sceneStates: SceneStates) {
   return {
     onKeyUp,
     onKeyDown,
-    update,
+    refreshCameraState,
     onBlur,
   };
 }

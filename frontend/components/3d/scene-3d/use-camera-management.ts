@@ -1,17 +1,22 @@
 import { v4 as uuidv4 } from "uuid";
 import { gsap } from "gsap";
 import type { SceneStates } from "~/types/scene-states";
+import * as THREE from "three";
 
 export function useCameraManagement(sceneStates: SceneStates) {
   function spawnCameraHere() {
     const camId = uuidv4();
     sceneStates.cameras[camId] = {
       name: "Untitled " + Object.keys(sceneStates.cameras).length.toString(),
-      position: sceneStates.spectatorCameraPosition.clone(),
-      rotation: sceneStates.spectatorCameraRotation.clone(),
+      position: new THREE.Vector3().copy(sceneStates.spectatorCameraPosition),
+      rotation: new THREE.Euler().copy(sceneStates.spectatorCameraRotation),
       fov: 60,
     };
     return camId;
+  }
+
+  function getCams() {
+    return sceneStates.cameras;
   }
 
   function switchToCam(camId: string) {
@@ -39,10 +44,8 @@ export function useCameraManagement(sceneStates: SceneStates) {
     const camId = sceneStates.currentCam.value;
     const cam = sceneStates.cameras[camId!];
     const threeCam = sceneStates.tresContext.value!.camera!;
-
     cam?.position.copy(threeCam.position);
     cam?.rotation.copy(threeCam.rotation);
-
     gsap.to(threeCam.position!, {
       x: sceneStates.spectatorCameraPosition.x,
       y: sceneStates.spectatorCameraPosition.y,
@@ -66,6 +69,7 @@ export function useCameraManagement(sceneStates: SceneStates) {
   return {
     spawnCameraHere,
     switchToCam,
+    getCams,
     switchToSpectator,
   };
 }
