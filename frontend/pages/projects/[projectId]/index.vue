@@ -29,7 +29,7 @@ export interface ModelUpdateRequest {
   description: string;
 }
 
-type ModelForm = {
+export type ModelForm = {
   name: string;
   description: string;
   file: File | null;
@@ -65,16 +65,15 @@ const generateKey = generateColumnsFromKeys<Model>(modelKeys, {
 // Dialog handler for create delete update
 
 const isCreateOrUpdate = ref<boolean>(false);
-const isFormDialogOpen = ref<boolean>(false);
+const isEditFormDialogOpen = ref<boolean>(false);
 const confirmUpdateDialog = ref<boolean>(false);
 // const isLoading = ref(false);
 
 // dialog form config
 // type is input type (text , number , textarea , file etc)
-const fields: FieldConfig[] = [
+const editfields: FieldConfig[] = [
   { key: "name", type: "text" },
   { key: "description", type: "textarea" },
-  { key: "file", type: "file" },
 ];
 
 async function fetchModel() {
@@ -104,81 +103,81 @@ async function fetchModel() {
   }
 }
 
-async function createModel() {
-  const formData = new FormData();
-  formData.append("name", modelForm.name);
-  formData.append("description", modelForm.description);
-  if (modelForm.file) {
-    formData.append("file", modelForm.file);
-  }
+// async function createModel() {
+//   const formData = new FormData();
+//   formData.append("name", modelForm.name);
+//   formData.append("description", modelForm.description);
+//   if (modelForm.file) {
+//     formData.append("file", modelForm.file);
+//   }
 
-  const projectId = route.params.projectId as string;
-  const response = await $fetch<Model>(
-    `${config.public.NUXT_PUBLIC_URL}/api/v1/projects/${projectId}/models`,
-    {
-      method: "POST",
-      body: formData,
-    },
-  );
+//   const projectId = route.params.projectId as string;
+//   const response = await $fetch<Model>(
+//     `${config.public.NUXT_PUBLIC_URL}/api/v1/projects/${projectId}/models`,
+//     {
+//       method: "POST",
+//       body: formData,
+//     },
+//   );
 
-  models.value[response.id] = response;
-}
+//   models.value[response.id] = response;
+// }
 
-async function updateModel(modelId: string) {
-  const projectId = route.params.projectId as string;
+// async function updateModel(modelId: string) {
+//   const projectId = route.params.projectId as string;
 
-  try {
-    const response = await $fetch<Model>(
-      `${config.public.NUXT_PUBLIC_URL}/api/v1/projects/${projectId}/models/${modelId}`,
-      {
-        method: "PUT",
-        body: {
-          name: modelForm.name,
-          description: modelForm.description,
-        },
-      },
-    );
+//   try {
+//     const response = await $fetch<Model>(
+//       `${config.public.NUXT_PUBLIC_URL}/api/v1/projects/${projectId}/models/${modelId}`,
+//       {
+//         method: "PUT",
+//         body: {
+//           name: modelForm.name,
+//           description: modelForm.description,
+//         },
+//       },
+//     );
 
-    models.value[modelId] = {
-      name: response.name,
-      description: response.description,
-      version: response.version,
-      createdAt: response.createdAt,
-      updatedAt: response.updatedAt,
-      projectId: response.projectId,
-    };
+//     models.value[modelId] = {
+//       name: response.name,
+//       description: response.description,
+//       version: response.version,
+//       createdAt: response.createdAt,
+//       updatedAt: response.updatedAt,
+//       projectId: response.projectId,
+//     };
 
-    console.log("Updated row:", modelId);
-  } catch (err) {
-    console.error("Update failed", err);
-  }
-}
+//     console.log("Updated row:", modelId);
+//   } catch (err) {
+//     console.error("Update failed", err);
+//   }
+// }
 
-async function deleteRow(id: string) {
-  try {
-    const projectId = route.params.projectId as string;
+// async function deleteRow(id: string) {
+//   try {
+//     const projectId = route.params.projectId as string;
 
-    await $fetch(
-      `${config.public.NUXT_PUBLIC_URL}/api/v1/projects/${projectId}/models/${id}`,
-      {
-        method: "DELETE",
-      },
-    );
+//     await $fetch(
+//       `${config.public.NUXT_PUBLIC_URL}/api/v1/projects/${projectId}/models/${id}`,
+//       {
+//         method: "DELETE",
+//       },
+//     );
 
-    models.value = Object.fromEntries(
-      Object.entries(models.value).filter(([key]) => key !== id),
-    );
-    console.log("Deleted row:", id);
-  } catch (err) {
-    console.error("Delete failed", err);
-  }
-}
+//     models.value = Object.fromEntries(
+//       Object.entries(models.value).filter(([key]) => key !== id),
+//     );
+//     console.log("Deleted row:", id);
+//   } catch (err) {
+//     console.error("Delete failed", err);
+//   }
+// }
 
 function handleEditRow(row: Model) {
   console.log("ad");
   currentEditId.value = row.id;
   isCreateOrUpdate.value = true;
-  isFormDialogOpen.value = true;
+  isEditFormDialogOpen.value = true;
 }
 
 function handleDeleteRow(row: Model) {
@@ -188,7 +187,7 @@ function handleDeleteRow(row: Model) {
 
 // Form submit handler
 function handleFormSubmit() {
-  isFormDialogOpen.value = true;
+  isEditFormDialogOpen.value = true;
   confirmUpdateDialog.value = true;
 }
 
@@ -209,10 +208,9 @@ const dataArray = computed(() =>
       <DataTable :columns="generateKey" :data="dataArray" />
     </div>
     <FormDialog
-      v-model:open="isFormDialogOpen"
-      :fields="fields"
-      :model="models"
-      :is-update="isCreateOrUpdate"
+      v-model:open="isEditFormDialogOpen"
+      :fields="editfields"
+      :model="modelForm"
       @submit="handleFormSubmit"
     />
   </div>
