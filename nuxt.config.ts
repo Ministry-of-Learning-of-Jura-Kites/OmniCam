@@ -1,6 +1,6 @@
 // https://nuxt.com/docs/api/configuration/nuxt-config
 import tailwindcss from "@tailwindcss/vite";
-import { env } from "~/env/server";
+// import { env } from "~/env/server";
 export default defineNuxtConfig({
   css: ["~/assets/css/tailwind.css"],
   vite: {
