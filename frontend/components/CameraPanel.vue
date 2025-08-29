@@ -15,21 +15,10 @@ import {
   MapPinPlus,
 } from "lucide-vue-next";
 import { SCENE_STATES_KEY } from "./3d/scene-states-provider/create-scene-states";
-import type { ICamera } from "~/types/camera";
 
 const sceneStates = inject(SCENE_STATES_KEY)!;
 
-const currentCamData = ref<ICamera | null>(null);
-
-watch(
-  sceneStates.currentCam,
-  (currentCam) => {
-    currentCamData.value = sceneStates.cameras[currentCam!] ?? null;
-  },
-  {
-    once: false,
-  },
-);
+const selectedCamId = ref<string | null>(null);
 
 const isCameraPropertiesOpen = ref(true);
 
@@ -76,7 +65,7 @@ const deleteCamera = (id: string) => {
       <Label for="camera-select" class="mb-1 block">Select Camera</Label>
       <select
         id="camera-select"
-        v-model="sceneStates.currentCam"
+        v-model="selectedCamId"
         class="w-full border rounded px-3 py-2 bg-background text-foreground"
       >
         <option
@@ -114,7 +103,7 @@ const deleteCamera = (id: string) => {
     </div>
 
     <!-- Camera Properties -->
-    <Card v-if="currentCamData">
+    <Card v-if="selectedCamId && sceneStates.cameras[selectedCamId]">
       <CardHeader
         class="cursor-pointer flex items-center justify-between"
         @click="isCameraPropertiesOpen = !isCameraPropertiesOpen"
@@ -131,7 +120,10 @@ const deleteCamera = (id: string) => {
       <CardContent v-if="isCameraPropertiesOpen" class="space-y-4">
         <div>
           <Label for="camera-name">Name</Label>
-          <Input id="camera-name" v-model="currentCamData.name" />
+          <Input
+            id="camera-name"
+            v-model="sceneStates.cameras[selectedCamId]!.name"
+          />
         </div>
 
         <div class="grid grid-cols-3 gap-2">
@@ -139,7 +131,7 @@ const deleteCamera = (id: string) => {
             <Label for="pos-x">X</Label>
             <Input
               id="pos-x"
-              v-model.number="currentCamData.position.x"
+              v-model.number="sceneStates.cameras[selectedCamId]!.position.x"
               type="number"
             />
           </div>
@@ -147,7 +139,7 @@ const deleteCamera = (id: string) => {
             <Label for="pos-y">Y</Label>
             <Input
               id="pos-y"
-              v-model.number="currentCamData.position.y"
+              v-model.number="sceneStates.cameras[selectedCamId]!.position.y"
               type="number"
             />
           </div>
@@ -155,7 +147,7 @@ const deleteCamera = (id: string) => {
             <Label for="pos-z">Z</Label>
             <Input
               id="pos-z"
-              v-model.number="currentCamData.position.z"
+              v-model.number="sceneStates.cameras[selectedCamId]!.position.z"
               type="number"
             />
           </div>
@@ -165,7 +157,7 @@ const deleteCamera = (id: string) => {
           <Label for="fov">Field of View</Label>
           <Input
             id="fov"
-            v-model.number="currentCamData.fov"
+            v-model.number="sceneStates.cameras[selectedCamId]!.fov"
             type="number"
             min="10"
             max="120"

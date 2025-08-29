@@ -90,7 +90,6 @@ for (const mesh of arrow.children) {
   const obj = mesh as Obj3DWithUserData;
   obj.userData = cameraUserData;
   sceneStates.draggableObjects.add(obj);
-  console.log(sceneStates.draggableObjects);
   componentDraggableMeshes.push(obj);
 }
 
