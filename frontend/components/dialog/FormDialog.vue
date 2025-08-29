@@ -1,7 +1,8 @@
-<script setup lang="ts" generic="T extends FieldConfig">
+<script setup lang="ts" generic="T extends ModelWithoutId">
 import { reactive, watch, defineProps, defineEmits } from "vue";
 import { Button } from "@/components/ui/button";
 import type { FieldConfig } from "./types";
+import type { ModelWithoutId } from "~/pages/projects/[projectId]/index.vue";
 import {
   Dialog,
   DialogClose,
