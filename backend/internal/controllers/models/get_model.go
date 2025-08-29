@@ -13,7 +13,7 @@ import (
 
 type Model struct {
 	Id          uuid.UUID `json:"id"`
-	ProjectId   uuid.UUID `json:"project_id"`
+	ProjectId   uuid.UUID `json:"projectId"`
 	Name        string    `json:"name"`
 	Description string    `json:"description"`
 	Version     int       `json:"version"`
