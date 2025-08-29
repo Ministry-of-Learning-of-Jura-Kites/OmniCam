@@ -2,7 +2,7 @@
   "runOnSave.commands": [
     {
       "globMatch": "db/**",
-      "command": "npm run sqlc"
+      "command": "source ~/.bash_profile && npm run sqlc"
     }
   ],
   "[javascript]": {
