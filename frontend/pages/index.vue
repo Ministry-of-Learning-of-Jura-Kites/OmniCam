@@ -9,7 +9,7 @@ interface Project {
   createdAt: string;
   updatedAt: string;
 }
-
+const config = useRuntimeConfig();
 const projects = ref<Project[]>([]);
 const loading = ref(false);
 const error = ref<any>(null);
@@ -20,7 +20,7 @@ const fetchProjects = async () => {
     error.value = null;
 
     const { data } = await $fetch<{ data: Project[] }>(
-      "http://localhost:8080/api/v1/projects",
+      `${config.public.NUXT_PUBLIC_URL}/api/v1/projects`,
       {
         method: "GET",
       },
@@ -47,7 +47,7 @@ const isCreateDialogOpen = ref(false);
 
 const deleteProject = async (id: string) => {
   try {
-    await $fetch(`http://localhost:8080/api/v1/projects/${id}`, {
+    await $fetch(`${config.public.NUXT_PUBLIC_URL}/api/v1/projects/${id}`, {
       method: "DELETE",
     });
     refresh();

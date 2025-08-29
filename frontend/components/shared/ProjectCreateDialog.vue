@@ -20,7 +20,7 @@ const emit = defineEmits<{
   "update:open": [value: boolean];
   projectCreated: [];
 }>();
-
+const config = useRuntimeConfig();
 const name = ref("");
 const description = ref("");
 const isLoading = ref(false);
@@ -53,8 +53,7 @@ const createProject = async () => {
     isLoading.value = true;
     error.value = null;
 
-    // ใช้ $fetch โดยตรง
-    await $fetch("http://localhost:8080/api/v1/projects", {
+    await $fetch(`${config.public.NUXT_PUBLIC_URL}/api/v1/projects`, {
       method: "POST",
       body: {
         name: name.value,
@@ -62,7 +61,6 @@ const createProject = async () => {
       },
     });
 
-    // Emit event เพื่อให้ parent refresh data
     emit("projectCreated");
 
     // Close dialog and reset form

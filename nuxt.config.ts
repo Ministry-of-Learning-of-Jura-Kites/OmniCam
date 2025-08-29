@@ -42,4 +42,9 @@ export default defineNuxtConfig({
   routeRules: {
     "/projects": { redirect: "/" },
   },
+  runtimeConfig: {
+    public: {
+      NUXT_PUBLIC_URL: process.env.NUXT_PUBLIC_URL,
+    },
+  },
 });
