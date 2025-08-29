@@ -1,7 +1,6 @@
-<script setup lang="ts" generic="T extends ModelForm">
+<script setup lang="ts" generic="L extends Record<string, InputTypes | null>">
 import { reactive, watch, defineProps, defineEmits } from "vue";
 import { Button } from "@/components/ui/button";
-import type { FieldConfig } from "./types";
 import {
   Dialog,
   DialogClose,
@@ -10,12 +9,16 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
-import type { ModelForm } from "~/pages/projects/[projectId]/index.vue";
+import type { InputTypeMap, InputTypes } from "./types";
+
+type ModelFromFields<L extends Record<string, InputTypes | null>> = {
+  [K in keyof L]: L[K] extends InputTypes ? InputTypeMap[L[K]] | null : null;
+};
 
 const props = defineProps<{
-  model?: T;
+  model?: ModelFromFields<L>;
   open: boolean;
-  fields: FieldConfig[];
+  fields: L;
 }>();
 
 const emit = defineEmits<{
@@ -23,7 +26,7 @@ const emit = defineEmits<{
   (e: "update:open", value: boolean): void;
 }>();
 
-const form = reactive<T>({} as T);
+const form = reactive<ModelFromFields<L>>({} as ModelFromFields<L>);
 
 watch(
   () => props.open,
@@ -54,33 +57,36 @@ function handleClose() {
       </DialogHeader>
 
       <div class="flex flex-col gap-2 py-4">
-        <template v-for="field in props.fields" :key="field.key">
-          <h2>{{ field.key }}</h2>
+        <template
+          v-for="[key, type] of Object.entries(props.fields)"
+          :key="key"
+        >
+          <h2>{{ key }}</h2>
 
           <!-- text/number input -->
           <input
-            v-if="field.type === 'text' || field.type === 'number'"
-            v-model="(form as any)[field.key]"
-            :type="field.type"
-            :placeholder="field.key"
+            v-if="type === 'text' || type === 'number'"
+            v-model="(form as any)[key]"
+            :type="type"
+            :placeholder="key"
             class="border px-2 py-1 rounded"
           />
 
           <!-- textarea -->
           <textarea
-            v-else-if="field.type === 'textarea'"
-            v-model="(form as any)[field.key]"
-            :placeholder="field.key"
+            v-else-if="type === 'textarea'"
+            v-model="(form as any)[key]"
+            :placeholder="key"
             class="border px-2 py-1 rounded"
           />
 
           <!-- file input -->
           <input
-            v-else-if="field.type === 'file'"
+            v-else-if="type === 'file'"
             type="file"
             @change="
               (e) =>
-                ((form as any)[field.key] = ((e.target as HTMLInputElement)
+                ((form as any)[key] = ((e.target as HTMLInputElement)
                   .files?.[0] ?? null) as any)
             "
           />

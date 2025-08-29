@@ -1,6 +1,8 @@
-export interface FieldConfig {
-  key: string;
-  type: InputTypes;
-}
+export type InputTypes = "text" | "number" | "textarea" | "file";
 
-type InputTypes = "text" | "number" | "textarea" | "file";
+export type InputTypeMap = {
+  text: string;
+  textarea: string;
+  file: File;
+  number: number;
+};
