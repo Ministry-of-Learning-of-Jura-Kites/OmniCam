@@ -1,6 +1,6 @@
 import { v4 as uuidv4 } from "uuid";
 import { gsap } from "gsap";
-import type { SceneStates } from "./use-scene-state";
+import type { SceneStates } from "~/types/scene-states";
 
 export function useCameraManagement(sceneStates: SceneStates) {
   function spawnCameraHere() {
@@ -9,6 +9,7 @@ export function useCameraManagement(sceneStates: SceneStates) {
       name: "Untitled " + Object.keys(sceneStates.cameras).length.toString(),
       position: sceneStates.spectatorCameraPosition.clone(),
       rotation: sceneStates.spectatorCameraRotation.clone(),
+      fov: 60,
     };
     return camId;
   }

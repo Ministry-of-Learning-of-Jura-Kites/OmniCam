@@ -1,6 +1,6 @@
 import type * as THREE from "three";
 
-export type ObjWithUserData = THREE.Object3D & { userData: IUserData };
+export type Obj3DWithUserData = THREE.Object3D & { userData: IUserData };
 
 export interface IUserData {
   type: string;

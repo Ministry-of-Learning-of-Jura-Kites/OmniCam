@@ -1,6 +1,6 @@
 import { SPECTATOR_MOVING_SENTIVITY } from "~/constants";
 import * as THREE from "three";
-import type { SceneStates } from "./use-scene-state";
+import type { SceneStates } from "~/types/scene-states";
 
 const functionalityKeys = [
   "KeyA",

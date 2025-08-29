@@ -1,5 +1,5 @@
 import * as THREE from "three";
-import type { IUserData } from "~/components/3d/scene-3d/obj-event-handler";
+import type { IUserData } from "~/types/obj-3d-user-data";
 import { ARROW_CONFIG } from "~/constants";
 import type { TresContext } from "@tresjs/core";
 

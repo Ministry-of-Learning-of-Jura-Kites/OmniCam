@@ -1,6 +1,6 @@
-import type { SceneStates } from "./use-scene-state";
+import type { SceneStatesWithHelper } from "~/types/scene-states";
 
-export function useCameraUpdate(states: SceneStates) {
+export function useCameraUpdate(states: SceneStatesWithHelper) {
   watch(
     states.currentCameraPosition,
     (pos) => {
