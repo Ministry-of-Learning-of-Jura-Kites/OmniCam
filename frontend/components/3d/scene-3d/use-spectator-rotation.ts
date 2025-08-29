@@ -1,5 +1,5 @@
 import { SPECTATOR_ROTAING_SENTIVITY } from "~/constants";
-import type { SceneStates } from "./use-scene-state";
+import type { SceneStates } from "~/types/scene-states";
 
 const maxPitch = Math.PI / 2 - 0.01;
 const minPitch = -Math.PI / 2 + 0.01;

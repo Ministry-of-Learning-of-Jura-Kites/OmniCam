@@ -1,16 +1,13 @@
 <script setup lang="ts">
 import { TresCanvas } from "@tresjs/core";
 import { Grid, Environment } from "@tresjs/cientos";
-import { useSpectatorPosition } from "./use-spectator-position";
-import { useSpectatorRotation } from "./use-spectator-rotation";
 import AdjustableInput from "../../adjustable-input/AdjustableInput.vue";
 import { SPECTATOR_ADJ_INPUT_SENTIVITY } from "~/constants";
-import { useCameraManagement } from "./use-camera-management";
 import CameraObject from "../camera-object/CameraObject.vue";
 import Scene3dInner from "./inner/Scene3dInner.vue";
 import * as THREE from "three";
-import type { IUserData } from "./obj-event-handler";
-import { createSceneStates, SCENE_STATES_KEY } from "./use-scene-state";
+import type { IUserData } from "~/types/obj-3d-user-data";
+import { SCENE_STATES_KEY } from "~/components/3d/scene-states-provider/create-scene-states";
 import { useCameraUpdate } from "./use-camera-update";
 
 defineProps<{
@@ -18,29 +15,24 @@ defineProps<{
   placeholderText?: string | null;
 }>();
 
-const sceneStates = createSceneStates();
-
-provide(SCENE_STATES_KEY, sceneStates);
-
-const spectatorPosition = useSpectatorPosition(sceneStates);
-const spectatorRotation = useSpectatorRotation(sceneStates);
-
-const cameraManagement = useCameraManagement(sceneStates);
+const sceneStates = inject(SCENE_STATES_KEY)!;
 
 useCameraUpdate(sceneStates);
 
 onMounted(() => {
   // start loop to move camera from key press
-  spectatorPosition.update();
+  sceneStates.spectatorPosition.update();
 
   // for testing
   if (typeof window !== "undefined") {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (window as any).spawnCameraHereNaja = cameraManagement.spawnCameraHere;
+    (window as any).spawnCameraHereNaja =
+      sceneStates.cameraManagement.spawnCameraHere;
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (window as any).switchToCamNaja = cameraManagement.switchToCam;
+    (window as any).switchToCamNaja = sceneStates.cameraManagement.switchToCam;
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (window as any).switchToSpectatorNaja = cameraManagement.switchToSpectator;
+    (window as any).switchToSpectatorNaja =
+      sceneStates.cameraManagement.switchToSpectator;
   }
 });
 
@@ -66,7 +58,7 @@ function onCanvasPointer(event: PointerEvent) {
     userData.handleEvent.call(userData, event.type, event);
   } else {
     if (event.type == "pointerdown") {
-      spectatorRotation.onPointerDown(event);
+      sceneStates.spectatorRotation.onPointerDown(event);
     }
   }
 }
@@ -88,19 +80,19 @@ watch(
 
     context?.renderer.domElement.addEventListener(
       "keydown",
-      spectatorPosition.onKeyDown,
+      sceneStates.spectatorPosition.onKeyDown,
     );
 
     context?.renderer.domElement.addEventListener(
       "keyup",
-      spectatorPosition.onKeyUp,
+      sceneStates.spectatorPosition.onKeyUp,
     );
 
     context?.renderer.domElement.addEventListener(
       "blur",
       (event: FocusEvent) => {
-        spectatorRotation.onBlur(event);
-        spectatorPosition.onBlur(event);
+        sceneStates.spectatorRotation.onBlur(event);
+        sceneStates.spectatorPosition.onBlur(event);
       },
     );
   },
