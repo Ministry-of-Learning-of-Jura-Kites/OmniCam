@@ -1,5 +1,5 @@
 import { h } from "vue";
-import type { ColumnDef } from "@tanstack/vue-table";
+import type { ColumnDef, Row } from "@tanstack/vue-table";
 
 export function generateColumnsFromKeys<T extends { id: string }>(
   keys: (keyof T)[],
@@ -9,16 +9,16 @@ export function generateColumnsFromKeys<T extends { id: string }>(
   },
 ): ColumnDef<T>[] {
   const columns: ColumnDef<T>[] = keys.map((key) => ({
-    accessorKey: key,
-    header: () => key.toString(),
-    cell: ({ row }: any) => row.getValue(key)?.toString() ?? "",
+    accessorKey: key as string,
+    header: () => String(key),
+    cell: ({ row }) => String(row.getValue(key as string) ?? ""),
   }));
 
   // Actions column
   columns.push({
     id: "actions",
     header: "Actions",
-    cell: ({ row }: any) =>
+    cell: ({ row }: { row: Row<T> }) =>
       h("div", { class: "flex gap-2" }, [
         h(
           "button",
