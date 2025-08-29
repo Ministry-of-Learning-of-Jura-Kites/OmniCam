@@ -2,7 +2,6 @@
 // import { keyof } from "zod";
 import { generateColumnsFromKeys } from "~/components/dataTable/column";
 import FormDialog from "~/components/dialog/FormDialog.vue";
-import type { FieldConfig } from "~/components/dialog/types";
 
 export interface Model {
   id: string;
@@ -71,10 +70,11 @@ const confirmUpdateDialog = ref<boolean>(false);
 
 // dialog form config
 // type is input type (text , number , textarea , file etc)
-const editfields: FieldConfig[] = [
-  { key: "name", type: "text" },
-  { key: "description", type: "textarea" },
-];
+const editfields = {
+  name: "text",
+  description: "textarea",
+  file: "file",
+} as const;
 
 async function fetchModel() {
   const projectId = route.params.projectId as string;
