@@ -1,6 +1,7 @@
-<script setup lang="ts">
+<script setup lang="ts" generic="T extends FieldConfig">
 import { reactive, watch, defineProps, defineEmits } from "vue";
 import { Button } from "@/components/ui/button";
+import type { FieldConfig } from "./types";
 import {
   Dialog,
   DialogClose,
@@ -10,34 +11,25 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 
-type InputTypes = "text" | "number" | "textarea" | "file";
-
-export interface FieldConfig {
-  key: string;
-  type: InputTypes;
-}
-
 const props = defineProps<{
-  model?: Record<string, any>;
+  model?: Record<string, T>;
   open: boolean;
   fields: FieldConfig[];
   isUpdate?: boolean;
 }>();
 
 const emit = defineEmits<{
-  (e: "close"): void;
-  (e: "submit"): void;
+  (e: "close" | "submit"): void;
   (e: "update:open", value: boolean): void;
 }>();
 
-const form = reactive<Record<string, any>>({});
+// ✅ form remains generic
+const form = reactive<Record<string, T>>({});
 
 // populate form if editing
 watch(
   () => props.open,
-
   (val) => {
-    console.log(props.open, "check");
     if (val && props.model) {
       Object.assign(form, props.model);
     }
@@ -68,14 +60,14 @@ function handleClose() {
           <h2>{{ field.key }}</h2>
           <input
             v-if="field.type === 'text' || field.type === 'number'"
-            v-model="form[field.key]"
+            v-model="form[field.key] as unknown as string"
             :type="field.type"
             :placeholder="field.key"
             class="border px-2 py-1 rounded"
           />
           <textarea
             v-else-if="field.type === 'textarea'"
-            v-model="form[field.key]"
+            v-model="form[field.key] as unknown as string"
             :placeholder="field.key"
             class="border px-2 py-1 rounded"
           />
@@ -84,8 +76,8 @@ function handleClose() {
             type="file"
             @change="
               (e) =>
-                (form[field.key] =
-                  (e.target as HTMLInputElement).files?.[0] ?? null)
+                (form[field.key] = ((e.target as HTMLInputElement).files?.[0] ??
+                  null) as unknown as T)
             "
           />
         </template>
