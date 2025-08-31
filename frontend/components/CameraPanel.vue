@@ -22,7 +22,7 @@ const selectedCamId = ref<string | null>(null);
 
 const isCameraPropertiesOpen = ref(true);
 
-const selectCamera = () => {
+const spawnCamera = () => {
   const newCamId = sceneStates.cameraManagement.spawnCameraHere();
   if (newCamId) {
     selectedCamId.value = newCamId;
@@ -42,7 +42,7 @@ const deleteCamera = (id: string) => {
         <Camera class="h-5 w-5" />
         Camera Gallery
       </h2>
-      <Button size="sm" @click="selectCamera()">
+      <Button size="sm" @click="spawnCamera()">
         <MapPinPlus class="h-4 w-4" />
       </Button>
     </div>
