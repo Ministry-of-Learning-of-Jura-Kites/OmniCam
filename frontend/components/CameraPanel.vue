@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref } from "vue";
+import * as THREE from "three";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 import Button from "./ui/button/Button.vue";
 import Input from "./ui/input/Input.vue";
@@ -27,6 +28,15 @@ const spawnCamera = () => {
   if (newCamId) {
     selectedCamId.value = newCamId;
   }
+};
+
+const moveCameraHere = (id: string) => {
+  sceneStates.cameras[id]!.position = new THREE.Vector3().copy(
+    sceneStates.spectatorCameraPosition,
+  );
+  sceneStates.cameras[id]!.rotation = new THREE.Euler().copy(
+    sceneStates.spectatorCameraRotation,
+  );
 };
 
 const deleteCamera = (id: string) => {
@@ -156,7 +166,12 @@ const deleteCamera = (id: string) => {
             <Eye class="h-3 w-3 mr-2" />
             Frustum
           </Button>
-          <Button size="sm" variant="outline" class="flex-1">
+          <Button
+            size="sm"
+            variant="outline"
+            class="flex-1"
+            @click="moveCameraHere(selectedCamId!)"
+          >
             Move Here
           </Button>
         </div>
