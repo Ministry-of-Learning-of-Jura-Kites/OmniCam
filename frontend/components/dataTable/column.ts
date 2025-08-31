@@ -3,6 +3,7 @@ import type { ColumnDef, Row } from "@tanstack/vue-table";
 
 export function generateColumnsFromKeys<T extends { id: string }>(
   keys: (keyof T)[],
+  titles: Partial<{ [k in keyof T]: string }>,
   handlers?: {
     onEdit?: (row: T) => void;
     onDelete?: (row: T) => void;
@@ -10,7 +11,7 @@ export function generateColumnsFromKeys<T extends { id: string }>(
 ): ColumnDef<T>[] {
   const columns: ColumnDef<T>[] = keys.map((key) => ({
     accessorKey: key as string,
-    header: () => String(key),
+    header: () => titles[key],
     cell: ({ row }) => String(row.getValue(key as string) ?? ""),
   }));
 

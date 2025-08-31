@@ -19,6 +19,7 @@
   "dependencies": {
     "@t3-oss/env-nuxt": "^0.13.8",
     "@tailwindcss/vite": "^4.1.12",
+    "@tanstack/vue-table": "^8.21.3",
     "@tresjs/cientos": "^4.3.1",
     "@tresjs/core": "^4.3.6",
     "@vueuse/core": "^13.7.0",

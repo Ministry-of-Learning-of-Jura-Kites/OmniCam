@@ -1,5 +1,5 @@
 <script setup lang="ts" generic="L extends Record<string, InputTypes | null>">
-import { reactive, watch, defineProps, defineEmits } from "vue";
+import { reactive, watch } from "vue";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -15,9 +15,14 @@ type ModelFromFields<L extends Record<string, InputTypes | null>> = {
   [K in keyof L]: L[K] extends InputTypes ? InputTypeMap[L[K]] | null : null;
 };
 
+type TitleMap<L extends Record<string, InputTypes | null>> = {
+  [K in keyof L]: string;
+};
+
 const props = defineProps<{
   model?: ModelFromFields<L>;
   open: boolean;
+  titles: TitleMap<L>;
   fields: L;
 }>();
 
@@ -61,7 +66,7 @@ function handleClose() {
           v-for="[key, type] of Object.entries(props.fields)"
           :key="key"
         >
-          <h2>{{ key }}</h2>
+          <h2>{{ titles[key] }}</h2>
 
           <!-- text/number input -->
           <input
