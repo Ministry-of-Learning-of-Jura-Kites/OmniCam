@@ -214,7 +214,8 @@ watch(
           :section-color="'#ffffff'"
           :fade-distance="50"
           :fade-strength="1"
-          infinite-grid
+          :infinite-grid="true"
+          :side="THREE.DoubleSide"
         />
         <Scene3dInner />
       </TresCanvas>
