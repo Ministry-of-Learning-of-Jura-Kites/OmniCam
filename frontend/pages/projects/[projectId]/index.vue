@@ -54,9 +54,18 @@ const modelKeys: (keyof Model)[] = [
   "createdAt",
   "updatedAt",
 ];
+
+const tableTitles = {
+  name: "Name",
+  description: "Description",
+  version: "Version",
+  createdAt: "Created At",
+  updatedAt: "Updated At",
+};
+
 // generate key to use here
 
-const generateKey = generateColumnsFromKeys<Model>(modelKeys, {
+const generateKey = generateColumnsFromKeys<Model>(modelKeys, tableTitles, {
   onEdit: (row) => handleEditRow(row),
   onDelete: (row) => handleDeleteRow(row),
 });
@@ -75,6 +84,12 @@ const editfields = {
   description: "textarea",
   file: "file",
 } as const;
+
+const formTitles = {
+  name: "Name",
+  description: "Description",
+  file: "Model file",
+};
 
 async function fetchModel() {
   const projectId = route.params.projectId as string;
@@ -193,7 +208,7 @@ function handleFormSubmit() {
 
 onMounted(() => {
   fetchModel();
-  console.log("abc", generateColumnsFromKeys<Model>(modelKeys));
+  console.log("abc", generateColumnsFromKeys<Model>(modelKeys, tableTitles));
 });
 
 // data computed when change (record -> array)
@@ -211,6 +226,7 @@ const dataArray = computed(() =>
       v-model:open="isEditFormDialogOpen"
       :fields="editfields"
       :model="modelForm"
+      :titles="formTitles"
       @submit="handleFormSubmit"
     />
   </div>
