@@ -1,5 +1,6 @@
 // https://nuxt.com/docs/api/configuration/nuxt-config
 import tailwindcss from "@tailwindcss/vite";
+// import { env } from "~/env/server";
 export default defineNuxtConfig({
   css: ["~/assets/css/tailwind.css"],
   vite: {
@@ -35,11 +36,16 @@ export default defineNuxtConfig({
   },
   components: [
     {
-      path: "~/components/ui",
+      path: "~/components",
       extensions: ["vue"],
     },
   ],
   routeRules: {
     "/projects": { redirect: "/" },
+  },
+  runtimeConfig: {
+    public: {
+      NUXT_PUBLIC_URL: process.env.NUXT_PUBLIC_URL,
+    },
   },
 });

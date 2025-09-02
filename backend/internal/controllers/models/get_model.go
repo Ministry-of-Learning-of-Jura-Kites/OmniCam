@@ -13,7 +13,7 @@ import (
 
 type Model struct {
 	Id          uuid.UUID `json:"id"`
-	ProjectId   uuid.UUID `json:"project_id"`
+	ProjectId   uuid.UUID `json:"projectId"`
 	Name        string    `json:"name"`
 	Description string    `json:"description"`
 	Version     int       `json:"version"`
@@ -74,8 +74,25 @@ func (t *GetModelRoute) getAllModel(c *gin.Context) {
 		c.JSON(http.StatusNotFound, gin.H{})
 		return
 	}
+	var dataList []Model
 
-	c.JSON(http.StatusOK, gin.H{"data": data})
+	for _, model := range data {
+		version := 0
+		if model.Version.Valid {
+			version = int(model.Version.Int32)
+		}
+		dataList = append(dataList, Model{
+			Id:          model.ID,
+			ProjectId:   model.ProjectID,
+			Name:        model.Name,
+			Description: model.Description,
+			Version:     version,
+			CreatedAt:   model.CreatedAt.Time.Format(time.RFC3339),
+			UpdatedAt:   model.UpdatedAt.Time.Format(time.RFC3339),
+		})
+	}
+
+	c.JSON(http.StatusOK, gin.H{"data": dataList})
 }
 
 func (t *GetModelRoute) InitGetModelRoute(router gin.IRouter) gin.IRouter {
