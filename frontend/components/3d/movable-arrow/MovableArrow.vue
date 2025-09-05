@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import * as THREE from "three";
-import { CameraUserData } from "../camera-object/camera-user-data";
-import { ARROW_CONFIG } from "~/constants";
+import { MovingUserData } from "./moving-event-handle";
+import { MOVING_ARROW_CONFIG } from "~/constants";
 import { useTresContext } from "@tresjs/core";
 import type { Obj3DWithUserData } from "~/types/obj-3d-user-data";
 import { SCENE_STATES_KEY } from "~/components/3d/scene-states-provider/create-scene-states";
@@ -31,7 +31,7 @@ const sceneStates = inject(SCENE_STATES_KEY)!;
 
 const arrow = new THREE.Group();
 
-const cameraUserData = new CameraUserData(
+const cameraUserData = new MovingUserData(
   props.direction,
   props.cameraMesh!,
   context!,
@@ -41,26 +41,26 @@ const material = new THREE.MeshBasicMaterial({ color: props.color });
 
 const upHead = new THREE.CylinderGeometry(
   0,
-  ARROW_CONFIG.HEAD_RADIUS,
-  ARROW_CONFIG.HEAD_LENGTH,
+  MOVING_ARROW_CONFIG.HEAD_RADIUS,
+  MOVING_ARROW_CONFIG.HEAD_LENGTH,
   8,
 );
 const upHeadMesh = new THREE.Mesh(upHead, material);
-upHeadMesh.position.y = ARROW_CONFIG.CYLINDER_LENGTH / 2;
+upHeadMesh.position.y = MOVING_ARROW_CONFIG.CYLINDER_LENGTH / 2;
 
 const downHead = new THREE.CylinderGeometry(
-  ARROW_CONFIG.HEAD_RADIUS,
+  MOVING_ARROW_CONFIG.HEAD_RADIUS,
   0,
-  ARROW_CONFIG.HEAD_LENGTH,
+  MOVING_ARROW_CONFIG.HEAD_LENGTH,
   8,
 );
 const downHeadMesh = new THREE.Mesh(downHead, material);
-downHeadMesh.position.y = -ARROW_CONFIG.CYLINDER_LENGTH / 2;
+downHeadMesh.position.y = -MOVING_ARROW_CONFIG.CYLINDER_LENGTH / 2;
 
 const cylinder = new THREE.CylinderGeometry(
-  ARROW_CONFIG.CYLINDER_RADIUS,
-  ARROW_CONFIG.CYLINDER_RADIUS,
-  ARROW_CONFIG.CYLINDER_LENGTH,
+  MOVING_ARROW_CONFIG.CYLINDER_RADIUS,
+  MOVING_ARROW_CONFIG.CYLINDER_RADIUS,
+  MOVING_ARROW_CONFIG.CYLINDER_LENGTH,
   8,
 );
 const cylinderMesh = new THREE.Mesh(cylinder, material);
