@@ -1,0 +1,60 @@
+@startuml technical sequence diagram
+actor Owner
+actor User
+participant System
+participant Project
+participant Model
+participant Workspace
+
+== Owner adds User to Project ==
+Owner -> System: Add User to Project
+System -> Project: Grant access to User
+Project --> System: Confirm access granted
+System --> Owner: Success
+
+== Owner adds Co-Owner to Project ==
+Owner -> System: Add User (role=Owner) to Project
+System -> Project: Grant CoOwner access
+Project --> System: Confirm co-owner access granted
+System --> Owner: Success
+
+== User opens Model ==
+User -> System: Open Model
+System -> Project: Check access
+Project --> System: Access allowed
+System -> Model: Load base model
+Model --> System: Return model data
+System -> Workspace: Create autosaving workspace for User
+Workspace --> System: Workspace ready
+System --> User: Workspace loaded
+
+== User edits Workspace ==
+User -> Workspace: Edit camera placement
+Workspace -> Workspace: Autosave changes
+
+== User saves Workspace into Model ==
+User -> System: Save Workspace to Model
+System -> Workspace: Get latest changes
+Workspace --> System: Changes data
+System -> Model: Check current model version
+alt No conflict (model still at version X)
+    System -> Model: Override with User’s changes
+    Model --> System: Save success (new version Y)
+    System --> User: Confirm saved
+else Conflict detected (model at version Y > X)
+    Model --> System: Conflict error
+    System --> User: Prompt conflict resolution
+    User -> System: Choose resolution (overwrite / merge / cancel)
+    alt User overwrites
+        System -> Model: Force save changes (new version Z)
+        Model --> System: Save success
+        System --> User: Confirm overwrite saved
+    else User merges manually
+        System --> Workspace: Load diff/merge view
+        Workspace --> User: Show merge options
+    else User cancels
+        System --> User: Save aborted
+    end
+end
+
+@enduml

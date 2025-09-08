@@ -1,0 +1,34 @@
+@startuml technical use case diagram
+left to right direction
+actor Owner
+actor User
+
+rectangle "CCTV Placement System" {
+  
+  usecase "Create Project" as UC1
+  usecase "Edit Project" as UC2
+  usecase "Add User to Project" as UC3
+  usecase "Add Co-Owner to Project" as UC4
+  usecase "Open Model" as UC5
+  usecase "Edit Model (direct)" as UC6
+  usecase "Create Workspace" as UC7
+  usecase "Autosave Workspace" as UC8
+  usecase "Save Workspace into Model" as UC9
+  usecase "Resolve Save Conflict" as UC10
+
+  Owner --> UC1
+  Owner --> UC2
+  Owner --> UC3
+  Owner --> UC4
+  Owner --> UC5
+  Owner --> UC6
+  
+  User --> UC5
+  User --> UC9
+  User --> UC10
+  
+  UC5 --> UC7 : <<include>>
+  UC7 --> UC8 : <<include>>
+  UC9 --> UC10 : <<extend>>
+}
+@enduml
