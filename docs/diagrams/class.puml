@@ -1,0 +1,51 @@
+@startuml technical class diagram
+class User {
+    +userId: int
+    +name: string
+    +role: string
+    +editWorkspace()
+    +saveWorkspace()
+}
+
+class Project {
+    +projectId: int
+    +name: string
+    +addUser(user: User)
+    +addOwner(user: User)
+    +editProject()
+}
+
+class Model {
+    +modelId: int
+    +name: string
+    +version: int
+    +editModel()
+    +saveChanges()
+}
+
+class Camera {
+    +cameraId: int
+    +type: string
+    +position: string
+    +move()
+    +rotate()
+}
+
+class Workspace {
+    +workspaceId: int
+    +userId: int
+    +modelVersion: int
+    +changes: string
+    +autosave()
+    +mergeWithModel()
+    +checkConflict()
+}
+
+' Relationships
+Project "1" -- "1..*" Model
+Project "1" -- "1..*" User
+Model "1" -- "0..*" Camera
+Workspace "1" --> "1" User
+Workspace "1" --> "1" Model
+
+@enduml
