@@ -1,0 +1,42 @@
+@startuml
+left to right direction
+
+actor Owner
+actor Collaborator as User
+
+package "Client Application" {
+  [Web UI / Desktop UI] as UI
+}
+
+package "Backend Services" {
+  [Auth Service] as Auth
+  [Project Service] as Project
+  [Model Service] as Model
+  [Workspace Service] as Workspace
+  [Camera Service] as Camera
+}
+
+package "Data Storage" {
+  [Database\n(Users, Projects, Roles)] as DB
+  [Model Repository\n(Models, Versions)] as Repo
+  [Workspace Store\n(Autosaves, Diffs)] as WStore
+}
+
+' Actors interact with UI
+Owner --> UI
+User --> UI
+
+' Client calls backend
+UI --> Auth
+UI --> Project
+UI --> Model
+UI --> Workspace
+UI --> Camera
+
+' Backend calls storage
+Auth --> DB
+Project --> DB
+Model --> Repo
+Workspace --> WStore
+Camera --> Repo
+@enduml
