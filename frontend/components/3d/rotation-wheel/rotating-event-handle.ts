@@ -9,7 +9,7 @@ export class RotatingUserData implements IUserData {
 
   isDragging = false;
 
-  downAngle = undefined;
+  downAngle: number | undefined = undefined;
 
   constructor(type: string, obj: THREE.Mesh, context: TresContext) {
     this.type = type as "x" | "y" | "z";
