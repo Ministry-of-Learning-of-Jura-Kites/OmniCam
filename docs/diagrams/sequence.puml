@@ -1,4 +1,4 @@
-@startuml technical sequence diagram
+@startuml overview sequence diagram
 actor Owner
 actor User
 participant System

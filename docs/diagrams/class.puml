@@ -1,4 +1,4 @@
-@startuml technical class diagram
+@startuml class diagram
 class User {
     +userId: int
     +name: string
