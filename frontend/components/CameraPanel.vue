@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref } from "vue";
+import * as THREE from "three";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 import Button from "./ui/button/Button.vue";
 import Input from "./ui/input/Input.vue";
@@ -22,27 +23,26 @@ const selectedCamId = ref<string | null>(null);
 
 const isCameraPropertiesOpen = ref(true);
 
-// const addCamera = () => {
-//   const newCamera: CameraData = {
-//     id: `cam${Date.now()}`,
-//     name: `Camera ${cameras.value.length + 1}`,
-//     position: { x: 5, y: 5, z: 5 },
-//     rotation: { x: 0, y: 0, z: 0 },
-//     fov: 60,
-//   };
-//   cameras.value.push(newCamera);
-// };
+const spawnCamera = () => {
+  const newCamId = sceneStates.cameraManagement.spawnCameraHere();
+  if (newCamId) {
+    selectedCamId.value = newCamId;
+  }
+};
+
+const moveCameraHere = (id: string) => {
+  sceneStates.cameras[id]!.position = new THREE.Vector3().copy(
+    sceneStates.spectatorCameraPosition,
+  );
+  sceneStates.cameras[id]!.rotation = new THREE.Euler().copy(
+    sceneStates.spectatorCameraRotation,
+  );
+};
 
 const deleteCamera = (id: string) => {
   // eslint-disable-next-line @typescript-eslint/no-dynamic-delete
   delete sceneStates.cameras[id];
 };
-
-// const updateCamera = (id: string, updates: Partial<CameraData>) => {
-//   cameras.value = cameras.value.map((cam) =>
-//     cam.id === id ? { ...cam, ...updates } : cam,
-//   );
-// };
 </script>
 
 <template>
@@ -52,12 +52,9 @@ const deleteCamera = (id: string) => {
         <Camera class="h-5 w-5" />
         Camera Gallery
       </h2>
-      <Button size="sm" @click="sceneStates.cameraManagement.spawnCameraHere">
+      <Button size="sm" @click="spawnCamera()">
         <MapPinPlus class="h-4 w-4" />
       </Button>
-      <!-- <Button size="sm" @click="addCamera">
-        <Plus class="h-4 w-4" />
-      </Button> -->
     </div>
 
     <!-- Camera Dropdown -->
@@ -167,10 +164,15 @@ const deleteCamera = (id: string) => {
         <div class="flex gap-2">
           <Button size="sm" class="flex-1">
             <Eye class="h-3 w-3 mr-2" />
-            Preview POV
+            Frustum
           </Button>
-          <Button size="sm" variant="outline" class="flex-1">
-            Place in Scene
+          <Button
+            size="sm"
+            variant="outline"
+            class="flex-1"
+            @click="moveCameraHere(selectedCamId!)"
+          >
+            Move Here
           </Button>
         </div>
       </CardContent>
