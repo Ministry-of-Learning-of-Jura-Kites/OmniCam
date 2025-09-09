@@ -1,4 +1,4 @@
-@startuml
+@startuml system architecture diagram
 left to right direction
 
 actor Owner
@@ -8,18 +8,26 @@ package "Client Application" {
   [Web UI / Desktop UI] as UI
 }
 
-package "Backend Services" {
-  [Auth Service] as Auth
-  [Project Service] as Project
-  [Model Service] as Model
-  [Workspace Service] as Workspace
-  [Camera Service] as Camera
+package "Backend Service" {
+  [Auth Module] as Auth
+  [Model Module] as Model
+  [Project Module] as Project
+  [Workspace Module] as Workspace
+  [Camera Module] as Camera
+  [Livestream Module] as Livestream
+}
+
+package "Batch Persistence Service"{
+  [Batch Updater] as BatchUpdater
 }
 
 package "Data Storage" {
-  [Database\n(Users, Projects, Roles)] as DB
-  [Model Repository\n(Models, Versions)] as Repo
-  [Workspace Store\n(Autosaves, Diffs)] as WStore
+  [Database\n(Users, Projects, Models, Cameras, Workspaces)] as DB
+  [Model File System\n(3D Assets)] as Repo
+}
+
+package "Messaging" {
+  [Message Queue\n(Workspace Updates)] as MessageQueue
 }
 
 ' Actors interact with UI
@@ -30,13 +38,22 @@ User --> UI
 UI --> Auth
 UI --> Project
 UI --> Model
-UI --> Workspace
+UI <--> Workspace
 UI --> Camera
 
-' Backend calls storage
-Auth --> DB
-Project --> DB
-Model --> Repo
-Workspace --> WStore
-Camera --> Repo
+' Workspace Livestream
+Workspace <-> Livestream
+Livestream <-> MessageQueue
+BatchUpdater <- MessageQueue
+BatchUpdater -down-> DB
+
+' Backend to storage
+Auth <-> DB
+Project <-> DB
+Model <-> DB
+Model <-> Repo
+Workspace <-> DB
+Camera <--> DB
+Camera <--> Repo
+
 @enduml

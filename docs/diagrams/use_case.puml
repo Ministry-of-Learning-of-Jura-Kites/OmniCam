@@ -1,4 +1,4 @@
-@startuml technical use case diagram
+@startuml use case diagram
 left to right direction
 actor Owner
 actor User
