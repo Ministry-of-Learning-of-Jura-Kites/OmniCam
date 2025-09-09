@@ -37,7 +37,18 @@ func (t *GetProjectRoute) getAll(c *gin.Context) {
 		project = []db_sqlc_gen.Project{}
 	}
 
-	c.JSON(http.StatusOK, gin.H{"data": project})
+	var projectList []Project
+	for _, data := range project {
+		projectList = append(projectList, Project{
+			Id:          data.ID,
+			Name:        data.Name,
+			Description: data.Description,
+			CreatedAt:   data.CreatedAt.Time.Format(time.RFC3339),
+			UpdatedAt:   data.UpdatedAt.Time.Format(time.RFC3339),
+		})
+	}
+
+	c.JSON(http.StatusOK, gin.H{"data": projectList})
 }
 
 func (t *GetProjectRoute) getById(c *gin.Context) {

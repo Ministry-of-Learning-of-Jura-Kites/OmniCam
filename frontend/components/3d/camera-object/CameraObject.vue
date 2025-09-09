@@ -2,6 +2,7 @@
 import type * as THREE from "three";
 import { SCENE_STATES_KEY } from "../scene-states-provider/create-scene-states";
 import MovableArrow from "../movable-arrow/MovableArrow.vue";
+import RotationWheel from "../rotation-wheel/RotationWheel.vue";
 
 const props = defineProps({
   name: {
@@ -46,7 +47,7 @@ const cameraMesh = ref<THREE.Mesh | null>(null);
       <TresBoxGeometry :args="[0.5, 0.5, 0.5]" />
       <TresMeshBasicMaterial color="white" />
     </TresMesh>
-    <MovableArrow
+    <!-- <MovableArrow
       v-if="cameraMesh != null"
       direction="x"
       :camera-mesh="cameraMesh"
@@ -63,6 +64,7 @@ const cameraMesh = ref<THREE.Mesh | null>(null);
       direction="z"
       :camera-mesh="cameraMesh"
       color="blue"
-    />
+    /> -->
+    <RotationWheel color="green" type="x" :obj-ref="cameraMesh!" />
   </TresMesh>
 </template>
