@@ -46,7 +46,8 @@ const upHead = new THREE.CylinderGeometry(
   8,
 );
 const upHeadMesh = new THREE.Mesh(upHead, material);
-upHeadMesh.position.y = MOVING_ARROW_CONFIG.CYLINDER_LENGTH / 2;
+upHeadMesh.position.y =
+  (MOVING_ARROW_CONFIG.CYLINDER_LENGTH + MOVING_ARROW_CONFIG.HEAD_LENGTH) / 2;
 
 const downHead = new THREE.CylinderGeometry(
   MOVING_ARROW_CONFIG.HEAD_RADIUS,
@@ -55,7 +56,8 @@ const downHead = new THREE.CylinderGeometry(
   8,
 );
 const downHeadMesh = new THREE.Mesh(downHead, material);
-downHeadMesh.position.y = -MOVING_ARROW_CONFIG.CYLINDER_LENGTH / 2;
+downHeadMesh.position.y =
+  -(MOVING_ARROW_CONFIG.CYLINDER_LENGTH + MOVING_ARROW_CONFIG.HEAD_LENGTH) / 2;
 
 const cylinder = new THREE.CylinderGeometry(
   MOVING_ARROW_CONFIG.CYLINDER_RADIUS,
