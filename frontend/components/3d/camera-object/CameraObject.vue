@@ -66,5 +66,7 @@ const cameraMesh = ref<THREE.Mesh | null>(null);
       color="blue"
     /> -->
     <RotationWheel color="green" type="x" :obj-ref="cameraMesh!" />
+    <RotationWheel color="red" type="y" :obj-ref="cameraMesh!" />
+    <RotationWheel color="blue" type="z" :obj-ref="cameraMesh!" />
   </TresMesh>
 </template>
