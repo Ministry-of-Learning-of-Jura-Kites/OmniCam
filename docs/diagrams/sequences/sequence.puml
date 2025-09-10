@@ -1,0 +1,21 @@
+@startuml overview sequence diagram
+actor Owner
+actor User
+participant System
+participant Project
+participant Model
+participant Workspace
+
+== Owner adds User to Project ==
+Owner -> System: Add User to Project
+System -> Project: Grant access to User
+Project --> System: Confirm access granted
+System --> Owner: Success
+
+== Owner adds Collaborator to Project ==
+Owner -> System: Add User (role=Owner) to Project
+System -> Project: Grant Collaborator access
+Project --> System: Confirm Collaborator access granted
+System --> Owner: Success
+
+@enduml

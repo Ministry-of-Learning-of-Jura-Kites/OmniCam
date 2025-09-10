@@ -1,4 +1,4 @@
-@startuml event_streaming_with_db
+@startuml workspace_update_sequence
 actor User
 participant Workspace
 participant "Message Queue" as MQ
@@ -17,14 +17,14 @@ System -> PersistenceService: Apply event (idempotent)
 PersistenceService -> DB: Persist new state/version
 DB --> PersistenceService: Ack
 PersistenceService --> System: Ack applied
-System -> MQ: Publish "PersistenceServiceChanged" (delta)
+System -> MQ: Publish "WorkspaceChanged" (delta)
 
 == Workspace updates ==
-MQ -> Workspace: Deliver "PersistenceServiceChanged"
+MQ -> Workspace: Deliver "WorkspaceChanged"
 Workspace --> User: Update view
 
 == Other user also sees update ==
-MQ -> OtherUser: Deliver "PersistenceServiceChanged"
+MQ -> OtherUser: Deliver "WorkspaceChanged"
 OtherUser --> Workspace: Update view
 
 == Late joiner ==
