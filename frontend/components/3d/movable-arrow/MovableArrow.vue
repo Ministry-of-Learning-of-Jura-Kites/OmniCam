@@ -5,15 +5,14 @@ import { MOVING_ARROW_CONFIG } from "~/constants";
 import { useTresContext } from "@tresjs/core";
 import type { Obj3DWithUserData } from "~/types/obj-3d-user-data";
 import { SCENE_STATES_KEY } from "~/components/3d/scene-states-provider/create-scene-states";
+import type { ICamera } from "~/types/camera";
+
+const cam = defineModel<ICamera>({ required: true });
 
 const props = defineProps({
   direction: {
     type: String as PropType<"x" | "y" | "z">,
     default: "x",
-  },
-  cameraMesh: {
-    type: Object as PropType<THREE.Mesh | null>,
-    default: null,
   },
   color: {
     type: [String, Number] as PropType<string | number>,
@@ -29,7 +28,7 @@ const arrow = new THREE.Group();
 
 const cameraUserData = new MovingUserData(
   props.direction,
-  props.cameraMesh!,
+  cam.value!,
   context!,
 );
 
@@ -70,7 +69,6 @@ arrow.add(cylinderMesh);
 switch (props.direction) {
   case "x":
     arrow.rotateZ(Math.PI / 2);
-    // arrow.updateMatrixWorld(true);
     break;
   case "y":
     break;
