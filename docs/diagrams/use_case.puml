@@ -10,7 +10,6 @@ rectangle "CCTV Placement System" {
   usecase "Add User to Project" as UC3
   usecase "Add Co-Owner to Project" as UC4
   usecase "Open Model" as UC5
-  usecase "Edit Model (direct)" as UC6
   usecase "Create Workspace" as UC7
   usecase "Autosave Workspace" as UC8
   usecase "Save Workspace into Model" as UC9
@@ -21,7 +20,6 @@ rectangle "CCTV Placement System" {
   Owner --> UC3
   Owner --> UC4
   Owner --> UC5
-  Owner --> UC6
   
   User --> UC5
   User --> UC9

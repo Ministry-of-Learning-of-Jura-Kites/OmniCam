@@ -2,9 +2,12 @@
 class User {
     +userId: int
     +name: string
-    +role: string
     +editWorkspace()
     +saveWorkspace()
+}
+
+class ProjectUserRole {
+    +role: enum {Owner, Collaborator}
 }
 
 class Project {
@@ -47,5 +50,7 @@ Project "1" -- "1..*" User
 Model "1" -- "0..*" Camera
 Workspace "1" --> "1" User
 Workspace "1" --> "1" Model
+User "1" -- "0..*" ProjectUserRole
+Project "1" -- "0..*" ProjectUserRole
 
 @enduml

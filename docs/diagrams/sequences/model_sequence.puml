@@ -1,0 +1,74 @@
+@startuml model_crud_sequence
+actor Owner
+actor User
+participant System
+participant Project
+participant Model
+participant Workspace
+
+== C: Create (Upload Model) ==
+User -> System: Upload Model file
+System -> Project: Validate User access
+Project --> System: Access confirmed
+System -> Model: Store uploaded file
+Model --> System: Upload success
+System --> User: Model uploaded successfully
+
+System -> User: Prompt to calibrate model (real-world scale)
+alt User calibrates
+    User -> System: Provide calibration input
+    System -> Model: Apply calibration
+    Model --> System: Calibration success
+    System --> User: Model calibrated
+else User skips
+    System --> User: Model uncalibrated (assumed units)
+end
+
+System -> Workspace: Create initial workspace
+Workspace --> System: Workspace ready
+System --> User: Workspace loaded
+
+== R: Read (Open Model) ==
+User -> System: Open Model
+System -> Project: Check access
+Project --> System: Access allowed
+System -> Model: Load base model
+Model --> System: Return model data
+System -> Workspace: Create autosaving workspace for User
+Workspace --> System: Workspace ready
+System --> User: Workspace loaded
+
+== U: Update (Save Workspace to Model, not auto) ==
+User -> System: Save Workspace to Model
+System -> Workspace: Get latest changes
+Workspace --> System: Changes data
+System -> Model: Check current model version
+alt No conflict
+    System -> Model: Save changes (new version)
+    Model --> System: Save success
+    System --> User: Confirm saved
+else Conflict detected
+    Model --> System: Conflict error
+    System --> User: Prompt conflict resolution
+    User -> System: Choose resolution
+    alt Overwrite
+        System -> Model: Force save (new version)
+        Model --> System: Save success
+        System --> User: Confirm overwrite saved
+    else Merge
+        System --> Workspace: Load diff/merge view
+        Workspace --> User: Show merge options
+    else Cancel
+        System --> User: Save aborted
+    end
+end
+
+== D: Delete (Remove Model) ==
+Owner -> System: Delete Model
+System -> Project: Verify ownership
+Project --> System: Ownership confirmed
+System -> Model: Remove model data
+Model --> System: Delete success
+System --> Owner: Model deleted
+
+@enduml
