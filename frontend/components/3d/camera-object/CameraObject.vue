@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import type * as THREE from "three";
+// import type * as THREE from "three";
 import { SCENE_STATES_KEY } from "../scene-states-provider/create-scene-states";
 import MovableArrow from "../movable-arrow/MovableArrow.vue";
+import TresMesh from "@tresjs/core";
 import RotationWheel from "../rotation-wheel/RotationWheel.vue";
 
 const props = defineProps({
@@ -19,12 +20,7 @@ const sceneStates = inject(SCENE_STATES_KEY)!;
 
 // const cameraMesh = useTemplateRef<THREE.Mesh>("cameraMesh");
 
-const cameraMesh = ref<THREE.Mesh | null>(null);
-
-// watch(cameraMesh, (mesh) => {
-//   console.log("gggg", mesh);
-//   mesh!.position.copy(props.position.value);
-// });
+const cam = toRef(sceneStates.cameras, props.camId);
 
 // watch(
 //   props.position,
@@ -39,49 +35,21 @@ const cameraMesh = ref<THREE.Mesh | null>(null);
 </script>
 
 <template>
-  <TresMesh
-    ref="cameraMesh"
-    :position="sceneStates.cameras[props.camId]!.position.clone()"
-  >
+  <TresMesh :position="sceneStates.cameras[props.camId]!.position.clone()">
     <TresMesh :rotation="sceneStates.cameras[props.camId]!.rotation.clone()">
       <TresBoxGeometry :args="[0.5, 0.5, 0.5]" />
       <TresMeshBasicMaterial color="white" />
     </TresMesh>
     <MovableArrow
-      v-if="cameraMesh != null"
+      v-if="cam != null"
+      v-model="cam"
       direction="x"
-      :camera-mesh="cameraMesh"
       color="green"
     />
-    <MovableArrow
-      v-if="cameraMesh != null"
-      direction="y"
-      :camera-mesh="cameraMesh"
-      color="red"
-    />
-    <MovableArrow
-      v-if="cameraMesh != null"
-      direction="z"
-      :camera-mesh="cameraMesh"
-      color="blue"
-    />
-    <RotationWheel
-      v-if="cameraMesh != null"
-      type="x"
-      :camera-mesh="cameraMesh"
-      color="green"
-    />
-    <RotationWheel
-      v-if="cameraMesh != null"
-      type="y"
-      :camera-mesh="cameraMesh"
-      color="red"
-    />
-    <RotationWheel
-      v-if="cameraMesh != null"
-      type="z"
-      :camera-mesh="cameraMesh"
-      color="blue"
-    />
+    <MovableArrow v-if="cam != null" v-model="cam" direction="y" color="red" />
+    <MovableArrow v-if="cam != null" v-model="cam" direction="z" color="blue" />
+    <RotationWheel v-if="cam != null" v-model="cam" type="x" color="green" />
+    <RotationWheel v-if="cam != null" v-model="cam" type="y" color="red" />
+    <RotationWheel v-if="cam != null" v-model="cam" type="z" color="blue" />
   </TresMesh>
 </template>

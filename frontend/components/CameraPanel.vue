@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, watch } from "vue";
+import { ref } from "vue";
 import * as THREE from "three";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 import Button from "./ui/button/Button.vue";
@@ -43,6 +43,10 @@ const deleteCamera = (id: string) => {
   // eslint-disable-next-line @typescript-eslint/no-dynamic-delete
   delete sceneStates.cameras[id];
 };
+
+// watch(sceneStates.cameras, (cams) => {
+//   console.log(cams[Object.keys(cams)[0] as string]?.position);
+// });
 </script>
 
 <template>

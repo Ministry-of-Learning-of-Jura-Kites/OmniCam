@@ -5,6 +5,9 @@ import { RotatingUserData } from "./rotating-event-handle";
 import { useTresContext } from "@tresjs/core";
 import type { Obj3DWithUserData } from "~/types/obj-3d-user-data";
 import { ROTATING_TORUS_CONFIG } from "~/constants";
+import type { ICamera } from "~/types/camera";
+
+const cam = defineModel<ICamera>({ required: true });
 
 const props = defineProps({
   type: {
@@ -34,11 +37,7 @@ const geometry = new THREE.TorusGeometry(
 const material = new THREE.MeshBasicMaterial({ color: props.color });
 const wheelBase = new THREE.Mesh(geometry, material);
 
-wheelBase.userData = new RotatingUserData(
-  props.type,
-  props.cameraMesh!,
-  context,
-);
+wheelBase.userData = new RotatingUserData(props.type, cam.value, context);
 
 const wheel = wheelBase as unknown as Obj3DWithUserData;
 
