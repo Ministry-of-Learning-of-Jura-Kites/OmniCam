@@ -12,9 +12,11 @@ package "Backend Service" {
   [Auth Module] as Auth
   [Model Module] as Model
   [Project Module] as Project
-  [Workspace Module] as Workspace
+  together {
+    [Workspace Module] as Workspace
+    [Livestream Module] as Livestream
+  }
   [Camera Module] as Camera
-  [Livestream Module] as Livestream
 }
 
 package "Batch Persistence Service"{
@@ -35,15 +37,15 @@ Owner --> UI
 User --> UI
 
 ' Client calls backend
+UI <--> Workspace
+UI <-> Livestream
 UI --> Auth
 UI --> Project
 UI --> Model
-UI <--> Workspace
 UI --> Camera
 
 ' Workspace Livestream
 Workspace <-> Livestream
-Livestream <-> MessageQueue
 BatchUpdater <- MessageQueue
 BatchUpdater -down-> DB
 
@@ -52,7 +54,8 @@ Auth <-> DB
 Project <-> DB
 Model <-> DB
 Model <-> Repo
-Workspace <-> DB
+Workspace -> MessageQueue
+Livestream <-> MessageQueue
 Camera <--> DB
 Camera <--> Repo
 
