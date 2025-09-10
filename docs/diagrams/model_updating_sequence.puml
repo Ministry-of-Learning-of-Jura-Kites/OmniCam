@@ -1,0 +1,40 @@
+@startuml event_streaming_with_db
+actor User
+participant Workspace
+participant "Message Queue" as MQ
+participant System
+participant "Persistence Service" as PersistenceService
+database DB
+actor OtherUser
+
+== User edits Workspace ==
+User -> Workspace: Edit element
+Workspace -> MQ: Publish "WorkspaceChanged" event
+
+== System processes event ==
+MQ -> System: Deliver "WorkspaceChanged"
+System -> PersistenceService: Apply event (idempotent)
+PersistenceService -> DB: Persist new state/version
+DB --> PersistenceService: Ack
+PersistenceService --> System: Ack applied
+System -> MQ: Publish "PersistenceServiceChanged" (delta)
+
+== Workspace updates ==
+MQ -> Workspace: Deliver "PersistenceServiceChanged"
+Workspace --> User: Update view
+
+== Other user also sees update ==
+MQ -> OtherUser: Deliver "PersistenceServiceChanged"
+OtherUser --> Workspace: Update view
+
+== Late joiner ==
+OtherUser -> System: Request current state
+System -> DB: Fetch latest model
+DB --> System: Return current snapshot
+System --> OtherUser: Send initial model
+note right of OtherUser
+After snapshot, continue consuming  
+"PersistenceServiceChanged" events from MQ  
+to stay in sync.  
+end note
+@enduml
