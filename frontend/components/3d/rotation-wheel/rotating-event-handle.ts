@@ -1,19 +1,19 @@
 import type { TresContext } from "@tresjs/core";
-import type * as THREE from "three";
+import type { ICamera } from "~/types/camera";
 import type { IUserData } from "~/types/obj-3d-user-data";
 
 export class RotatingUserData implements IUserData {
   type: "x" | "y" | "z";
-  obj: THREE.Mesh;
+  cam: ICamera;
   context: TresContext;
 
   isDragging = false;
 
   downAngle: number | undefined = undefined;
 
-  constructor(type: string, obj: THREE.Mesh, context: TresContext) {
+  constructor(type: string, obj: ICamera, context: TresContext) {
     this.type = type as "x" | "y" | "z";
-    this.obj = obj;
+    this.cam = obj;
     this.context = context;
   }
 
@@ -31,7 +31,7 @@ export class RotatingUserData implements IUserData {
     this.isDragging = true;
     document.addEventListener("pointermove", this.handlePointerMoveEvent);
     document.addEventListener("pointerup", this.handlePointerUpEvent);
-    const objNdc = this.obj.position.clone();
+    const objNdc = this.cam.position.clone();
     objNdc.project(this.context.camera.value!);
 
     let downAngle = Math.atan(
