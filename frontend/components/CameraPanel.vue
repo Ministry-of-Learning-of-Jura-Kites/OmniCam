@@ -56,7 +56,13 @@ const deleteCamera = (id: string) => {
         <Camera class="h-5 w-5" />
         Camera Gallery
       </h2>
-      <Button size="sm" @click="spawnCamera()">
+      <Button
+        size="sm"
+        @click="
+          spawnCamera();
+          $event.currentTarget.blur();
+        "
+      >
         <MapPinPlus class="h-4 w-4" />
       </Button>
     </div>
