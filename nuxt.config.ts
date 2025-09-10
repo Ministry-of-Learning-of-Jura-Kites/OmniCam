@@ -1,6 +1,7 @@
 // https://nuxt.com/docs/api/configuration/nuxt-config
 import tailwindcss from "@tailwindcss/vite";
-// import { env } from "~/env/server";
+import { templateCompilerOptions } from "@tresjs/core";
+
 export default defineNuxtConfig({
   css: [
     "~/assets/css/tailwind.css",
@@ -8,6 +9,7 @@ export default defineNuxtConfig({
   ],
   vite: {
     plugins: [tailwindcss()],
+    vue: templateCompilerOptions,
   },
   compatibilityDate: "2025-07-15",
   ssr: true,
