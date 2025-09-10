@@ -114,7 +114,7 @@ const deleteCamera = (id: string) => {
           <ChevronLeft v-else class="inline h-4 w-4"
         /></span>
       </CardHeader>
-      <CardContent v-if="isCameraPropertiesOpen" class="space-y-4">
+      <CardContent v-if="isCameraPropertiesOpen" class="space-y-2">
         <div>
           <Label for="camera-name">Name</Label>
           <Input
@@ -147,6 +147,21 @@ const deleteCamera = (id: string) => {
               v-model.number="sceneStates.cameras[selectedCamId]!.position.z"
               type="number"
             />
+          </div>
+        </div>
+
+        <div class="grid grid-cols-3 gap-2">
+          <div>
+            <Label for="angle-x"><p>θ<sub>x</sub>:</p></Label>
+            <Input id="angle-x" type="number" />
+          </div>
+          <div>
+            <Label for="angle-y"><p>θ<sub>y</sub>:</p></Label>
+            <Input id="angle-y" type="number" />
+          </div>
+          <div>
+            <Label for="angle-z"><p>θ<sub>z</sub>:</p></Label>
+            <Input id="angle-z" type="number" />
           </div>
         </div>
 
