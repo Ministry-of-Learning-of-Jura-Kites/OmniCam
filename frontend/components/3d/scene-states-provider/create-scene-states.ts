@@ -36,6 +36,8 @@ export function createBaseSceneStates() {
 
   const currentCameraRotation: Ref<THREE.Euler> = ref(spectatorCameraRotation);
 
+  const currentCameraFov: Ref<number> = ref(60);
+
   const tresCanvasParent: Ref<HTMLDivElement | null> = ref(null);
 
   const cameras = reactive<Record<string, ICamera>>({});
@@ -47,6 +49,7 @@ export function createBaseSceneStates() {
     currentCam,
     currentCameraPosition,
     currentCameraRotation,
+    currentCameraFov,
     spectatorCameraPosition,
     spectatorCameraRotation,
     tresCanvasParent,

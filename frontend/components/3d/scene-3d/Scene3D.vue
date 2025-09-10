@@ -68,6 +68,10 @@ function onCanvasPointer(event: PointerEvent) {
 watch(
   sceneStates.tresContext,
   (context) => {
+    const y = sceneStates.tresCanvasParent.value!.offsetHeight;
+    sceneStates.tresCanvasParent.value!.style.width = (y * 4) / 3 + "px";
+    sceneStates.tresCanvasParent.value!.style.height = y + "px";
+
     context?.renderer.domElement.addEventListener(
       "pointerdown",
       onCanvasPointer,
@@ -167,6 +171,16 @@ watch(
             :sliding-sensitivity="SPECTATOR_ADJ_INPUT_SENTIVITY"
           />
         </div>
+        <div class="flex">
+          <p>FOV:</p>
+          <AdjustableInput
+            v-model="sceneStates.currentCameraFov.value"
+            class="right-adjustable-input"
+            :max="200"
+            :min="0"
+            :sliding-sensitivity="SPECTATOR_ADJ_INPUT_SENTIVITY"
+          />
+        </div>
       </div>
       <TresCanvas
         id="canvas"
@@ -178,7 +192,8 @@ watch(
         <TresPerspectiveCamera
           :position="sceneStates.currentCameraPosition.value"
           :rotation="sceneStates.currentCameraRotation.value"
-          :fov="75"
+          :fov="89.9"
+          :aspect="4 / 3"
         />
 
         <CameraObject
@@ -194,8 +209,8 @@ watch(
         <TresDirectionalLight :position="[10, 10, 5]" :intensity="1" />
 
         <!-- 3D Objects -->
-        <TresMesh :position="[0, 0.5, 0]">
-          <TresBoxGeometry />
+        <TresMesh :position="[0, 3, 0]">
+          <TresBoxGeometry :args="[9, 6, 13.3]" />
           <TresMeshStandardMaterial
             :color="'#4a90e2'"
             :metalness="0.3"
