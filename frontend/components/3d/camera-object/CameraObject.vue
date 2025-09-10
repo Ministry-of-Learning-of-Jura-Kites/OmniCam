@@ -47,7 +47,7 @@ const cameraMesh = ref<THREE.Mesh | null>(null);
       <TresBoxGeometry :args="[0.5, 0.5, 0.5]" />
       <TresMeshBasicMaterial color="white" />
     </TresMesh>
-    <!-- <MovableArrow
+    <MovableArrow
       v-if="cameraMesh != null"
       direction="x"
       :camera-mesh="cameraMesh"
@@ -64,9 +64,24 @@ const cameraMesh = ref<THREE.Mesh | null>(null);
       direction="z"
       :camera-mesh="cameraMesh"
       color="blue"
-    /> -->
-    <RotationWheel color="green" type="x" :obj-ref="cameraMesh!" />
-    <RotationWheel color="red" type="y" :obj-ref="cameraMesh!" />
-    <RotationWheel color="blue" type="z" :obj-ref="cameraMesh!" />
+    />
+    <RotationWheel
+      v-if="cameraMesh != null"
+      type="x"
+      :camera-mesh="cameraMesh"
+      color="green"
+    />
+    <RotationWheel
+      v-if="cameraMesh != null"
+      type="y"
+      :camera-mesh="cameraMesh"
+      color="red"
+    />
+    <RotationWheel
+      v-if="cameraMesh != null"
+      type="z"
+      :camera-mesh="cameraMesh"
+      color="blue"
+    />
   </TresMesh>
 </template>

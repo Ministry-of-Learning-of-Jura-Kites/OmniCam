@@ -19,10 +19,6 @@ const props = defineProps({
     type: [String, Number] as PropType<string | number>,
     default: "red",
   },
-  draggableObjects: {
-    type: Set<THREE.Object3D>,
-    default: new Set(),
-  },
 });
 
 const context = useTresContext();

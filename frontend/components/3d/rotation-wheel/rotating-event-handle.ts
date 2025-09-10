@@ -43,9 +43,7 @@ export class RotatingUserData implements IUserData {
     this.downAngle = downAngle;
   };
 
-  handlePointerMoveEvent = (event: PointerEvent) => {
-    event.clientX;
-  };
+  handlePointerMoveEvent = (event: PointerEvent) => {};
 
   handlePointerUpEvent = (_event: PointerEvent) => {
     this.isDragging = false;

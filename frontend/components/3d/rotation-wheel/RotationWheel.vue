@@ -7,17 +7,17 @@ import type { Obj3DWithUserData } from "~/types/obj-3d-user-data";
 import { ROTATING_TORUS_CONFIG } from "~/constants";
 
 const props = defineProps({
-  color: {
-    type: String,
-    required: true,
-  },
   type: {
-    type: String,
-    required: true,
+    type: String as PropType<"x" | "y" | "z">,
+    default: "x",
   },
-  objRef: {
-    type: THREE.Mesh,
-    required: true,
+  cameraMesh: {
+    type: Object as PropType<THREE.Mesh | null>,
+    default: null,
+  },
+  color: {
+    type: [String, Number] as PropType<string | number>,
+    default: "red",
   },
 });
 
@@ -34,9 +34,26 @@ const geometry = new THREE.TorusGeometry(
 const material = new THREE.MeshBasicMaterial({ color: props.color });
 const wheelBase = new THREE.Mesh(geometry, material);
 
-wheelBase.userData = new RotatingUserData(props.type, props.objRef, context);
+wheelBase.userData = new RotatingUserData(
+  props.type,
+  props.cameraMesh!,
+  context,
+);
 
 const wheel = wheelBase as unknown as Obj3DWithUserData;
+
+switch (props.type) {
+  case "x":
+    wheel.rotateY(Math.PI / 2);
+    break;
+  case "y":
+    wheel.rotateX(Math.PI / 2);
+    break;
+  case "z":
+    break;
+  default:
+    break;
+}
 
 sceneStates?.draggableObjects.add(wheel);
 </script>
