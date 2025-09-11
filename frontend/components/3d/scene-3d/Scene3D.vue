@@ -9,6 +9,7 @@ import * as THREE from "three";
 import { SCENE_STATES_KEY } from "~/components/3d/scene-states-provider/create-scene-states";
 import { useCameraUpdate } from "./use-camera-update";
 import type { IUserData } from "~/types/obj-3d-user-data";
+import ModelLoader from "../model-loader/ModelLoader.vue";
 
 defineProps<{
   modelId?: string | null;
@@ -194,14 +195,12 @@ watch(
         <TresDirectionalLight :position="[10, 10, 5]" :intensity="1" />
 
         <!-- 3D Objects -->
-        <TresMesh :position="[0, 0.5, 0]">
-          <TresBoxGeometry />
-          <TresMeshStandardMaterial
-            :color="'#4a90e2'"
-            :metalness="0.3"
-            :roughness="0.4"
+        <Suspense>
+          <ModelLoader
+            path="/models/test-model/poly.gltf"
+            :position="[0, 2.5, 0]"
           />
-        </TresMesh>
+        </Suspense>
 
         <!-- Grid -->
         <Grid
