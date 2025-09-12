@@ -4,6 +4,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
@@ -61,18 +62,28 @@ func (t *PostModelRoutes) post(c *gin.Context) {
 		return
 	}
 
-	t.DB.CreateModel(c, db_sqlc_gen.CreateModelParams{
+	data, err := t.DB.CreateModel(c, db_sqlc_gen.CreateModelParams{
 		ProjectID:   projectId,
 		Name:        req.Name,
 		Description: req.Description,
 		FilePath:    filePath,
 	})
 
-	c.JSON(http.StatusOK, gin.H{
-		"project_id":  projectId,
-		"name":        req.Name,
-		"description": req.Description,
-	})
+	if err != nil {
+		t.Logger.Error("error while creating project", zap.Error(err))
+		c.JSON(http.StatusInternalServerError, gin.H{})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"data": Model{
+		Id:          data.ID,
+		ProjectId:   data.ProjectID,
+		Name:        data.Name,
+		Description: data.Description,
+		Version:     int(data.Version.Int32),
+		CreatedAt:   data.CreatedAt.Time.Format(time.RFC3339),
+		UpdatedAt:   data.UpdatedAt.Time.Format(time.RFC3339),
+	}})
 }
 
 func (t *PostModelRoutes) InitCreateModelRoute(router gin.IRouter) gin.IRouter {

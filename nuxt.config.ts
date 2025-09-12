@@ -1,5 +1,6 @@
 // https://nuxt.com/docs/api/configuration/nuxt-config
 import tailwindcss from "@tailwindcss/vite";
+// import { env } from "~/env/server";
 export default defineNuxtConfig({
   css: ["~/assets/css/tailwind.css"],
   vite: {
@@ -35,7 +36,7 @@ export default defineNuxtConfig({
   },
   components: [
     {
-      path: "~/components/ui",
+      path: "~/components",
       extensions: ["vue"],
     },
   ],
