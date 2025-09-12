@@ -14,6 +14,7 @@ type AppEnv struct {
 	Mode          string `env:"MODE"`
 	DatabaseUrl   string `env:"DATABASE_URL"`
 	ModelFilePath string `env:"MODEL_FILE_PATH"`
+	FrontendHost  string `env:"FRONTEND_HOST"`
 }
 
 func InitAppEnv(logger *zap.Logger) *AppEnv {

@@ -8,4 +8,21 @@ export default withNuxt([
       "vue/require-default-prop": "off",
     },
   },
+  {
+    files: ["frontend/**/*.vue"],
+    rules: {
+      "vue/html-self-closing": [
+        "error",
+        {
+          html: {
+            void: "any",
+            normal: "any",
+            component: "always",
+          },
+          svg: "always",
+          math: "always",
+        },
+      ],
+    },
+  },
 ]);
