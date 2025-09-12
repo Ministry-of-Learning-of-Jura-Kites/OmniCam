@@ -28,4 +28,6 @@ export interface ICamera {
   position: THREE.Vector3;
   rotation: THREE.Euler;
   fov: number;
+  isHidingArrows: boolean;
+  isHidingWheels: boolean;
 }

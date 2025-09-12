@@ -14,6 +14,10 @@ const props = defineProps({
     type: String as PropType<"x" | "y" | "z">,
     default: "x",
   },
+  isHiding: {
+    type: Boolean,
+    default: false,
+  },
   color: {
     type: [String, Number] as PropType<string | number>,
     default: "red",
@@ -85,17 +89,37 @@ const componentDraggableMeshes: Obj3DWithUserData[] = [];
 for (const mesh of arrow.children) {
   const obj = mesh as Obj3DWithUserData;
   obj.userData = cameraUserData;
-  sceneStates.draggableObjects.add(obj);
   componentDraggableMeshes.push(obj);
 }
 
-onUnmounted(() => {
+function setMeshUndraggable() {
   for (const mesh of componentDraggableMeshes) {
-    sceneStates.draggableObjects.delete(mesh);
+    sceneStates?.draggableObjects.delete(mesh);
   }
+}
+
+function setMeshDraggable() {
+  for (const mesh of componentDraggableMeshes) {
+    sceneStates?.draggableObjects.add(mesh);
+  }
+}
+
+watch(
+  () => props.isHiding,
+  (isHiding) => {
+    if (isHiding) {
+      setMeshUndraggable();
+    } else {
+      setMeshDraggable();
+    }
+  },
+);
+
+onBeforeUnmount(() => {
+  setMeshUndraggable();
 });
 </script>
 
 <template>
-  <primitive :object="arrow" />
+  <primitive :visible="!props.isHiding" :object="arrow" />
 </template>
