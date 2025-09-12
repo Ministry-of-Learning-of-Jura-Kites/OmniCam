@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { Button } from "@/components/ui/button";
 import FormDialog from "~/components/dialog/FormDialog.vue";
+import ConfirmDialog from "~/components/dialog/ConfirmDialog.vue"; // นำเข้า ConfirmDialog
 
 interface Project {
   id: string;
@@ -36,6 +37,11 @@ async function fetchProjects() {
 const isFormDialogOpen = ref(false);
 const isCreateOrUpdate = ref(false);
 const currentEditId = ref<string | null>(null);
+
+// -------- Confirm Dialog State --------
+const isConfirmDialogOpen = ref(false);
+const confirmAction = ref<"update" | "delete" | null>(null);
+const confirmMessage = ref("");
 
 type ProjectForm = { name: string; description: string };
 const projectForm = reactive<ProjectForm>({
@@ -114,12 +120,35 @@ function handleEditRow(project: Project) {
 }
 
 async function handleFormSubmit() {
-  if (isCreateOrUpdate.value) {
+  if (!isCreateOrUpdate.value && currentEditId.value) {
+    confirmAction.value = "update";
+    confirmMessage.value = `Are you sure you want to update "${projectForm.name}" project?`;
+    isFormDialogOpen.value = false;
+    isConfirmDialogOpen.value = true;
+  } else if (isCreateOrUpdate.value) {
     await createProject();
-  } else if (currentEditId.value) {
-    await updateProject(currentEditId.value);
+    isFormDialogOpen.value = false;
   }
-  isFormDialogOpen.value = false;
+}
+
+function handleDeleteProject(id: string, name: string) {
+  currentEditId.value = id;
+  confirmAction.value = "delete";
+  confirmMessage.value = `Are you sure you want to delete "${name}" project?`;
+  isConfirmDialogOpen.value = true;
+}
+
+async function handleConfirmAction() {
+  if (confirmAction.value === "update" && currentEditId.value) {
+    await updateProject(currentEditId.value);
+    isFormDialogOpen.value = false;
+  } else if (confirmAction.value === "delete" && currentEditId.value) {
+    await deleteProject(currentEditId.value);
+  }
+
+  isConfirmDialogOpen.value = false;
+  confirmAction.value = null;
+  currentEditId.value = null;
 }
 
 onMounted(async () => {
@@ -167,7 +196,10 @@ onMounted(async () => {
           <Button variant="secondary" @click="handleEditRow(project)">
             Edit
           </Button>
-          <Button variant="destructive" @click="deleteProject(project.id)">
+          <Button
+            variant="destructive"
+            @click="handleDeleteProject(project.id, project.name)"
+          >
             Delete
           </Button>
         </div>
@@ -185,6 +217,13 @@ onMounted(async () => {
       :titles="formTitles"
       :mode="isCreateOrUpdate ? 'create' : 'update'"
       @submit="handleFormSubmit"
+    />
+
+    <ConfirmDialog
+      v-model:open="isConfirmDialogOpen"
+      :message="confirmMessage"
+      @submit="handleConfirmAction"
+      @close="isConfirmDialogOpen = false"
     />
   </div>
 </template>
