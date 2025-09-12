@@ -18,6 +18,10 @@ const props = defineProps({
     type: Object as PropType<THREE.Mesh | null>,
     default: null,
   },
+  isHiding: {
+    type: Boolean,
+    default: false,
+  },
   color: {
     type: [String, Number] as PropType<string | number>,
     default: "red",
@@ -55,8 +59,23 @@ switch (props.type) {
 }
 
 sceneStates?.draggableObjects.add(wheel);
+
+watch(
+  () => props.isHiding,
+  (isHiding) => {
+    if (isHiding) {
+      sceneStates?.draggableObjects.delete(wheel);
+    } else {
+      sceneStates?.draggableObjects.add(wheel);
+    }
+  },
+);
+
+onBeforeUnmount(() => {
+  sceneStates?.draggableObjects.delete(wheel);
+});
 </script>
 
 <template>
-  <primitive :object="wheel" />
+  <primitive :visible="!props.isHiding" :object="wheel" />
 </template>

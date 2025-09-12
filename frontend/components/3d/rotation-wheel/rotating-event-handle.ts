@@ -34,16 +34,29 @@ export class RotatingUserData implements IUserData {
     const objNdc = this.cam.position.clone();
     objNdc.project(this.context.camera.value!);
 
-    let downAngle = Math.atan(
-      (event.clientY - objNdc.y) / (event.clientX - objNdc.x),
-    );
-    if (!Number.isFinite(downAngle)) {
-      downAngle = 0;
-    }
+    const ele = this.context.renderer.value.domElement;
+    const rect = ele.getBoundingClientRect();
+
+    const scaledX = ((event.clientX - rect.left) / rect.width!) * 2 - 1;
+    const scaledY = -((event.clientY - rect.top) / rect.height!) * 2 + 1;
+
+    const downAngle = Math.atan2(scaledY - objNdc.y, scaledX - objNdc.x);
     this.downAngle = downAngle;
   };
 
-  handlePointerMoveEvent = (event: PointerEvent) => {};
+  handlePointerMoveEvent = (event: PointerEvent) => {
+    const objNdc = this.cam.position.clone();
+    objNdc.project(this.context.camera.value!);
+
+    const ele = this.context.renderer.value.domElement;
+    const rect = ele.getBoundingClientRect();
+
+    const scaledX = ((event.clientX - rect.left) / rect.width!) * 2 - 1;
+    const scaledY = -((event.clientY - rect.top) / rect.height!) * 2 + 1;
+
+    const moveAngle = Math.atan2(scaledY - objNdc.y, scaledX - objNdc.x);
+    this.cam.rotation[this.type] = moveAngle + this.downAngle!;
+  };
 
   handlePointerUpEvent = (_event: PointerEvent) => {
     this.isDragging = false;

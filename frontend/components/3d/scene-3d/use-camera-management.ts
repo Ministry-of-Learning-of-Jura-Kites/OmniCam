@@ -10,6 +10,8 @@ export function useCameraManagement(sceneStates: SceneStates) {
       name: "Untitled " + Object.keys(sceneStates.cameras).length.toString(),
       position: new THREE.Vector3().copy(sceneStates.spectatorCameraPosition),
       rotation: new THREE.Euler().copy(sceneStates.spectatorCameraRotation),
+      isHidingArrows: false,
+      isHidingWheels: false,
       fov: 60,
     };
     return camId;
@@ -38,6 +40,8 @@ export function useCameraManagement(sceneStates: SceneStates) {
         sceneStates.currentCameraRotation.value = cam!.rotation;
       },
     });
+    cam!.isHidingArrows = true;
+    cam!.isHidingWheels = true;
   }
 
   function switchToSpectator() {
@@ -56,9 +60,9 @@ export function useCameraManagement(sceneStates: SceneStates) {
       },
     });
     gsap.to(threeCam!.rotation!, {
-      x: sceneStates.spectatorCameraPosition.x,
-      y: sceneStates.spectatorCameraPosition.y,
-      z: sceneStates.spectatorCameraPosition.z,
+      x: sceneStates.spectatorCameraRotation.x,
+      y: sceneStates.spectatorCameraRotation.y,
+      z: sceneStates.spectatorCameraRotation.z,
       onComplete: () => {
         sceneStates.currentCameraRotation.value =
           sceneStates.spectatorCameraRotation;

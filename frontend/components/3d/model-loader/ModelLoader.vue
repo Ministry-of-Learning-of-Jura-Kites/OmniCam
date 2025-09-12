@@ -1,12 +1,13 @@
 <script setup lang="ts">
 import { useGLTF } from "@tresjs/cientos";
+import type { TresObject3D } from "@tresjs/core";
 
 const props = defineProps<{
   path?: string;
   position?: [number, number, number];
 }>();
 
-let nodes: any;
+let nodes: Record<string, TresObject3D>;
 
 try {
   const gltf = await useGLTF(props.path ?? "");
