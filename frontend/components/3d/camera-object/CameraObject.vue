@@ -40,16 +40,43 @@ const cam = toRef(sceneStates.cameras, props.camId);
       <TresBoxGeometry :args="[0.5, 0.5, 0.5]" />
       <TresMeshBasicMaterial color="white" />
     </TresMesh>
-    <MovableArrow
-      v-if="cam != null"
-      v-model="cam"
-      direction="x"
-      color="green"
-    />
-    <MovableArrow v-if="cam != null" v-model="cam" direction="y" color="red" />
-    <MovableArrow v-if="cam != null" v-model="cam" direction="z" color="blue" />
-    <RotationWheel v-if="cam != null" v-model="cam" type="x" color="green" />
-    <RotationWheel v-if="cam != null" v-model="cam" type="y" color="red" />
-    <RotationWheel v-if="cam != null" v-model="cam" type="z" color="blue" />
+    <template v-if="cam != null">
+      <MovableArrow
+        v-model="cam"
+        :is-hiding="cam.isHidingArrows"
+        direction="x"
+        color="green"
+      />
+      <MovableArrow
+        v-model="cam"
+        :is-hiding="cam.isHidingArrows"
+        direction="y"
+        color="red"
+      />
+      <MovableArrow
+        v-model="cam"
+        :is-hiding="cam.isHidingArrows"
+        direction="z"
+        color="blue"
+      />
+      <RotationWheel
+        v-model="cam"
+        :is-hiding="cam.isHidingWheels"
+        type="x"
+        color="green"
+      />
+      <RotationWheel
+        v-model="cam"
+        :is-hiding="cam.isHidingWheels"
+        type="y"
+        color="red"
+      />
+      <RotationWheel
+        v-model="cam"
+        :is-hiding="cam.isHidingWheels"
+        type="z"
+        color="blue"
+      />
+    </template>
   </TresMesh>
 </template>
