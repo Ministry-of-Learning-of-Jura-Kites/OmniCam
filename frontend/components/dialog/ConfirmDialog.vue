@@ -4,7 +4,6 @@ import {
   DialogClose,
   DialogContent,
   DialogHeader,
-  DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
 const props = defineProps<{
@@ -30,9 +29,7 @@ function handleSubmit() {
   <Dialog :open="props.open" @update:open="emit('update:open', $event)">
     <DialogContent>
       <DialogHeader class="flex flex-col items-center space-y-4">
-        <DialogTitle class="text-center">
-          {{ message }}
-        </DialogTitle>
+        <h2 class="text-center justify-center flex">{{ message }}</h2>
       </DialogHeader>
 
       <DialogFooter>

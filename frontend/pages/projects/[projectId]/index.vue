@@ -3,6 +3,7 @@
 import { generateColumnsFromKeys } from "~/components/dataTable/column";
 import ConfirmDialog from "~/components/dialog/ConfirmDialog.vue";
 import FormDialog from "~/components/dialog/FormDialog.vue";
+import SuccessDialog from "~/components/dialog/SuccessDialog.vue";
 
 export interface Model {
   id: string;
@@ -81,6 +82,7 @@ const isCreateFormDialogOpen = ref<boolean>(false);
 const confirmDialog = ref<boolean>(false);
 const confirmMessage = ref<string>("");
 const successDialog = ref<boolean>(false);
+const successMessage = ref<string>("");
 // const isLoading = ref(false);
 
 // dialog form config
@@ -153,6 +155,7 @@ async function createModel() {
     version: response.data.version,
   } as ModelWithoutId;
   successDialog.value = true;
+  successMessage.value = `You have successfully create ${response.data.name}`;
 }
 
 async function updateModel(modelId: string) {
@@ -185,6 +188,7 @@ async function updateModel(modelId: string) {
     };
     console.log("new Model", models.value[modelId]);
     successDialog.value = true;
+    successMessage.value = `You have successfully update ${response.data.name}`;
     console.log("Updated row:", modelId);
   } catch (err) {
     console.error("Update failed", err);
@@ -207,6 +211,7 @@ async function deleteRow(id: string) {
     );
     console.log("Deleted row:", id);
     successDialog.value = true;
+    successMessage.value = `You have successfully delete ${id}`;
   } catch (err) {
     console.error("Delete failed", err);
   }
@@ -308,6 +313,11 @@ watch(
       v-model:open="confirmDialog"
       :message="confirmMessage"
       @submit="handleConfirmSubmit"
+    />
+    <SuccessDialog
+      v-model:open="successDialog"
+      :message="successMessage"
+      icon="fa fa-check-circle"
     />
   </div>
 </template>
