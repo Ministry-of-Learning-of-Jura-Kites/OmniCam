@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import * as THREE from "three";
-import { MovingUserData } from "./moving-event-handle";
+import { MOVING_TYPE, MovingUserData } from "./moving-event-handle";
 import { MOVING_ARROW_CONFIG } from "~/constants";
 import { useTresContext } from "@tresjs/core";
 import type { Obj3DWithUserData } from "~/types/obj-3d-user-data";
@@ -105,6 +105,16 @@ function setMeshDraggable() {
   }
 }
 
+const isActuallyHiding = computed(() => {
+  const shouldHide =
+    props.isHiding ||
+    (cam.value.controlling != null &&
+      (cam.value.controlling.type != MOVING_TYPE ||
+        cam.value.controlling.direction != props.direction));
+
+  return shouldHide;
+});
+
 watch(
   () => props.isHiding,
   (isHiding) => {
@@ -122,5 +132,5 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <primitive :visible="!props.isHiding" :object="arrow" />
+  <primitive :visible="!isActuallyHiding" :object="arrow" />
 </template>

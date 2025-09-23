@@ -2,6 +2,8 @@ import type { TresContext } from "@tresjs/core";
 import type { ICamera } from "~/types/camera";
 import type { IUserData } from "~/types/obj-3d-user-data";
 
+export const ROTATING_TYPE = "rotation";
+
 export class RotatingUserData implements IUserData {
   type: "x" | "y" | "z";
   cam: ICamera;
@@ -29,8 +31,13 @@ export class RotatingUserData implements IUserData {
 
   handlePointerDownEvent = (event: PointerEvent) => {
     this.isDragging = true;
+    this.cam.controlling = {
+      type: ROTATING_TYPE,
+      direction: this.type,
+    };
     document.addEventListener("pointermove", this.handlePointerMoveEvent);
     document.addEventListener("pointerup", this.handlePointerUpEvent);
+
     const objNdc = this.cam.position.clone();
     objNdc.project(this.context.camera.value!);
 
@@ -60,6 +67,7 @@ export class RotatingUserData implements IUserData {
 
   handlePointerUpEvent = (_event: PointerEvent) => {
     this.isDragging = false;
+    this.cam.controlling = null;
     document.removeEventListener("pointerup", this.handlePointerUpEvent);
     document.removeEventListener("pointermove", this.handlePointerMoveEvent);
   };

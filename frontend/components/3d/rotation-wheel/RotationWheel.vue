@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import * as THREE from "three";
 import { SCENE_STATES_KEY } from "../scene-states-provider/create-scene-states";
-import { RotatingUserData } from "./rotating-event-handle";
+import { ROTATING_TYPE, RotatingUserData } from "./rotating-event-handle";
 import { useTresContext } from "@tresjs/core";
 import type { Obj3DWithUserData } from "~/types/obj-3d-user-data";
 import { ROTATING_TORUS_CONFIG } from "~/constants";
@@ -10,7 +10,7 @@ import type { ICamera } from "~/types/camera";
 const cam = defineModel<ICamera>({ required: true });
 
 const props = defineProps({
-  type: {
+  direction: {
     type: String as PropType<"x" | "y" | "z">,
     default: "x",
   },
@@ -41,11 +41,11 @@ const geometry = new THREE.TorusGeometry(
 const material = new THREE.MeshBasicMaterial({ color: props.color });
 const wheelBase = new THREE.Mesh(geometry, material);
 
-wheelBase.userData = new RotatingUserData(props.type, cam.value, context);
+wheelBase.userData = new RotatingUserData(props.direction, cam.value, context);
 
 const wheel = wheelBase as unknown as Obj3DWithUserData;
 
-switch (props.type) {
+switch (props.direction) {
   case "x":
     wheel.rotateY(Math.PI / 2);
     break;
@@ -59,6 +59,16 @@ switch (props.type) {
 }
 
 sceneStates?.draggableObjects.add(wheel);
+
+const isActuallyHiding = computed(() => {
+  const shouldHide =
+    props.isHiding ||
+    (cam.value.controlling != null &&
+      (cam.value.controlling.type != ROTATING_TYPE ||
+        cam.value.controlling.direction != props.direction));
+
+  return shouldHide;
+});
 
 watch(
   () => props.isHiding,
@@ -77,5 +87,5 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <primitive :visible="!props.isHiding" :object="wheel" />
+  <primitive :visible="!isActuallyHiding" :object="wheel" />
 </template>

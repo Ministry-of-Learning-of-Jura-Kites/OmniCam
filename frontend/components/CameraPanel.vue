@@ -242,8 +242,8 @@ const deleteCamera = (id: string) => {
           <Button
             size="sm"
             variant="ghost"
-            :disabled="!sceneStates.currentCam"
-            @click="deleteCamera(sceneStates.currentCam.value!)"
+            :disabled="!sceneStates.currentCamId"
+            @click="deleteCamera(sceneStates.currentCamId.value!)"
           >
             <Trash2 class="h-3 w-3" />
             Delete
@@ -267,3 +267,30 @@ const deleteCamera = (id: string) => {
     </Card>
   </div>
 </template>
+
+<style lang="css" scoped>
+input {
+  field-sizing: content;
+}
+
+/* For WebKit browsers (Chrome, Safari) */
+input[type="number"]::-webkit-outer-spin-button,
+input[type="number"]::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0; /* Important for removing extra space */
+}
+
+/* For Mozilla Firefox */
+input[type="number"] {
+  appearance: textfield;
+  -moz-appearance: textfield;
+}
+
+input {
+  width: 100%;
+  border-radius: 5px;
+  border: 1px solid black;
+  outline: 1px solid white;
+  box-sizing: border-box;
+}
+</style>

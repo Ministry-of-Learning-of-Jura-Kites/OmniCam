@@ -4,6 +4,8 @@ import type { TresContext } from "@tresjs/core";
 import { getAxisVector as createAxisVector } from "~/lib/utils";
 import type { ICamera } from "~/types/camera";
 
+export const MOVING_TYPE = "moving";
+
 export class MovingUserData implements IUserData {
   type: "x" | "y" | "z";
   // obj: ModelRef<THREE.Mesh>;
@@ -30,6 +32,10 @@ export class MovingUserData implements IUserData {
 
   handlePointerDownEvent = (_event: PointerEvent) => {
     this.isDragging = true;
+    this.cam.controlling = {
+      type: MOVING_TYPE,
+      direction: this.type,
+    };
     document.addEventListener("pointermove", this.handlePointerMoveEvent);
     document.addEventListener("pointerup", this.handlePointerUpEvent);
   };
@@ -64,6 +70,7 @@ export class MovingUserData implements IUserData {
 
   handlePointerUpEvent = (_event: PointerEvent) => {
     this.isDragging = false;
+    this.cam.controlling = null;
     document.removeEventListener("pointerup", this.handlePointerUpEvent);
     document.removeEventListener("pointermove", this.handlePointerMoveEvent);
   };
