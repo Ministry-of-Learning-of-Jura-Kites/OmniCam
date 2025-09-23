@@ -4,7 +4,6 @@ import { Grid, Environment } from "@tresjs/cientos";
 import AdjustableInput from "../../adjustable-input/AdjustableInput.vue";
 import { SPECTATOR_ADJ_INPUT_SENTIVITY } from "~/constants";
 import CameraObject from "../camera-object/CameraObject.vue";
-import Scene3dInner from "./inner/Scene3dInner.vue";
 import * as THREE from "three";
 import { SCENE_STATES_KEY } from "~/components/3d/scene-states-provider/create-scene-states";
 import { useCameraUpdate } from "./use-camera-update";
@@ -17,6 +16,10 @@ defineProps<{
 }>();
 
 const sceneStates = inject(SCENE_STATES_KEY)!;
+
+const camera: Ref<THREE.PerspectiveCamera | null> = ref(null);
+
+const canvas: Ref<InstanceType<typeof TresCanvas> | null> = ref(null);
 
 useCameraUpdate(sceneStates);
 
@@ -49,7 +52,7 @@ function onCanvasPointer(event: PointerEvent) {
   mouse.x = ((event.clientX - rect.left) / rect.width!) * 2 - 1;
   mouse.y = -((event.clientY - rect.top) / rect.height!) * 2 + 1;
 
-  raycaster.setFromCamera(mouse, sceneStates.tresContext.value!.camera!);
+  raycaster.setFromCamera(mouse, camera.value!);
 
   const intersects = raycaster.intersectObjects(
     [...sceneStates.draggableObjects],
@@ -67,31 +70,38 @@ function onCanvasPointer(event: PointerEvent) {
 }
 
 watch(
-  sceneStates.tresContext,
-  (context) => {
-    context?.renderer.domElement.addEventListener(
+  canvas,
+  (canvas) => {
+    const context = canvas!.context!;
+
+    sceneStates.tresContext.value = context;
+
+    context.renderer.value.domElement.addEventListener(
       "pointerdown",
       onCanvasPointer,
     );
 
-    context?.renderer.domElement.addEventListener(
+    context.renderer.value.domElement.addEventListener(
       "pointermove",
       onCanvasPointer,
     );
 
-    context?.renderer.domElement.addEventListener("pointerup", onCanvasPointer);
+    context.renderer.value.domElement.addEventListener(
+      "pointerup",
+      onCanvasPointer,
+    );
 
-    context?.renderer.domElement.addEventListener(
+    context.renderer.value.domElement.addEventListener(
       "keydown",
       sceneStates.spectatorPosition.onKeyDown,
     );
 
-    context?.renderer.domElement.addEventListener(
+    context.renderer.value.domElement.addEventListener(
       "keyup",
       sceneStates.spectatorPosition.onKeyUp,
     );
 
-    context?.renderer.domElement.addEventListener(
+    context.renderer.value.domElement.addEventListener(
       "blur",
       (event: FocusEvent) => {
         sceneStates.spectatorRotation.onBlur(event);
@@ -100,6 +110,29 @@ watch(
     );
   },
   { once: true },
+);
+
+const spectatorRefs = {
+  position: {
+    x: toRef(sceneStates.spectatorCameraPosition, "x"),
+    y: toRef(sceneStates.spectatorCameraPosition, "y"),
+    z: toRef(sceneStates.spectatorCameraPosition, "z"),
+  },
+  rotation: {
+    x: toRef(sceneStates.spectatorCameraRotation, "x"),
+    y: toRef(sceneStates.spectatorCameraRotation, "y"),
+    z: toRef(sceneStates.spectatorCameraRotation, "z"),
+  },
+};
+
+watch(
+  () => sceneStates.currentCameraFov.value,
+  (newFov) => {
+    if (camera.value) {
+      camera.value.fov = newFov!;
+      camera.value.updateProjectionMatrix();
+    }
+  },
 );
 </script>
 
@@ -117,7 +150,7 @@ watch(
         <div class="flex">
           <p>x:</p>
           <AdjustableInput
-            v-model="sceneStates.spectatorCameraPosition.x"
+            v-model="spectatorRefs.position.x"
             class="right-adjustable-input"
             :sliding-sensitivity="SPECTATOR_ADJ_INPUT_SENTIVITY"
           />
@@ -125,7 +158,7 @@ watch(
         <div class="flex">
           <p>y:</p>
           <AdjustableInput
-            v-model="sceneStates.spectatorCameraPosition.y"
+            v-model="spectatorRefs.position.y"
             class="right-adjustable-input"
             :sliding-sensitivity="SPECTATOR_ADJ_INPUT_SENTIVITY"
           />
@@ -133,7 +166,7 @@ watch(
         <div class="flex">
           <p>z:</p>
           <AdjustableInput
-            v-model="sceneStates.spectatorCameraPosition.z"
+            v-model="spectatorRefs.position.z"
             class="right-adjustable-input"
             :sliding-sensitivity="SPECTATOR_ADJ_INPUT_SENTIVITY"
           />
@@ -141,7 +174,7 @@ watch(
         <div class="flex">
           <p>θ<sub>x</sub>:</p>
           <AdjustableInput
-            v-model="sceneStates.spectatorCameraRotation.x"
+            v-model="spectatorRefs.rotation.x"
             class="right-adjustable-input"
             :max="Math.PI / 2 - 0.01"
             :min="-Math.PI / 2 + 0.01"
@@ -151,7 +184,7 @@ watch(
         <div class="flex">
           <p>θ<sub>y</sub>:</p>
           <AdjustableInput
-            v-model="sceneStates.spectatorCameraRotation.y"
+            v-model="spectatorRefs.rotation.y"
             class="right-adjustable-input"
             :max="Math.PI - 0.01"
             :min="-Math.PI + 0.01"
@@ -161,25 +194,37 @@ watch(
         <div class="flex">
           <p>θ<sub>z</sub>:</p>
           <AdjustableInput
-            v-model="sceneStates.spectatorCameraRotation.z"
+            v-model="spectatorRefs.rotation.z"
             class="right-adjustable-input"
             :max="Math.PI - 0.01"
             :min="-Math.PI + 0.01"
             :sliding-sensitivity="SPECTATOR_ADJ_INPUT_SENTIVITY"
           />
         </div>
+        <div class="flex">
+          <p>FOV:</p>
+          <AdjustableInput
+            v-model="sceneStates.spectatorCameraFov"
+            class="right-adjustable-input"
+            :max="180"
+            :min="0"
+            :sliding-sensitivity="SPECTATOR_ADJ_INPUT_SENTIVITY"
+          />
+        </div>
       </div>
       <TresCanvas
         id="canvas"
+        ref="canvas"
         resize-event="parent"
         clear-color="#0E0C29"
         tabindex="0"
       >
         <!-- Camera -->
         <TresPerspectiveCamera
+          ref="camera"
           :position="sceneStates.currentCameraPosition.value"
           :rotation="sceneStates.currentCameraRotation.value"
-          :fov="75"
+          :fov="sceneStates.currentCameraFov.value"
         />
 
         <CameraObject
@@ -190,7 +235,9 @@ watch(
         />
 
         <!-- Environment and lighting, from the tresjs/cientos library -->
-        <Environment preset="studio" />
+        <Suspense>
+          <Environment preset="city" />
+        </Suspense>
         <TresAmbientLight :intensity="0.4" />
         <TresDirectionalLight :position="[10, 10, 5]" :intensity="1" />
 
@@ -216,7 +263,7 @@ watch(
           :infinite-grid="true"
           :side="THREE.DoubleSide"
         />
-        <Scene3dInner />
+        <!-- <Scene3dInner /> -->
       </TresCanvas>
     </div>
   </ClientOnly>
