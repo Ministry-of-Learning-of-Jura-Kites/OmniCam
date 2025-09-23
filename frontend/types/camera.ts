@@ -30,4 +30,8 @@ export interface ICamera {
   fov: number;
   isHidingArrows: boolean;
   isHidingWheels: boolean;
+  controlling: {
+    type: "rotation" | "moving";
+    direction: "x" | "y" | "z";
+  } | null;
 }

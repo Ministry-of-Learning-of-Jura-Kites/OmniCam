@@ -43,38 +43,53 @@ const cam = toRef(sceneStates.cameras, props.camId);
     <template v-if="cam != null">
       <MovableArrow
         v-model="cam"
-        :is-hiding="cam.isHidingArrows"
+        :is-hiding="
+          cam.isHidingArrows || sceneStates.currentCamId.value == props.camId
+        "
+        :controlling="cam.controlling"
         direction="x"
         color="green"
       />
       <MovableArrow
         v-model="cam"
-        :is-hiding="cam.isHidingArrows"
+        :is-hiding="
+          cam.isHidingArrows || sceneStates.currentCamId.value == props.camId
+        "
+        :controlling="cam.controlling"
         direction="y"
         color="red"
       />
       <MovableArrow
         v-model="cam"
-        :is-hiding="cam.isHidingArrows"
+        :is-hiding="
+          cam.isHidingArrows || sceneStates.currentCamId.value == props.camId
+        "
+        :controlling="cam.controlling"
         direction="z"
         color="blue"
       />
       <RotationWheel
         v-model="cam"
-        :is-hiding="cam.isHidingWheels"
-        type="x"
+        :is-hiding="
+          cam.isHidingWheels || sceneStates.currentCamId.value == props.camId
+        "
+        direction="x"
         color="green"
       />
       <RotationWheel
         v-model="cam"
-        :is-hiding="cam.isHidingWheels"
-        type="y"
+        :is-hiding="
+          cam.isHidingWheels || sceneStates.currentCamId.value == props.camId
+        "
+        direction="y"
         color="red"
       />
       <RotationWheel
         v-model="cam"
-        :is-hiding="cam.isHidingWheels"
-        type="z"
+        :is-hiding="
+          cam.isHidingWheels || sceneStates.currentCamId.value == props.camId
+        "
+        direction="z"
         color="blue"
       />
     </template>
