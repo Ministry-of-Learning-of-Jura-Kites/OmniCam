@@ -33,15 +33,12 @@ export function useCameraManagement(sceneStates: SceneStates) {
         sceneStates.currentCameraPosition.value = cam!.position;
       },
     });
-    gsap.to(
-      (sceneStates.tresContext.value!.camera! as THREE.PerspectiveCamera)!,
-      {
-        fov: cam?.fov,
-        onComplete: () => {
-          sceneStates.currentCameraFov.value.data = toRef(cam!, "fov");
-        },
-      },
-    );
+    // gsap.to(
+    //   (sceneStates.tresContext.value!.camera! as THREE.PerspectiveCamera)!,
+    //   {
+    //     fov: cam?.fov,
+    //   },
+    // );
     gsap.to(sceneStates.tresContext.value!.camera!.rotation!, {
       x: cam!.rotation.x,
       y: cam!.rotation.y,
@@ -68,16 +65,16 @@ export function useCameraManagement(sceneStates: SceneStates) {
       },
     });
 
-    gsap.to(
-      (sceneStates.tresContext.value!.camera! as THREE.PerspectiveCamera)!,
-      {
-        fov: cam?.fov,
-        onComplete: () => {
-          sceneStates.currentCameraFov.value.data =
-            sceneStates.spectatorCameraFov;
-        },
-      },
-    );
+    // gsap.to(
+    //   (sceneStates.tresContext.value!.camera! as THREE.PerspectiveCamera)!,
+    //   {
+    //     fov: cam?.fov,
+    //     onComplete: () => {
+    //       sceneStates.currentCameraFov.value.data =
+    //         sceneStates.spectatorCameraFov;
+    //     },
+    //   },
+    // );
     gsap.to(threeCam!.rotation!, {
       x: sceneStates.spectatorCameraRotation.x,
       y: sceneStates.spectatorCameraRotation.y,
