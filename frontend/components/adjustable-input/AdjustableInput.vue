@@ -1,5 +1,5 @@
 <script setup lang="ts">
-const value = defineModel<number>();
+const model = defineModel<Ref<number>>();
 
 const props = defineProps({
   max: {
@@ -56,7 +56,9 @@ function onPointerUp(_e: PointerEvent) {
     document.removeEventListener("pointerup", onPointerUp);
     return;
   }
-  value.value = roundTo(value.value ?? 0, 5);
+  if (model.value) {
+    model.value.value = roundTo(model.value.value ?? 0, 5);
+  }
   isDragging.value = false;
   isInputting.value = true;
 
@@ -83,8 +85,8 @@ function onPointerMove(e: MouseEvent) {
   if (deltaX > 200) {
     return;
   }
-  if (value?.value != null) {
-    const newVal = value.value + deltaX * props.slidingSensitivity;
+  if (model?.value != null) {
+    const newVal = model.value.value + deltaX * props.slidingSensitivity;
     setClamp(newVal);
   }
 }
@@ -97,10 +99,14 @@ function setClamp(input: number) {
   if (props.min != null) {
     newVal = Math.max(props.min, newVal);
   }
-  value.value = newVal;
+  if (model.value) {
+    model.value.value = newVal;
+  }
 }
 
 function unsetInputting() {
+  setClamp(Number(inputEl.value?.value));
+
   isInputting.value = false;
   document.removeEventListener("click", handleClickOutside);
 }
@@ -119,21 +125,21 @@ function handleClickOutside(e: MouseEvent) {
       ref="textValue"
       class="text-right w-full select-none"
       @pointerdown="onPointerDown"
-      >{{ (value ?? 0).toFixed(2) }}</span
+      >{{ (model?.value ?? 0).toFixed(2) }}</span
     >
     <input
       v-if="isInputting"
       ref="inputEl"
-      v-model="value"
+      v-model="model!.value"
       type="number"
-      :size="value?.toString().length"
+      :size="model?.value.toString().length"
       @focusout="unsetInputting"
       @keypress.enter="unsetInputting"
     />
   </div>
 </template>
 
-<style>
+<style scoped>
 input {
   field-sizing: content;
 }
@@ -149,7 +155,13 @@ input[type="number"]::-webkit-inner-spin-button {
 input[type="number"] {
   appearance: textfield;
   -moz-appearance: textfield;
+  text-shadow:
+    -1px -1px 0 black /* Top-left shadow */,
+    1px -1px 0 black /* Top-right shadow */,
+    -1px 1px 0 black /* Bottom-left shadow */,
+    1px 1px 0 black /* Bottom-right shadow */;
 }
+
 input {
   width: 100%;
   border-radius: 5px;
