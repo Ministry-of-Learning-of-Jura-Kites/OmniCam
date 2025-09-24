@@ -38,7 +38,7 @@ func (t *DeleteModelRoute) delete(c *gin.Context) {
 	}
 
 	// It's best practice to delete the files first, then the database entry.
-	rootDir := "."
+	rootDir := ".."
 
 	// Helper function to handle path trimming and deletion
 	deleteFile := func(dbPath string) {
