@@ -1,9 +1,10 @@
 <script setup lang="ts">
 // import { keyof } from "zod";
-import { generateColumnsFromKeys } from "~/components/dataTable/column";
+// import { generateColumnsFromKeys } from "~/components/dataTable/column";
 import ConfirmDialog from "~/components/dialog/ConfirmDialog.vue";
 import FormDialog from "~/components/dialog/FormDialog.vue";
 import SuccessDialog from "~/components/dialog/SuccessDialog.vue";
+import ContentCard from "~/components/card/ContentCard.vue";
 
 export interface Model {
   id: string;
@@ -11,6 +12,8 @@ export interface Model {
   name: string;
   description: string;
   version: number;
+  imagePath?: string;
+  filePath?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -38,6 +41,7 @@ export type ModelForm = {
   name: string;
   description: string;
   file: File | null;
+  image: File | null;
 };
 export type ModelWithoutId = Omit<Model, "id">;
 
@@ -50,31 +54,32 @@ const modelForm = reactive<ModelForm>({
   name: "",
   description: "",
   file: null,
+  image: null,
 });
 
 // write table model (what u want to show etc.)
-const modelKeys: (keyof Model)[] = [
-  "name",
-  "description",
-  "version",
-  "createdAt",
-  "updatedAt",
-];
+// const modelKeys: (keyof Model)[] = [
+//   "name",
+//   "description",
+//   "version",
+//   "createdAt",
+//   "updatedAt",
+// ];
 
-const tableTitles = {
-  name: "Name",
-  description: "Description",
-  version: "Version",
-  createdAt: "Created At",
-  updatedAt: "Updated At",
-};
+// const tableTitles = {
+//   name: "Name",
+//   description: "Description",
+//   version: "Version",
+//   createdAt: "Created At",
+//   updatedAt: "Updated At",
+// };
 
 // generate key to use here
 
-const generateKey = generateColumnsFromKeys<Model>(modelKeys, tableTitles, {
-  onEdit: (row) => handleEditRow(row),
-  onDelete: (row) => handleDeleteRow(row),
-});
+// const generateKey = generateColumnsFromKeys<Model>(modelKeys, tableTitles, {
+//   onEdit: (row) => handleEditRow(row),
+//   onDelete: (row) => handleDeleteRow(row),
+// });
 
 // Dialog handler for create delete update
 const isEditFormDialogOpen = ref<boolean>(false);
@@ -97,12 +102,14 @@ const createFields = {
   name: "text",
   description: "textarea",
   file: "file",
+  image: "file",
 } as const;
 
 const formTitles = {
   name: "Name",
   description: "Description",
   file: "Model file",
+  image: "Model Image",
 };
 
 async function fetchModel() {
@@ -138,6 +145,19 @@ async function createModel() {
     formData.append("file", modelForm.file);
   }
 
+  if (modelForm.image) {
+    formData.append("image", modelForm.image);
+  }
+
+  for (const [key, value] of formData.entries()) {
+    // For files, log the name
+    if (value instanceof File) {
+      console.log(`${key}: ${value.name} (${value.size} bytes)`);
+    } else {
+      console.log(`${key}: ${value}`);
+    }
+  }
+
   const projectId = route.params.projectId as string;
   const response = await $fetch<ModelReturnRequest>(
     `${config.public.NUXT_PUBLIC_URL}/api/v1/projects/${projectId}/models`,
@@ -153,6 +173,8 @@ async function createModel() {
     updatedAt: response.data.updatedAt,
     createdAt: response.data.createdAt,
     version: response.data.version,
+    imagePath: response.data.imagePath,
+    filePath: response.data.filePath,
   } as ModelWithoutId;
   successDialog.value = true;
   successMessage.value = `You have successfully create ${response.data.name}`;
@@ -266,13 +288,52 @@ function handleCreateFormSubmit() {
   createModel();
 }
 
+async function handleUpdateImage(file: File | undefined, modelId: string) {
+  if (!file || !modelId) return;
+
+  const projectId = route.params.projectId;
+  const formData = new FormData();
+  formData.append("image", file);
+
+  try {
+    const res = await $fetch<{ imagePath: string; message: string }>(
+      `${config.public.NUXT_PUBLIC_URL}/api/v1/projects/${projectId}/models/${modelId}/image`,
+      {
+        method: "PUT",
+        body: formData,
+      },
+    );
+
+    const updatedImagePath = res.imagePath;
+    const timestamp = new Date().getTime();
+    await new Promise((resolve) => setTimeout(resolve, 500));
+    // Ensure the model exists and then create a new object
+    if (models.value[modelId]) {
+      models.value[modelId] = {
+        ...models.value[modelId],
+        imagePath: `${updatedImagePath}?t=${timestamp}`, // This is the key change!
+      };
+    }
+
+    successDialog.value = true;
+    successMessage.value = `Image updated successfully for model ${modelId}`;
+  } catch (err) {
+    console.error("Failed to update image", err);
+  }
+}
+
 onMounted(() => {
   fetchModel();
 });
 
 // data computed when change (record -> array)
 const dataArray = computed(() =>
-  Object.entries(models.value).map(([id, model]) => ({ id, ...model })),
+  Object.entries(models.value).map(([id, model]) => ({
+    id,
+    ...model,
+    imagePath: model.imagePath,
+    filePath: model.filePath,
+  })),
 );
 
 watch(
@@ -284,14 +345,32 @@ watch(
     once: false,
   },
 );
+
+watch(dataArray, (dataArray) => {
+  console.log("test", dataArray);
+});
 </script>
 
 <template>
   <div>
     <Button type="button" @click="handleCreate" />
-    <div class="container py-10 mx-auto">
-      <DataTable :columns="generateKey" :data="dataArray" />
+    <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6 mt-4">
+      <ContentCard
+        v-for="model in dataArray"
+        :key="model.id"
+        :name="model.name"
+        :description="model.description"
+        :image-path="model.imagePath ?? ''"
+        @update="handleEditRow(model)"
+        @delete="handleDeleteRow(model)"
+        @update-image="
+          (file: File | undefined) => handleUpdateImage(file, model.id)
+        "
+      />
     </div>
+    <!-- <div class="container py-10 mx-auto">
+      <DataTable :columns="generateKey" :data="dataArray" />
+    </div> -->
     <FormDialog
       v-model:open="isEditFormDialogOpen"
       v-model:model="modelForm"
