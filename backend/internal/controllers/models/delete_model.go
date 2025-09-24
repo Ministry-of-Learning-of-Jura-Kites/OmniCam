@@ -40,7 +40,7 @@ func (t *DeleteModelRoute) delete(c *gin.Context) {
 	}
 
 	if model.FilePath != "" {
-		if err := os.Remove(model.FilePath); err != nil {
+		if err := os.RemoveAll(model.FilePath); err != nil {
 			t.Logger.Error("failed to remove model file", zap.Error(err))
 		}
 	}

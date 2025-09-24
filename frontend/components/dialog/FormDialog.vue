@@ -1,5 +1,5 @@
 <script setup lang="ts" generic="L extends Record<string, InputTypes | null>">
-import { reactive, watch } from "vue";
+import { watch } from "vue";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -19,11 +19,21 @@ type TitleMap<L extends Record<string, InputTypes | null>> = {
   [K in keyof L]: string;
 };
 
+const model = defineModel<ModelFromFields<L>>("model", {
+  type: Object,
+  default: () =>
+    ({
+      name: "",
+      description: "",
+      file: null,
+    }) as ModelFromFields<L>,
+});
+
 const props = defineProps<{
-  model?: ModelFromFields<L>;
   open: boolean;
   titles: TitleMap<L>;
   fields: L;
+  mode: "create" | "update";
 }>();
 
 const emit = defineEmits<{
@@ -31,14 +41,14 @@ const emit = defineEmits<{
   (e: "update:open", value: boolean): void;
 }>();
 
-const form = reactive<ModelFromFields<L>>({} as ModelFromFields<L>);
+// const model = reactive<ModelFromFields<L>>({} as ModelFromFields<L>);
 
 watch(
   () => props.open,
-  (val) => {
-    if (val && props.model) {
-      Object.assign(form, props.model);
-    }
+  (_val) => {
+    //if (val && model) {
+    //  Object.assign(model, model);
+    //}
   },
   { immediate: true },
 );
@@ -57,13 +67,16 @@ function handleClose() {
     <DialogContent class="sm:max-w-lg">
       <DialogHeader>
         <DialogTitle>
-          {{ props.model ? "Update" : "Create" }}
+          {{ props.mode === "update" ? "Update" : "Create" }}
         </DialogTitle>
       </DialogHeader>
 
       <div class="flex flex-col gap-2 py-4">
         <template
-          v-for="[key, type] of Object.entries(props.fields)"
+          v-for="[key, type] of Object.entries(props.fields) as [
+            keyof L,
+            L[keyof L],
+          ][]"
           :key="key"
         >
           <h2>{{ titles[key] }}</h2>
@@ -71,17 +84,17 @@ function handleClose() {
           <!-- text/number input -->
           <input
             v-if="type === 'text' || type === 'number'"
-            v-model="(form as any)[key]"
+            v-model="(model as any)[key]"
             :type="type"
-            :placeholder="key"
+            :placeholder="key as string"
             class="border px-2 py-1 rounded"
           />
 
           <!-- textarea -->
           <textarea
             v-else-if="type === 'textarea'"
-            v-model="(form as any)[key]"
-            :placeholder="key"
+            v-model="(model as any)[key]"
+            :placeholder="key as string"
             class="border px-2 py-1 rounded"
           />
 
@@ -91,13 +104,12 @@ function handleClose() {
             type="file"
             @change="
               (e) =>
-                ((form as any)[key] = ((e.target as HTMLInputElement)
+                ((model as any)[key] = ((e.target as HTMLInputElement)
                   .files?.[0] ?? null) as any)
             "
           />
         </template>
       </div>
-
       <DialogFooter>
         <DialogClose as-child>
           <Button type="button" variant="secondary" @click="handleClose">
@@ -105,7 +117,7 @@ function handleClose() {
           </Button>
         </DialogClose>
         <Button type="button" @click="handleSubmit">
-          {{ props.model ? "Update" : "Create" }}
+          {{ props.mode === "update" ? "Update" : "Create" }}
         </Button>
       </DialogFooter>
     </DialogContent>
