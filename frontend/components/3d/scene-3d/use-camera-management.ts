@@ -10,6 +10,9 @@ export function useCameraManagement(sceneStates: SceneStates) {
       name: "Untitled " + Object.keys(sceneStates.cameras).length.toString(),
       position: new THREE.Vector3().copy(sceneStates.spectatorCameraPosition),
       rotation: new THREE.Euler().copy(sceneStates.spectatorCameraRotation),
+      isHidingArrows: false,
+      isHidingWheels: false,
+      controlling: null,
       fov: 60,
     };
     return camId;
@@ -21,17 +24,23 @@ export function useCameraManagement(sceneStates: SceneStates) {
 
   function switchToCam(camId: string) {
     const cam = sceneStates.cameras[camId];
-    sceneStates.currentCam.value = camId;
+    sceneStates.currentCamId.value = camId;
     gsap.to(sceneStates.tresContext.value!.camera!.position!, {
-      x: cam?.position.x,
+      x: cam!.position.x,
       y: cam!.position.y,
       z: cam!.position.z,
       onComplete: () => {
         sceneStates.currentCameraPosition.value = cam!.position;
       },
     });
+    // gsap.to(
+    //   (sceneStates.tresContext.value!.camera! as THREE.PerspectiveCamera)!,
+    //   {
+    //     fov: cam?.fov,
+    //   },
+    // );
     gsap.to(sceneStates.tresContext.value!.camera!.rotation!, {
-      x: cam?.rotation.x,
+      x: cam!.rotation.x,
       y: cam!.rotation.y,
       z: cam!.rotation.z,
       onComplete: () => {
@@ -41,7 +50,7 @@ export function useCameraManagement(sceneStates: SceneStates) {
   }
 
   function switchToSpectator() {
-    const camId = sceneStates.currentCam.value;
+    const camId = sceneStates.currentCamId.value;
     const cam = sceneStates.cameras[camId!];
     const threeCam = sceneStates.tresContext.value!.camera!;
     cam?.position.copy(threeCam.position);
@@ -55,16 +64,27 @@ export function useCameraManagement(sceneStates: SceneStates) {
           sceneStates.spectatorCameraPosition;
       },
     });
+
+    // gsap.to(
+    //   (sceneStates.tresContext.value!.camera! as THREE.PerspectiveCamera)!,
+    //   {
+    //     fov: cam?.fov,
+    //     onComplete: () => {
+    //       sceneStates.currentCameraFov.value.data =
+    //         sceneStates.spectatorCameraFov;
+    //     },
+    //   },
+    // );
     gsap.to(threeCam!.rotation!, {
-      x: sceneStates.spectatorCameraPosition.x,
-      y: sceneStates.spectatorCameraPosition.y,
-      z: sceneStates.spectatorCameraPosition.z,
+      x: sceneStates.spectatorCameraRotation.x,
+      y: sceneStates.spectatorCameraRotation.y,
+      z: sceneStates.spectatorCameraRotation.z,
       onComplete: () => {
         sceneStates.currentCameraRotation.value =
           sceneStates.spectatorCameraRotation;
       },
     });
-    sceneStates.currentCam.value = null;
+    sceneStates.currentCamId.value = null;
   }
   return {
     spawnCameraHere,
