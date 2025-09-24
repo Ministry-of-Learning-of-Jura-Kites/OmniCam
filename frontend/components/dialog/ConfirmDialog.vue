@@ -30,13 +30,7 @@ function handleSubmit() {
   <Dialog :open="props.open" @update:open="emit('update:open', $event)">
     <DialogContent>
       <DialogHeader class="flex flex-col items-center space-y-4">
-        <<<<<<< HEAD
-        <DialogTitle class="text-center">
-          {{ message }}
-        </DialogTitle>
-        =======
         <h2 class="text-center justify-center flex">{{ message }}</h2>
-        >>>>>>> origin/main
       </DialogHeader>
 
       <DialogFooter>
