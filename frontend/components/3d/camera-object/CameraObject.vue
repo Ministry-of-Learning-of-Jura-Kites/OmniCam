@@ -1,7 +1,9 @@
 <script setup lang="ts">
-import type * as THREE from "three";
+// import type * as THREE from "three";
 import { SCENE_STATES_KEY } from "../scene-states-provider/create-scene-states";
 import MovableArrow from "../movable-arrow/MovableArrow.vue";
+import TresMesh from "@tresjs/core";
+import RotationWheel from "../rotation-wheel/RotationWheel.vue";
 
 const props = defineProps({
   name: {
@@ -18,12 +20,7 @@ const sceneStates = inject(SCENE_STATES_KEY)!;
 
 // const cameraMesh = useTemplateRef<THREE.Mesh>("cameraMesh");
 
-const cameraMesh = ref<THREE.Mesh | null>(null);
-
-// watch(cameraMesh, (mesh) => {
-//   console.log("gggg", mesh);
-//   mesh!.position.copy(props.position.value);
-// });
+const cam = toRef(sceneStates.cameras, props.camId);
 
 // watch(
 //   props.position,
@@ -38,31 +35,63 @@ const cameraMesh = ref<THREE.Mesh | null>(null);
 </script>
 
 <template>
-  <TresMesh
-    ref="cameraMesh"
-    :position="sceneStates.cameras[props.camId]!.position.clone()"
-  >
+  <TresMesh :position="sceneStates.cameras[props.camId]!.position.clone()">
     <TresMesh :rotation="sceneStates.cameras[props.camId]!.rotation.clone()">
       <TresBoxGeometry :args="[0.5, 0.5, 0.5]" />
       <TresMeshBasicMaterial color="white" />
     </TresMesh>
-    <MovableArrow
-      v-if="cameraMesh != null"
-      direction="x"
-      :camera-mesh="cameraMesh"
-      color="green"
-    />
-    <MovableArrow
-      v-if="cameraMesh != null"
-      direction="y"
-      :camera-mesh="cameraMesh"
-      color="red"
-    />
-    <MovableArrow
-      v-if="cameraMesh != null"
-      direction="z"
-      :camera-mesh="cameraMesh"
-      color="blue"
-    />
+    <template v-if="cam != null">
+      <MovableArrow
+        v-model="cam"
+        :is-hiding="
+          cam.isHidingArrows || sceneStates.currentCamId.value == props.camId
+        "
+        :controlling="cam.controlling"
+        direction="x"
+        color="green"
+      />
+      <MovableArrow
+        v-model="cam"
+        :is-hiding="
+          cam.isHidingArrows || sceneStates.currentCamId.value == props.camId
+        "
+        :controlling="cam.controlling"
+        direction="y"
+        color="red"
+      />
+      <MovableArrow
+        v-model="cam"
+        :is-hiding="
+          cam.isHidingArrows || sceneStates.currentCamId.value == props.camId
+        "
+        :controlling="cam.controlling"
+        direction="z"
+        color="blue"
+      />
+      <RotationWheel
+        v-model="cam"
+        :is-hiding="
+          cam.isHidingWheels || sceneStates.currentCamId.value == props.camId
+        "
+        direction="x"
+        color="green"
+      />
+      <RotationWheel
+        v-model="cam"
+        :is-hiding="
+          cam.isHidingWheels || sceneStates.currentCamId.value == props.camId
+        "
+        direction="y"
+        color="red"
+      />
+      <RotationWheel
+        v-model="cam"
+        :is-hiding="
+          cam.isHidingWheels || sceneStates.currentCamId.value == props.camId
+        "
+        direction="z"
+        color="blue"
+      />
+    </template>
   </TresMesh>
 </template>
