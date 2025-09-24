@@ -20,6 +20,7 @@ export interface Model {
 
 export interface ModelGetRequest {
   data: Model[];
+  count: number;
 }
 
 export interface ModelReturnRequest {
@@ -49,6 +50,7 @@ const config = useRuntimeConfig();
 const route = useRoute();
 
 const models = ref<Record<string, ModelWithoutId>>({});
+const totalData = ref<number>(0);
 const currentEditId = ref<string | null>(null);
 const modelForm = reactive<ModelForm>({
   name: "",
@@ -130,8 +132,10 @@ async function fetchModel() {
       },
       {},
     );
+    totalData.value = response.count;
 
     console.log(models.value, "c");
+    console.log(totalData.value);
   } catch (err) {
     console.error("fetchModel error", err);
   }
