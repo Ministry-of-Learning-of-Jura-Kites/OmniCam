@@ -21,7 +21,7 @@ export function createBaseSceneStates() {
 
   const isDraggingObject: Ref<boolean> = ref(false);
 
-  const currentCam: Ref<string | null> = ref(null);
+  const currentCamId: Ref<string | null> = ref(null);
 
   const spectatorCameraPosition: Reactive<THREE.Vector3> = reactive(
     new THREE.Vector3(),
@@ -30,6 +30,9 @@ export function createBaseSceneStates() {
   const spectatorCameraRotation: Reactive<THREE.Euler> = reactive(
     new THREE.Euler(0, 0, 0, "YXZ"),
   );
+
+  const spectatorCameraFov: Ref<number> = ref(75);
+
   const currentCameraPosition: Ref<THREE.Vector3> = ref(
     spectatorCameraPosition,
   );
@@ -40,15 +43,36 @@ export function createBaseSceneStates() {
 
   const cameras = reactive<Record<string, ICamera>>({});
 
+  const currentCam = computed(() => {
+    return currentCamId.value == null ? null : cameras![currentCamId.value];
+  });
+
+  const currentCameraFov = computed({
+    get() {
+      if (currentCamId.value == null) {
+        return spectatorCameraFov.value;
+      }
+      return currentCam.value?.fov;
+    },
+    set(newFOV) {
+      if (currentCam.value) {
+        currentCam.value.fov = newFOV!;
+      }
+    },
+  });
+
   const sceneStates = {
     tresContext,
     draggableObjects,
     isDraggingObject,
+    currentCamId,
     currentCam,
     currentCameraPosition,
     currentCameraRotation,
+    currentCameraFov,
     spectatorCameraPosition,
     spectatorCameraRotation,
+    spectatorCameraFov,
     tresCanvasParent,
     cameras,
   };

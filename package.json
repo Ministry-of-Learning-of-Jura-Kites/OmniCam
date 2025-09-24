@@ -18,6 +18,7 @@
   },
   "dependencies": {
     "@nuxtjs/color-mode": "^3.5.2",
+    "@fortawesome/fontawesome-free": "^7.0.1",
     "@t3-oss/env-nuxt": "^0.13.8",
     "@tailwindcss/vite": "^4.1.12",
     "@vueuse/core": "^13.8.0",
