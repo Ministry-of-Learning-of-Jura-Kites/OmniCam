@@ -78,6 +78,7 @@ func (t *PutModelRoute) put(c *gin.Context) {
 		ProjectId:   data.ProjectID,
 		Name:        data.Name,
 		Description: data.Description,
+		ImagePath:   data.ImagePath,
 		Version:     version,
 		CreatedAt:   data.CreatedAt.Time.Format(time.RFC3339),
 		UpdatedAt:   data.UpdatedAt.Time.Format(time.RFC3339),
