@@ -8,7 +8,7 @@ import SceneStatesProvider from "~/components/3d/scene-states-provider/SceneStat
   <div class="flex flex-col h-screen">
     <TopBar />
     <SceneStatesProvider>
-      <div class="flex-1 flex">
+      <div class="flex-1 flex overflow-hidden">
         <div class="flex-1 w-full h-full">
           <slot />
         </div>
