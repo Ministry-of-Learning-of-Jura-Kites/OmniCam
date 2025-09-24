@@ -2,7 +2,10 @@
 import tailwindcss from "@tailwindcss/vite";
 // import { env } from "~/env/server";
 export default defineNuxtConfig({
-  css: ["~/assets/css/tailwind.css"],
+  css: [
+    "~/assets/css/tailwind.css",
+    "@fortawesome/fontawesome-free/css/all.min.css",
+  ],
   vite: {
     plugins: [tailwindcss()],
   },

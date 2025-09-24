@@ -1,8 +1,9 @@
 -- name: CreateModel :one
 INSERT INTO
-  "model" (project_id, name, description, file_path)
+  "model" (id, project_id, name, description, file_path)
 VALUES
   (
+    sqlc.arg (id)::UUID,
     sqlc.arg (project_id)::UUID,
     sqlc.arg (name),
     sqlc.arg (description),
