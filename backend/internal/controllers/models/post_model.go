@@ -1,6 +1,7 @@
 package controller_model
 
 import (
+	"fmt"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -87,6 +88,8 @@ func (t *PostModelRoutes) post(c *gin.Context) {
 		}
 
 		fsImagePath := filepath.Join(imageDir, "image"+ext) // local filesystem path
+		fmt.Println("image path : ", fsImagePath)
+		fmt.Println("path : ", filePath)
 		if err := c.SaveUploadedFile(imageFile, fsImagePath); err != nil {
 			t.Logger.Error("failed to save model image", zap.Error(err))
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to save model image"})
