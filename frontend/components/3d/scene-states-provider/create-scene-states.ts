@@ -10,6 +10,7 @@ import type { ICamera } from "~/types/camera";
 import { useCameraManagement } from "../scene-3d/use-camera-management";
 import { useSpectatorRotation } from "../scene-3d/use-spectator-rotation";
 import { useSpectatorPosition } from "../scene-3d/use-spectator-position";
+import { useWebSocket } from "@vueuse/core";
 
 export const SCENE_STATES_KEY: InjectionKey<SceneStatesWithHelper> =
   Symbol("3d-scene-states");
@@ -61,6 +62,21 @@ export function createBaseSceneStates() {
     },
   });
 
+  const runtimeConfig = useRuntimeConfig();
+
+  const websocketUrl = `ws://${runtimeConfig.public.NUXT_PUBLIC_BACKEND_HOST}/api/v1/projects/gg/models/gg/autosave`;
+
+  const websocket = useWebSocket(websocketUrl, {
+    autoReconnect: {
+      delay: 1000,
+      onFailed: () => {
+        alert("Failed to connect websocket after multiple retries.");
+      },
+    },
+  });
+
+  const markedForCheck = new Set<string>();
+
   const sceneStates = {
     tresContext,
     draggableObjects,
@@ -74,8 +90,14 @@ export function createBaseSceneStates() {
     spectatorCameraRotation,
     spectatorCameraFov,
     tresCanvasParent,
+    websocket,
     cameras,
+    markedForCheck,
   };
+
+  // websocket.ws.value!.onclose = (_closeEvent: CloseEvent) => {
+  //   sceneStates.websocket = useWebSocket(websocketUrl);
+  // };
 
   return sceneStates;
 }

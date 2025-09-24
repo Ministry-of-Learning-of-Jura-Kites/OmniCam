@@ -15,6 +15,7 @@ export function useCameraManagement(sceneStates: SceneStates) {
       controlling: null,
       fov: 60,
     };
+    sceneStates.markedForCheck.add(camId);
     return camId;
   }
 

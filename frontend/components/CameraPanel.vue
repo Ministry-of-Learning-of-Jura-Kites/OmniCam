@@ -123,6 +123,7 @@ const deleteCamera = (id: string) => {
           <Input
             id="camera-name"
             v-model="sceneStates.cameras[selectedCamId]!.name"
+            @change="sceneStates.markedForCheck.add(selectedCamId)"
           />
         </div>
 
@@ -133,6 +134,7 @@ const deleteCamera = (id: string) => {
               id="pos-x"
               v-model.number="sceneStates.cameras[selectedCamId]!.position.x"
               type="number"
+              @change="sceneStates.markedForCheck.add(selectedCamId)"
             />
           </div>
           <div>
@@ -141,6 +143,7 @@ const deleteCamera = (id: string) => {
               id="pos-y"
               v-model.number="sceneStates.cameras[selectedCamId]!.position.y"
               type="number"
+              @change="sceneStates.markedForCheck.add(selectedCamId)"
             />
           </div>
           <div>
@@ -149,6 +152,7 @@ const deleteCamera = (id: string) => {
               id="pos-z"
               v-model.number="sceneStates.cameras[selectedCamId]!.position.z"
               type="number"
+              @change="sceneStates.markedForCheck.add(selectedCamId)"
             />
           </div>
         </div>
@@ -162,6 +166,7 @@ const deleteCamera = (id: string) => {
               id="angle-x"
               v-model.number="sceneStates.cameras[selectedCamId]!.rotation.x"
               type="number"
+              @change="sceneStates.markedForCheck.add(selectedCamId)"
             />
           </div>
           <div>
@@ -172,6 +177,7 @@ const deleteCamera = (id: string) => {
               id="angle-y"
               v-model.number="sceneStates.cameras[selectedCamId]!.rotation.y"
               type="number"
+              @change="sceneStates.markedForCheck.add(selectedCamId)"
             />
           </div>
           <div>
@@ -182,6 +188,7 @@ const deleteCamera = (id: string) => {
               id="angle-z"
               v-model.number="sceneStates.cameras[selectedCamId]!.rotation.z"
               type="number"
+              @change="sceneStates.markedForCheck.add(selectedCamId)"
             />
           </div>
         </div>
@@ -193,7 +200,8 @@ const deleteCamera = (id: string) => {
             v-model.number="sceneStates.cameras[selectedCamId]!.fov"
             type="number"
             min="10"
-            max="360"
+            max="180"
+            @change="sceneStates.markedForCheck.add(selectedCamId)"
           />
         </div>
 

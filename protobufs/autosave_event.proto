@@ -1,0 +1,35 @@
+syntax = "proto3";
+
+package camera;
+
+// Go: generated under go/camera
+option go_package = "omnicam.com/gen/go/camera";
+
+enum CameraEventType {
+  CAMERA_EVENT_TYPE_DELETE = 0;
+  CAMERA_EVENT_TYPE_UPSERT = 1;
+}
+
+// Camera model
+message Camera {
+  string id = 1;
+  string name = 2;
+  double angle_x = 3;
+  double angle_y = 4;
+  double angle_z = 5;
+  double angle_w = 6;
+  double pos_x = 7;
+  double pos_y = 8;
+  double pos_z = 9;
+}
+
+message CameraSaveEvent {
+  CameraEventType type = 1;
+
+  oneof payload {
+    string delete_id = 2; // for delete
+    Camera upsert = 3;    // for upsert
+  }
+}
+
+message CameraSaveEventSeries { repeated CameraSaveEvent events = 1; }
