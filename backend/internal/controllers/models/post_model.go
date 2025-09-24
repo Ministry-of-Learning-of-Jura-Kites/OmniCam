@@ -27,7 +27,7 @@ type CreateModelRequest struct {
 
 func (t *PostModelRoutes) post(c *gin.Context) {
 	var req CreateModelRequest
-
+	modelId := uuid.New()
 	strId := c.Param("projectId")
 	projectId, err := uuid.Parse(strId)
 	if err != nil {
@@ -43,32 +43,70 @@ func (t *PostModelRoutes) post(c *gin.Context) {
 		return
 	}
 
+	// --- Save .glb ---
 	file, err := c.FormFile("file")
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "file is required"})
 		return
 	}
-
-	uploadDir := filepath.Join(t.Env.ModelFilePath, projectId.String())
-	err = os.MkdirAll(uploadDir, os.ModePerm)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to upload model file"})
+	if filepath.Ext(file.Filename) != ".glb" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "model file must have .glb extension"})
 		return
 	}
 
-	filePath := filepath.Join(uploadDir, file.Filename)
+	uploadDir := filepath.Join(t.Env.ModelFilePath, projectId.String(), modelId.String())
+	if err := os.MkdirAll(uploadDir, os.ModePerm); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to create upload dir"})
+		return
+	}
+
+	filePath := filepath.Join(uploadDir, "model.glb")
 	if err := c.SaveUploadedFile(file, filePath); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to save file"})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to save model file"})
 		return
 	}
 
+	// Create webPath for DB/frontend
+	webFilePath := "/uploads/" + projectId.String() + "/" + modelId.String() + "/model.glb"
+
+	// --- Handle optional image ---
+	var imageWebPath string
+	imageFile, err := c.FormFile("image")
+	if err == nil {
+		ext := filepath.Ext(imageFile.Filename)
+		if ext != ".jpg" && ext != ".png" {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "image must be .jpg or .png"})
+			return
+		}
+
+		imageDir := filepath.Join(t.Env.ModelFilePath, "model", projectId.String(), modelId.String())
+		if err := os.MkdirAll(imageDir, os.ModePerm); err != nil {
+			t.Logger.Error("failed to create folder for model image", zap.Error(err))
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to create folder for model image"})
+			return
+		}
+
+		fsImagePath := filepath.Join(imageDir, "image"+ext) // local filesystem path
+		if err := c.SaveUploadedFile(imageFile, fsImagePath); err != nil {
+			t.Logger.Error("failed to save model image", zap.Error(err))
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to save model image"})
+			return
+		}
+
+		// Use a clean web path for frontend
+		imageWebPath = "/uploads/model/" + projectId.String() + "/" + modelId.String() + "/image" + ext
+		t.Logger.Info("model image uploaded", zap.String("path", fsImagePath))
+	}
+
+	// --- Insert into DB using web paths ---
 	data, err := t.DB.CreateModel(c, db_sqlc_gen.CreateModelParams{
+		ID:          modelId,
 		ProjectID:   projectId,
 		Name:        req.Name,
 		Description: req.Description,
-		FilePath:    filePath,
+		FilePath:    webFilePath,  // store webPath instead of local path
+		ImagePath:   imageWebPath, // store webPath instead of local path
 	})
-
 	if err != nil {
 		t.Logger.Error("error while creating project", zap.Error(err))
 		c.JSON(http.StatusInternalServerError, gin.H{})
@@ -80,6 +118,7 @@ func (t *PostModelRoutes) post(c *gin.Context) {
 		ProjectId:   data.ProjectID,
 		Name:        data.Name,
 		Description: data.Description,
+		ImagePath:   data.ImagePath,
 		Version:     int(data.Version.Int32),
 		CreatedAt:   data.CreatedAt.Time.Format(time.RFC3339),
 		UpdatedAt:   data.UpdatedAt.Time.Format(time.RFC3339),

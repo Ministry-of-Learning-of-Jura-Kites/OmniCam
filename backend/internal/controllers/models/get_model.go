@@ -14,6 +14,7 @@ import (
 type Model struct {
 	Id          uuid.UUID `json:"id"`
 	ProjectId   uuid.UUID `json:"projectId"`
+	ImagePath   string    `json:"imagePath"`
 	Name        string    `json:"name"`
 	Description string    `json:"description"`
 	Version     int       `json:"version"`
@@ -53,6 +54,7 @@ func (t *GetModelRoute) getModelById(c *gin.Context) {
 		ProjectId:   data.ProjectID,
 		Name:        data.Name,
 		Description: data.Description,
+		ImagePath:   data.ImagePath,
 		Version:     version,
 		CreatedAt:   data.CreatedAt.Time.Format(time.RFC3339),
 		UpdatedAt:   data.UpdatedAt.Time.Format(time.RFC3339),
@@ -86,6 +88,7 @@ func (t *GetModelRoute) getAllModel(c *gin.Context) {
 			ProjectId:   model.ProjectID,
 			Name:        model.Name,
 			Description: model.Description,
+			ImagePath:   model.ImagePath,
 			Version:     version,
 			CreatedAt:   model.CreatedAt.Time.Format(time.RFC3339),
 			UpdatedAt:   model.UpdatedAt.Time.Format(time.RFC3339),
