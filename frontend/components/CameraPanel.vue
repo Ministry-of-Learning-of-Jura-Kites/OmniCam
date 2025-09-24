@@ -1,18 +1,20 @@
 <script setup lang="ts">
 import { ref } from "vue";
+import * as THREE from "three";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 import Button from "./ui/button/Button.vue";
 import Input from "./ui/input/Input.vue";
 import Label from "./ui/label/Label.vue";
-import Badge from "./ui/badge/Badge.vue";
 import {
   Camera,
   Trash2,
   Eye,
+  EyeOff,
   Settings,
   ChevronLeft,
   ChevronDown,
   MapPinPlus,
+  RotateCcw,
 } from "lucide-vue-next";
 import { SCENE_STATES_KEY } from "./3d/scene-states-provider/create-scene-states";
 
@@ -22,27 +24,30 @@ const selectedCamId = ref<string | null>(null);
 
 const isCameraPropertiesOpen = ref(true);
 
-// const addCamera = () => {
-//   const newCamera: CameraData = {
-//     id: `cam${Date.now()}`,
-//     name: `Camera ${cameras.value.length + 1}`,
-//     position: { x: 5, y: 5, z: 5 },
-//     rotation: { x: 0, y: 0, z: 0 },
-//     fov: 60,
-//   };
-//   cameras.value.push(newCamera);
-// };
+const spawnCamera = () => {
+  const newCamId = sceneStates.cameraManagement.spawnCameraHere();
+  if (newCamId) {
+    selectedCamId.value = newCamId;
+  }
+};
+
+const moveCameraHere = (id: string) => {
+  sceneStates.cameras[id]!.position = new THREE.Vector3().copy(
+    sceneStates.spectatorCameraPosition,
+  );
+  sceneStates.cameras[id]!.rotation = new THREE.Euler().copy(
+    sceneStates.spectatorCameraRotation,
+  );
+};
 
 const deleteCamera = (id: string) => {
   // eslint-disable-next-line @typescript-eslint/no-dynamic-delete
   delete sceneStates.cameras[id];
 };
 
-// const updateCamera = (id: string, updates: Partial<CameraData>) => {
-//   cameras.value = cameras.value.map((cam) =>
-//     cam.id === id ? { ...cam, ...updates } : cam,
-//   );
-// };
+// watch(sceneStates.cameras, (cams) => {
+//   console.log(cams[Object.keys(cams)[0] as string]?.rotation);
+// });
 </script>
 
 <template>
@@ -52,12 +57,21 @@ const deleteCamera = (id: string) => {
         <Camera class="h-5 w-5" />
         Camera Gallery
       </h2>
-      <Button size="sm" @click="sceneStates.cameraManagement.spawnCameraHere">
+      <Button
+        size="sm"
+        @click="sceneStates.cameraManagement.switchToSpectator()"
+      >
+        <RotateCcw class="h-4 w-4" />
+      </Button>
+      <Button
+        size="sm"
+        @click="
+          spawnCamera();
+          $event.currentTarget.blur();
+        "
+      >
         <MapPinPlus class="h-4 w-4" />
       </Button>
-      <!-- <Button size="sm" @click="addCamera">
-        <Plus class="h-4 w-4" />
-      </Button> -->
     </div>
 
     <!-- Camera Dropdown -->
@@ -76,31 +90,17 @@ const deleteCamera = (id: string) => {
           {{ camera.name }} (FOV: {{ camera.fov }}°)
         </option>
       </select>
-      <div class="flex gap-2 mt-2">
-        <Button size="sm" variant="ghost" :disabled="!sceneStates.currentCam">
-          <Eye class="h-3 w-3" />
-          Preview
-        </Button>
-        <Button
-          size="sm"
-          variant="ghost"
-          :disabled="!sceneStates.currentCam"
-          @click="deleteCamera(sceneStates.currentCam.value!)"
-        >
-          <Trash2 class="h-3 w-3" />
-          Delete
-        </Button>
-      </div>
+      <div class="flex gap-2 mt-2"></div>
     </div>
 
-    <div class="mb-3">
+    <!-- <div class="mb-3">
       <Badge variant="secondary" class="w-full justify-center">
         {{ Object.keys(sceneStates.cameras).length }} Camera{{
           Object.keys(sceneStates.cameras).length !== 1 ? "s" : ""
         }}
         Active
       </Badge>
-    </div>
+    </div> -->
 
     <!-- Camera Properties -->
     <Card v-if="selectedCamId && sceneStates.cameras[selectedCamId]">
@@ -117,7 +117,7 @@ const deleteCamera = (id: string) => {
           <ChevronLeft v-else class="inline h-4 w-4"
         /></span>
       </CardHeader>
-      <CardContent v-if="isCameraPropertiesOpen" class="space-y-4">
+      <CardContent v-if="isCameraPropertiesOpen" class="space-y-2">
         <div>
           <Label for="camera-name">Name</Label>
           <Input
@@ -153,6 +153,39 @@ const deleteCamera = (id: string) => {
           </div>
         </div>
 
+        <div class="grid grid-cols-3 gap-2">
+          <div>
+            <Label for="angle-x"
+              ><p>θ<sub>x</sub></p></Label
+            >
+            <Input
+              id="angle-x"
+              v-model.number="sceneStates.cameras[selectedCamId]!.rotation.x"
+              type="number"
+            />
+          </div>
+          <div>
+            <Label for="angle-y"
+              ><p>θ<sub>y</sub></p></Label
+            >
+            <Input
+              id="angle-y"
+              v-model.number="sceneStates.cameras[selectedCamId]!.rotation.y"
+              type="number"
+            />
+          </div>
+          <div>
+            <Label for="angle-z"
+              ><p>θ<sub>z</sub></p></Label
+            >
+            <Input
+              id="angle-z"
+              v-model.number="sceneStates.cameras[selectedCamId]!.rotation.z"
+              type="number"
+            />
+          </div>
+        </div>
+
         <div>
           <Label for="fov">Field of View</Label>
           <Input
@@ -160,20 +193,104 @@ const deleteCamera = (id: string) => {
             v-model.number="sceneStates.cameras[selectedCamId]!.fov"
             type="number"
             min="10"
-            max="120"
+            max="360"
           />
         </div>
 
-        <div class="flex gap-2">
+        <div class="grid grid-flow-row grid-cols-2 gap-2">
+          <Button
+            size="sm"
+            variant="ghost"
+            @click="
+              sceneStates.cameras[selectedCamId]!.isHidingArrows =
+                !sceneStates.cameras[selectedCamId]!.isHidingArrows
+            "
+          >
+            <Eye
+              v-if="!sceneStates.cameras[selectedCamId]!.isHidingArrows"
+              class="h-3 w-3"
+            />
+            <EyeOff v-else class="h-3 w-3" />
+            Arrows
+          </Button>
+
+          <Button
+            size="sm"
+            variant="ghost"
+            @click="
+              sceneStates.cameras[selectedCamId]!.isHidingWheels =
+                !sceneStates.cameras[selectedCamId]!.isHidingWheels
+            "
+          >
+            <Eye
+              v-if="!sceneStates.cameras[selectedCamId]!.isHidingWheels"
+              class="h-3 w-3"
+            />
+            <EyeOff v-else class="h-3 w-3" />
+            Wheels
+          </Button>
+
+          <Button
+            size="sm"
+            variant="ghost"
+            @click="sceneStates.cameraManagement.switchToCam(selectedCamId)"
+          >
+            <Eye class="h-3 w-3" />
+            Preview
+          </Button>
+
+          <Button
+            size="sm"
+            variant="ghost"
+            :disabled="!sceneStates.currentCamId"
+            @click="deleteCamera(sceneStates.currentCamId.value!)"
+          >
+            <Trash2 class="h-3 w-3" />
+            Delete
+          </Button>
+
           <Button size="sm" class="flex-1">
             <Eye class="h-3 w-3 mr-2" />
-            Preview POV
+            Frustum
           </Button>
-          <Button size="sm" variant="outline" class="flex-1">
-            Place in Scene
+
+          <Button
+            size="sm"
+            variant="outline"
+            class="flex-1"
+            @click="moveCameraHere(selectedCamId!)"
+          >
+            Move Here
           </Button>
         </div>
       </CardContent>
     </Card>
   </div>
 </template>
+
+<style lang="css" scoped>
+input {
+  field-sizing: content;
+}
+
+/* For WebKit browsers (Chrome, Safari) */
+input[type="number"]::-webkit-outer-spin-button,
+input[type="number"]::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0; /* Important for removing extra space */
+}
+
+/* For Mozilla Firefox */
+input[type="number"] {
+  appearance: textfield;
+  -moz-appearance: textfield;
+}
+
+input {
+  width: 100%;
+  border-radius: 5px;
+  border: 1px solid black;
+  outline: 1px solid white;
+  box-sizing: border-box;
+}
+</style>

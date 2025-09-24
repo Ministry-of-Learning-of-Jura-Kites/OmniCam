@@ -11,3 +11,6 @@ onMounted(() => {
   sceneStates.tresContext.value = context;
 });
 </script>
+
+<!-- eslint-disable vue/valid-template-root -->
+<template></template>
