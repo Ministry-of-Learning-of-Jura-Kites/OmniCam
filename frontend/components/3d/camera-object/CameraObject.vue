@@ -49,6 +49,7 @@ const cam = toRef(sceneStates.cameras, props.camId);
         :controlling="cam.controlling"
         direction="x"
         color="green"
+        @change="sceneStates.markedForCheck.add(camId)"
       />
       <MovableArrow
         v-model="cam"
@@ -58,6 +59,7 @@ const cam = toRef(sceneStates.cameras, props.camId);
         :controlling="cam.controlling"
         direction="y"
         color="red"
+        @change="sceneStates.markedForCheck.add(camId)"
       />
       <MovableArrow
         v-model="cam"
@@ -67,6 +69,7 @@ const cam = toRef(sceneStates.cameras, props.camId);
         :controlling="cam.controlling"
         direction="z"
         color="blue"
+        @change="sceneStates.markedForCheck.add(camId)"
       />
       <RotationWheel
         v-model="cam"

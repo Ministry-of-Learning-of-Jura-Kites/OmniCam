@@ -123,7 +123,7 @@ async function fetchModel() {
   const projectId = route.params.projectId as string;
   try {
     const response = await $fetch<ModelGetRequest>(
-      `${config.public.NUXT_PUBLIC_URL}/api/v1/projects/${projectId}/models`,
+      `http://http://${config.public.NUXT_PUBLIC_BACKEND_HOST}/api/v1/projects/${projectId}/models`,
       {
         method: "GET",
         query: {
@@ -182,7 +182,7 @@ async function createModel() {
 
   const projectId = route.params.projectId as string;
   const response = await $fetch<ModelReturnRequest>(
-    `${config.public.NUXT_PUBLIC_URL}/api/v1/projects/${projectId}/models`,
+    `http://${config.public.NUXT_PUBLIC_BACKEND_HOST}/api/v1/projects/${projectId}/models`,
     {
       method: "POST",
       body: formData,
@@ -201,7 +201,7 @@ async function updateModel(modelId: string) {
   console.log(modelForm);
   try {
     const response = await $fetch<ModelReturnRequest>(
-      `${config.public.NUXT_PUBLIC_URL}/api/v1/projects/${projectId}/models/${modelId}`,
+      `http://${config.public.NUXT_PUBLIC_BACKEND_HOST}/api/v1/projects/${projectId}/models/${modelId}`,
       {
         method: "PUT",
         body: {
@@ -238,7 +238,7 @@ async function deleteRow(id: string) {
     const projectId = route.params.projectId as string;
 
     await $fetch(
-      `${config.public.NUXT_PUBLIC_URL}/api/v1/projects/${projectId}/models/${id}`,
+      `http://${config.public.NUXT_PUBLIC_BACKEND_HOST}/api/v1/projects/${projectId}/models/${id}`,
       {
         method: "DELETE",
       },

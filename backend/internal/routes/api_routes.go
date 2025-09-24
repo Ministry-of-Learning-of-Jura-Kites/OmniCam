@@ -1,10 +1,14 @@
 package api_routes
 
 import (
+	"net/http"
+
 	"github.com/gin-gonic/gin"
+	"github.com/gorilla/websocket"
 	"go.uber.org/zap"
 	config_env "omnicam.com/backend/config"
 	controller_test "omnicam.com/backend/internal/controllers"
+	controller_camera "omnicam.com/backend/internal/controllers/cameras"
 	controller_model "omnicam.com/backend/internal/controllers/models"
 	controller_projects "omnicam.com/backend/internal/controllers/projects"
 	db_sqlc_gen "omnicam.com/backend/pkg/db/sqlc-gen"
@@ -94,6 +98,20 @@ func InitRoutes(deps Dependencies, router gin.IRouter) {
 		DB:     deps.DB,
 	}
 	deleteModelRoute.InitDeleteModelRoute(router)
+
+	cameraAutosaveRoute := controller_camera.CameraAutosaveRoute{
+		Logger: deps.Logger,
+		Env:    deps.Env,
+		DB:     deps.DB,
+		Upgrader: websocket.Upgrader{
+			ReadBufferSize:  1024,
+			WriteBufferSize: 1024,
+			CheckOrigin: func(r *http.Request) bool {
+				return r.Header.Get("Origin") == deps.Env.FrontendHost
+			},
+		},
+	}
+	cameraAutosaveRoute.InitRoute(router)
 
 	putImageModelRoute := controller_model.PutImageModelRoute{
 		Logger: deps.Logger,

@@ -1,4 +1,4 @@
-package controller_model
+package controller_camera
 
 import (
 	"net/http"

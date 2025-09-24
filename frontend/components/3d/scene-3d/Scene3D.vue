@@ -9,6 +9,7 @@ import { SCENE_STATES_KEY } from "~/components/3d/scene-states-provider/create-s
 import { useCameraUpdate } from "./use-camera-update";
 import type { IUserData } from "~/types/obj-3d-user-data";
 import ModelLoader from "../model-loader/ModelLoader.vue";
+import { useAutosave } from "./use-autosave";
 
 defineProps<{
   modelId?: string | null;
@@ -134,6 +135,10 @@ watch(
     }
   },
 );
+
+onMounted(() => {
+  useAutosave(sceneStates);
+});
 </script>
 
 <template>
