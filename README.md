@@ -89,3 +89,8 @@ To fix lint
 ```bash
 npm run lint:fix
 ```
+
+File system
+3D model -> uploads/{projectId}/{id}/modelName
+Model image -> uploads/model/{projectId}/{id}/image.jpg
+Project image -> uploads/project/{projectId}

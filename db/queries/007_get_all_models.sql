@@ -5,6 +5,8 @@ SELECT
   name,
   description,
   version,
+  image_path,
+  file_path,
   created_at,
   updated_at
 FROM

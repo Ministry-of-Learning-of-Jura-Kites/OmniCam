@@ -1,8 +1,12 @@
 package controller_model
 
 import (
+	"fmt"
 	"net/http"
 	"os"
+	"path"
+	"path/filepath"
+	"strings" // Import the strings package
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
@@ -33,16 +37,39 @@ func (t *DeleteModelRoute) delete(c *gin.Context) {
 		return
 	}
 
-	id, err := t.DB.DeleteModel(c, modelId)
-	if err != nil {
-		t.Logger.Error("something wrong", zap.Error(err))
-		c.JSON(http.StatusInternalServerError, gin.H{})
+	// It's best practice to delete the files first, then the database entry.
+	rootDir := "."
+
+	// Helper function to handle path trimming and deletion
+	deleteFile := func(dbPath string) {
+		if dbPath == "" {
+			return
+		}
+
+		relativePath := strings.TrimPrefix(dbPath, "/uploads/")
+
+		// Use path.Join to create the full relative path from the backend directory.
+		fullPath := path.Join(rootDir, "uploads", relativePath)
+		dirPath := path.Dir(fullPath)
+
+		absPath, _ := filepath.Abs(dirPath)
+		fmt.Println("Absolute delete path:", absPath)
+
+		fmt.Println("Attempting to delete folder:", dirPath) // For debugging
+
+		if err := os.RemoveAll(absPath); err != nil {
+			t.Logger.Error("failed to remove folder", zap.String("path", dirPath), zap.Error(err))
+		}
 	}
 
-	if model.FilePath != "" {
-		if err := os.RemoveAll(model.FilePath); err != nil {
-			t.Logger.Error("failed to remove model file", zap.Error(err))
-		}
+	deleteFile(model.FilePath)
+	deleteFile(model.ImagePath)
+
+	id, err := t.DB.DeleteModel(c, modelId)
+	if err != nil {
+		t.Logger.Error("something wrong with DB deletion", zap.Error(err))
+		c.JSON(http.StatusInternalServerError, gin.H{})
+		return
 	}
 
 	c.JSON(http.StatusOK, gin.H{"message": "delete successfully", "data": id})
