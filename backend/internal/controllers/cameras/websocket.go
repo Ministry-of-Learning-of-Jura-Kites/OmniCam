@@ -62,15 +62,17 @@ func (t *CameraAutosaveRoute) handleEventDelete(conn *websocket.Conn, modelId uu
 
 func (t *CameraAutosaveRoute) handleEventUpsert(conn *websocket.Conn, modelId uuid.UUID, upsert *camera.Camera) {
 	camera := messages_cameras.CameraStruct{
-		Name:   upsert.Name,
-		AngleX: upsert.AngleX,
-		AngleY: upsert.AngleY,
-		AngleZ: upsert.AngleZ,
-		AngleW: upsert.AngleW,
-		PosX:   upsert.PosX,
-		PosY:   upsert.PosY,
-		PosZ:   upsert.PosZ,
-		Fov:    upsert.Fov,
+		Name:           upsert.Name,
+		AngleX:         upsert.AngleX,
+		AngleY:         upsert.AngleY,
+		AngleZ:         upsert.AngleZ,
+		AngleW:         upsert.AngleW,
+		PosX:           upsert.PosX,
+		PosY:           upsert.PosY,
+		PosZ:           upsert.PosZ,
+		Fov:            upsert.Fov,
+		IsHidingArrows: upsert.IsHidingArrows,
+		IsHidingWheels: upsert.IsHidingWheels,
 	}
 	log.Println("ggg", camera)
 	marshalled, err := json.Marshal(camera)
