@@ -10,6 +10,7 @@ import (
 	"github.com/google/uuid"
 	"go.uber.org/zap"
 	config_env "omnicam.com/backend/config"
+	"omnicam.com/backend/internal"
 	db_sqlc_gen "omnicam.com/backend/pkg/db/sqlc-gen"
 )
 
@@ -20,7 +21,6 @@ type PostModelRoutes struct {
 }
 
 type CreateModelRequest struct {
-	// ProjectId   string `form:"project_id" binding:"required"`
 	Name        string `form:"name" binding:"required"`
 	Description string `form:"description"`
 }
@@ -32,12 +32,11 @@ func (t *PostModelRoutes) post(c *gin.Context) {
 	projectId, err := uuid.Parse(strId)
 	if err != nil {
 		t.Logger.Error("error while converting str id to uuid", zap.Error(err))
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid model ID"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid project ID"})
 		return
 	}
 
-	err = c.ShouldBind(&req)
-	if err != nil {
+	if err := c.ShouldBind(&req); err != nil {
 		t.Logger.Debug("error while validating form", zap.Error(err))
 		c.JSON(http.StatusBadRequest, gin.H{})
 		return
@@ -54,19 +53,20 @@ func (t *PostModelRoutes) post(c *gin.Context) {
 		return
 	}
 
-	uploadDir := filepath.Join(t.Env.ModelFilePath, projectId.String(), modelId.String())
+	// Local filesystem path
+	uploadDir := filepath.Join(internal.Root, "uploads", projectId.String(), modelId.String())
 	if err := os.MkdirAll(uploadDir, os.ModePerm); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to create upload dir"})
 		return
 	}
 
-	filePath := filepath.Join(uploadDir, "model.glb")
-	if err := c.SaveUploadedFile(file, filePath); err != nil {
+	fsFilePath := filepath.Join(uploadDir, "model.glb")
+	if err := c.SaveUploadedFile(file, fsFilePath); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to save model file"})
 		return
 	}
 
-	// Create webPath for DB/frontend
+	// Web path for DB/frontend
 	webFilePath := "/uploads/" + projectId.String() + "/" + modelId.String() + "/model.glb"
 
 	// --- Handle optional image ---
@@ -79,7 +79,7 @@ func (t *PostModelRoutes) post(c *gin.Context) {
 			return
 		}
 
-		imageDir := filepath.Join(t.Env.ModelFilePath, "model", projectId.String(), modelId.String())
+		imageDir := filepath.Join(internal.Root, "uploads", "model", projectId.String(), modelId.String())
 		if err := os.MkdirAll(imageDir, os.ModePerm); err != nil {
 			t.Logger.Error("failed to create folder for model image", zap.Error(err))
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to create folder for model image"})
@@ -93,7 +93,6 @@ func (t *PostModelRoutes) post(c *gin.Context) {
 			return
 		}
 
-		// Use a clean web path for frontend
 		imageWebPath = "/uploads/model/" + projectId.String() + "/" + modelId.String() + "/image" + ext
 		t.Logger.Info("model image uploaded", zap.String("path", fsImagePath))
 	}
@@ -104,11 +103,11 @@ func (t *PostModelRoutes) post(c *gin.Context) {
 		ProjectID:   projectId,
 		Name:        req.Name,
 		Description: req.Description,
-		FilePath:    webFilePath,  // store webPath instead of local path
-		ImagePath:   imageWebPath, // store webPath instead of local path
+		FilePath:    webFilePath,  // web path
+		ImagePath:   imageWebPath, // web path
 	})
 	if err != nil {
-		t.Logger.Error("error while creating project", zap.Error(err))
+		t.Logger.Error("error while creating model", zap.Error(err))
 		c.JSON(http.StatusInternalServerError, gin.H{})
 		return
 	}

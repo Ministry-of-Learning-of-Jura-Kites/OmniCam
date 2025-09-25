@@ -1,4 +1,4 @@
--- name: GetAllModels :many
+-- name: GetAllfdfModels :many
 SELECT
   id,
   project_id,
@@ -14,4 +14,8 @@ FROM
 WHERE
   project_id = sqlc.arg (project_id)::UUID
 ORDER BY
-  created_at DESC;
+  created_at DESC
+LIMIT
+  sqlc.arg (page_size)::INT
+OFFSET
+  sqlc.arg (page_offset)::INT;
