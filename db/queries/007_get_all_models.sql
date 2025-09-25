@@ -1,4 +1,4 @@
--- name: GetAllModels :many
+-- name: GetAllfdfModels :many
 SELECT
   id,
   project_id,
@@ -12,10 +12,10 @@ SELECT
 FROM
   "model"
 WHERE
-  project_id = $1::UUID
+  project_id = sqlc.arg (project_id)::UUID
 ORDER BY
   created_at DESC
 LIMIT
-  $2::INT
+  sqlc.arg (page_size)::INT
 OFFSET
-  $3::INT;
+  sqlc.arg (page_offset)::INT;

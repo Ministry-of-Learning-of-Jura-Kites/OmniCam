@@ -85,10 +85,10 @@ func (t *GetModelRoute) getAllModel(c *gin.Context) {
 
 	offset := (page - 1) * pageSize
 	// column1 -> projectId column2 -> page size column3 -> offset (the data from desc (createBy))
-	data, err := t.DB.GetAllModels(c, db_sqlc_gen.GetAllModelsParams{
-		Column1: projectId,
-		Column2: int32(pageSize),
-		Column3: int32(offset),
+	data, err := t.DB.GetAllfdfModels(c, db_sqlc_gen.GetAllfdfModelsParams{
+		ProjectID:  projectId,
+		PageSize:   int32(pageSize),
+		PageOffset: int32(offset),
 	})
 	if err != nil {
 		t.Logger.Error("models not found or database error", zap.Error(err))
