@@ -243,6 +243,7 @@ async function updateModel(modelId: string) {
       [modelId]: {
         name: response.data.name,
         description: response.data.description,
+        imagePath: response.data.imagePath,
         version: response.data.version,
         createdAt: response.data.createdAt,
         updatedAt: response.data.updatedAt,
@@ -354,7 +355,7 @@ async function handleUpdateImage(file: File | undefined, modelId: string) {
     if (models.value[modelId]) {
       models.value[modelId] = {
         ...models.value[modelId],
-        imagePath: `${updatedImagePath}?t=${timestamp}`, // This is the key change!
+        imagePath: `${updatedImagePath}?t=${timestamp}`,
       };
     }
 
