@@ -6,6 +6,7 @@ import FormDialog from "~/components/dialog/FormDialog.vue";
 import SuccessDialog from "~/components/dialog/SuccessDialog.vue";
 import ContentCard from "~/components/card/ContentCard.vue";
 import CustomPagination from "~/components/pagination/CustomPagination.vue";
+import { Plus } from "lucide-vue-next";
 
 export interface Model {
   id: string;
@@ -133,15 +134,20 @@ async function fetchModel() {
       },
     );
 
-    models.value = response.data.reduce<Record<string, ModelWithoutId>>(
-      (acc, model) => {
-        const { id, ...rest } = model;
-        acc[id] = rest;
-        return acc;
-      },
-      {},
-    );
-    totalData.value = response.count;
+    if (response.data != null) {
+      models.value = response.data.reduce<Record<string, ModelWithoutId>>(
+        (acc, model) => {
+          const { id, ...rest } = model;
+          acc[id] = rest;
+          return acc;
+        },
+        {},
+      );
+      totalData.value = response.count;
+    } else {
+      models.value = {};
+      totalData.value = 0;
+    }
 
     console.log(models.value, "c");
     console.log(totalData.value);
@@ -398,7 +404,9 @@ watch([page, pageSize], async ([page, pageSize]) => {
   <div>
     <div class="flex flex-col items-center min-h-screen bg-gray-100 p-4">
       <div class="w-full max-w-7xl flex justify-end mb-4">
-        <Button type="button" @click="handleCreate" />
+        <Button class="!px-4" type="button" @click="handleCreate">
+          <Plus />
+        </Button>
       </div>
 
       <div class="w-full max-w-7xl flex justify-center mb-4">
@@ -409,6 +417,7 @@ watch([page, pageSize], async ([page, pageSize]) => {
             :name="model.name"
             :description="model.description"
             :image-path="model.imagePath ?? ''"
+            :redirect-link="`models/${model.id}`"
             @update="handleEditRow(model)"
             @delete="handleDeleteRow(model)"
             @update-image="
