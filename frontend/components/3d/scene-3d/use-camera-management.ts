@@ -3,7 +3,7 @@ import { gsap } from "gsap";
 import type { SceneStates } from "~/types/scene-states";
 import * as THREE from "three";
 
-export function useCameraManagement(sceneStates: Awaited<SceneStates>) {
+export function useCameraManagement(sceneStates: SceneStates) {
   function spawnCameraHere() {
     const camId = uuidv4();
     sceneStates.cameras[camId] = {

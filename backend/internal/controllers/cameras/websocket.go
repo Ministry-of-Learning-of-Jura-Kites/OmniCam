@@ -2,6 +2,7 @@ package controller_camera
 
 import (
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"log"
 	"net/http"
@@ -94,7 +95,13 @@ func (t *CameraAutosaveRoute) handleEventUpsert(conn *websocket.Conn, modelId uu
 
 func (t *CameraAutosaveRoute) get(c *gin.Context) {
 	strId := c.Param("modelId")
-	modelId, err := uuid.Parse(strId)
+
+	decodedBytes, err := base64.RawURLEncoding.DecodeString(strId)
+	if err != nil {
+		t.Logger.Error("error decoding Base64", zap.Error(err))
+		return
+	}
+	modelId, err := uuid.FromBytes(decodedBytes)
 	if err != nil {
 		t.Logger.Error("error while converting str id to uuid", zap.Error(err))
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid model ID"})

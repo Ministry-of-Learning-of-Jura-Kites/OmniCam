@@ -13,7 +13,7 @@ const functionalityKeys = [
 
 type FunctionalityKey = (typeof functionalityKeys)[number];
 
-export function useSpectatorPosition(sceneStates: Awaited<SceneStates>) {
+export function useSpectatorPosition(sceneStates: SceneStates) {
   let isKeyDown: Partial<Record<FunctionalityKey, boolean>> = {};
   let lastKeyDown = Date.now();
 

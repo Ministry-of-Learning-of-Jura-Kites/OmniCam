@@ -34,7 +34,7 @@ type GetWorkspaceRoute struct {
 func (t *GetWorkspaceRoute) getWorkspaceMe(c *gin.Context) {
 	strProjectId := c.Param("modelId")
 
-	decodedBytes, err := base64.StdEncoding.DecodeString(strProjectId)
+	decodedBytes, err := base64.RawURLEncoding.DecodeString(strProjectId)
 	if err != nil {
 		t.Logger.Error("error decoding Base64", zap.Error(err))
 		return
