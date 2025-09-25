@@ -1,8 +1,7 @@
--- name: UpdateModel :one
+-- name: UpdateModelImage :one
 UPDATE "model"
 SET
-  name = COALESCE(sqlc.narg (name)::VARCHAR, name),
-  description = COALESCE(sqlc.narg (description)::TEXT, description),
+  image_path = sqlc.arg (image_path)::TEXT,
   version = version + 1,
   updated_at = NOW()
 WHERE

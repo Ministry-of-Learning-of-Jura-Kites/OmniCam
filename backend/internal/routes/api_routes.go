@@ -94,4 +94,12 @@ func InitRoutes(deps Dependencies, router gin.IRouter) {
 		DB:     deps.DB,
 	}
 	deleteModelRoute.InitDeleteModelRoute(router)
+
+	putImageModelRoute := controller_model.PutImageModelRoute{
+		Logger: deps.Logger,
+		Env:    deps.Env,
+		DB:     deps.DB,
+	}
+	putImageModelRoute.InitUpdateImageRoute(router)
+
 }

@@ -6,8 +6,8 @@ import SceneStatesProvider from "~/components/3d/scene-states-provider/SceneStat
 
 <template>
   <div class="flex flex-col h-screen">
-    <TopBar />
     <SceneStatesProvider>
+      <TopBar />
       <div class="flex-1 flex overflow-hidden">
         <div class="flex-1 w-full h-full">
           <slot />

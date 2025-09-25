@@ -5,8 +5,10 @@ import { join } from "path";
 
 export default defineEventHandler(async (event) => {
   const url = event.node.req.url || "";
-  if (!url.startsWith("/uploads/")) return;
-  const relativePath = decodeURIComponent(url.replace("/uploads/", ""));
+  const [cleanPath] = url.split("?");
+
+  if (!cleanPath?.startsWith("/uploads/")) return;
+  const relativePath = decodeURIComponent(cleanPath.replace("/uploads/", ""));
   const filePath = join(process.cwd(), "/uploads", relativePath);
   if (!existsSync(filePath)) {
     event.node.res.statusCode = 404;

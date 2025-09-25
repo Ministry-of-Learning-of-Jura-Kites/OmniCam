@@ -24,7 +24,7 @@ export function createBaseSceneStates() {
   const currentCamId: Ref<string | null> = ref(null);
 
   const spectatorCameraPosition: Reactive<THREE.Vector3> = reactive(
-    new THREE.Vector3(),
+    new THREE.Vector3(0, 1, 0),
   );
 
   const spectatorCameraRotation: Reactive<THREE.Euler> = reactive(

@@ -21,12 +21,7 @@ type TitleMap<L extends Record<string, InputTypes | null>> = {
 
 const model = defineModel<ModelFromFields<L>>("model", {
   type: Object,
-  default: () =>
-    ({
-      name: "",
-      description: "",
-      file: null,
-    }) as ModelFromFields<L>,
+  default: () => ({}) as ModelFromFields<L>,
 });
 
 const props = defineProps<{
@@ -102,6 +97,13 @@ function handleClose() {
           <input
             v-else-if="type === 'file'"
             type="file"
+            :accept="
+              key === 'file'
+                ? '.glb'
+                : key === 'image'
+                  ? '.jpg,.png'
+                  : undefined
+            "
             @change="
               (e) =>
                 ((model as any)[key] = ((e.target as HTMLInputElement)

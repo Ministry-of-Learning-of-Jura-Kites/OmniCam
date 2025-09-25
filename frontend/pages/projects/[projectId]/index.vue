@@ -1,9 +1,12 @@
 <script setup lang="ts">
 // import { keyof } from "zod";
-import { generateColumnsFromKeys } from "~/components/dataTable/column";
+// import { generateColumnsFromKeys } from "~/components/dataTable/column";
 import ConfirmDialog from "~/components/dialog/ConfirmDialog.vue";
 import FormDialog from "~/components/dialog/FormDialog.vue";
 import SuccessDialog from "~/components/dialog/SuccessDialog.vue";
+import ContentCard from "~/components/card/ContentCard.vue";
+import CustomPagination from "~/components/pagination/CustomPagination.vue";
+import { Plus } from "lucide-vue-next";
 
 export interface Model {
   id: string;
@@ -11,12 +14,15 @@ export interface Model {
   name: string;
   description: string;
   version: number;
+  imagePath?: string;
+  filePath?: string;
   createdAt: string;
   updatedAt: string;
 }
 
 export interface ModelGetRequest {
   data: Model[];
+  count: number;
 }
 
 export interface ModelReturnRequest {
@@ -38,6 +44,7 @@ export type ModelForm = {
   name: string;
   description: string;
   file: File | null;
+  image: File | null;
 };
 export type ModelWithoutId = Omit<Model, "id">;
 
@@ -45,36 +52,42 @@ const config = useRuntimeConfig();
 const route = useRoute();
 
 const models = ref<Record<string, ModelWithoutId>>({});
+const totalData = ref<number>(0);
 const currentEditId = ref<string | null>(null);
 const modelForm = reactive<ModelForm>({
   name: "",
   description: "",
   file: null,
+  image: null,
 });
 
-// write table model (what u want to show etc.)
-const modelKeys: (keyof Model)[] = [
-  "name",
-  "description",
-  "version",
-  "createdAt",
-  "updatedAt",
-];
+//pagination
+const page = ref<number>(1);
+const pageSize = ref<number>(4);
 
-const tableTitles = {
-  name: "Name",
-  description: "Description",
-  version: "Version",
-  createdAt: "Created At",
-  updatedAt: "Updated At",
-};
+// write table model (what u want to show etc.)
+// const modelKeys: (keyof Model)[] = [
+//   "name",
+//   "description",
+//   "version",
+//   "createdAt",
+//   "updatedAt",
+// ];
+
+// const tableTitles = {
+//   name: "Name",
+//   description: "Description",
+//   version: "Version",
+//   createdAt: "Created At",
+//   updatedAt: "Updated At",
+// };
 
 // generate key to use here
 
-const generateKey = generateColumnsFromKeys<Model>(modelKeys, tableTitles, {
-  onEdit: (row) => handleEditRow(row),
-  onDelete: (row) => handleDeleteRow(row),
-});
+// const generateKey = generateColumnsFromKeys<Model>(modelKeys, tableTitles, {
+//   onEdit: (row) => handleEditRow(row),
+//   onDelete: (row) => handleDeleteRow(row),
+// });
 
 // Dialog handler for create delete update
 const isEditFormDialogOpen = ref<boolean>(false);
@@ -97,12 +110,14 @@ const createFields = {
   name: "text",
   description: "textarea",
   file: "file",
+  image: "file",
 } as const;
 
 const formTitles = {
   name: "Name",
   description: "Description",
   file: "Model file",
+  image: "Model Image",
 };
 
 async function fetchModel() {
@@ -112,19 +127,30 @@ async function fetchModel() {
       `${config.public.NUXT_PUBLIC_URL}/api/v1/projects/${projectId}/models`,
       {
         method: "GET",
+        query: {
+          pageSize: pageSize.value,
+          page: page.value,
+        },
       },
     );
 
-    models.value = response.data.reduce<Record<string, ModelWithoutId>>(
-      (acc, model) => {
-        const { id, ...rest } = model;
-        acc[id] = rest;
-        return acc;
-      },
-      {},
-    );
+    if (response.data != null) {
+      models.value = response.data.reduce<Record<string, ModelWithoutId>>(
+        (acc, model) => {
+          const { id, ...rest } = model;
+          acc[id] = rest;
+          return acc;
+        },
+        {},
+      );
+      totalData.value = response.count;
+    } else {
+      models.value = {};
+      totalData.value = 0;
+    }
 
     console.log(models.value, "c");
+    console.log(totalData.value);
   } catch (err) {
     console.error("fetchModel error", err);
   }
@@ -138,6 +164,19 @@ async function createModel() {
     formData.append("file", modelForm.file);
   }
 
+  if (modelForm.image) {
+    formData.append("image", modelForm.image);
+  }
+
+  for (const [key, value] of formData.entries()) {
+    // For files, log the name
+    if (value instanceof File) {
+      console.log(`${key}: ${value.name} (${value.size} bytes)`);
+    } else {
+      console.log(`${key}: ${value}`);
+    }
+  }
+
   const projectId = route.params.projectId as string;
   const response = await $fetch<ModelReturnRequest>(
     `${config.public.NUXT_PUBLIC_URL}/api/v1/projects/${projectId}/models`,
@@ -147,15 +186,39 @@ async function createModel() {
     },
   );
 
-  models.value[response.data.id] = {
+  const newModel: ModelWithoutId = {
     name: response.data.name,
+    projectId: response.data.projectId,
     description: response.data.description,
     updatedAt: response.data.updatedAt,
     createdAt: response.data.createdAt,
     version: response.data.version,
-  } as ModelWithoutId;
+    imagePath: response.data.imagePath,
+    filePath: response.data.filePath,
+  };
+
+  // Convert hashmap to array to manage order and size
+  const currentModels = Object.values(models.value);
+
+  currentModels.unshift(newModel);
+
+  if (currentModels.length > pageSize.value) {
+    currentModels.pop();
+  }
+
+  // Rebuild hashmap with the same keys
+  models.value = currentModels.reduce(
+    (acc, model, index) => {
+      acc[index] = model;
+      return acc;
+    },
+    {} as Record<number, ModelWithoutId>,
+  );
+
   successDialog.value = true;
-  successMessage.value = `You have successfully create ${response.data.name}`;
+  successMessage.value = `You have successfully created ${response.data.name}`;
+
+  fetchModel();
 }
 
 async function updateModel(modelId: string) {
@@ -180,6 +243,7 @@ async function updateModel(modelId: string) {
       [modelId]: {
         name: response.data.name,
         description: response.data.description,
+        imagePath: response.data.imagePath,
         version: response.data.version,
         createdAt: response.data.createdAt,
         updatedAt: response.data.updatedAt,
@@ -212,6 +276,8 @@ async function deleteRow(id: string) {
     console.log("Deleted row:", id);
     successDialog.value = true;
     successMessage.value = `You have successfully delete ${id}`;
+
+    await fetchModel();
   } catch (err) {
     console.error("Delete failed", err);
   }
@@ -266,13 +332,52 @@ function handleCreateFormSubmit() {
   createModel();
 }
 
+async function handleUpdateImage(file: File | undefined, modelId: string) {
+  if (!file || !modelId) return;
+
+  const projectId = route.params.projectId;
+  const formData = new FormData();
+  formData.append("image", file);
+
+  try {
+    const res = await $fetch<{ imagePath: string; message: string }>(
+      `${config.public.NUXT_PUBLIC_URL}/api/v1/projects/${projectId}/models/${modelId}/image`,
+      {
+        method: "PUT",
+        body: formData,
+      },
+    );
+
+    const updatedImagePath = res.imagePath;
+    const timestamp = new Date().getTime();
+    await new Promise((resolve) => setTimeout(resolve, 500));
+    // Ensure the model exists and then create a new object
+    if (models.value[modelId]) {
+      models.value[modelId] = {
+        ...models.value[modelId],
+        imagePath: `${updatedImagePath}?t=${timestamp}`,
+      };
+    }
+
+    successDialog.value = true;
+    successMessage.value = `Image updated successfully for model ${modelId}`;
+  } catch (err) {
+    console.error("Failed to update image", err);
+  }
+}
+
 onMounted(() => {
   fetchModel();
 });
 
 // data computed when change (record -> array)
 const dataArray = computed(() =>
-  Object.entries(models.value).map(([id, model]) => ({ id, ...model })),
+  Object.entries(models.value).map(([id, model]) => ({
+    id,
+    ...model,
+    imagePath: model.imagePath,
+    filePath: model.filePath,
+  })),
 );
 
 watch(
@@ -284,14 +389,58 @@ watch(
     once: false,
   },
 );
+
+watch(dataArray, (dataArray) => {
+  console.log("test", dataArray);
+});
+
+watch([page, pageSize], async ([page, pageSize]) => {
+  console.log(page);
+  console.log(pageSize);
+  await fetchModel();
+});
 </script>
 
 <template>
   <div>
-    <Button type="button" @click="handleCreate" />
-    <div class="container py-10 mx-auto">
-      <DataTable :columns="generateKey" :data="dataArray" />
+    <div class="flex flex-col items-center min-h-screen bg-gray-100 p-4">
+      <div class="w-full max-w-7xl flex justify-end mb-4">
+        <Button class="!px-4" type="button" @click="handleCreate">
+          <Plus />
+        </Button>
+      </div>
+
+      <div class="w-full max-w-7xl flex justify-center mb-4">
+        <div class="flex flex-row gap-6 overflow-x-auto w-full">
+          <ContentCard
+            v-for="model in dataArray"
+            :key="model.id"
+            :name="model.name"
+            :description="model.description"
+            :image-path="model.imagePath ?? ''"
+            :redirect-link="`models/${model.id}`"
+            @update="handleEditRow(model)"
+            @delete="handleDeleteRow(model)"
+            @update-image="
+              (file: File | undefined) => handleUpdateImage(file, model.id)
+            "
+          />
+        </div>
+      </div>
+
+      <div class="w-full max-w-7xl flex justify-center">
+        <CustomPagination
+          v-model:page="page"
+          :page-size="pageSize"
+          :total-item="totalData"
+        />
+      </div>
     </div>
+
+    <!-- <p>Current Page: {{ page }}</p> -->
+    <!-- <div class="container py-10 mx-auto">
+      <DataTable :columns="generateKey" :data="dataArray" />
+    </div> -->
     <FormDialog
       v-model:open="isEditFormDialogOpen"
       v-model:model="modelForm"
