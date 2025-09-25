@@ -7,16 +7,41 @@ import {
   RotateCcw,
   Maximize,
   Download,
+  Upload,
   Save,
   User,
   LogOut,
 } from "lucide-vue-next";
 
 import { exportCamerasToJson } from "@/utils/exportScene";
+import { importJsonToCameras } from "@/utils/importScene";
 import { SCENE_STATES_KEY } from "@/components/3d/scene-states-provider/create-scene-states";
 
 const sceneStates = inject(SCENE_STATES_KEY)!;
-console.log("sceneStates:", sceneStates);
+
+function openFileDialog() {
+  const input = document.createElement("input");
+  input.type = "file";
+  input.accept = ".json";
+  input.style.display = "none";
+
+  input.addEventListener("change", async (event: Event) => {
+    const target = event.target as HTMLInputElement;
+    const file = target.files?.[0];
+    if (!file) return;
+
+    try {
+      const text = await file.text();
+      importJsonToCameras(sceneStates.cameras, text);
+    } catch (err) {
+      console.error("Failed to import cameras:", err);
+    }
+  });
+
+  document.body.appendChild(input);
+  input.click();
+  input.remove();
+}
 </script>
 
 <template>
@@ -51,6 +76,11 @@ console.log("sceneStates:", sceneStates);
       <Button size="sm" variant="outline">
         <Save class="h-4 w-4 mr-2" />
         Save
+      </Button>
+
+      <Button size="sm" variant="outline" @click="() => openFileDialog()">
+        <Upload class="h-4 w-4 mr-2" />
+        Import
       </Button>
 
       <Button
