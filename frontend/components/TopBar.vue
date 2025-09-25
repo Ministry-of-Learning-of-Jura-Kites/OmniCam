@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 import Button from "./ui/button/Button.vue";
 import Badge from "./ui/badge/Badge.vue";
 import Card from "./ui/card/Card.vue";
@@ -7,11 +7,16 @@ import {
   RotateCcw,
   Maximize,
   Download,
-  Upload,
   Save,
   User,
   LogOut,
 } from "lucide-vue-next";
+
+import { exportCamerasToJson } from "@/utils/exportScene";
+import { SCENE_STATES_KEY } from "@/components/3d/scene-states-provider/create-scene-states";
+
+const sceneStates = inject(SCENE_STATES_KEY)!;
+console.log("sceneStates:", sceneStates);
 </script>
 
 <template>
@@ -43,17 +48,16 @@ import {
 
       <div class="h-6 w-px bg-border mx-2" />
 
-      <Button size="sm">
-        <Upload class="h-4 w-4 mr-2" />
-        Upload Model
-      </Button>
-
       <Button size="sm" variant="outline">
         <Save class="h-4 w-4 mr-2" />
         Save
       </Button>
 
-      <Button size="sm" variant="outline">
+      <Button
+        size="sm"
+        variant="outline"
+        @click="() => exportCamerasToJson(sceneStates.cameras)"
+      >
         <Download class="h-4 w-4 mr-2" />
         Export
       </Button>
