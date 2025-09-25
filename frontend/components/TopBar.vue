@@ -7,7 +7,6 @@ import {
   RotateCcw,
   Maximize,
   Download,
-  Upload,
   Save,
   User,
   LogOut,
