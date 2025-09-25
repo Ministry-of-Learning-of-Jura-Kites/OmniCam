@@ -6,7 +6,10 @@ import SceneStatesProvider from "~/components/3d/scene-states-provider/SceneStat
 
 <template>
   <div class="flex flex-col h-screen">
-    <SceneStatesProvider>
+    <SceneStatesProvider
+      :project-id="$route.params.projectId"
+      :model-id="$route.params.modelId"
+    >
       <TopBar />
       <div class="flex-1 flex overflow-hidden">
         <div class="flex-1 w-full h-full">

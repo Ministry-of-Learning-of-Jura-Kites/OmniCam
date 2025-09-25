@@ -1,4 +1,4 @@
-DROP TABLE "user_model_snapshots";
+DROP TABLE "user_model_workspace";
 
 DROP TABLE "model";
 

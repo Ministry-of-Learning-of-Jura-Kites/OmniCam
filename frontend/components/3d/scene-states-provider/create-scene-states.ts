@@ -15,7 +15,7 @@ import { useWebSocket } from "@vueuse/core";
 export const SCENE_STATES_KEY: InjectionKey<SceneStatesWithHelper> =
   Symbol("3d-scene-states");
 
-export function createBaseSceneStates() {
+export function createBaseSceneStates(projectId: string, modelId: string) {
   const tresContext = ref<TresContext | null>(null);
 
   const draggableObjects: Set<Obj3DWithUserData> = new Set();
@@ -64,7 +64,7 @@ export function createBaseSceneStates() {
 
   const runtimeConfig = useRuntimeConfig();
 
-  const websocketUrl = `ws://${runtimeConfig.public.NUXT_PUBLIC_BACKEND_HOST}/api/v1/projects/gg/models/gg/autosave`;
+  const websocketUrl = `ws://${runtimeConfig.public.NUXT_PUBLIC_BACKEND_HOST}/api/v1/projects/${projectId}/models/${modelId}/autosave`;
 
   const websocket = useWebSocket(websocketUrl, {
     autoReconnect: {
