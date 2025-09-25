@@ -5,6 +5,7 @@ import ConfirmDialog from "~/components/dialog/ConfirmDialog.vue";
 import FormDialog from "~/components/dialog/FormDialog.vue";
 import SuccessDialog from "~/components/dialog/SuccessDialog.vue";
 import ContentCard from "~/components/card/ContentCard.vue";
+import CustomPagination from "~/components/pagination/CustomPagination.vue";
 
 export interface Model {
   id: string;
@@ -58,6 +59,10 @@ const modelForm = reactive<ModelForm>({
   file: null,
   image: null,
 });
+
+//pagination
+const page = ref<number>(1);
+const pageSize = ref<number>(4);
 
 // write table model (what u want to show etc.)
 // const modelKeys: (keyof Model)[] = [
@@ -121,6 +126,10 @@ async function fetchModel() {
       `${config.public.NUXT_PUBLIC_URL}/api/v1/projects/${projectId}/models`,
       {
         method: "GET",
+        query: {
+          pageSize: pageSize.value,
+          page: page.value,
+        },
       },
     );
 
@@ -171,17 +180,39 @@ async function createModel() {
     },
   );
 
-  models.value[response.data.id] = {
+  const newModel: ModelWithoutId = {
     name: response.data.name,
+    projectId: response.data.projectId,
     description: response.data.description,
     updatedAt: response.data.updatedAt,
     createdAt: response.data.createdAt,
     version: response.data.version,
     imagePath: response.data.imagePath,
     filePath: response.data.filePath,
-  } as ModelWithoutId;
+  };
+
+  // Convert hashmap to array to manage order and size
+  const currentModels = Object.values(models.value);
+
+  currentModels.unshift(newModel);
+
+  if (currentModels.length > pageSize.value) {
+    currentModels.pop();
+  }
+
+  // Rebuild hashmap with the same keys
+  models.value = currentModels.reduce(
+    (acc, model, index) => {
+      acc[index] = model;
+      return acc;
+    },
+    {} as Record<number, ModelWithoutId>,
+  );
+
   successDialog.value = true;
-  successMessage.value = `You have successfully create ${response.data.name}`;
+  successMessage.value = `You have successfully created ${response.data.name}`;
+
+  fetchModel();
 }
 
 async function updateModel(modelId: string) {
@@ -238,6 +269,8 @@ async function deleteRow(id: string) {
     console.log("Deleted row:", id);
     successDialog.value = true;
     successMessage.value = `You have successfully delete ${id}`;
+
+    await fetchModel();
   } catch (err) {
     console.error("Delete failed", err);
   }
@@ -353,25 +386,48 @@ watch(
 watch(dataArray, (dataArray) => {
   console.log("test", dataArray);
 });
+
+watch([page, pageSize], async ([page, pageSize]) => {
+  console.log(page);
+  console.log(pageSize);
+  await fetchModel();
+});
 </script>
 
 <template>
   <div>
-    <Button type="button" @click="handleCreate" />
-    <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6 mt-4">
-      <ContentCard
-        v-for="model in dataArray"
-        :key="model.id"
-        :name="model.name"
-        :description="model.description"
-        :image-path="model.imagePath ?? ''"
-        @update="handleEditRow(model)"
-        @delete="handleDeleteRow(model)"
-        @update-image="
-          (file: File | undefined) => handleUpdateImage(file, model.id)
-        "
-      />
+    <div class="flex flex-col items-center min-h-screen bg-gray-100 p-4">
+      <div class="w-full max-w-7xl flex justify-end mb-4">
+        <Button type="button" @click="handleCreate" />
+      </div>
+
+      <div class="w-full max-w-7xl flex justify-center mb-4">
+        <div class="flex flex-row gap-6 overflow-x-auto w-full">
+          <ContentCard
+            v-for="model in dataArray"
+            :key="model.id"
+            :name="model.name"
+            :description="model.description"
+            :image-path="model.imagePath ?? ''"
+            @update="handleEditRow(model)"
+            @delete="handleDeleteRow(model)"
+            @update-image="
+              (file: File | undefined) => handleUpdateImage(file, model.id)
+            "
+          />
+        </div>
+      </div>
+
+      <div class="w-full max-w-7xl flex justify-center">
+        <CustomPagination
+          v-model:page="page"
+          :page-size="pageSize"
+          :total-item="totalData"
+        />
+      </div>
     </div>
+
+    <!-- <p>Current Page: {{ page }}</p> -->
     <!-- <div class="container py-10 mx-auto">
       <DataTable :columns="generateKey" :data="dataArray" />
     </div> -->
