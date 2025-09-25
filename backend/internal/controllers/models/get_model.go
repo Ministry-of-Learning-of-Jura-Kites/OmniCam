@@ -2,6 +2,7 @@ package controller_model
 
 import (
 	"net/http"
+	"strconv"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -14,6 +15,7 @@ import (
 type Model struct {
 	Id          uuid.UUID `json:"id"`
 	ProjectId   uuid.UUID `json:"projectId"`
+	ImagePath   string    `json:"imagePath"`
 	Name        string    `json:"name"`
 	Description string    `json:"description"`
 	Version     int       `json:"version"`
@@ -53,6 +55,7 @@ func (t *GetModelRoute) getModelById(c *gin.Context) {
 		ProjectId:   data.ProjectID,
 		Name:        data.Name,
 		Description: data.Description,
+		ImagePath:   data.ImagePath,
 		Version:     version,
 		CreatedAt:   data.CreatedAt.Time.Format(time.RFC3339),
 		UpdatedAt:   data.UpdatedAt.Time.Format(time.RFC3339),
@@ -68,9 +71,34 @@ func (t *GetModelRoute) getAllModel(c *gin.Context) {
 		return
 	}
 
-	data, err := t.DB.GetAllModels(c, projectId)
+	page, err := strconv.Atoi(c.DefaultQuery("page", "1"))
+	if err != nil || page < 1 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid page number"})
+		return
+	}
+
+	pageSize, err := strconv.Atoi(c.DefaultQuery("pageSize", "10"))
+	if err != nil || pageSize < 1 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid page size"})
+		return
+	}
+
+	offset := (page - 1) * pageSize
+	// column1 -> projectId column2 -> page size column3 -> offset (the data from desc (createBy))
+	data, err := t.DB.GetAllfdfModels(c, db_sqlc_gen.GetAllfdfModelsParams{
+		ProjectID:  projectId,
+		PageSize:   int32(pageSize),
+		PageOffset: int32(offset),
+	})
 	if err != nil {
-		t.Logger.Error("model not found", zap.Error(err))
+		t.Logger.Error("models not found or database error", zap.Error(err))
+		c.JSON(http.StatusNotFound, gin.H{})
+		return
+	}
+
+	dataCount, err := t.DB.CountModels(c, projectId)
+	if err != nil {
+		t.Logger.Error("models not found or database error", zap.Error(err))
 		c.JSON(http.StatusNotFound, gin.H{})
 		return
 	}
@@ -86,13 +114,14 @@ func (t *GetModelRoute) getAllModel(c *gin.Context) {
 			ProjectId:   model.ProjectID,
 			Name:        model.Name,
 			Description: model.Description,
+			ImagePath:   model.ImagePath,
 			Version:     version,
 			CreatedAt:   model.CreatedAt.Time.Format(time.RFC3339),
 			UpdatedAt:   model.UpdatedAt.Time.Format(time.RFC3339),
 		})
 	}
 
-	c.JSON(http.StatusOK, gin.H{"data": dataList})
+	c.JSON(http.StatusOK, gin.H{"data": dataList, "count": dataCount})
 }
 
 func (t *GetModelRoute) InitGetModelRoute(router gin.IRouter) gin.IRouter {

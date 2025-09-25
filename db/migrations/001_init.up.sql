@@ -30,6 +30,7 @@ CREATE TABLE "model" (
   description TEXT NOT NULL DEFAULT '',
   -- storage location, mutable
   file_path TEXT NOT NULL,
+  image_path TEXT NOT NULL,
   -- version tracking
   version INT DEFAULT 0,
   created_at TIMESTAMPTZ DEFAULT NOW(),

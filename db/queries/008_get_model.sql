@@ -4,6 +4,7 @@ SELECT
   project_id,
   name,
   file_path,
+  image_path,
   description,
   version,
   created_at,
