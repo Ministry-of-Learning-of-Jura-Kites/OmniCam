@@ -14,9 +14,18 @@ const props = defineProps({
     type: String,
     required: true,
   },
+  workspace: {
+    type: String,
+    default: null,
+  },
 });
 
-const sceneStates = createBaseSceneStates(props.projectId, props.modelId);
+const sceneStates = await createBaseSceneStates(
+  props.projectId,
+  props.modelId,
+  useRuntimeConfig(),
+  props.workspace,
+);
 
 const sceneStatesWithHelper = createSceneStatesWithHelper(sceneStates);
 

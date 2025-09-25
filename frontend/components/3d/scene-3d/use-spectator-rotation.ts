@@ -4,7 +4,7 @@ import type { SceneStates } from "~/types/scene-states";
 const maxPitch = Math.PI / 2 - 0.01;
 const minPitch = -Math.PI / 2 + 0.01;
 
-export function useSpectatorRotation(sceneStates: SceneStates) {
+export function useSpectatorRotation(sceneStates: Awaited<SceneStates>) {
   const isDragging = ref(false);
 
   async function onPointerDown(_e: PointerEvent) {

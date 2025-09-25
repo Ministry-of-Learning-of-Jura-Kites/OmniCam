@@ -11,10 +11,20 @@ import type { IUserData } from "~/types/obj-3d-user-data";
 import ModelLoader from "../model-loader/ModelLoader.vue";
 import { useAutosave } from "./use-autosave";
 
-defineProps<{
-  modelId?: string | null;
-  placeholderText?: string | null;
-}>();
+const _ = defineProps({
+  projectId: {
+    type: String,
+    required: true,
+  },
+  modelId: {
+    type: String,
+    required: true,
+  },
+  workspace: {
+    type: String,
+    default: null,
+  },
+});
 
 const sceneStates = inject(SCENE_STATES_KEY)!;
 
@@ -27,20 +37,6 @@ useCameraUpdate(sceneStates);
 onMounted(() => {
   // start loop to move camera from key press
   sceneStates.spectatorPosition.refreshCameraState();
-
-  // for testing
-  if (typeof window !== "undefined") {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (window as any).spawnCameraHereNaja =
-      sceneStates.cameraManagement.spawnCameraHere;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (window as any).switchToCamNaja = sceneStates.cameraManagement.switchToCam;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (window as any).switchToSpectatorNaja =
-      sceneStates.cameraManagement.switchToSpectator;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (window as any).getCamsNaja = sceneStates.cameraManagement.getCams;
-  }
 });
 
 const raycaster = new THREE.Raycaster();

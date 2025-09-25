@@ -10,7 +10,7 @@ import type { ICamera } from "~/types/camera";
 import type { SceneStates } from "~/types/scene-states";
 import * as THREE from "three";
 
-function isEqual(a: ICamera, b: ICamera): boolean {
+function isEqual(a: Camera, b: Camera): boolean {
   return JSON.stringify(a) === JSON.stringify(b);
 }
 
@@ -20,7 +20,7 @@ export type AutosaveEvent =
 
 function formatCam(camId: string, cam: ICamera): Camera {
   const quaternion = new THREE.Quaternion();
-  cam.rotation.setFromQuaternion(quaternion);
+  quaternion.setFromEuler(cam.rotation);
   return {
     id: camId,
     name: cam.name,
@@ -31,12 +31,15 @@ function formatCam(camId: string, cam: ICamera): Camera {
     posX: cam.position.x,
     posY: cam.position.y,
     posZ: cam.position.z,
+    fov: cam.fov,
   };
 }
 
-export function useAutosave(sceneStates: SceneStates) {
-  const lastSynced: Map<string, ICamera> = new Map(
-    Object.entries(sceneStates.cameras!),
+export function useAutosave(sceneStates: Awaited<SceneStates>) {
+  const lastSynced: Map<string, Camera> = new Map(
+    Object.entries(sceneStates.cameras!).map(([camId, cam]) => {
+      return [camId, formatCam(camId, cam)];
+    }),
   );
 
   // detect changes batchly
@@ -79,13 +82,14 @@ export function useAutosave(sceneStates: SceneStates) {
         });
         continue;
       }
+      const formattedCam = formatCam(camId, cam);
       // If is newly added, or changed
-      if (prev == undefined || !isEqual(prev, cam)) {
+      if (prev == undefined || !isEqual(prev, formattedCam)) {
         changed.push({
           type: CameraEventType.CAMERA_EVENT_TYPE_UPSERT,
-          upsert: formatCam(camId, cam),
+          upsert: formattedCam,
         });
-        lastSynced.set(camId, structuredClone(toRaw(cam)));
+        lastSynced.set(camId, formatCam(camId, cam));
       }
     }
 

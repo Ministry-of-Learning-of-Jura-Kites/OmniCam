@@ -1,6 +1,7 @@
 package controller_model
 
 import (
+	"encoding/base64"
 	"net/http"
 	"time"
 
@@ -26,15 +27,19 @@ type UpdateModelRequest struct {
 func (t *PutModelRoute) put(c *gin.Context) {
 	strId := c.Param("modelId")
 
-	var req UpdateModelRequest
-
-	modelId, err := uuid.Parse(strId)
+	decodedBytes, err := base64.StdEncoding.DecodeString(strId)
+	if err != nil {
+		t.Logger.Error("error decoding Base64", zap.Error(err))
+		return
+	}
+	modelId, err := uuid.FromBytes(decodedBytes)
 	if err != nil {
 		t.Logger.Error("error while converting str id to uuid", zap.Error(err))
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid model ID"})
 		return
 	}
 
+	var req UpdateModelRequest
 	err = c.ShouldBindJSON(&req)
 	if err != nil {
 		t.Logger.Debug("error while validating body", zap.Error(err))

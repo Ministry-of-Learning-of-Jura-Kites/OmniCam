@@ -21,6 +21,7 @@ message Camera {
   double pos_x = 7;
   double pos_y = 8;
   double pos_z = 9;
+  double fov = 10;
 }
 
 message CameraSaveEvent {

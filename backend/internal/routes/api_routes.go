@@ -11,6 +11,7 @@ import (
 	controller_camera "omnicam.com/backend/internal/controllers/cameras"
 	controller_model "omnicam.com/backend/internal/controllers/models"
 	controller_projects "omnicam.com/backend/internal/controllers/projects"
+	controller_workspaces "omnicam.com/backend/internal/controllers/workspaces"
 	db_sqlc_gen "omnicam.com/backend/pkg/db/sqlc-gen"
 )
 
@@ -112,6 +113,13 @@ func InitRoutes(deps Dependencies, router gin.IRouter) {
 		},
 	}
 	cameraAutosaveRoute.InitRoute(router)
+
+	getWorkspaceRoute := controller_workspaces.GetWorkspaceRoute{
+		Logger: deps.Logger,
+		Env:    deps.Env,
+		DB:     deps.DB,
+	}
+	getWorkspaceRoute.InitRoute(router)
 
 	putImageModelRoute := controller_model.PutImageModelRoute{
 		Logger: deps.Logger,

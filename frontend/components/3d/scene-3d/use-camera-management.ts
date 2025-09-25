@@ -3,7 +3,7 @@ import { gsap } from "gsap";
 import type { SceneStates } from "~/types/scene-states";
 import * as THREE from "three";
 
-export function useCameraManagement(sceneStates: SceneStates) {
+export function useCameraManagement(sceneStates: Awaited<SceneStates>) {
   function spawnCameraHere() {
     const camId = uuidv4();
     sceneStates.cameras[camId] = {
@@ -12,7 +12,7 @@ export function useCameraManagement(sceneStates: SceneStates) {
       rotation: new THREE.Euler().copy(sceneStates.spectatorCameraRotation),
       isHidingArrows: false,
       isHidingWheels: false,
-      controlling: null,
+      controlling: undefined,
       fov: 60,
     };
     sceneStates.markedForCheck.add(camId);
