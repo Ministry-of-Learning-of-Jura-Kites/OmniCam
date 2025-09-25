@@ -38,6 +38,7 @@ export function importJsonToCameras(
             camera.AngleZ,
             camera.AngleW,
           ),
+          "YXZ",
         ),
       };
     }
