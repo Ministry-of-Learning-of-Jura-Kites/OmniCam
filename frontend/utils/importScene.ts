@@ -8,35 +8,44 @@ export function importJsonToCameras(
   try {
     const data = JSON.parse(jsonData) as Array<{
       id: string;
-      name: string;
-      fov: number;
-      isHidingArrows: boolean;
-      isHidingWheels: boolean;
-      controlling: ICamera["controlling"];
-      position: [number, number, number];
-      rotation: { x: number; y: number; z: number; order: string };
+      Name: string;
+      AngleX: number;
+      AngleY: number;
+      AngleZ: number;
+      AngleW: number;
+      PosX: number;
+      PosY: number;
+      PosZ: number;
+      Fov: number;
+      IsHidingArrows: boolean;
+      IsHidingWheels: boolean;
     }>;
 
     const newCameras: Record<string, ICamera> = {};
 
     for (const camera of data) {
       newCameras[camera.id] = {
-        name: camera.name,
-        fov: camera.fov,
-        isHidingArrows: camera.isHidingArrows,
-        isHidingWheels: camera.isHidingWheels,
-        controlling: camera.controlling,
-        position: new THREE.Vector3(...camera.position),
-        rotation: new THREE.Euler(
-          camera.rotation.x,
-          camera.rotation.y,
-          camera.rotation.z,
-          camera.rotation.order as THREE.EulerOrder,
+        name: camera.Name,
+        fov: camera.Fov,
+        isHidingArrows: camera.IsHidingArrows,
+        isHidingWheels: camera.IsHidingWheels,
+        controlling: null,
+        position: new THREE.Vector3(camera.PosX, camera.PosY, camera.PosZ),
+        rotation: new THREE.Euler().setFromQuaternion(
+          new THREE.Quaternion(
+            camera.AngleX,
+            camera.AngleY,
+            camera.AngleZ,
+            camera.AngleW,
+          ),
         ),
       };
     }
 
-    Object.assign(sceneCameras, {});
+    Object.keys(sceneCameras).forEach((key) => {
+      Reflect.deleteProperty(sceneCameras, key);
+    });
+
     Object.assign(sceneCameras, newCameras);
   } catch (err) {
     console.error("Failed to import cameras JSON:", err);
