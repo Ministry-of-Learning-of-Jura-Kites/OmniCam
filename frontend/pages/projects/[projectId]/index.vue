@@ -145,6 +145,7 @@ async function fetchModel() {
 
     console.log(models.value, "c");
     console.log(totalData.value);
+    console.log(totalData.value);
   } catch (err) {
     console.error("fetchModel error", err);
   }
@@ -208,6 +209,7 @@ async function updateModel(modelId: string) {
       [modelId]: {
         name: response.data.name,
         description: response.data.description,
+        imagePath: response.data.imagePath,
         version: response.data.version,
         createdAt: response.data.createdAt,
         updatedAt: response.data.updatedAt,
@@ -319,7 +321,7 @@ async function handleUpdateImage(file: File | undefined, modelId: string) {
     if (models.value[modelId]) {
       models.value[modelId] = {
         ...models.value[modelId],
-        imagePath: `${updatedImagePath}?t=${timestamp}`, // This is the key change!
+        imagePath: `${updatedImagePath}?t=${timestamp}`,
       };
     }
 
@@ -366,6 +368,7 @@ watch([page, pageSize], async ([page, pageSize]) => {
             :name="model.name"
             :description="model.description"
             :image-path="model.imagePath ?? ''"
+            :redirect-link="`models/${id}`"
             @update="handleEditRow({ ...model, id })"
             @delete="handleDeleteRow({ ...model, id })"
             @update-image="
