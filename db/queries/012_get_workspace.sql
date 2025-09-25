@@ -1,9 +1,14 @@
--- name: GetModelWorkspaceCamsByID :one
+-- name: GetWorkspaceByID :one
 SELECT
   name,
   file_path,
   description,
-  cameras,
+  CASE
+    WHEN 'cameras' = ANY (
+      COALESCE(sqlc.narg (fields)::TEXT[], '{}'::TEXT[])
+    ) THEN cameras::JSONB
+    ELSE NULL::JSONB
+  END AS cameras,
   version,
   created_at,
   updated_at

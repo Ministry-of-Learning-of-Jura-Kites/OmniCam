@@ -1,6 +1,7 @@
 package controller_projects
 
 import (
+	"encoding/base64"
 	"net/http"
 	"strconv"
 	"time"
@@ -82,7 +83,12 @@ func (t *GetProjectRoute) getAll(c *gin.Context) {
 func (t *GetProjectRoute) getById(c *gin.Context) {
 	strId := c.Param("projectId")
 
-	id, err := uuid.Parse(strId)
+	decodedBytes, err := base64.StdEncoding.DecodeString(strId)
+	if err != nil {
+		t.Logger.Error("error decoding Base64", zap.Error(err))
+		return
+	}
+	id, err := uuid.FromBytes(decodedBytes)
 	if err != nil {
 		t.Logger.Error("error while converting str id to uuid", zap.Error(err))
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid projectId"})

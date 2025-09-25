@@ -13,6 +13,7 @@ import (
 	"google.golang.org/protobuf/proto"
 	config_env "omnicam.com/backend/config"
 	db_sqlc_gen "omnicam.com/backend/pkg/db/sqlc-gen"
+	messages_cameras "omnicam.com/backend/pkg/messages/cameras"
 	camera "omnicam.com/backend/pkg/messages/protobufs"
 )
 
@@ -23,35 +24,30 @@ type CameraAutosaveRoute struct {
 	Upgrader websocket.Upgrader
 }
 
-type Cameras = map[string]CameraStruct
-
-type CameraStruct struct {
-	Name   string  `json:"name" binding:"required"`
-	AngleX float64 `json:"angle_x"`
-	AngleY float64 `json:"angle_y"`
-	AngleZ float64 `json:"angle_z"`
-	AngleW float64 `json:"angle_w"`
-	PosX   float64 `json:"pos_x"`
-	PosY   float64 `json:"pos_y"`
-	PosZ   float64 `json:"pos_z"`
-}
-
-func (t *CameraAutosaveRoute) handleEventDelete(workspace db_sqlc_gen.GetModelWorkspaceCamsByIDRow, conn *websocket.Conn, modelId uuid.UUID, deleteId string) {
+func (t *CameraAutosaveRoute) handleEventDelete(conn *websocket.Conn, modelId uuid.UUID, deleteId string) {
 	// eventContent := event.GetDeleteId()
-	var cameras Cameras
-	err := json.Unmarshal(workspace.Cameras, &cameras)
+
+	// var cameras Cameras
+	// err := json.Unmarshal(workspace.Cameras, &cameras)
+	// if err != nil {
+	// 	conn.WriteMessage(websocket.TextMessage, []byte("error"))
+	// 	return
+	// }
+	// delete(cameras, deleteId)
+	// marshalled, err := json.Marshal(cameras)
+	// if err != nil {
+	// 	conn.WriteMessage(websocket.TextMessage, []byte("error"))
+	// 	return
+	// }
+
+	_, err := uuid.Parse(deleteId)
 	if err != nil {
 		conn.WriteMessage(websocket.TextMessage, []byte("error"))
 		return
 	}
-	delete(cameras, deleteId)
-	marshalled, err := json.Marshal(cameras)
-	if err != nil {
-		conn.WriteMessage(websocket.TextMessage, []byte("error"))
-		return
-	}
+
 	err = t.DB.UpdateWorkspaceCams(context.Background(), db_sqlc_gen.UpdateWorkspaceCamsParams{
-		Cameras: marshalled,
+		Key:     []string{deleteId},
 		UserID:  uuid.Nil,
 		ModelID: modelId,
 	})
@@ -59,18 +55,12 @@ func (t *CameraAutosaveRoute) handleEventDelete(workspace db_sqlc_gen.GetModelWo
 		conn.WriteMessage(websocket.TextMessage, []byte("error"))
 		return
 	}
+
 	conn.WriteMessage(websocket.TextMessage, []byte("ok"))
 }
 
-func (t *CameraAutosaveRoute) handleEventUpsert(workspace db_sqlc_gen.GetModelWorkspaceCamsByIDRow, conn *websocket.Conn, modelId uuid.UUID, upsert *camera.Camera) {
-	// eventContent := event.GetDeleteId()
-	var cameras Cameras
-	err := json.Unmarshal(workspace.Cameras, &cameras)
-	if err != nil {
-		conn.WriteMessage(websocket.TextMessage, []byte("error"))
-		return
-	}
-	cameras[upsert.Id] = CameraStruct{
+func (t *CameraAutosaveRoute) handleEventUpsert(conn *websocket.Conn, modelId uuid.UUID, upsert *camera.Camera) {
+	camera := messages_cameras.CameraStruct{
 		Name:   upsert.Name,
 		AngleX: upsert.AngleX,
 		AngleY: upsert.AngleY,
@@ -79,18 +69,23 @@ func (t *CameraAutosaveRoute) handleEventUpsert(workspace db_sqlc_gen.GetModelWo
 		PosX:   upsert.PosX,
 		PosY:   upsert.PosY,
 		PosZ:   upsert.PosZ,
+		Fov:    upsert.Fov,
 	}
-	marshalled, err := json.Marshal(cameras)
+	log.Println("ggg", camera)
+	marshalled, err := json.Marshal(camera)
 	if err != nil {
+		t.Logger.Error("Error while marshaling camera", zap.Error(err))
 		conn.WriteMessage(websocket.TextMessage, []byte("error"))
 		return
 	}
 	err = t.DB.UpdateWorkspaceCams(context.Background(), db_sqlc_gen.UpdateWorkspaceCamsParams{
-		Cameras: marshalled,
+		Key:     []string{upsert.Id},
+		Value:   marshalled,
 		UserID:  uuid.Nil,
 		ModelID: modelId,
 	})
 	if err != nil {
+		t.Logger.Error("Error while updating workspace cameras", zap.Error(err))
 		conn.WriteMessage(websocket.TextMessage, []byte("error"))
 		return
 	}
@@ -106,12 +101,12 @@ func (t *CameraAutosaveRoute) get(c *gin.Context) {
 		return
 	}
 
-	workspace, err := t.DB.GetModelWorkspaceCamsByID(c, db_sqlc_gen.GetModelWorkspaceCamsByIDParams{
+	_, err = t.DB.GetWorkspaceByID(c, db_sqlc_gen.GetWorkspaceByIDParams{
 		UserID:  uuid.Nil,
 		ModelID: modelId,
 	})
 	if err != nil {
-		t.Logger.Error("model not found", zap.Error(err))
+		t.Logger.Error("workspace not found", zap.Error(err))
 		c.JSON(http.StatusNotFound, gin.H{})
 		return
 	}
@@ -125,7 +120,7 @@ func (t *CameraAutosaveRoute) get(c *gin.Context) {
 		// Read message from client
 		_, msg, err := conn.ReadMessage()
 		if err != nil {
-			log.Println("Read error:", err)
+			t.Logger.Error("error from reading message from client", zap.Error(err))
 			break
 		}
 
@@ -138,9 +133,9 @@ func (t *CameraAutosaveRoute) get(c *gin.Context) {
 		for _, event := range events.Events {
 			switch event.Type {
 			case camera.CameraEventType_CAMERA_EVENT_TYPE_DELETE:
-				t.handleEventDelete(workspace, conn, modelId, event.GetDeleteId())
+				t.handleEventDelete(conn, modelId, event.GetDeleteId())
 			case camera.CameraEventType_CAMERA_EVENT_TYPE_UPSERT:
-				t.handleEventUpsert(workspace, conn, modelId, event.GetUpsert())
+				t.handleEventUpsert(conn, modelId, event.GetUpsert())
 			}
 		}
 	}

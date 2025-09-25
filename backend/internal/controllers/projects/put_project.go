@@ -1,6 +1,7 @@
 package controller_projects
 
 import (
+	"encoding/base64"
 	"net/http"
 	"time"
 
@@ -24,7 +25,7 @@ type UpdateProjectRequest struct {
 }
 
 func (t *PutProjectRoute) put(c *gin.Context) {
-	rawId := c.Param("projectId")
+	strId := c.Param("projectId")
 
 	var req UpdateProjectRequest
 
@@ -35,12 +36,18 @@ func (t *PutProjectRoute) put(c *gin.Context) {
 		return
 	}
 
-	id, err := uuid.Parse(rawId)
+	decodedBytes, err := base64.StdEncoding.DecodeString(strId)
 	if err != nil {
-		t.Logger.Debug("error while validating body", zap.Error(err))
+		t.Logger.Error("error decoding Base64", zap.Error(err))
+		return
+	}
+	id, err := uuid.FromBytes(decodedBytes)
+	if err != nil {
+		t.Logger.Error("error while converting str id to uuid", zap.Error(err))
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid projectId"})
 		return
 	}
+
 	params := db_sqlc_gen.UpdateProjectParams{
 		ID: id,
 	}

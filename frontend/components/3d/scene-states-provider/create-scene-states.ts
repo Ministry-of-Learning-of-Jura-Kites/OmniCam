@@ -11,11 +11,82 @@ import { useCameraManagement } from "../scene-3d/use-camera-management";
 import { useSpectatorRotation } from "../scene-3d/use-spectator-rotation";
 import { useSpectatorPosition } from "../scene-3d/use-spectator-position";
 import { useWebSocket } from "@vueuse/core";
+import type { RuntimeConfig } from "nuxt/schema";
+
+interface ModelWithCamsResp {
+  data: {
+    modelId: string;
+    cameras: Record<
+      string,
+      {
+        name: string;
+        angleX: number;
+        angleY: number;
+        angleZ: number;
+        angleW: number;
+        posX: number;
+        posY: number;
+        posZ: number;
+        fov: number;
+      }
+    >;
+  };
+}
 
 export const SCENE_STATES_KEY: InjectionKey<SceneStatesWithHelper> =
   Symbol("3d-scene-states");
 
-export function createBaseSceneStates(projectId: string, modelId: string) {
+async function loadCamsData(
+  projectId: string,
+  modelId: string,
+  runtimeConfig: RuntimeConfig,
+  workspace?: string,
+): Promise<Record<string, ICamera>> {
+  const workspaceSuffix = workspace == null ? "" : `/workspaces/${workspace}`;
+
+  const fields = ["cameras"];
+
+  const params = new URLSearchParams();
+  for (const field of fields) {
+    params.append("fields", field);
+  }
+
+  const rawResp = await fetch(
+    `http://${runtimeConfig.public.NUXT_PUBLIC_BACKEND_HOST}/api/v1/projects/${projectId}/models/${modelId}${workspaceSuffix}?${params.toString()}`,
+  );
+  const resp: ModelWithCamsResp = await rawResp.json();
+
+  console.log("Resp", resp);
+
+  return Object.fromEntries(
+    Object.entries(resp.data.cameras).map(([camId, rawCam]) => {
+      const cam: ICamera = {
+        name: rawCam.name,
+        position: new THREE.Vector3(rawCam.posX, rawCam.posY, rawCam.posZ),
+        rotation: new THREE.Euler().setFromQuaternion(
+          new THREE.Quaternion(
+            rawCam.angleX,
+            rawCam.angleY,
+            rawCam.angleZ,
+            rawCam.angleW,
+          ),
+          "YXZ",
+        ),
+        fov: rawCam.fov,
+        isHidingArrows: false,
+        isHidingWheels: false,
+      };
+      return [camId, cam];
+    }),
+  );
+}
+
+export async function createBaseSceneStates(
+  projectId: string,
+  modelId: string,
+  runtimeConfig: RuntimeConfig,
+  workspace?: string,
+) {
   const tresContext = ref<TresContext | null>(null);
 
   const draggableObjects: Set<Obj3DWithUserData> = new Set();
@@ -42,7 +113,9 @@ export function createBaseSceneStates(projectId: string, modelId: string) {
 
   const tresCanvasParent: Ref<HTMLDivElement | null> = ref(null);
 
-  const cameras = reactive<Record<string, ICamera>>({});
+  const cameras = reactive<Record<string, ICamera>>(
+    await loadCamsData(projectId, modelId, runtimeConfig, workspace),
+  );
 
   const currentCam = computed(() => {
     return currentCamId.value == null ? null : cameras![currentCamId.value];
@@ -61,8 +134,6 @@ export function createBaseSceneStates(projectId: string, modelId: string) {
       }
     },
   });
-
-  const runtimeConfig = useRuntimeConfig();
 
   const websocketUrl = `ws://${runtimeConfig.public.NUXT_PUBLIC_BACKEND_HOST}/api/v1/projects/${projectId}/models/${modelId}/autosave`;
 
@@ -102,7 +173,9 @@ export function createBaseSceneStates(projectId: string, modelId: string) {
   return sceneStates;
 }
 
-export function createSceneStatesWithHelper(sceneStates: BaseSceneStates) {
+export function createSceneStatesWithHelper(
+  sceneStates: Awaited<BaseSceneStates>,
+) {
   const sceneStatesWithCam = {
     ...sceneStates,
     cameraManagement: useCameraManagement(sceneStates),

@@ -1,6 +1,8 @@
 package controller_model
 
 import (
+	"encoding/base64"
+	"encoding/json"
 	"net/http"
 	"strconv"
 	"time"
@@ -10,17 +12,19 @@ import (
 	"go.uber.org/zap"
 	config_env "omnicam.com/backend/config"
 	db_sqlc_gen "omnicam.com/backend/pkg/db/sqlc-gen"
+	messages_cameras "omnicam.com/backend/pkg/messages/cameras"
 )
 
 type Model struct {
-	Id          uuid.UUID `json:"id"`
-	ProjectId   uuid.UUID `json:"projectId"`
-	ImagePath   string    `json:"imagePath"`
-	Name        string    `json:"name"`
-	Description string    `json:"description"`
-	Version     int       `json:"version"`
-	CreatedAt   string    `json:"createdAt"`
-	UpdatedAt   string    `json:"updatedAt"`
+	Id          uuid.UUID                `json:"id"`
+	ProjectId   uuid.UUID                `json:"projectId"`
+	Name        string                   `json:"name"`
+	Description string                   `json:"description"`
+	ImagePath   string                   `json:"imagePath"`
+	Version     int                      `json:"version"`
+	CreatedAt   string                   `json:"createdAt"`
+	UpdatedAt   string                   `json:"updatedAt"`
+	Cameras     messages_cameras.Cameras `json:"cameras"`
 }
 
 type GetModelRoute struct {
@@ -31,14 +35,25 @@ type GetModelRoute struct {
 
 func (t *GetModelRoute) getModelById(c *gin.Context) {
 	strId := c.Param("modelId")
-	id, err := uuid.Parse(strId)
+	decodedBytes, err := base64.StdEncoding.DecodeString(strId)
+	if err != nil {
+		t.Logger.Error("error decoding Base64", zap.Error(err))
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid model ID"})
+		return
+	}
+	id, err := uuid.FromBytes(decodedBytes)
 	if err != nil {
 		t.Logger.Error("error while converting str id to uuid", zap.Error(err))
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid model ID"})
 		return
 	}
 
-	data, err := t.DB.GetModelByID(c, id)
+	includedFields := c.QueryArray("fields")
+
+	data, err := t.DB.GetModelByID(c, db_sqlc_gen.GetModelByIDParams{
+		Fields: includedFields,
+		ID:     id,
+	})
 	if err != nil {
 		t.Logger.Error("model not found", zap.Error(err))
 		c.JSON(http.StatusNotFound, gin.H{})
@@ -50,6 +65,14 @@ func (t *GetModelRoute) getModelById(c *gin.Context) {
 		version = int(data.Version.Int32)
 	}
 
+	var cameras messages_cameras.Cameras
+	err = json.Unmarshal(data.Cameras, &cameras)
+	if err != nil {
+		t.Logger.Error("cameras jsonb are invalid", zap.Error(err))
+		c.JSON(http.StatusInternalServerError, gin.H{})
+		return
+	}
+
 	c.JSON(http.StatusOK, gin.H{"data": Model{
 		Id:          id,
 		ProjectId:   data.ProjectID,
@@ -59,12 +82,19 @@ func (t *GetModelRoute) getModelById(c *gin.Context) {
 		Version:     version,
 		CreatedAt:   data.CreatedAt.Time.Format(time.RFC3339),
 		UpdatedAt:   data.UpdatedAt.Time.Format(time.RFC3339),
+		Cameras:     cameras,
 	}})
 }
 
 func (t *GetModelRoute) getAllModel(c *gin.Context) {
 	strProjectId := c.Param("projectId")
-	projectId, err := uuid.Parse(strProjectId)
+
+	decodedBytes, err := base64.StdEncoding.DecodeString(strProjectId)
+	if err != nil {
+		t.Logger.Error("error decoding Base64", zap.Error(err))
+		return
+	}
+	projectId, err := uuid.FromBytes(decodedBytes)
 	if err != nil {
 		t.Logger.Error("error while converting str id to uuid", zap.Error(err))
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid model ID"})
