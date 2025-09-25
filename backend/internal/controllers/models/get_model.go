@@ -35,7 +35,7 @@ type GetModelRoute struct {
 
 func (t *GetModelRoute) getModelById(c *gin.Context) {
 	strId := c.Param("modelId")
-	decodedBytes, err := base64.StdEncoding.DecodeString(strId)
+	decodedBytes, err := base64.RawURLEncoding.DecodeString(strId)
 	if err != nil {
 		t.Logger.Error("error decoding Base64", zap.Error(err))
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid model ID"})
@@ -89,7 +89,7 @@ func (t *GetModelRoute) getModelById(c *gin.Context) {
 func (t *GetModelRoute) getAllModel(c *gin.Context) {
 	strProjectId := c.Param("projectId")
 
-	decodedBytes, err := base64.StdEncoding.DecodeString(strProjectId)
+	decodedBytes, err := base64.RawURLEncoding.DecodeString(strProjectId)
 	if err != nil {
 		t.Logger.Error("error decoding Base64", zap.Error(err))
 		return

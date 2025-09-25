@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import type { SceneStates } from "~/types/scene-states";
 import {
   createBaseSceneStates,
   createSceneStatesWithHelper,
@@ -27,9 +28,20 @@ const sceneStates = await createBaseSceneStates(
   props.workspace,
 );
 
-const sceneStatesWithHelper = createSceneStatesWithHelper(sceneStates);
+if (sceneStates.error != null) {
+  if (
+    sceneStates.error &&
+    (sceneStates.error as { action: string }).action == "not-found"
+  ) {
+    throw createError({ statusCode: 404, statusMessage: "Not Found" });
+  }
+} else {
+  const sceneStatesWithHelper = createSceneStatesWithHelper(
+    sceneStates as SceneStates,
+  );
 
-provide(SCENE_STATES_KEY, sceneStatesWithHelper);
+  provide(SCENE_STATES_KEY, sceneStatesWithHelper);
+}
 </script>
 
 <template>

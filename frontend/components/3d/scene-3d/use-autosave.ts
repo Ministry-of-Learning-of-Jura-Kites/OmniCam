@@ -35,7 +35,7 @@ function formatCam(camId: string, cam: ICamera): Camera {
   };
 }
 
-export function useAutosave(sceneStates: Awaited<SceneStates>) {
+export function useAutosave(sceneStates: SceneStates) {
   const lastSynced: Map<string, Camera> = new Map(
     Object.entries(sceneStates.cameras!).map(([camId, cam]) => {
       return [camId, formatCam(camId, cam)];

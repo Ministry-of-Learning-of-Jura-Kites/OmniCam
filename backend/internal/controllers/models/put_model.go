@@ -27,7 +27,7 @@ type UpdateModelRequest struct {
 func (t *PutModelRoute) put(c *gin.Context) {
 	strId := c.Param("modelId")
 
-	decodedBytes, err := base64.StdEncoding.DecodeString(strId)
+	decodedBytes, err := base64.RawURLEncoding.DecodeString(strId)
 	if err != nil {
 		t.Logger.Error("error decoding Base64", zap.Error(err))
 		return
