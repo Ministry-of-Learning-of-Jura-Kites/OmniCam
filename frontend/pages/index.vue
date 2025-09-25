@@ -5,6 +5,7 @@ import ConfirmDialog from "~/components/dialog/ConfirmDialog.vue";
 import SuccessDialog from "~/components/dialog/SuccessDialog.vue";
 import ContentCard from "~/components/card/ContentCard.vue";
 import CustomPagination from "~/components/pagination/CustomPagination.vue";
+import type { FieldOption } from "~/components/dialog/types";
 
 interface Project {
   id: string;
@@ -16,6 +17,22 @@ interface Project {
 }
 type ProjectWithoutId = Omit<Project, "id">;
 type ProjectForm = { name: string; description: string; image: File | null };
+
+const formFields = {
+  name: { type: "text" as const, required: true },
+  description: { type: "textarea" as const, required: true },
+  image: { type: "file" as const, required: false },
+};
+const editFields = {
+  name: { type: "text" as const, required: true },
+  description: { type: "textarea" as const, required: true },
+};
+
+const formTitles = {
+  name: "Project Name",
+  description: "Description",
+  image: "Project Image",
+};
 
 const config = useRuntimeConfig();
 
@@ -44,18 +61,6 @@ const projectForm = reactive<ProjectForm>({
   description: "",
   image: null,
 });
-
-const formFields = {
-  name: "text",
-  description: "textarea",
-  image: "file",
-} as const;
-
-const formTitles = {
-  name: "Project Name",
-  description: "Description",
-  image: "Project Image",
-};
 
 const dataArray = computed(() =>
   Object.entries(projects.value).map(([id, project]) => ({ id, ...project })),
@@ -280,7 +285,7 @@ onMounted(fetchProjects);
     <FormDialog
       v-model:open="isFormDialogOpen"
       v-model:model="projectForm"
-      :fields="formFields"
+      :fields="isCreateMode ? formFields : editFields"
       :titles="formTitles"
       :mode="isCreateMode ? 'create' : 'update'"
       @submit="handleFormSubmit"

@@ -101,16 +101,16 @@ const successMessage = ref<string>("");
 // dialog form config
 // type is input type (text , number , textarea , file etc)
 const editfields = {
-  name: "text",
-  description: "textarea",
+  name: { type: "text" as const, required: true },
+  description: { type: "textarea" as const, required: true },
   // file: "file",
 } as const;
 
 const createFields = {
-  name: "text",
-  description: "textarea",
-  file: "file",
-  image: "file",
+  name: { type: "text" as const, required: true },
+  description: { type: "textarea" as const, required: true },
+  file: { type: "file" as const, required: true },
+  image: { type: "file" as const, required: true },
 } as const;
 
 const formTitles = {
