@@ -1,8 +1,7 @@
--- name: UpdateProject :one
+-- name: UpdateProjectImage :one
 UPDATE "project"
 SET
-  name = COALESCE(sqlc.narg (name)::VARCHAR, name),
-  description = COALESCE(sqlc.narg (description)::TEXT, description),
+  image_path = sqlc.arg (image_path)::TEXT,
   updated_at = NOW()
 WHERE
   id = sqlc.arg (id)::UUID

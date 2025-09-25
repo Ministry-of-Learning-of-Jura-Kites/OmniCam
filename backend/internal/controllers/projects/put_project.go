@@ -68,6 +68,7 @@ func (t *PutProjectRoute) put(c *gin.Context) {
 		Id:          project.ID,
 		Name:        project.Name,
 		Description: project.Description,
+		ImagePath:   project.ImagePath,
 		CreatedAt:   project.CreatedAt.Time.Format(time.RFC3339),
 		UpdatedAt:   project.UpdatedAt.Time.Format(time.RFC3339),
 	}})

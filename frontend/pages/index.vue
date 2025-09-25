@@ -1,7 +1,10 @@
 <script setup lang="ts">
 import { Button } from "@/components/ui/button";
 import FormDialog from "~/components/dialog/FormDialog.vue";
-import ConfirmDialog from "~/components/dialog/ConfirmDialog.vue"; // นำเข้า ConfirmDialog
+import ConfirmDialog from "~/components/dialog/ConfirmDialog.vue";
+import SuccessDialog from "~/components/dialog/SuccessDialog.vue";
+import ContentCard from "~/components/card/ContentCard.vue";
+import CustomPagination from "~/components/pagination/CustomPagination.vue";
 
 interface Project {
   id: string;
@@ -9,22 +12,80 @@ interface Project {
   description: string;
   createdAt: string;
   updatedAt: string;
+  imagePath?: string;
 }
+type ProjectWithoutId = Omit<Project, "id">;
+type ProjectForm = { name: string; description: string; image: File | null };
 
 const config = useRuntimeConfig();
-const projects = ref<Project[]>([]);
+
+const projects = ref<Record<string, ProjectWithoutId>>({});
+const totalItem = ref(0);
+const page = ref(1);
+const pageSize = ref(4);
+
 const loading = ref(false);
 const error = ref<any>(null);
+
+// dialogs & forms
+const isFormDialogOpen = ref(false);
+const isCreateMode = ref(true);
+const currentEditId = ref<string | null>(null);
+
+const isConfirmDialogOpen = ref(false);
+const confirmAction = ref<"update" | "delete" | null>(null);
+const confirmMessage = ref("");
+
+const isSuccessDialogOpen = ref(false);
+const successMessage = ref("");
+
+const projectForm = reactive<ProjectForm>({
+  name: "",
+  description: "",
+  image: null,
+});
+
+const formFields = {
+  name: "text",
+  description: "textarea",
+  image: "file",
+} as const;
+
+const formTitles = {
+  name: "Project Name",
+  description: "Description",
+  image: "Project Image",
+};
+
+const dataArray = computed(() =>
+  Object.entries(projects.value).map(([id, project]) => ({ id, ...project })),
+);
 
 async function fetchProjects() {
   try {
     loading.value = true;
     error.value = null;
-    const { data } = await $fetch<{ data: Project[] }>(
+
+    const response = await $fetch<{ data: Project[]; count: number }>(
       `${config.public.NUXT_PUBLIC_URL}/api/v1/projects`,
-      { method: "GET" },
+      {
+        method: "GET",
+        query: { page: page.value, pageSize: pageSize.value },
+      },
     );
-    projects.value = data;
+    const data = response?.data || [];
+    const count = response?.count || 0;
+    const now = Date.now();
+    projects.value = data.reduce<Record<string, ProjectWithoutId>>((acc, p) => {
+      const { id, imagePath, ...rest } = p;
+      acc[id] = {
+        ...rest,
+        imagePath: imagePath ? `${imagePath}?t=${now}` : undefined,
+      };
+      return acc;
+    }, {});
+
+    totalItem.value = count;
   } catch (err) {
     error.value = err;
     console.error("Error fetching projects:", err);
@@ -33,43 +94,23 @@ async function fetchProjects() {
   }
 }
 
-// -------- Dialog State & Form --------
-const isFormDialogOpen = ref(false);
-const isCreateOrUpdate = ref(false);
-const currentEditId = ref<string | null>(null);
-
-// -------- Confirm Dialog State --------
-const isConfirmDialogOpen = ref(false);
-const confirmAction = ref<"update" | "delete" | null>(null);
-const confirmMessage = ref("");
-
-type ProjectForm = { name: string; description: string };
-const projectForm = reactive<ProjectForm>({
-  name: "",
-  description: "",
-});
-
-const formFields = {
-  name: "text",
-  description: "textarea",
-} as const;
-
-const formTitles = {
-  name: "Project Name",
-  description: "Description",
-};
-
 async function createProject() {
   try {
-    const body = {
-      name: projectForm.name,
-      description: projectForm.description,
-    };
+    const formData = new FormData();
+    formData.append("name", projectForm.name);
+    formData.append("description", projectForm.description);
+    if (projectForm.image) formData.append("image", projectForm.image);
+
     const { data } = await $fetch<{ data: Project }>(
       `${config.public.NUXT_PUBLIC_URL}/api/v1/projects`,
-      { method: "POST", body },
+      { method: "POST", body: formData },
     );
-    projects.value = [...projects.value, data];
+
+    const { id, ...rest } = data;
+    projects.value = { [id]: rest, ...projects.value }; // unshift
+    successMessage.value = `Project "${data.name}" created successfully.`;
+    isSuccessDialogOpen.value = true;
+    await fetchProjects();
   } catch (err) {
     console.error("Error creating project:", err);
   }
@@ -85,9 +126,34 @@ async function updateProject(id: string) {
       `${config.public.NUXT_PUBLIC_URL}/api/v1/projects/${id}`,
       { method: "PUT", body },
     );
-    projects.value = projects.value.map((p) => (p.id === id ? data : p));
+    const { id: pid, ...rest } = data;
+    projects.value[pid] = rest;
+    successMessage.value = `Project "${data.name}" updated successfully.`;
+    isSuccessDialogOpen.value = true;
   } catch (err) {
     console.error("Error updating project:", err);
+  }
+}
+
+async function updateProjectImage(id: string, file: File) {
+  if (!file) return;
+  const formData = new FormData();
+  formData.append("image", file);
+  try {
+    const { imagePath } = await $fetch<{ imagePath: string }>(
+      `${config.public.NUXT_PUBLIC_URL}/api/v1/projects/${id}/image`,
+      { method: "PUT", body: formData },
+    );
+    if (projects.value[id]) {
+      projects.value[id] = {
+        ...projects.value[id],
+        imagePath: `${imagePath}?t=${Date.now()}`,
+      };
+    }
+    successMessage.value = `Image for project updated successfully.`;
+    isSuccessDialogOpen.value = true;
+  } catch (err) {
+    console.error("Error updating project image:", err);
   }
 }
 
@@ -96,64 +162,70 @@ async function deleteProject(id: string) {
     await $fetch(`${config.public.NUXT_PUBLIC_URL}/api/v1/projects/${id}`, {
       method: "DELETE",
     });
-    projects.value = projects.value.filter((p) => p.id !== id);
+    const { [id]: _, ...rest } = projects.value;
+    projects.value = rest;
+    successMessage.value = `Project deleted successfully.`;
+    isSuccessDialogOpen.value = true;
+    await fetchProjects();
   } catch (err) {
     console.error("Error deleting project:", err);
   }
 }
 
-// -------- Handlers --------
+// ---------- Dialog Handlers ----------
 function openCreateDialog() {
-  isCreateOrUpdate.value = true;
+  isCreateMode.value = true;
   currentEditId.value = null;
   projectForm.name = "";
   projectForm.description = "";
+  projectForm.image = null;
   isFormDialogOpen.value = true;
 }
 
-function handleEditRow(project: Project) {
-  isCreateOrUpdate.value = false;
-  currentEditId.value = project.id;
-  projectForm.name = project.name;
-  projectForm.description = project.description;
-  isFormDialogOpen.value = true;
+function handleEditRow(projectId: string) {
+  isCreateMode.value = false;
+  currentEditId.value = projectId;
+  const project = projects.value[projectId];
+  if (project) {
+    projectForm.name = project.name;
+    projectForm.description = project.description;
+    projectForm.image = null;
+    isFormDialogOpen.value = true;
+  }
 }
 
 async function handleFormSubmit() {
-  if (!isCreateOrUpdate.value && currentEditId.value) {
-    confirmAction.value = "update";
-    confirmMessage.value = `Are you sure you want to update "${projectForm.name}" project?`;
-    isFormDialogOpen.value = false;
-    isConfirmDialogOpen.value = true;
-  } else if (isCreateOrUpdate.value) {
+  if (isCreateMode.value) {
     await createProject();
     isFormDialogOpen.value = false;
+  } else if (currentEditId.value) {
+    confirmAction.value = "update";
+    confirmMessage.value = `Update project "${projectForm.name}"?`;
+    isFormDialogOpen.value = false;
+    isConfirmDialogOpen.value = true;
   }
 }
 
 function handleDeleteProject(id: string, name: string) {
   currentEditId.value = id;
   confirmAction.value = "delete";
-  confirmMessage.value = `Are you sure you want to delete "${name}" project?`;
+  confirmMessage.value = `Do you want to delete project "${name}"?`;
   isConfirmDialogOpen.value = true;
 }
 
 async function handleConfirmAction() {
   if (confirmAction.value === "update" && currentEditId.value) {
     await updateProject(currentEditId.value);
-    isFormDialogOpen.value = false;
   } else if (confirmAction.value === "delete" && currentEditId.value) {
     await deleteProject(currentEditId.value);
   }
-
   isConfirmDialogOpen.value = false;
   confirmAction.value = null;
   currentEditId.value = null;
 }
 
-onMounted(async () => {
-  await fetchProjects();
-});
+watch([page, pageSize], fetchProjects);
+onMounted(fetchProjects);
 </script>
 
 <template>
@@ -170,44 +242,39 @@ onMounted(async () => {
       {{ error.message || "Failed to fetch projects" }}
     </div>
 
-    <div v-if="loading && projects?.length === 0" class="text-center py-8">
+    <div v-if="loading && dataArray.length === 0" class="text-center py-8">
       <p>Loading projects...</p>
     </div>
 
-    <div v-else class="gap-4">
-      <div
-        v-for="project in projects"
-        :key="project.id"
-        class="p-4 rounded-lg shadow mb-4"
-      >
-        <h3 class="text-xl font-semibold">{{ project.name }}</h3>
-        <p class="text-gray-600">{{ project.description }}</p>
-        <p class="text-sm text-gray-500">
-          Created: {{ new Date(project.createdAt).toLocaleDateString() }}
-        </p>
+    <div
+      v-else-if="dataArray.length === 0 && !loading"
+      class="text-center py-8 text-gray-500"
+    >
+      No projects found. Create your first project!
+    </div>
 
-        <div class="mt-4 flex gap-2">
-          <Button
-            variant="outline"
-            @click="$router.push(`/projects/${project.id}`)"
-          >
-            View Details
-          </Button>
-          <Button variant="secondary" @click="handleEditRow(project)">
-            Edit
-          </Button>
-          <Button
-            variant="destructive"
-            @click="handleDeleteProject(project.id, project.name)"
-          >
-            Delete
-          </Button>
-        </div>
-      </div>
+    <div v-else class="flex flex-row gap-6 overflow-x-auto w-full">
+      <ContentCard
+        v-for="p in dataArray"
+        :key="p.id"
+        :name="p.name"
+        :description="p.description"
+        :redirect-link="`/projects/${p.id}`"
+        :image-path="p.imagePath || ''"
+        @update="handleEditRow(p.id)"
+        @delete="handleDeleteProject(p.id, p.name)"
+        @update-image="
+          (file: File | undefined) => file && updateProjectImage(p.id, file)
+        "
+      />
+    </div>
 
-      <div v-if="projects?.length === 0" class="text-center py-8 text-gray-500">
-        No projects found. Create your first project!
-      </div>
+    <div class="mt-6 flex justify-center">
+      <CustomPagination
+        v-model:page="page"
+        :page-size="pageSize"
+        :total-item="totalItem"
+      />
     </div>
 
     <FormDialog
@@ -215,7 +282,7 @@ onMounted(async () => {
       v-model:model="projectForm"
       :fields="formFields"
       :titles="formTitles"
-      :mode="isCreateOrUpdate ? 'create' : 'update'"
+      :mode="isCreateMode ? 'create' : 'update'"
       @submit="handleFormSubmit"
     />
 
@@ -224,6 +291,12 @@ onMounted(async () => {
       :message="confirmMessage"
       @submit="handleConfirmAction"
       @close="isConfirmDialogOpen = false"
+    />
+
+    <SuccessDialog
+      v-model:open="isSuccessDialogOpen"
+      :message="successMessage"
+      icon="fa fa-check-circle"
     />
   </div>
 </template>

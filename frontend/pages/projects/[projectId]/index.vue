@@ -133,12 +133,15 @@ async function fetchModel() {
         },
       },
     );
-
+    const now = Date.now();
     if (response.data != null) {
       models.value = response.data.reduce<Record<string, ModelWithoutId>>(
         (acc, model) => {
-          const { id, ...rest } = model;
-          acc[id] = rest;
+          const { id, imagePath, ...rest } = model;
+          acc[id] = {
+            ...rest,
+            imagePath: imagePath ? `${imagePath}?t=${now}` : undefined,
+          };
           return acc;
         },
         {},
@@ -403,7 +406,7 @@ watch([page, pageSize], async ([page, pageSize]) => {
 
 <template>
   <div>
-    <div class="flex flex-col items-center min-h-screen bg-gray-100 p-4">
+    <div class="flex flex-col items-center min-h-screen p-4">
       <div class="w-full max-w-7xl flex justify-end mb-4">
         <Button class="!px-4" type="button" @click="handleCreate">
           <Plus />

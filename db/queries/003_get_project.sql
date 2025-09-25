@@ -3,6 +3,7 @@ SELECT
   name,
   description,
   created_at,
+  image_path,
   updated_at
 FROM
   "project"
