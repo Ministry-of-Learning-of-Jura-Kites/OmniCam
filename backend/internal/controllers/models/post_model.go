@@ -10,7 +10,7 @@ import (
 	"github.com/google/uuid"
 	"go.uber.org/zap"
 	config_env "omnicam.com/backend/config"
-	"omnicam.com/backend/internal" // 👈 use Root
+	"omnicam.com/backend/internal"
 	db_sqlc_gen "omnicam.com/backend/pkg/db/sqlc-gen"
 )
 
