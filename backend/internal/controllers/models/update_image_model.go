@@ -9,6 +9,7 @@ import (
 	"github.com/google/uuid"
 	"go.uber.org/zap"
 	config_env "omnicam.com/backend/config"
+	"omnicam.com/backend/internal" // 👈 use Root
 	db_sqlc_gen "omnicam.com/backend/pkg/db/sqlc-gen"
 )
 
@@ -16,7 +17,6 @@ type PutImageModelRoute struct {
 	Logger *zap.Logger
 	Env    *config_env.AppEnv
 	DB     *db_sqlc_gen.Queries
-	// DB is not needed if we only update the image path on disk
 }
 
 func (t *PutImageModelRoute) updateImage(c *gin.Context) {
@@ -55,15 +55,15 @@ func (t *PutImageModelRoute) updateImage(c *gin.Context) {
 		zap.Int64("size", imageFile.Size),
 	)
 
-	// Where to save on disk
-	imageDir := filepath.Join(t.Env.ModelFilePath, "model", projectId.String(), modelId.String())
+	// Where to save on disk -> <project-root>/uploads/model/{projectId}/{modelId}
+	imageDir := filepath.Join(internal.Root, "uploads", "model", projectId.String(), modelId.String())
 	if err := os.MkdirAll(imageDir, os.ModePerm); err != nil {
 		t.Logger.Error("Failed to create image directory", zap.Error(err))
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to create folder for model image"})
 		return
 	}
 
-	// Remove old images
+	// Remove old images (if any)
 	files, _ := os.ReadDir(imageDir)
 	for _, f := range files {
 		if !f.IsDir() {
@@ -71,35 +71,34 @@ func (t *PutImageModelRoute) updateImage(c *gin.Context) {
 		}
 	}
 
-	// Save the new one
-	fsImagePath := filepath.Join(imageDir, "image"+imageExt) // filesystem
+	// Save the new image
+	fsImagePath := filepath.Join(imageDir, "image"+imageExt)
 	if err := c.SaveUploadedFile(imageFile, fsImagePath); err != nil {
 		t.Logger.Error("Failed to save image file", zap.Error(err))
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to save image"})
 		return
 	}
 
-	// Public web path for frontend
+	// Web path for DB/frontend
 	webImagePath := "/uploads/model/" + projectId.String() + "/" + modelId.String() + "/image" + imageExt
-
 	_, err = t.DB.UpdateModelImage(c, db_sqlc_gen.UpdateModelImageParams{
 		ID:        modelId,
 		ImagePath: webImagePath,
 	})
 	if err != nil {
-		t.Logger.Error("error while updating project", zap.Error(err))
-		c.JSON(http.StatusInternalServerError, gin.H{})
+		t.Logger.Error("Error while updating model image", zap.Error(err))
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to update model image in DB"})
 		return
 	}
+
 	t.Logger.Info("Model image updated", zap.String("path", fsImagePath))
 
 	c.JSON(http.StatusOK, gin.H{
 		"message":   "image updated successfully",
-		"imagePath": webImagePath, // return web path instead of fs path
+		"imagePath": webImagePath,
 	})
 }
 
-// Register the route
 func (t *PutImageModelRoute) InitUpdateImageRoute(router gin.IRouter) gin.IRouter {
 	router.PUT("/projects/:projectId/models/:modelId/image", t.updateImage)
 	return router

@@ -12,6 +12,7 @@ import (
 	"github.com/google/uuid"
 	"go.uber.org/zap"
 	config_env "omnicam.com/backend/config"
+	"omnicam.com/backend/internal"
 	db_sqlc_gen "omnicam.com/backend/pkg/db/sqlc-gen"
 )
 
@@ -37,10 +38,6 @@ func (t *DeleteModelRoute) delete(c *gin.Context) {
 		return
 	}
 
-	// It's best practice to delete the files first, then the database entry.
-	rootDir := "."
-
-	// Helper function to handle path trimming and deletion
 	deleteFile := func(dbPath string) {
 		if dbPath == "" {
 			return
@@ -48,17 +45,16 @@ func (t *DeleteModelRoute) delete(c *gin.Context) {
 
 		relativePath := strings.TrimPrefix(dbPath, "/uploads/")
 
-		// Use path.Join to create the full relative path from the backend directory.
-		fullPath := path.Join(rootDir, "uploads", relativePath)
+		// Use internal.Root from root.go
+		fullPath := path.Join(internal.Root, "uploads", relativePath)
 		dirPath := path.Dir(fullPath)
 
 		absPath, _ := filepath.Abs(dirPath)
 		fmt.Println("Absolute delete path:", absPath)
-
-		fmt.Println("Attempting to delete folder:", dirPath) // For debugging
+		fmt.Println("Attempting to delete folder:", dirPath) // Debug log
 
 		if err := os.RemoveAll(absPath); err != nil {
-			t.Logger.Error("failed to remove folder", zap.String("path", dirPath), zap.Error(err))
+			t.Logger.Error("failed to remove folder", zap.String("path", absPath), zap.Error(err))
 		}
 	}
 
