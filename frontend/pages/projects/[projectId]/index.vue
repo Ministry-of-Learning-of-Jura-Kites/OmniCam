@@ -180,35 +180,6 @@ async function createModel() {
     },
   );
 
-  const newModel: ModelWithoutId = {
-    name: response.data.name,
-    projectId: response.data.projectId,
-    description: response.data.description,
-    updatedAt: response.data.updatedAt,
-    createdAt: response.data.createdAt,
-    version: response.data.version,
-    imagePath: response.data.imagePath,
-    filePath: response.data.filePath,
-  };
-
-  // Convert hashmap to array to manage order and size
-  const currentModels = Object.values(models.value);
-
-  currentModels.unshift(newModel);
-
-  if (currentModels.length > pageSize.value) {
-    currentModels.pop();
-  }
-
-  // Rebuild hashmap with the same keys
-  models.value = currentModels.reduce(
-    (acc, model, index) => {
-      acc[index] = model;
-      return acc;
-    },
-    {} as Record<number, ModelWithoutId>,
-  );
-
   successDialog.value = true;
   successMessage.value = `You have successfully created ${response.data.name}`;
 
@@ -363,16 +334,6 @@ onMounted(() => {
   fetchModel();
 });
 
-// data computed when change (record -> array)
-const dataArray = computed(() =>
-  Object.entries(models.value).map(([id, model]) => ({
-    id,
-    ...model,
-    imagePath: model.imagePath,
-    filePath: model.filePath,
-  })),
-);
-
 watch(
   modelForm,
   (modelForm) => {
@@ -382,10 +343,6 @@ watch(
     once: false,
   },
 );
-
-watch(dataArray, (dataArray) => {
-  console.log("test", dataArray);
-});
 
 watch([page, pageSize], async ([page, pageSize]) => {
   console.log(page);
@@ -404,15 +361,15 @@ watch([page, pageSize], async ([page, pageSize]) => {
       <div class="w-full max-w-7xl flex justify-center mb-4">
         <div class="flex flex-row gap-6 overflow-x-auto w-full">
           <ContentCard
-            v-for="model in dataArray"
-            :key="model.id"
+            v-for="(model, id) in models"
+            :key="id"
             :name="model.name"
             :description="model.description"
             :image-path="model.imagePath ?? ''"
-            @update="handleEditRow(model)"
-            @delete="handleDeleteRow(model)"
+            @update="handleEditRow({ ...model, id })"
+            @delete="handleDeleteRow({ ...model, id })"
             @update-image="
-              (file: File | undefined) => handleUpdateImage(file, model.id)
+              (file: File | undefined) => handleUpdateImage(file, id)
             "
           />
         </div>
