@@ -45,8 +45,6 @@ const {
   };
 } = await resp.json();
 
-console.log("ggg", modelResp);
-
 const sceneStates = inject(SCENE_STATES_KEY)!;
 
 const camera: Ref<THREE.PerspectiveCamera | null> = ref(null);

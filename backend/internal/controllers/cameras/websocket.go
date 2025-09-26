@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/base64"
 	"encoding/json"
-	"log"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -74,7 +73,7 @@ func (t *CameraAutosaveRoute) handleEventUpsert(conn *websocket.Conn, modelId uu
 		IsHidingArrows: upsert.IsHidingArrows,
 		IsHidingWheels: upsert.IsHidingWheels,
 	}
-	log.Println("ggg", camera)
+
 	marshalled, err := json.Marshal(camera)
 	if err != nil {
 		t.Logger.Error("Error while marshaling camera", zap.Error(err))
