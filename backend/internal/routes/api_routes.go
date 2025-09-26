@@ -101,5 +101,11 @@ func InitRoutes(deps Dependencies, router gin.IRouter) {
 		DB:     deps.DB,
 	}
 	putImageModelRoute.InitUpdateImageRoute(router)
+	putImageProjectRoute := controller_projects.PutImageProjectRoute{
+		Logger: deps.Logger,
+		Env:    deps.Env,
+		DB:     deps.DB,
+	}
+	putImageProjectRoute.InitUpdateImageRoute(router)
 
 }

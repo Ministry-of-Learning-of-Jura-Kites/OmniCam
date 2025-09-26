@@ -18,6 +18,7 @@
   },
   "dependencies": {
     "@fortawesome/fontawesome-free": "^7.0.1",
+    "@nuxtjs/color-mode": "^3.5.2",
     "@t3-oss/env-nuxt": "^0.13.8",
     "@tailwindcss/vite": "^4.1.12",
     "@tanstack/vue-table": "^8.21.3",
@@ -46,6 +47,7 @@
     "prettier": "^3.6.2",
     "prettier-plugin-embed": "^0.5.0",
     "prettier-plugin-sql": "^0.19.2",
+    "sql-formatter": "^15.6.9",
     "shadcn-nuxt": "^2.2.0"
   }
 }

@@ -6,3 +6,8 @@ export type InputTypeMap = {
   file: File;
   number: number;
 };
+
+export type FieldOption = {
+  type: InputTypes;
+  required?: boolean;
+};

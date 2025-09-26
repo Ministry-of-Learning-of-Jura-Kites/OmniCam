@@ -100,16 +100,16 @@ const successMessage = ref<string>("");
 // dialog form config
 // type is input type (text , number , textarea , file etc)
 const editfields = {
-  name: "text",
-  description: "textarea",
+  name: { type: "text" as const, required: true },
+  description: { type: "textarea" as const, required: true },
   // file: "file",
 } as const;
 
 const createFields = {
-  name: "text",
-  description: "textarea",
-  file: "file",
-  image: "file",
+  name: { type: "text" as const, required: true },
+  description: { type: "textarea" as const, required: true },
+  file: { type: "file" as const, required: true },
+  image: { type: "file" as const, required: true },
 } as const;
 
 const formTitles = {
@@ -132,16 +132,24 @@ async function fetchModel() {
         },
       },
     );
-
-    models.value = response.data.reduce<Record<string, ModelWithoutId>>(
-      (acc, model) => {
-        const { id, ...rest } = model;
-        acc[id] = rest;
-        return acc;
-      },
-      {},
-    );
-    totalData.value = response.count;
+    const now = Date.now();
+    if (response.data != null) {
+      models.value = response.data.reduce<Record<string, ModelWithoutId>>(
+        (acc, model) => {
+          const { id, imagePath, ...rest } = model;
+          acc[id] = {
+            ...rest,
+            imagePath: imagePath ? `${imagePath}?t=${now}` : undefined,
+          };
+          return acc;
+        },
+        {},
+      );
+      totalData.value = response.count;
+    } else {
+      models.value = {};
+      totalData.value = 0;
+    }
 
     console.log(models.value, "c");
     console.log(totalData.value);
@@ -355,7 +363,7 @@ watch([page, pageSize], async ([page, pageSize]) => {
 
 <template>
   <div>
-    <div class="flex flex-col items-center min-h-screen bg-gray-100 p-4">
+    <div class="flex flex-col items-center min-h-screen p-4">
       <div class="w-full max-w-7xl flex justify-end mb-4">
         <Button type="button" @click="handleCreate" />
       </div>
