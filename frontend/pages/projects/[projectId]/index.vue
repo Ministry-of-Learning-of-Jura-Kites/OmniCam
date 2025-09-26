@@ -6,7 +6,6 @@ import FormDialog from "~/components/dialog/FormDialog.vue";
 import SuccessDialog from "~/components/dialog/SuccessDialog.vue";
 import ContentCard from "~/components/card/ContentCard.vue";
 import CustomPagination from "~/components/pagination/CustomPagination.vue";
-import { Plus } from "lucide-vue-next";
 
 export interface Model {
   id: string;
@@ -154,6 +153,7 @@ async function fetchModel() {
 
     console.log(models.value, "c");
     console.log(totalData.value);
+    console.log(totalData.value);
   } catch (err) {
     console.error("fetchModel error", err);
   }
@@ -187,35 +187,6 @@ async function createModel() {
       method: "POST",
       body: formData,
     },
-  );
-
-  const newModel: ModelWithoutId = {
-    name: response.data.name,
-    projectId: response.data.projectId,
-    description: response.data.description,
-    updatedAt: response.data.updatedAt,
-    createdAt: response.data.createdAt,
-    version: response.data.version,
-    imagePath: response.data.imagePath,
-    filePath: response.data.filePath,
-  };
-
-  // Convert hashmap to array to manage order and size
-  const currentModels = Object.values(models.value);
-
-  currentModels.unshift(newModel);
-
-  if (currentModels.length > pageSize.value) {
-    currentModels.pop();
-  }
-
-  // Rebuild hashmap with the same keys
-  models.value = currentModels.reduce(
-    (acc, model, index) => {
-      acc[index] = model;
-      return acc;
-    },
-    {} as Record<number, ModelWithoutId>,
   );
 
   successDialog.value = true;
@@ -373,16 +344,6 @@ onMounted(() => {
   fetchModel();
 });
 
-// data computed when change (record -> array)
-const dataArray = computed(() =>
-  Object.entries(models.value).map(([id, model]) => ({
-    id,
-    ...model,
-    imagePath: model.imagePath,
-    filePath: model.filePath,
-  })),
-);
-
 watch(
   modelForm,
   (modelForm) => {
@@ -392,10 +353,6 @@ watch(
     once: false,
   },
 );
-
-watch(dataArray, (dataArray) => {
-  console.log("test", dataArray);
-});
 
 watch([page, pageSize], async ([page, pageSize]) => {
   console.log(page);
@@ -408,24 +365,22 @@ watch([page, pageSize], async ([page, pageSize]) => {
   <div>
     <div class="flex flex-col items-center min-h-screen p-4">
       <div class="w-full max-w-7xl flex justify-end mb-4">
-        <Button class="!px-4" type="button" @click="handleCreate">
-          <Plus />
-        </Button>
+        <Button type="button" @click="handleCreate" />
       </div>
 
       <div class="w-full max-w-7xl flex justify-center mb-4">
         <div class="flex flex-row gap-6 overflow-x-auto w-full">
           <ContentCard
-            v-for="model in dataArray"
-            :key="model.id"
+            v-for="(model, id) in models"
+            :key="id"
             :name="model.name"
             :description="model.description"
             :image-path="model.imagePath ?? ''"
-            :redirect-link="`models/${model.id}`"
-            @update="handleEditRow(model)"
-            @delete="handleDeleteRow(model)"
+            :redirect-link="`models/${id}`"
+            @update="handleEditRow({ ...model, id })"
+            @delete="handleDeleteRow({ ...model, id })"
             @update-image="
-              (file: File | undefined) => handleUpdateImage(file, model.id)
+              (file: File | undefined) => handleUpdateImage(file, id)
             "
           />
         </div>

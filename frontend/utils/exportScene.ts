@@ -1,21 +1,25 @@
 import type { ICamera } from "~/types/camera";
+import * as THREE from "three";
 
 export function exportCamerasToJson(cameras: Record<string, ICamera>) {
-  const data = Object.entries(cameras).map(([id, camera]) => ({
-    id,
-    name: camera.name,
-    fov: camera.fov,
-    isHidingArrows: camera.isHidingArrows,
-    isHidingWheels: camera.isHidingWheels,
-    controlling: camera.controlling,
-    position: camera.position.toArray(),
-    rotation: {
-      x: camera.rotation.x,
-      y: camera.rotation.y,
-      z: camera.rotation.z,
-      order: camera.rotation.order,
-    },
-  }));
+  const data = Object.entries(cameras).map(([id, camera]) => {
+    const quat = new THREE.Quaternion().setFromEuler(camera.rotation);
+
+    return {
+      id,
+      Name: camera.name,
+      AngleX: quat.x,
+      AngleY: quat.y,
+      AngleZ: quat.z,
+      AngleW: quat.w,
+      PosX: camera.position.x,
+      PosY: camera.position.y,
+      PosZ: camera.position.z,
+      Fov: camera.fov,
+      IsHidingArrows: camera.isHidingArrows,
+      IsHidingWheels: camera.isHidingWheels,
+    };
+  });
 
   const blob = new Blob([JSON.stringify(data, null, 2)], {
     type: "application/json",
