@@ -1,3 +1,5 @@
+CREATE TYPE role AS ENUM('owner', 'collaborator');
+
 CREATE TABLE "user" (
   id UUID PRIMARY KEY DEFAULT GEN_RANDOM_UUID(),
   email VARCHAR(255) NOT NULL UNIQUE,
@@ -19,6 +21,7 @@ CREATE TABLE "project" (
 CREATE TABLE "user_to_project" (
   project_id UUID NOT NULL REFERENCES "project" (id),
   user_id UUID NOT NULL REFERENCES "user" (id),
+  role role NOT NULL,
   PRIMARY KEY (project_id, user_id)
 );
 

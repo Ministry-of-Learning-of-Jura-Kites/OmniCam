@@ -15,6 +15,8 @@ type AppEnv struct {
 	DatabaseUrl   string `env:"DATABASE_URL"`
 	ModelFilePath string `env:"MODEL_FILE_PATH"`
 	FrontendHost  string `env:"FRONTEND_HOST"`
+	JWTSecret     string `env:"JWT_SECRET"`
+	JWTExpireTime int    `env:"JWT_EXPIRE_DATE"`
 }
 
 func InitAppEnv(logger *zap.Logger) *AppEnv {
