@@ -50,6 +50,7 @@ async function loadCamsData(
   for (const field of fields) {
     params.append("fields", field);
   }
+  params.append("t", String(Date.now()));
 
   try {
     const rawResp = await fetch(

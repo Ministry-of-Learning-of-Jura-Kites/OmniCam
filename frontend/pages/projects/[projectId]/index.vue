@@ -303,7 +303,7 @@ async function handleUpdateImage(file: File | undefined, modelId: string) {
 
   try {
     const res = await $fetch<{ imagePath: string; message: string }>(
-      `${config.public.NUXT_PUBLIC_URL}/api/v1/projects/${projectId}/models/${modelId}/image`,
+      `http://${config.public.NUXT_PUBLIC_BACKEND_HOST}/api/v1/projects/${projectId}/models/${modelId}/image`,
       {
         method: "PUT",
         body: formData,
@@ -354,7 +354,7 @@ watch([page, pageSize], async () => {
             :name="model.name"
             :description="model.description"
             :image-path="model.imagePath ?? ''"
-            :redirect-link="`models/${uuidToBase64Url(id)}`"
+            :redirect-link="`/projects/${route.params.projectId}/models/${uuidToBase64Url(id)}`"
             @update="handleEditRow({ ...model, id })"
             @delete="handleDeleteRow({ ...model, id })"
             @update-image="

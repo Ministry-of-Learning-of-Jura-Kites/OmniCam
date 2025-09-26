@@ -11,7 +11,8 @@ const route = useRoute();
 const projectId = route.params.projectId;
 const modelId = route.params.modelId;
 
-inject(WORKSPACE_KEY, null);
+const workspace = inject(WORKSPACE_KEY);
+workspace.value = null;
 </script>
 
 <template>
