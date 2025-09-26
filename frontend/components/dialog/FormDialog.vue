@@ -126,9 +126,9 @@ function handleClose() {
               errors[key as string] ? 'border-red-500' : 'border-white',
             ]"
             @change="
-              (e) =>
+              (e: Event) =>
                 ((model as any)[key] = ((e.target as HTMLInputElement)
-                  .files?.[0] ?? null) as any)
+                  ?.files?.[0] ?? null) as any)
             "
           />
         </template>
