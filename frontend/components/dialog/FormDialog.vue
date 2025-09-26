@@ -1,5 +1,5 @@
-<script setup lang="ts" generic="L extends Record<string, InputTypes | null>">
-import { watch } from "vue";
+<script setup lang="ts" generic="L extends Record<string, FieldOption | null>">
+import { ref } from "vue";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -9,13 +9,15 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
-import type { InputTypeMap, InputTypes } from "./types";
+import type { InputTypeMap, InputTypes, FieldOption } from "./types";
 
-type ModelFromFields<L extends Record<string, InputTypes | null>> = {
-  [K in keyof L]: L[K] extends InputTypes ? InputTypeMap[L[K]] | null : null;
+type ModelFromFields<L extends Record<string, FieldOption | null>> = {
+  [K in keyof L]: L[K] extends { type: InputTypes }
+    ? InputTypeMap[L[K]["type"]] | null
+    : null;
 };
 
-type TitleMap<L extends Record<string, InputTypes | null>> = {
+type TitleMap<L extends Record<string, FieldOption | null>> = {
   [K in keyof L]: string;
 };
 
@@ -36,19 +38,24 @@ const emit = defineEmits<{
   (e: "update:open", value: boolean): void;
 }>();
 
-// const model = reactive<ModelFromFields<L>>({} as ModelFromFields<L>);
+const errors = ref<Record<string, string>>({});
 
-watch(
-  () => props.open,
-  (_val) => {
-    //if (val && model) {
-    //  Object.assign(model, model);
-    //}
-  },
-  { immediate: true },
-);
+function validate(): boolean {
+  const newErrors: Record<string, string> = {};
+
+  for (const [key, field] of Object.entries(props.fields)) {
+    if (!field) continue;
+    if (field.required && !model.value[key as keyof typeof model.value]) {
+      newErrors[key] = `${props.titles[key as keyof L]} is required.`;
+    }
+  }
+
+  errors.value = newErrors;
+  return Object.keys(newErrors).length === 0;
+}
 
 function handleSubmit() {
+  if (!validate()) return;
   emit("submit");
 }
 
@@ -66,36 +73,46 @@ function handleClose() {
         </DialogTitle>
       </DialogHeader>
 
-      <div class="flex flex-col gap-2 py-4">
+      <div class="flex flex-col gap-4 py-4">
         <template
-          v-for="[key, type] of Object.entries(props.fields) as [
+          v-for="[key, field] of Object.entries(props.fields) as [
             keyof L,
             L[keyof L],
           ][]"
           :key="key"
         >
-          <h2>{{ titles[key] }}</h2>
+          <h2>
+            {{ props.titles[key] }}
+            <span v-if="field?.required" class="text-red-500"> * </span>
+          </h2>
+          <p v-if="errors[key as string]" class="text-sm text-red-500">
+            {{ errors[key as string] }}
+          </p>
 
           <!-- text/number input -->
           <input
-            v-if="type === 'text' || type === 'number'"
+            v-if="field?.type === 'text' || field?.type === 'number'"
             v-model="(model as any)[key]"
-            :type="type"
+            :type="field?.type"
             :placeholder="key as string"
-            class="border px-2 py-1 rounded"
+            :class="[
+              'border px-2 py-1 rounded',
+              errors[key as string] ? 'border-red-500' : 'border-gray-300',
+            ]"
           />
 
-          <!-- textarea -->
           <textarea
-            v-else-if="type === 'textarea'"
+            v-else-if="field?.type === 'textarea'"
             v-model="(model as any)[key]"
             :placeholder="key as string"
-            class="border px-2 py-1 rounded"
+            :class="[
+              'border px-2 py-1 rounded',
+              errors[key as string] ? 'border-red-500' : 'border-gray-300',
+            ]"
           />
 
-          <!-- file input -->
           <input
-            v-else-if="type === 'file'"
+            v-else-if="field?.type === 'file'"
             type="file"
             :accept="
               key === 'file'
@@ -104,14 +121,19 @@ function handleClose() {
                   ? '.jpg,.png'
                   : undefined
             "
+            :class="[
+              'border px-2 py-1 rounded',
+              errors[key as string] ? 'border-red-500' : 'border-white',
+            ]"
             @change="
-              (e) =>
+              (e: Event) =>
                 ((model as any)[key] = ((e.target as HTMLInputElement)
-                  .files?.[0] ?? null) as any)
+                  ?.files?.[0] ?? null) as any)
             "
           />
         </template>
       </div>
+
       <DialogFooter>
         <DialogClose as-child>
           <Button type="button" variant="secondary" @click="handleClose">

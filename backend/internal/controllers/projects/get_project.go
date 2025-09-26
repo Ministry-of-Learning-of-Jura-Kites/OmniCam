@@ -2,6 +2,7 @@ package controller_projects
 
 import (
 	"net/http"
+	"strconv"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -15,6 +16,7 @@ type Project struct {
 	Id          uuid.UUID `json:"id"`
 	Name        string    `json:"name"`
 	Description string    `json:"description"`
+	ImagePath   string    `json:"imagePath"`
 	CreatedAt   string    `json:"createdAt"`
 	UpdatedAt   string    `json:"updatedAt"`
 }
@@ -26,29 +28,55 @@ type GetProjectRoute struct {
 }
 
 func (t *GetProjectRoute) getAll(c *gin.Context) {
-	project, err := t.DB.GetAllProjects(c)
+	page, err := strconv.Atoi(c.DefaultQuery("page", "1"))
+	if err != nil || page < 1 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid page number"})
+		return
+	}
+
+	pageSize, err := strconv.Atoi(c.DefaultQuery("pageSize", "10"))
+	if err != nil || pageSize < 1 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid page size"})
+		return
+	}
+
+	offset := (page - 1) * pageSize
+
+	projects, err := t.DB.GetAllProjects(c, db_sqlc_gen.GetAllProjectsParams{
+		PageSize:   int32(pageSize),
+		PageOffset: int32(offset),
+	})
 	if err != nil {
 		t.Logger.Error("Error while getting all project", zap.Error(err))
 		c.JSON(http.StatusInternalServerError, gin.H{})
 		return
 	}
 
-	if project == nil {
-		project = []db_sqlc_gen.Project{}
+	totalCount, err := t.DB.CountProjects(c)
+	if err != nil {
+		t.Logger.Error("Error while counting projects", zap.Error(err))
+		c.JSON(http.StatusInternalServerError, gin.H{})
+		return
 	}
 
 	var projectList []Project
-	for _, data := range project {
+	for _, data := range projects {
 		projectList = append(projectList, Project{
 			Id:          data.ID,
 			Name:        data.Name,
 			Description: data.Description,
+			ImagePath:   data.ImagePath,
 			CreatedAt:   data.CreatedAt.Time.Format(time.RFC3339),
 			UpdatedAt:   data.UpdatedAt.Time.Format(time.RFC3339),
 		})
 	}
 
-	c.JSON(http.StatusOK, gin.H{"data": projectList})
+	c.JSON(http.StatusOK, gin.H{
+		"data":     projectList,
+		"count":    totalCount,
+		"page":     page,
+		"pageSize": pageSize,
+	})
 }
 
 func (t *GetProjectRoute) getById(c *gin.Context) {
@@ -72,6 +100,7 @@ func (t *GetProjectRoute) getById(c *gin.Context) {
 		Id:          id,
 		Name:        project.Name,
 		Description: project.Description,
+		ImagePath:   project.ImagePath,
 		CreatedAt:   project.CreatedAt.Time.Format(time.RFC3339),
 		UpdatedAt:   project.UpdatedAt.Time.Format(time.RFC3339),
 	}})

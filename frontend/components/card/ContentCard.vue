@@ -45,20 +45,30 @@ watch(props, () => {
   <Card :class="['w-2xs', showFull ? 'max-h-none' : 'max-h-[400px]']">
     <CardHeader class="relative p-0">
       <router-link :to="props.redirectLink">
-        <img
-          :src="props.imagePath"
-          alt="Project/Model Image"
-          class="w-full min-h-[250px] max-h-[250px] object-cover rounded-t-lg"
-        />
+        <template v-if="props.imagePath">
+          <img
+            :src="props.imagePath"
+            alt="Project/Model Image"
+            class="w-full min-h-[250px] max-h-[250px] object-cover rounded-t-lg"
+          />
+        </template>
+        <template v-else>
+          <div
+            class="w-full min-h-[250px] max-h-[250px] flex items-center justify-center bg-gray-200 text-gray-700 text-6xl font-bold rounded-t-lg"
+          >
+            {{ props.name }}
+          </div>
+        </template>
       </router-link>
+
       <i
-        class="fa fa-upload absolute top-2 right-2 p-2 rounded-full cursor-pointe"
+        class="fa fa-upload absolute top-2 right-2 p-2 rounded-full cursor-pointer"
         @click="handleUploadClick"
       ></i>
       <input
         :id="`file-input-${props.name}`"
         type="file"
-        :accept="'.jpg,.png'"
+        accept=".jpg,.png"
         class="hidden"
         @change="handleFileChange"
       />
