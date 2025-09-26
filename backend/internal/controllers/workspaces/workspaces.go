@@ -260,7 +260,7 @@ func (t *WorkspaceRoute) postMergeWorkspaceMe(c *gin.Context) {
 
 	modelData, err := t.DB.GetModelByID(c, db_sqlc_gen.GetModelByIDParams{
 		Fields: []string{"cameras"},
-		ID:     uuid.Nil,
+		ID:     modelId,
 	})
 	if err != nil {
 		t.Logger.Error("model not found", zap.Error(err))
