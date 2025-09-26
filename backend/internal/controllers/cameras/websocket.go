@@ -1,7 +1,6 @@
 package controller_camera
 
 import (
-	"context"
 	"encoding/base64"
 	"encoding/json"
 	"net/http"
@@ -24,7 +23,7 @@ type CameraAutosaveRoute struct {
 	Upgrader websocket.Upgrader
 }
 
-func (t *CameraAutosaveRoute) handleEventDelete(conn *websocket.Conn, modelId uuid.UUID, deleteId string) {
+func (t *CameraAutosaveRoute) handleEventDelete(c *gin.Context, conn *websocket.Conn, modelId uuid.UUID, deleteId string) {
 	// eventContent := event.GetDeleteId()
 
 	// var cameras Cameras
@@ -46,7 +45,7 @@ func (t *CameraAutosaveRoute) handleEventDelete(conn *websocket.Conn, modelId uu
 		return
 	}
 
-	err = t.DB.UpdateWorkspaceCams(context.Background(), db_sqlc_gen.UpdateWorkspaceCamsParams{
+	err = t.DB.UpdateWorkspaceCams(c, db_sqlc_gen.UpdateWorkspaceCamsParams{
 		Key:     []string{deleteId},
 		UserID:  uuid.Nil,
 		ModelID: modelId,
@@ -59,7 +58,7 @@ func (t *CameraAutosaveRoute) handleEventDelete(conn *websocket.Conn, modelId uu
 	conn.WriteMessage(websocket.TextMessage, []byte("ok"))
 }
 
-func (t *CameraAutosaveRoute) handleEventUpsert(conn *websocket.Conn, modelId uuid.UUID, upsert *camera.Camera) {
+func (t *CameraAutosaveRoute) handleEventUpsert(c *gin.Context, conn *websocket.Conn, modelId uuid.UUID, upsert *camera.Camera) {
 	camera := messages_cameras.CameraStruct{
 		Name:           upsert.Name,
 		AngleX:         upsert.AngleX,
@@ -80,7 +79,7 @@ func (t *CameraAutosaveRoute) handleEventUpsert(conn *websocket.Conn, modelId uu
 		conn.WriteMessage(websocket.TextMessage, []byte("error"))
 		return
 	}
-	err = t.DB.UpdateWorkspaceCams(context.Background(), db_sqlc_gen.UpdateWorkspaceCamsParams{
+	err = t.DB.UpdateWorkspaceCams(c, db_sqlc_gen.UpdateWorkspaceCamsParams{
 		Key:     []string{upsert.Id},
 		Value:   marshalled,
 		UserID:  uuid.Nil,
@@ -144,9 +143,9 @@ func (t *CameraAutosaveRoute) get(c *gin.Context) {
 			for _, event := range events.Events {
 				switch event.Type {
 				case camera.CameraEventType_CAMERA_EVENT_TYPE_DELETE:
-					t.handleEventDelete(conn, modelId, event.GetDeleteId())
+					t.handleEventDelete(c, conn, modelId, event.GetDeleteId())
 				case camera.CameraEventType_CAMERA_EVENT_TYPE_UPSERT:
-					t.handleEventUpsert(conn, modelId, event.GetUpsert())
+					t.handleEventUpsert(c, conn, modelId, event.GetUpsert())
 				}
 			}
 		}
