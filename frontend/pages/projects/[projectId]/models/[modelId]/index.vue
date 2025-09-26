@@ -1,15 +1,19 @@
 <script setup>
-import LayoutModelsPage from "~/layouts/ModelsPage.vue";
 import Scene3D from "~/components/3d/scene-3d/Scene3D.vue";
 import { useRoute } from "vue-router";
+import { WORKSPACE_KEY } from "~/layouts/workspace-provider";
+
+definePageMeta({
+  layout: "models-page",
+});
 
 const route = useRoute();
 const projectId = route.params.projectId;
 const modelId = route.params.modelId;
+
+inject(WORKSPACE_KEY, null);
 </script>
 
 <template>
-  <LayoutModelsPage :workspace="null">
-    <Scene3D :project-id="projectId" :model-id="modelId" />
-  </LayoutModelsPage>
+  <Scene3D :project-id="projectId" :model-id="modelId" />
 </template>

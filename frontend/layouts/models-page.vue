@@ -2,15 +2,12 @@
 import TopBar from "@/components/TopBar.vue";
 import CameraPanel from "@/components/CameraPanel.vue";
 import SceneStatesProvider from "~/components/3d/scene-states-provider/SceneStatesProvider.vue";
-
-const props = defineProps({
-  workspace: {
-    type: String,
-    required: true,
-  },
-});
+import { WORKSPACE_KEY } from "./workspace-provider";
+console.log("gggg");
 
 const route = useRoute();
+
+const workspace = inject(WORKSPACE_KEY, null);
 </script>
 
 <template>
@@ -18,14 +15,14 @@ const route = useRoute();
     <SceneStatesProvider
       :project-id="route.params.projectId"
       :model-id="route.params.modelId"
-      :workspace="props.workspace"
+      :workspace="workspace"
     >
-      <TopBar :workspace="props.workspace" />
+      <TopBar :workspace="workspace" />
       <div class="flex-1 flex overflow-hidden">
         <div class="flex-1 w-full h-full">
-          <slot />
+          <NuxtPage />
         </div>
-        <CameraPanel :workspace="props.workspace" />
+        <CameraPanel :workspace="workspace" />
       </div>
     </SceneStatesProvider>
   </div>
