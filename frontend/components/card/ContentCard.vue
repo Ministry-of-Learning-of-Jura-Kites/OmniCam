@@ -39,8 +39,8 @@ function handleFileChange(event: Event) {
 
 <template>
   <Card :class="['w-2xs', showFull ? 'max-h-none' : 'max-h-[400px]']">
-    <CardHeader class="relative p-0">
-      <router-link :to="props.redirectLink">
+    <CardHeader class="relative p-0 w-full">
+      <router-link :to="props.redirectLink" class="w-full overflow-hidden">
         <template v-if="props.imagePath">
           <img
             :src="props.imagePath"

@@ -7,6 +7,7 @@ import SuccessDialog from "~/components/dialog/SuccessDialog.vue";
 import ContentCard from "~/components/card/ContentCard.vue";
 import CustomPagination from "~/components/pagination/CustomPagination.vue";
 import { uuidToBase64Url } from "~/lib/utils";
+import { Plus } from "lucide-vue-next";
 
 export interface Model {
   id: string;
@@ -340,7 +341,9 @@ watch([page, pageSize], async () => {
   <div>
     <div class="flex flex-col items-center min-h-screen p-4">
       <div class="w-full max-w-7xl flex justify-end mb-4">
-        <Button type="button" @click="handleCreate" />
+        <Button type="button" @click="handleCreate">
+          <Plus />
+        </Button>
       </div>
 
       <div class="w-full max-w-7xl flex justify-center mb-4">
