@@ -73,10 +73,6 @@ func (t *PutModelRoute) put(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{})
 		return
 	}
-	version := 0
-	if data.Version.Valid {
-		version = int(data.Version.Int32)
-	}
 
 	c.JSON(http.StatusOK, gin.H{"data": Model{
 		Id:          modelId,
@@ -84,7 +80,7 @@ func (t *PutModelRoute) put(c *gin.Context) {
 		Name:        data.Name,
 		Description: data.Description,
 		ImagePath:   data.ImagePath,
-		Version:     version,
+		Version:     data.Version,
 		CreatedAt:   data.CreatedAt.Time.Format(time.RFC3339),
 		UpdatedAt:   data.UpdatedAt.Time.Format(time.RFC3339),
 	}})

@@ -21,7 +21,7 @@ type Model struct {
 	Name        string                   `json:"name"`
 	Description string                   `json:"description"`
 	ImagePath   string                   `json:"imagePath"`
-	Version     int                      `json:"version"`
+	Version     int32                    `json:"version"`
 	CreatedAt   string                   `json:"createdAt"`
 	UpdatedAt   string                   `json:"updatedAt"`
 	Cameras     messages_cameras.Cameras `json:"cameras"`
@@ -60,11 +60,6 @@ func (t *GetModelRoute) getModelById(c *gin.Context) {
 		return
 	}
 
-	version := 0
-	if data.Version.Valid {
-		version = int(data.Version.Int32)
-	}
-
 	var cameras messages_cameras.Cameras
 	err = json.Unmarshal(data.Cameras, &cameras)
 	if err != nil {
@@ -79,7 +74,7 @@ func (t *GetModelRoute) getModelById(c *gin.Context) {
 		Name:        data.Name,
 		Description: data.Description,
 		ImagePath:   data.ImagePath,
-		Version:     version,
+		Version:     data.Version,
 		CreatedAt:   data.CreatedAt.Time.Format(time.RFC3339),
 		UpdatedAt:   data.UpdatedAt.Time.Format(time.RFC3339),
 		Cameras:     cameras,
@@ -135,17 +130,13 @@ func (t *GetModelRoute) getAllModel(c *gin.Context) {
 	var dataList []Model
 
 	for _, model := range data {
-		version := 0
-		if model.Version.Valid {
-			version = int(model.Version.Int32)
-		}
 		dataList = append(dataList, Model{
 			Id:          model.ID,
 			ProjectId:   model.ProjectID,
 			Name:        model.Name,
 			Description: model.Description,
 			ImagePath:   model.ImagePath,
-			Version:     version,
+			Version:     model.Version,
 			CreatedAt:   model.CreatedAt.Time.Format(time.RFC3339),
 			UpdatedAt:   model.UpdatedAt.Time.Format(time.RFC3339),
 		})

@@ -163,7 +163,7 @@ export async function createBaseSceneStates(
     },
   });
 
-  const markedForCheck = new Set<string>();
+  const markedForCheck = reactive(new Set<string>());
 
   const sceneStates = {
     tresContext,

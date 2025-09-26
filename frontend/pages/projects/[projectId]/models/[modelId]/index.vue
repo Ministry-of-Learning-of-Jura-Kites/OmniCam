@@ -9,7 +9,7 @@ const modelId = route.params.modelId;
 </script>
 
 <template>
-  <LayoutModelsPage>
+  <LayoutModelsPage :workspace="null">
     <Scene3D :project-id="projectId" :model-id="modelId" />
   </LayoutModelsPage>
 </template>

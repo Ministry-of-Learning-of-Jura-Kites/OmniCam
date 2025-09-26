@@ -6,6 +6,7 @@ import FormDialog from "~/components/dialog/FormDialog.vue";
 import SuccessDialog from "~/components/dialog/SuccessDialog.vue";
 import ContentCard from "~/components/card/ContentCard.vue";
 import CustomPagination from "~/components/pagination/CustomPagination.vue";
+import { uuidToBase64Url } from "~/lib/utils";
 
 export interface Model {
   id: string;
@@ -123,7 +124,7 @@ async function fetchModel() {
   const projectId = route.params.projectId as string;
   try {
     const response = await $fetch<ModelGetRequest>(
-      `http://http://${config.public.NUXT_PUBLIC_BACKEND_HOST}/api/v1/projects/${projectId}/models`,
+      `http://${config.public.NUXT_PUBLIC_BACKEND_HOST}/api/v1/projects/${projectId}/models`,
       {
         method: "GET",
         query: {
@@ -150,10 +151,6 @@ async function fetchModel() {
       models.value = {};
       totalData.value = 0;
     }
-
-    console.log(models.value, "c");
-    console.log(totalData.value);
-    console.log(totalData.value);
   } catch (err) {
     console.error("fetchModel error", err);
   }
@@ -197,8 +194,6 @@ async function createModel() {
 
 async function updateModel(modelId: string) {
   const projectId = route.params.projectId as string;
-  console.log(modelId);
-  console.log(modelForm);
   try {
     const response = await $fetch<ModelReturnRequest>(
       `http://${config.public.NUXT_PUBLIC_BACKEND_HOST}/api/v1/projects/${projectId}/models/${modelId}`,
@@ -210,8 +205,6 @@ async function updateModel(modelId: string) {
         },
       },
     );
-    console.log(models.value);
-    console.log(response);
     models.value = {
       ...models.value,
       [modelId]: {
@@ -224,10 +217,8 @@ async function updateModel(modelId: string) {
         projectId: response.data.projectId,
       },
     };
-    console.log("new Model", models.value[modelId]);
     successDialog.value = true;
     successMessage.value = `You have successfully update ${response.data.name}`;
-    console.log("Updated row:", modelId);
   } catch (err) {
     console.error("Update failed", err);
   }
@@ -247,7 +238,6 @@ async function deleteRow(id: string) {
     models.value = Object.fromEntries(
       Object.entries(models.value).filter(([key]) => key !== id),
     );
-    console.log("Deleted row:", id);
     successDialog.value = true;
     successMessage.value = `You have successfully delete ${id}`;
 
@@ -280,10 +270,8 @@ function handleDeleteRow(row: Model) {
 
 // Form submit handler
 function handleEditFormSubmit() {
-  console.log("a");
   isEditFormDialogOpen.value = false;
   confirmDialog.value = true;
-  console.log(confirmDialog.value);
 }
 
 function handleConfirmSubmit() {
@@ -294,7 +282,6 @@ function handleConfirmSubmit() {
   if (confirmMessage.value.includes("delete")) {
     deleteRow(currentEditId.value);
   } else {
-    console.log("is in");
     updateModel(currentEditId.value);
   }
 
@@ -344,19 +331,7 @@ onMounted(() => {
   fetchModel();
 });
 
-watch(
-  modelForm,
-  (modelForm) => {
-    console.log(modelForm);
-  },
-  {
-    once: false,
-  },
-);
-
-watch([page, pageSize], async ([page, pageSize]) => {
-  console.log(page);
-  console.log(pageSize);
+watch([page, pageSize], async () => {
   await fetchModel();
 });
 </script>
@@ -376,7 +351,7 @@ watch([page, pageSize], async ([page, pageSize]) => {
             :name="model.name"
             :description="model.description"
             :image-path="model.imagePath ?? ''"
-            :redirect-link="`models/${id}`"
+            :redirect-link="`models/${uuidToBase64Url(id)}`"
             @update="handleEditRow({ ...model, id })"
             @delete="handleDeleteRow({ ...model, id })"
             @update-image="

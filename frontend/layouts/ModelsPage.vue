@@ -20,12 +20,12 @@ const route = useRoute();
       :model-id="route.params.modelId"
       :workspace="props.workspace"
     >
-      <TopBar />
+      <TopBar :workspace="props.workspace" />
       <div class="flex-1 flex overflow-hidden">
         <div class="flex-1 w-full h-full">
           <slot />
         </div>
-        <CameraPanel />
+        <CameraPanel :workspace="props.workspace" />
       </div>
     </SceneStatesProvider>
   </div>

@@ -18,20 +18,7 @@ const props = defineProps({
 
 const sceneStates = inject(SCENE_STATES_KEY)!;
 
-// const cameraMesh = useTemplateRef<THREE.Mesh>("cameraMesh");
-
 const cam = toRef(sceneStates.cameras, props.camId);
-
-// watch(
-//   props.position,
-//   (pos) => {
-//     if (cameraMesh.value != null) {
-//       console.log("");
-//       cameraMesh.value!.position.set(pos[0], pos[1], pos[2]);
-//     }
-//   },
-//   { deep: true, immediate: true },
-// );
 </script>
 
 <template>
