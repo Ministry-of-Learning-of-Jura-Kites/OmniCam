@@ -10,11 +10,92 @@ import type { ICamera } from "~/types/camera";
 import { useCameraManagement } from "../scene-3d/use-camera-management";
 import { useSpectatorRotation } from "../scene-3d/use-spectator-rotation";
 import { useSpectatorPosition } from "../scene-3d/use-spectator-position";
+import { useWebSocket } from "@vueuse/core";
+import type { RuntimeConfig } from "nuxt/schema";
+
+interface ModelWithCamsResp {
+  data: {
+    modelId: string;
+    cameras: Record<
+      string,
+      {
+        name: string;
+        angleX: number;
+        angleY: number;
+        angleZ: number;
+        angleW: number;
+        posX: number;
+        posY: number;
+        posZ: number;
+        fov: number;
+      }
+    >;
+  };
+}
 
 export const SCENE_STATES_KEY: InjectionKey<SceneStatesWithHelper> =
   Symbol("3d-scene-states");
 
-export function createBaseSceneStates() {
+async function loadCamsData(
+  projectId: string,
+  modelId: string,
+  runtimeConfig: RuntimeConfig,
+  workspace?: string,
+): Promise<[Record<string, ICamera>, null] | [null, unknown]> {
+  const workspaceSuffix = workspace == null ? "" : `/workspaces/${workspace}`;
+
+  const fields = ["cameras"];
+
+  const params = new URLSearchParams();
+  for (const field of fields) {
+    params.append("fields", field);
+  }
+  params.append("t", String(Date.now()));
+
+  try {
+    const rawResp = await fetch(
+      `http://${runtimeConfig.public.NUXT_PUBLIC_BACKEND_HOST}/api/v1/projects/${projectId}/models/${modelId}${workspaceSuffix}?${params.toString()}`,
+    );
+    const resp: ModelWithCamsResp = await rawResp.json();
+    if (rawResp.status == 404) {
+      return [null, { action: "not-found" }];
+    }
+
+    return [
+      Object.fromEntries(
+        Object.entries(resp.data.cameras).map(([camId, rawCam]) => {
+          const cam: ICamera = {
+            name: rawCam.name,
+            position: new THREE.Vector3(rawCam.posX, rawCam.posY, rawCam.posZ),
+            rotation: new THREE.Euler().setFromQuaternion(
+              new THREE.Quaternion(
+                rawCam.angleX,
+                rawCam.angleY,
+                rawCam.angleZ,
+                rawCam.angleW,
+              ),
+              "YXZ",
+            ),
+            fov: rawCam.fov,
+            isHidingArrows: false,
+            isHidingWheels: false,
+          };
+          return [camId, cam];
+        }),
+      ),
+      null,
+    ];
+  } catch (e) {
+    return [null, e];
+  }
+}
+
+export async function createBaseSceneStates(
+  projectId: string,
+  modelId: string,
+  runtimeConfig: RuntimeConfig,
+  workspace?: string,
+) {
   const tresContext = ref<TresContext | null>(null);
 
   const draggableObjects: Set<Obj3DWithUserData> = new Set();
@@ -41,7 +122,18 @@ export function createBaseSceneStates() {
 
   const tresCanvasParent: Ref<HTMLDivElement | null> = ref(null);
 
-  const cameras = reactive<Record<string, ICamera>>({});
+  const [camsData, error] = await loadCamsData(
+    projectId,
+    modelId,
+    runtimeConfig,
+    workspace,
+  );
+
+  if (error != null) {
+    return { error: error as unknown };
+  }
+
+  const cameras = reactive<Record<string, ICamera>>(camsData!);
 
   const currentCam = computed(() => {
     return currentCamId.value == null ? null : cameras![currentCamId.value];
@@ -61,6 +153,19 @@ export function createBaseSceneStates() {
     },
   });
 
+  const websocketUrl = `ws://${runtimeConfig.public.NUXT_PUBLIC_BACKEND_HOST}/api/v1/projects/${projectId}/models/${modelId}/autosave`;
+
+  const websocket = useWebSocket(websocketUrl, {
+    autoReconnect: {
+      delay: 1000,
+      onFailed: () => {
+        alert("Failed to connect websocket after multiple retries.");
+      },
+    },
+  });
+
+  const markedForCheck = reactive(new Set<string>());
+
   const sceneStates = {
     tresContext,
     draggableObjects,
@@ -74,13 +179,22 @@ export function createBaseSceneStates() {
     spectatorCameraRotation,
     spectatorCameraFov,
     tresCanvasParent,
+    websocket,
     cameras,
-  };
+    error: null,
+    markedForCheck,
+  } as const;
+
+  // websocket.ws.value!.onclose = (_closeEvent: CloseEvent) => {
+  //   sceneStates.websocket = useWebSocket(websocketUrl);
+  // };
 
   return sceneStates;
 }
 
-export function createSceneStatesWithHelper(sceneStates: BaseSceneStates) {
+export function createSceneStatesWithHelper(
+  sceneStates: Awaited<BaseSceneStates>,
+) {
   const sceneStatesWithCam = {
     ...sceneStates,
     cameraManagement: useCameraManagement(sceneStates),

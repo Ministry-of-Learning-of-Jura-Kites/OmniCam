@@ -1,18 +1,18 @@
--- name: CreateCamera :one
-INSERT INTO
-  "camera" (
-    name,
-    angle_x,
-    angle_y,
-    angle_z,
-    angle_w,
-    pos_x,
-    pos_y,
-    pos_z,
-    model_id,
-    user_id
-  )
-VALUES
-  ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
-RETURNING
-  *;
+-- -- name: CreateCamera :one
+-- INSERT INTO
+--   "camera" (
+--     name,
+--     angle_x,
+--     angle_y,
+--     angle_z,
+--     angle_w,
+--     pos_x,
+--     pos_y,
+--     pos_z,
+--     model_id,
+--     user_id
+--   )
+-- VALUES
+--   ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+-- RETURNING
+--   *;

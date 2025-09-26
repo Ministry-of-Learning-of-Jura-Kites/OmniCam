@@ -9,11 +9,41 @@ import { SCENE_STATES_KEY } from "~/components/3d/scene-states-provider/create-s
 import { useCameraUpdate } from "./use-camera-update";
 import type { IUserData } from "~/types/obj-3d-user-data";
 import ModelLoader from "../model-loader/ModelLoader.vue";
+import { useAutosave } from "./use-autosave";
 
-defineProps<{
-  modelId?: string | null;
-  placeholderText?: string | null;
-}>();
+const props = defineProps({
+  projectId: {
+    type: String,
+    required: true,
+  },
+  modelId: {
+    type: String,
+    required: true,
+  },
+  workspace: {
+    type: String,
+    default: null,
+  },
+});
+
+const runtimeConfig = useRuntimeConfig();
+
+const resp = await fetch(
+  `http://${runtimeConfig.public.NUXT_PUBLIC_BACKEND_HOST}/api/v1/projects/${props.projectId}/models/${props.modelId}`,
+);
+
+const {
+  data: modelResp,
+}: {
+  data: {
+    id: string;
+    projectId: string;
+    name: string;
+    description: string;
+    imagePath: string;
+    filePath: string;
+  };
+} = await resp.json();
 
 const sceneStates = inject(SCENE_STATES_KEY)!;
 
@@ -26,20 +56,6 @@ useCameraUpdate(sceneStates);
 onMounted(() => {
   // start loop to move camera from key press
   sceneStates.spectatorPosition.refreshCameraState();
-
-  // for testing
-  if (typeof window !== "undefined") {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (window as any).spawnCameraHereNaja =
-      sceneStates.cameraManagement.spawnCameraHere;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (window as any).switchToCamNaja = sceneStates.cameraManagement.switchToCam;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (window as any).switchToSpectatorNaja =
-      sceneStates.cameraManagement.switchToSpectator;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (window as any).getCamsNaja = sceneStates.cameraManagement.getCams;
-  }
 });
 
 const raycaster = new THREE.Raycaster();
@@ -134,6 +150,10 @@ watch(
     }
   },
 );
+
+onMounted(() => {
+  useAutosave(sceneStates);
+});
 </script>
 
 <template>
@@ -243,10 +263,7 @@ watch(
 
         <!-- 3D Objects -->
         <Suspense>
-          <ModelLoader
-            path="/models/test-model/poly.gltf"
-            :position="[0, 2.5, 0]"
-          />
+          <ModelLoader :path="modelResp.filePath" :position="[0, 2.5, 0]" />
         </Suspense>
 
         <!-- Grid -->
@@ -269,7 +286,7 @@ watch(
   </ClientOnly>
 </template>
 
-<style>
+<style scoped>
 #canvas {
   height: 100%;
   width: 100%;

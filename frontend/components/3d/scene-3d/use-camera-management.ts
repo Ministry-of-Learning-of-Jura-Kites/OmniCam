@@ -12,9 +12,10 @@ export function useCameraManagement(sceneStates: SceneStates) {
       rotation: new THREE.Euler().copy(sceneStates.spectatorCameraRotation),
       isHidingArrows: false,
       isHidingWheels: false,
-      controlling: null,
+      controlling: undefined,
       fov: 60,
     };
+    sceneStates.markedForCheck.add(camId);
     return camId;
   }
 

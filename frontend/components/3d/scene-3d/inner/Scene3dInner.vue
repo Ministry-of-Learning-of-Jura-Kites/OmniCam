@@ -7,7 +7,6 @@ if (!sceneStates) throw new Error("SceneStates is missing!");
 
 onMounted(() => {
   const context = useTresContext();
-  console.log("Tres context ready:", context.scene.value);
   sceneStates.tresContext.value = context;
 });
 </script>

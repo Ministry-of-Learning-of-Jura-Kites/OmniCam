@@ -12,12 +12,20 @@ export class MovingUserData implements IUserData {
   cam: ICamera;
   context: TresContext;
 
+  onchange: undefined | (() => void);
+
   isDragging = false;
 
-  constructor(type: string, cam: ICamera, context: TresContext) {
+  constructor(
+    type: string,
+    cam: ICamera,
+    context: TresContext,
+    onchange?: () => void,
+  ) {
     this.type = type as "x" | "y" | "z";
     this.cam = cam;
     this.context = context;
+    this.onchange = onchange;
   }
 
   handleEvent(eventType: string, event: Event) {
@@ -65,6 +73,9 @@ export class MovingUserData implements IUserData {
           MOVING_ARROW_CONFIG.DRAGGING_SENTIVITY,
       );
       this.cam.position.add(delta);
+      if (this.onchange) {
+        this.onchange();
+      }
     }
   };
 

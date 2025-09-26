@@ -1,6 +1,8 @@
 <script setup lang="ts">
 const model = defineModel<Ref<number>>();
 
+const emit = defineEmits(["change"]);
+
 const props = defineProps({
   max: {
     type: Number,
@@ -58,6 +60,7 @@ function onPointerUp(_e: PointerEvent) {
   }
   if (model.value) {
     model.value.value = roundTo(model.value.value ?? 0, 5);
+    emit("change", model.value.value);
   }
   isDragging.value = false;
   isInputting.value = true;
@@ -101,6 +104,7 @@ function setClamp(input: number) {
   }
   if (model.value) {
     model.value.value = newVal;
+    emit("change", model.value.value);
   }
 }
 
