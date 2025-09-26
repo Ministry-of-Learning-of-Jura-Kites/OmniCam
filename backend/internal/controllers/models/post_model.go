@@ -124,7 +124,7 @@ func (t *PostModelRoutes) post(c *gin.Context) {
 		Name:        data.Name,
 		Description: data.Description,
 		ImagePath:   data.ImagePath,
-		Version:     int(data.Version.Int32),
+		Version:     data.Version,
 		CreatedAt:   data.CreatedAt.Time.Format(time.RFC3339),
 		UpdatedAt:   data.UpdatedAt.Time.Format(time.RFC3339),
 	}})

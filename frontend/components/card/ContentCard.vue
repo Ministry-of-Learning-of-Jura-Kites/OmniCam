@@ -35,10 +35,6 @@ function handleFileChange(event: Event) {
     emit("updateImage", target.files[0]); // send file to parent
   }
 }
-
-watch(props, () => {
-  console.log(props.imagePath);
-});
 </script>
 
 <template>

@@ -7,6 +7,9 @@ require github.com/remvn/go-pgx-sqlc v0.0.0-20240927132518-359006043733
 require (
 	github.com/gin-contrib/cors v1.7.6 // indirect
 	github.com/gorilla/websocket v1.5.3 // indirect
+	github.com/r3labs/diff/v3 v3.0.2 // indirect
+	github.com/vmihailenco/msgpack/v5 v5.4.1 // indirect
+	github.com/vmihailenco/tagparser/v2 v2.0.0 // indirect
 )
 
 require (

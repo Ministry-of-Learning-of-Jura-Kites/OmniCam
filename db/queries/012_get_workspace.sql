@@ -9,7 +9,14 @@ SELECT
     ) THEN cameras::JSONB
     ELSE NULL::JSONB
   END AS cameras,
+  CASE
+    WHEN 'base_cameras' = ANY (
+      COALESCE(sqlc.narg (fields)::TEXT[], '{}'::TEXT[])
+    ) THEN base_cameras::JSONB
+    ELSE NULL::JSONB
+  END AS base_cameras,
   version,
+  base_version,
   created_at,
   updated_at
 FROM

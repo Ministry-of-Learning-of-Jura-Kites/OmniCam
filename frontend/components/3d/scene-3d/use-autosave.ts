@@ -44,22 +44,6 @@ export function useAutosave(sceneStates: SceneStates) {
     }),
   );
 
-  // detect changes batchly
-  // watch(
-  //   () => sceneStates.cameras,
-  //   (newVal) => {
-  //     for (const [camId, cam] of Object.entries(newVal)) {
-  //       const prevCam = oldVal[camId];
-  //       console.log(cam, prevCam, "gg");
-  //       if (prevCam == undefined || !isEqual(prevCam, cam)) {
-  //         console.log("ggfff");
-  //         markedForCheck.add(camId);
-  //       }
-  //     }
-  //   },
-  //   { deep: true },
-  // );
-
   setInterval(() => {
     if (sceneStates.markedForCheck.size == 0) {
       return;
@@ -94,8 +78,6 @@ export function useAutosave(sceneStates: SceneStates) {
         lastSynced.set(camId, formatCam(camId, cam));
       }
     }
-
-    console.log("changed", changed);
 
     if (changed.length > 0) {
       sceneStates.websocket.send(

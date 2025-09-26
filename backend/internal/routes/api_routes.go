@@ -114,12 +114,12 @@ func InitRoutes(deps Dependencies, router gin.IRouter) {
 	}
 	cameraAutosaveRoute.InitRoute(router)
 
-	getWorkspaceRoute := controller_workspaces.GetWorkspaceRoute{
+	workspaceRoute := controller_workspaces.WorkspaceRoute{
 		Logger: deps.Logger,
 		Env:    deps.Env,
 		DB:     deps.DB,
 	}
-	getWorkspaceRoute.InitRoute(router)
+	workspaceRoute.InitRoute(router)
 
 	putImageModelRoute := controller_model.PutImageModelRoute{
 		Logger: deps.Logger,

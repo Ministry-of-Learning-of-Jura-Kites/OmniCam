@@ -35,7 +35,7 @@ CREATE TABLE "model" (
   file_path TEXT NOT NULL,
   image_path TEXT NOT NULL,
   -- version tracking
-  version INT DEFAULT 0,
+  version INT NOT NULL DEFAULT 0,
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
@@ -52,10 +52,14 @@ CREATE TABLE "user_model_workspace" (
   description TEXT NOT NULL DEFAULT '',
   -- store cameras as a document
   cameras JSONB NOT NULL DEFAULT '{}'::JSONB,
+  -- store branched-out cameras as a document
+  base_cameras JSONB NOT NULL DEFAULT '{}'::JSONB,
   -- storage location, mutable
   file_path TEXT NOT NULL,
   -- version tracking
-  version INT DEFAULT 0,
+  version INT NOT NULL DEFAULT 0,
+  -- branched-out version
+  base_version INT NOT NULL,
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );

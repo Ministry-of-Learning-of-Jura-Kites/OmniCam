@@ -124,30 +124,34 @@ func (t *CameraAutosaveRoute) get(c *gin.Context) {
 	if err != nil {
 		return
 	}
-	defer conn.Close()
-	for {
-		// Read message from client
-		_, msg, err := conn.ReadMessage()
-		if err != nil {
-			t.Logger.Error("error from reading message from client", zap.Error(err))
-			break
-		}
 
-		events := &camera.CameraSaveEventSeries{}
-		err = proto.Unmarshal(msg, events)
-		if err != nil {
-			continue
-		}
+	go func() {
+		defer conn.Close()
 
-		for _, event := range events.Events {
-			switch event.Type {
-			case camera.CameraEventType_CAMERA_EVENT_TYPE_DELETE:
-				t.handleEventDelete(conn, modelId, event.GetDeleteId())
-			case camera.CameraEventType_CAMERA_EVENT_TYPE_UPSERT:
-				t.handleEventUpsert(conn, modelId, event.GetUpsert())
+		for {
+			// Read message from client
+			_, msg, err := conn.ReadMessage()
+			if err != nil {
+				t.Logger.Error("error from reading message from client", zap.Error(err))
+				break
+			}
+
+			events := &camera.CameraSaveEventSeries{}
+			err = proto.Unmarshal(msg, events)
+			if err != nil {
+				continue
+			}
+
+			for _, event := range events.Events {
+				switch event.Type {
+				case camera.CameraEventType_CAMERA_EVENT_TYPE_DELETE:
+					t.handleEventDelete(conn, modelId, event.GetDeleteId())
+				case camera.CameraEventType_CAMERA_EVENT_TYPE_UPSERT:
+					t.handleEventUpsert(conn, modelId, event.GetUpsert())
+				}
 			}
 		}
-	}
+	}()
 }
 
 func (t *CameraAutosaveRoute) InitRoute(router gin.IRouter) gin.IRouter {
