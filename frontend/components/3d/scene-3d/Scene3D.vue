@@ -11,7 +11,7 @@ import type { IUserData } from "~/types/obj-3d-user-data";
 import ModelLoader from "../model-loader/ModelLoader.vue";
 import { useAutosave } from "./use-autosave";
 
-const _ = defineProps({
+const props = defineProps({
   projectId: {
     type: String,
     required: true,
@@ -25,6 +25,27 @@ const _ = defineProps({
     default: null,
   },
 });
+
+const runtimeConfig = useRuntimeConfig();
+
+const resp = await fetch(
+  `http://${runtimeConfig.public.NUXT_PUBLIC_BACKEND_HOST}/api/v1/projects/${props.projectId}/models/${props.modelId}`,
+);
+
+const {
+  data: modelResp,
+}: {
+  data: {
+    id: string;
+    projectId: string;
+    name: string;
+    description: string;
+    imagePath: string;
+    filePath: string;
+  };
+} = await resp.json();
+
+console.log("ggg", modelResp);
 
 const sceneStates = inject(SCENE_STATES_KEY)!;
 
@@ -244,10 +265,7 @@ onMounted(() => {
 
         <!-- 3D Objects -->
         <Suspense>
-          <ModelLoader
-            path="/models/test-model/poly.gltf"
-            :position="[0, 2.5, 0]"
-          />
+          <ModelLoader :path="modelResp.filePath" :position="[0, 2.5, 0]" />
         </Suspense>
 
         <!-- Grid -->
