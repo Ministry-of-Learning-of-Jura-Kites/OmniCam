@@ -5,6 +5,7 @@ import Card from "./ui/card/Card.vue";
 
 import {
   RotateCcw,
+  PackageOpen,
   RefreshCcw,
   Maximize,
   CloudCheck,
@@ -160,6 +161,34 @@ function openFileDialog() {
         >
           <Save class="h-4 w-4 mr-2" />
           Publish
+        </Button>
+
+        <Button
+          v-if="workspace != null"
+          size="sm"
+          variant="outline"
+          @click="
+            navigateTo(
+              `/projects/${route.params.projectId}/models/${route.params.modelId}`,
+            )
+          "
+        >
+          <LogOut class="h-4 w-4 mr-2" />
+          Exit Workspace
+        </Button>
+
+        <Button
+          v-if="workspace == null"
+          size="sm"
+          variant="outline"
+          @click="
+            navigateTo(
+              `/projects/${route.params.projectId}/models/${route.params.modelId}/workspaces/me`,
+            )
+          "
+        >
+          <PackageOpen class="h-4 w-4 mr-2" />
+          Open Workspace
         </Button>
 
         <Button size="sm" variant="outline" @click="() => openFileDialog()">

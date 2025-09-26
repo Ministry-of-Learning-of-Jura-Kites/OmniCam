@@ -11,7 +11,8 @@ const route = useRoute();
 const projectId = route.params.projectId;
 const modelId = route.params.modelId;
 
-provide(WORKSPACE_KEY, "me");
+const workspace = inject(WORKSPACE_KEY);
+workspace.value = "me";
 </script>
 
 <template>
