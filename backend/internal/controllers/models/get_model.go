@@ -20,6 +20,7 @@ type Model struct {
 	ProjectId   uuid.UUID                `json:"projectId"`
 	Name        string                   `json:"name"`
 	Description string                   `json:"description"`
+	FilePath    string                   `json:"filePath"`
 	ImagePath   string                   `json:"imagePath"`
 	Version     int32                    `json:"version"`
 	CreatedAt   string                   `json:"createdAt"`
@@ -60,12 +61,14 @@ func (t *GetModelRoute) getModelById(c *gin.Context) {
 		return
 	}
 
-	var cameras messages_cameras.Cameras
-	err = json.Unmarshal(data.Cameras, &cameras)
-	if err != nil {
-		t.Logger.Error("cameras jsonb are invalid", zap.Error(err))
-		c.JSON(http.StatusInternalServerError, gin.H{})
-		return
+	cameras := messages_cameras.Cameras{}
+	if data.Cameras != nil {
+		err = json.Unmarshal(data.Cameras, &cameras)
+		if err != nil {
+			t.Logger.Error("cameras jsonb are invalid", zap.Error(err))
+			c.JSON(http.StatusInternalServerError, gin.H{})
+			return
+		}
 	}
 
 	c.JSON(http.StatusOK, gin.H{"data": Model{
@@ -73,6 +76,7 @@ func (t *GetModelRoute) getModelById(c *gin.Context) {
 		ProjectId:   data.ProjectID,
 		Name:        data.Name,
 		Description: data.Description,
+		FilePath:    data.FilePath,
 		ImagePath:   data.ImagePath,
 		Version:     data.Version,
 		CreatedAt:   data.CreatedAt.Time.Format(time.RFC3339),
