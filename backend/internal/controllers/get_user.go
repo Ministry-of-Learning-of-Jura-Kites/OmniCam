@@ -24,7 +24,7 @@ func (t *GetUserRoute) Get(c *gin.Context) {
 		return
 	}
 
-	// user, err := t.DB.GetUserByEmail(context.Background(), email)
+	// user, err := t.DB.GetUserByEmail(c, email)
 	// fmt.Println(err.Error())
 	// if err != nil {
 	// 	c.JSON(http.StatusNotFound, gin.H{"Error": "User not found"})
