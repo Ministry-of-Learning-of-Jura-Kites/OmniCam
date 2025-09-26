@@ -62,10 +62,6 @@ const projectForm = reactive<ProjectForm>({
   image: null,
 });
 
-const dataArray = computed(() =>
-  Object.entries(projects.value).map(([id, project]) => ({ id, ...project })),
-);
-
 async function fetchProjects() {
   try {
     loading.value = true;
@@ -247,12 +243,8 @@ onMounted(fetchProjects);
       {{ error.message || "Failed to fetch projects" }}
     </div>
 
-    <div v-if="loading && dataArray.length === 0" class="text-center py-8">
-      <p>Loading projects...</p>
-    </div>
-
     <div
-      v-else-if="dataArray.length === 0 && !loading"
+      v-if="Object.keys(projects).length === 0 && !loading"
       class="text-center py-8 text-gray-500"
     >
       No projects found. Create your first project!
@@ -260,16 +252,16 @@ onMounted(fetchProjects);
 
     <div v-else class="flex flex-row gap-6 overflow-x-auto w-full">
       <ContentCard
-        v-for="p in dataArray"
-        :key="p.id"
-        :name="p.name"
-        :description="p.description"
-        :redirect-link="`/projects/${p.id}`"
-        :image-path="p.imagePath || ''"
-        @update="handleEditRow(p.id)"
-        @delete="handleDeleteProject(p.id, p.name)"
+        v-for="(project, id) in projects"
+        :key="id"
+        :name="project.name"
+        :description="project.description"
+        :redirect-link="`/projects/${id}`"
+        :image-path="project.imagePath || ''"
+        @update="handleEditRow(id)"
+        @delete="handleDeleteProject(id, project.name)"
         @update-image="
-          (file: File | undefined) => file && updateProjectImage(p.id, file)
+          (file: File | undefined) => file && updateProjectImage(id, file)
         "
       />
     </div>
