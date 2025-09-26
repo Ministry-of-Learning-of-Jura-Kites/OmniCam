@@ -4,7 +4,6 @@ import {
   DialogClose,
   DialogContent,
   DialogHeader,
-  DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
 const props = defineProps<{

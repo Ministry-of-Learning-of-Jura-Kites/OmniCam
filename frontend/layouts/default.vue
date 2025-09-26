@@ -66,9 +66,9 @@ const handleLogout = () => {
           <!-- Right Section -->
           <div class="flex items-center space-x-4">
             <button
-              @click="toggleTheme"
               class="p-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
               aria-label="Toggle theme"
+              @click="toggleTheme"
             >
               <svg
                 v-if="theme === 'light'"

@@ -121,15 +121,15 @@ function handleClose() {
                   ? '.jpg,.png'
                   : undefined
             "
+            :class="[
+              'border px-2 py-1 rounded',
+              errors[key as string] ? 'border-red-500' : 'border-white',
+            ]"
             @change="
               (e) =>
                 ((model as any)[key] = ((e.target as HTMLInputElement)
                   .files?.[0] ?? null) as any)
             "
-            :class="[
-              'border px-2 py-1 rounded',
-              errors[key as string] ? 'border-red-500' : 'border-white',
-            ]"
           />
         </template>
       </div>
