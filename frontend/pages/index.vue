@@ -5,7 +5,6 @@ import ConfirmDialog from "~/components/dialog/ConfirmDialog.vue";
 import SuccessDialog from "~/components/dialog/SuccessDialog.vue";
 import ContentCard from "~/components/card/ContentCard.vue";
 import CustomPagination from "~/components/pagination/CustomPagination.vue";
-import type { FieldOption } from "~/components/dialog/types";
 
 interface Project {
   id: string;
@@ -42,7 +41,7 @@ const page = ref(1);
 const pageSize = ref(4);
 
 const loading = ref(false);
-const error = ref<any>(null);
+const error = ref<string | null>(null);
 
 // dialogs & forms
 const isFormDialogOpen = ref(false);
@@ -87,8 +86,8 @@ async function fetchProjects() {
     }, {});
 
     totalItem.value = count;
-  } catch (err) {
-    error.value = err;
+  } catch (err: unknown) {
+    error.value = err instanceof Error ? err.message : String(err);
     console.error("Error fetching projects:", err);
   } finally {
     loading.value = false;
@@ -240,7 +239,7 @@ onMounted(fetchProjects);
       v-if="error"
       class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4"
     >
-      {{ error.message || "Failed to fetch projects" }}
+      {{ error || "Failed to fetch projects" }}
     </div>
 
     <div
