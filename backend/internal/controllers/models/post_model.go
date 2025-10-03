@@ -1,6 +1,7 @@
 package controller_model
 
 import (
+	"encoding/base64"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -29,7 +30,12 @@ func (t *PostModelRoutes) post(c *gin.Context) {
 	var req CreateModelRequest
 	modelId := uuid.New()
 	strId := c.Param("projectId")
-	projectId, err := uuid.Parse(strId)
+	decodedBytes, err := base64.RawURLEncoding.DecodeString(strId)
+	if err != nil {
+		t.Logger.Error("error decoding Base64", zap.Error(err))
+		return
+	}
+	projectId, err := uuid.FromBytes(decodedBytes)
 	if err != nil {
 		t.Logger.Error("error while converting str id to uuid", zap.Error(err))
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid project ID"})
@@ -118,7 +124,7 @@ func (t *PostModelRoutes) post(c *gin.Context) {
 		Name:        data.Name,
 		Description: data.Description,
 		ImagePath:   data.ImagePath,
-		Version:     int(data.Version.Int32),
+		Version:     data.Version,
 		CreatedAt:   data.CreatedAt.Time.Format(time.RFC3339),
 		UpdatedAt:   data.UpdatedAt.Time.Format(time.RFC3339),
 	}})

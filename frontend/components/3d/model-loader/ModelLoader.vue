@@ -20,8 +20,9 @@ try {
 
 <template>
   <primitive
-    v-if="nodes"
-    :object="nodes.mesh_0"
+    v-for="nodeKey in Object.keys(nodes)"
+    :key="nodeKey"
+    :object="nodes[nodeKey]"
     :position="props.position ?? [0, 0, 0]"
   />
 
