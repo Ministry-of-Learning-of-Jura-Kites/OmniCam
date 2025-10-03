@@ -9,6 +9,10 @@ import type { ICamera } from "~/types/camera";
 
 const cam = defineModel<ICamera>({ required: true });
 
+const emit = defineEmits<{
+  (event: "change"): void;
+}>();
+
 const props = defineProps({
   direction: {
     type: String as PropType<"x" | "y" | "z">,
@@ -34,6 +38,9 @@ const cameraUserData = new MovingUserData(
   props.direction,
   cam.value!,
   context!,
+  () => {
+    emit("change");
+  },
 );
 
 const material = new THREE.MeshBasicMaterial({ color: props.color });
