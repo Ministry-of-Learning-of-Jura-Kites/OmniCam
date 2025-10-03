@@ -1,7 +1,7 @@
 // scripts/proto.js
 import { execSync } from "child_process";
 import { platform } from "os";
-import { readdir, unlink, mkdir, rm } from "node:fs/promises";
+import { readdir, mkdir, rm } from "node:fs/promises";
 import { join } from "path";
 
 const target = process.argv[2]; // "front", "back", or "all"
