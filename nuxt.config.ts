@@ -37,12 +37,12 @@ export default defineNuxtConfig({
      * Directory that the component lives in.
      * @default "./components/ui"
      */
-    componentDir: "./frontend/components/ui",
+    componentDir: "~/components/ui",
   },
   components: [
     {
       path: "~/components",
-      extensions: [".vue"],
+      extensions: ["vue"],
     },
   ],
   routeRules: {
