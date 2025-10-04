@@ -134,7 +134,6 @@ watch(
   () => [sceneStates.transformingInfo, sceneStates.currentCam],
   ([transform, cam]) => {
     const newFov = transform?.value?.fov ?? cam!.value!.fov;
-    console.log("trans", transform?.value?.fov);
     if (camera.value) {
       camera.value.fov = newFov!;
       camera.value.updateProjectionMatrix();
