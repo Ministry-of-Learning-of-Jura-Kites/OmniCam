@@ -52,7 +52,7 @@ We use PostgreSQL as a database, to spin up postgres open a new terminal, and us
 
 To migrate, do
 
-`migrate -path db/migrations/ -database "postgresql://postgres:123@localhost:5432/omnicam?sslmode=disable" up`
+`migrate -path db/migrations/ -database "postgresql://postgres:password@localhost:5432/omnicam?sslmode=disable" up`
 
 ## Schema
 
