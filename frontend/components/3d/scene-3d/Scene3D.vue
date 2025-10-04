@@ -89,41 +89,30 @@ watch(
   canvas,
   (canvas) => {
     const context = canvas!.context!;
+    const renderer = context.renderer;
 
     sceneStates.tresContext.value = context;
 
-    context.renderer.value.domElement.addEventListener(
-      "pointerdown",
-      onCanvasPointer,
-    );
+    renderer.value.domElement.addEventListener("pointerdown", onCanvasPointer);
 
-    context.renderer.value.domElement.addEventListener(
-      "pointermove",
-      onCanvasPointer,
-    );
+    renderer.value.domElement.addEventListener("pointermove", onCanvasPointer);
 
-    context.renderer.value.domElement.addEventListener(
-      "pointerup",
-      onCanvasPointer,
-    );
+    renderer.value.domElement.addEventListener("pointerup", onCanvasPointer);
 
-    context.renderer.value.domElement.addEventListener(
+    renderer.value.domElement.addEventListener(
       "keydown",
       sceneStates.spectatorPosition.onKeyDown,
     );
 
-    context.renderer.value.domElement.addEventListener(
+    renderer.value.domElement.addEventListener(
       "keyup",
       sceneStates.spectatorPosition.onKeyUp,
     );
 
-    context.renderer.value.domElement.addEventListener(
-      "blur",
-      (event: FocusEvent) => {
-        sceneStates.spectatorRotation.onBlur(event);
-        sceneStates.spectatorPosition.onBlur(event);
-      },
-    );
+    renderer.value.domElement.addEventListener("blur", (event: FocusEvent) => {
+      sceneStates.spectatorRotation.onBlur(event);
+      sceneStates.spectatorPosition.onBlur(event);
+    });
   },
   { once: true },
 );
@@ -142,17 +131,20 @@ const spectatorRefs = {
 };
 
 watch(
-  () => sceneStates.currentCameraFov.value,
-  (newFov) => {
+  () => [sceneStates.transformingInfo, sceneStates.currentCam],
+  ([transform, cam]) => {
+    const newFov = transform?.value?.fov ?? cam!.value!.fov;
+    console.log("trans", transform?.value?.fov);
     if (camera.value) {
       camera.value.fov = newFov!;
       camera.value.updateProjectionMatrix();
     }
   },
+  { deep: true },
 );
 
 onMounted(() => {
-  useAutosave(sceneStates);
+  useAutosave(sceneStates, props.workspace);
 });
 </script>
 
@@ -222,7 +214,7 @@ onMounted(() => {
           />
         </div>
         <div class="flex">
-          <p>FOV:</p>
+          <p>VFOV:</p>
           <AdjustableInput
             v-model="sceneStates.spectatorCameraFov"
             class="right-adjustable-input"
@@ -242,9 +234,18 @@ onMounted(() => {
         <!-- Camera -->
         <TresPerspectiveCamera
           ref="camera"
-          :position="sceneStates.currentCameraPosition.value"
-          :rotation="sceneStates.currentCameraRotation.value"
-          :fov="sceneStates.currentCameraFov.value"
+          :position="
+            sceneStates.transformingInfo.value?.position ??
+            sceneStates.currentCam.value?.position
+          "
+          :rotation="
+            sceneStates.transformingInfo.value?.rotation ??
+            sceneStates.currentCam.value?.rotation
+          "
+          :fov="
+            sceneStates.transformingInfo.value?.fov ??
+            sceneStates.currentCam.value?.fov
+          "
         />
 
         <CameraObject
@@ -263,7 +264,7 @@ onMounted(() => {
 
         <!-- 3D Objects -->
         <Suspense>
-          <ModelLoader :path="modelResp.filePath" :position="[0, 2.5, 0]" />
+          <ModelLoader :path="modelResp.filePath" :position="[0, 0, 0]" />
         </Suspense>
 
         <!-- Grid -->

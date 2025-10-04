@@ -103,7 +103,7 @@ export function useSpectatorPosition(sceneStates: SceneStates) {
         default:
           break;
       }
-      sceneStates.currentCameraPosition.value?.add(deltaVec);
+      sceneStates.currentCam.value?.position.add(deltaVec);
     }
     setTimeout(() => requestAnimationFrame(refreshCameraState), 10);
   }
