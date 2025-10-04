@@ -1,11 +1,11 @@
 import type {
   Camera,
   CameraSaveEvent,
-} from "~/messages/protobufs/protobufs/autosave_event";
+} from "~/messages/protobufs/autosave_event";
 import {
   CameraEventType,
   CameraSaveEventSeries,
-} from "~/messages/protobufs/protobufs/autosave_event";
+} from "~/messages/protobufs/autosave_event";
 import type { ICamera } from "~/types/camera";
 import type { SceneStates } from "~/types/scene-states";
 import * as THREE from "three";
@@ -37,7 +37,14 @@ function formatCam(camId: string, cam: ICamera): Camera {
   };
 }
 
-export function useAutosave(sceneStates: SceneStates) {
+export function useAutosave(
+  sceneStates: SceneStates,
+  workspace: string | null,
+) {
+  if (workspace == null) {
+    return;
+  }
+
   const lastSynced: Map<string, Camera> = new Map(
     Object.entries(sceneStates.cameras!).map(([camId, cam]) => {
       return [camId, formatCam(camId, cam)];
@@ -79,7 +86,7 @@ export function useAutosave(sceneStates: SceneStates) {
       }
     }
 
-    if (changed.length > 0) {
+    if (changed.length > 0 && sceneStates.websocket != undefined) {
       sceneStates.websocket.send(
         CameraSaveEventSeries.encode({ events: changed }).finish().buffer,
       );

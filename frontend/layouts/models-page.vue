@@ -2,35 +2,37 @@
 import TopBar from "@/components/TopBar.vue";
 import CameraPanel from "@/components/CameraPanel.vue";
 import SceneStatesProvider from "~/components/3d/scene-states-provider/SceneStatesProvider.vue";
-import { WORKSPACE_KEY } from "./workspace-provider";
 
 const route = useRoute();
 
-const path = route.fullPath;
+// const path = route.fullPath;
 
 // Check if it matches `/workspaces/<id>`
-const regex = /workspaces\/([^/]+)\/?$/;
-const m = path.match(regex);
-const match = m ? m[1] : null;
+// const regex = /workspaces\/([^/]+)\/?$/;
+// const m = path.match(regex);
+// const match = m ? m[1] : null;
 
-const workspaceRef = ref(match);
+// const workspace = ref(match);
 
-provide(WORKSPACE_KEY, workspaceRef);
+const workspace = computed(() => route.meta.routeInfo?.workspace);
+
+// provide(WORKSPACE_KEY, workspace);
 </script>
 
 <template>
   <div class="flex flex-col h-screen">
     <SceneStatesProvider
+      :key="`${route.params.projectId}-${route.params.modelId}-${workspace}`"
       :project-id="route.params.projectId"
       :model-id="route.params.modelId"
-      :workspace="workspaceRef"
+      :workspace="workspace"
     >
-      <TopBar :workspace="workspaceRef" />
+      <TopBar :workspace="workspace" />
       <div class="flex-1 flex overflow-hidden">
         <div class="flex-1 w-full h-full">
           <slot />
         </div>
-        <CameraPanel :workspace="workspaceRef" />
+        <CameraPanel :workspace="workspace" />
       </div>
     </SceneStatesProvider>
   </div>

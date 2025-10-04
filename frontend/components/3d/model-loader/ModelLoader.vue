@@ -20,14 +20,18 @@ try {
 
 <template>
   <primitive
-    v-for="nodeKey in Object.keys(nodes)"
-    :key="nodeKey"
-    :object="nodes[nodeKey]"
-    :position="props.position ?? [0, 0, 0]"
+    v-for="[key, node] of Object.entries(nodes)"
+    :key="key"
+    :object="node"
+    :position="[
+      (props.position?.[0] ?? 0) + (node.position?.x ?? 0),
+      (props.position?.[1] ?? 0) + (node.position?.y ?? 0),
+      (props.position?.[2] ?? 0) + (node.position?.z ?? 0),
+    ]"
   />
 
   <!-- Block Placeholder  -->
-  <TresMesh v-if="!nodes" :position="props.position ?? [0, 0, 0]">
+  <TresMesh v-if="nodes == undefined" :position="props.position ?? [0, 0, 0]">
     <TresBoxGeometry />
     <TresMeshStandardMaterial
       :color="'#4a90e2'"

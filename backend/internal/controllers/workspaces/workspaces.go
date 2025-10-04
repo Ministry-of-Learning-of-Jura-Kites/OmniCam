@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"net/http"
 	"reflect"
+	"slices"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -19,14 +20,14 @@ import (
 )
 
 type Workspace struct {
-	Id          uuid.UUID                `json:"id"`
-	ModelId     uuid.UUID                `json:"modelId"`
-	Name        string                   `json:"name"`
-	Description string                   `json:"description"`
-	Version     int32                    `json:"version"`
-	CreatedAt   string                   `json:"createdAt"`
-	UpdatedAt   string                   `json:"updatedAt"`
-	Cameras     messages_cameras.Cameras `json:"cameras"`
+	Id          uuid.UUID                 `json:"id"`
+	ModelId     uuid.UUID                 `json:"modelId"`
+	Name        string                    `json:"name"`
+	Description string                    `json:"description"`
+	Version     int32                     `json:"version"`
+	CreatedAt   string                    `json:"createdAt"`
+	UpdatedAt   string                    `json:"updatedAt"`
+	Cameras     *messages_cameras.Cameras `json:"cameras"`
 }
 
 type WorkspaceRoute struct {
@@ -382,11 +383,13 @@ func (t *WorkspaceRoute) getWorkspaceMe(c *gin.Context) {
 	}
 
 	var cameras messages_cameras.Cameras
-	err = json.Unmarshal(data.Cameras, &cameras)
-	if err != nil {
-		t.Logger.Error("cameras jsonb are invalid", zap.Error(err))
-		c.JSON(http.StatusInternalServerError, gin.H{})
-		return
+	if slices.Contains(includedFields, "cameras") {
+		err = json.Unmarshal(data.Cameras, &cameras)
+		if err != nil {
+			t.Logger.Error("cameras jsonb are invalid", zap.Error(err))
+			c.JSON(http.StatusInternalServerError, gin.H{})
+			return
+		}
 	}
 
 	c.JSON(http.StatusOK, gin.H{"data": Workspace{
@@ -396,7 +399,7 @@ func (t *WorkspaceRoute) getWorkspaceMe(c *gin.Context) {
 		Version:     data.Version,
 		CreatedAt:   data.CreatedAt.Time.Format(time.RFC3339),
 		UpdatedAt:   data.UpdatedAt.Time.Format(time.RFC3339),
-		Cameras:     cameras,
+		Cameras:     &cameras,
 	}})
 }
 
