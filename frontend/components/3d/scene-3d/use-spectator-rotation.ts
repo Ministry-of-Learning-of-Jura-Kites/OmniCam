@@ -34,22 +34,22 @@ export function useSpectatorRotation(sceneStates: SceneStates) {
       return;
     }
 
-    if (!isDragging.value || sceneStates.currentCameraRotation.value == null)
+    if (!isDragging.value || sceneStates.currentCam.value.rotation == null)
       return;
 
     const deltaX = e.movementX;
     let yaw =
-      sceneStates.currentCameraRotation.value.y -
+      sceneStates.currentCam.value.rotation.y -
       deltaX * SPECTATOR_ROTAING_SENTIVITY;
     yaw = normalizeAngle(yaw);
-    sceneStates.currentCameraRotation.value.y = yaw;
+    sceneStates.currentCam.value.rotation.y = yaw;
 
     const deltaY = e.movementY;
     let pitch =
-      sceneStates.currentCameraRotation.value.x -
+      sceneStates.currentCam.value.rotation.x -
       deltaY * SPECTATOR_ROTAING_SENTIVITY;
     pitch = Math.max(minPitch, Math.min(maxPitch, pitch));
-    sceneStates.currentCameraRotation.value.x = pitch;
+    sceneStates.currentCam.value.rotation.x = pitch;
   }
 
   function onBlur(_e: FocusEvent) {

@@ -50,6 +50,10 @@ We use PostgreSQL as a database, to spin up postgres open a new terminal, and us
 
 `docker run --rm -it --name omnicam-postgres -e POSTGRES_PASSWORD=password -p 5433:5432 postgres:17`
 
+To migrate, do
+
+`migrate -path db/migrations/ -database "postgresql://postgres:123@localhost:5432/omnicam?sslmode=disable" up`
+
 ## Schema
 
 When adding a schema, make sure to add both .up.sql and .down.sql, up is for applying migration, and down is for rollbacking migration

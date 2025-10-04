@@ -23,69 +23,59 @@ export function useCameraManagement(sceneStates: SceneStates) {
     return sceneStates.cameras;
   }
 
-  function switchToCam(camId: string) {
-    const cam = sceneStates.cameras[camId];
+  async function switchToCam(camId: string) {
+    const cam = sceneStates.cameras[camId]!;
+    sceneStates.transformingInfo.value = {
+      position: sceneStates.spectatorCameraPosition.clone(),
+      rotation: sceneStates.spectatorCameraRotation.clone(),
+      fov: sceneStates.spectatorCameraFov.value,
+    };
+    const tasks = [
+      gsap.to(sceneStates.transformingInfo.value.position, {
+        x: cam.position.x,
+        y: cam.position.y,
+        z: cam.position.z,
+      }),
+      gsap.to(sceneStates.transformingInfo.value!, {
+        fov: cam?.fov,
+      }),
+      gsap.to(sceneStates.transformingInfo.value.rotation!, {
+        x: cam.rotation.x,
+        y: cam.rotation.y,
+        z: cam.rotation.z,
+      }),
+    ];
+    await Promise.all(tasks);
     sceneStates.currentCamId.value = camId;
-    gsap.to(sceneStates.tresContext.value!.camera!.position!, {
-      x: cam!.position.x,
-      y: cam!.position.y,
-      z: cam!.position.z,
-      onComplete: () => {
-        sceneStates.currentCameraPosition.value = cam!.position;
-      },
-    });
-    // gsap.to(
-    //   (sceneStates.tresContext.value!.camera! as THREE.PerspectiveCamera)!,
-    //   {
-    //     fov: cam?.fov,
-    //   },
-    // );
-    gsap.to(sceneStates.tresContext.value!.camera!.rotation!, {
-      x: cam!.rotation.x,
-      y: cam!.rotation.y,
-      z: cam!.rotation.z,
-      onComplete: () => {
-        sceneStates.currentCameraRotation.value = cam!.rotation;
-      },
-    });
+    sceneStates.transformingInfo.value = undefined;
   }
 
-  function switchToSpectator() {
+  async function switchToSpectator() {
     const camId = sceneStates.currentCamId.value;
-    const cam = sceneStates.cameras[camId!];
-    const threeCam = sceneStates.tresContext.value!.camera!;
-    cam?.position.copy(threeCam.position);
-    cam?.rotation.copy(threeCam.rotation);
-    gsap.to(threeCam.position!, {
-      x: sceneStates.spectatorCameraPosition.x,
-      y: sceneStates.spectatorCameraPosition.y,
-      z: sceneStates.spectatorCameraPosition.z,
-      onComplete: () => {
-        sceneStates.currentCameraPosition.value =
-          sceneStates.spectatorCameraPosition;
-      },
-    });
-
-    // gsap.to(
-    //   (sceneStates.tresContext.value!.camera! as THREE.PerspectiveCamera)!,
-    //   {
-    //     fov: cam?.fov,
-    //     onComplete: () => {
-    //       sceneStates.currentCameraFov.value.data =
-    //         sceneStates.spectatorCameraFov;
-    //     },
-    //   },
-    // );
-    gsap.to(threeCam!.rotation!, {
-      x: sceneStates.spectatorCameraRotation.x,
-      y: sceneStates.spectatorCameraRotation.y,
-      z: sceneStates.spectatorCameraRotation.z,
-      onComplete: () => {
-        sceneStates.currentCameraRotation.value =
-          sceneStates.spectatorCameraRotation;
-      },
-    });
+    const cam = sceneStates.cameras[camId!]!;
+    sceneStates.transformingInfo.value = {
+      position: cam.position.clone(),
+      rotation: cam.rotation.clone(),
+      fov: cam?.fov,
+    };
+    const tasks = [
+      gsap.to(sceneStates.transformingInfo.value.position, {
+        x: sceneStates.spectatorCameraPosition.x,
+        y: sceneStates.spectatorCameraPosition.y,
+        z: sceneStates.spectatorCameraPosition.z,
+      }),
+      gsap.to(sceneStates.transformingInfo.value!, {
+        fov: sceneStates.spectatorCameraFov.value,
+      }),
+      gsap.to(sceneStates.transformingInfo.value.rotation!, {
+        x: sceneStates.spectatorCameraRotation.x,
+        y: sceneStates.spectatorCameraRotation.y,
+        z: sceneStates.spectatorCameraRotation.z,
+      }),
+    ];
+    await Promise.all(tasks);
     sceneStates.currentCamId.value = null;
+    sceneStates.transformingInfo.value = undefined;
   }
   return {
     spawnCameraHere,
