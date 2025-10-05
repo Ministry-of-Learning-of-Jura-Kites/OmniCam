@@ -9,11 +9,41 @@ import { SCENE_STATES_KEY } from "~/components/3d/scene-states-provider/create-s
 import { useCameraUpdate } from "./use-camera-update";
 import type { IUserData } from "~/types/obj-3d-user-data";
 import ModelLoader from "../model-loader/ModelLoader.vue";
+import { useAutosave } from "./use-autosave";
 
-defineProps<{
-  modelId?: string | null;
-  placeholderText?: string | null;
-}>();
+const props = defineProps({
+  projectId: {
+    type: String,
+    required: true,
+  },
+  modelId: {
+    type: String,
+    required: true,
+  },
+  workspace: {
+    type: String,
+    default: null,
+  },
+});
+
+const runtimeConfig = useRuntimeConfig();
+
+const resp = await fetch(
+  `http://${runtimeConfig.public.NUXT_PUBLIC_BACKEND_HOST}/api/v1/projects/${props.projectId}/models/${props.modelId}`,
+);
+
+const {
+  data: modelResp,
+}: {
+  data: {
+    id: string;
+    projectId: string;
+    name: string;
+    description: string;
+    imagePath: string;
+    filePath: string;
+  };
+} = await resp.json();
 
 const sceneStates = inject(SCENE_STATES_KEY)!;
 
@@ -26,20 +56,6 @@ useCameraUpdate(sceneStates);
 onMounted(() => {
   // start loop to move camera from key press
   sceneStates.spectatorPosition.refreshCameraState();
-
-  // for testing
-  if (typeof window !== "undefined") {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (window as any).spawnCameraHereNaja =
-      sceneStates.cameraManagement.spawnCameraHere;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (window as any).switchToCamNaja = sceneStates.cameraManagement.switchToCam;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (window as any).switchToSpectatorNaja =
-      sceneStates.cameraManagement.switchToSpectator;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (window as any).getCamsNaja = sceneStates.cameraManagement.getCams;
-  }
 });
 
 const raycaster = new THREE.Raycaster();
@@ -73,41 +89,30 @@ watch(
   canvas,
   (canvas) => {
     const context = canvas!.context!;
+    const renderer = context.renderer;
 
     sceneStates.tresContext.value = context;
 
-    context.renderer.value.domElement.addEventListener(
-      "pointerdown",
-      onCanvasPointer,
-    );
+    renderer.value.domElement.addEventListener("pointerdown", onCanvasPointer);
 
-    context.renderer.value.domElement.addEventListener(
-      "pointermove",
-      onCanvasPointer,
-    );
+    renderer.value.domElement.addEventListener("pointermove", onCanvasPointer);
 
-    context.renderer.value.domElement.addEventListener(
-      "pointerup",
-      onCanvasPointer,
-    );
+    renderer.value.domElement.addEventListener("pointerup", onCanvasPointer);
 
-    context.renderer.value.domElement.addEventListener(
+    renderer.value.domElement.addEventListener(
       "keydown",
       sceneStates.spectatorPosition.onKeyDown,
     );
 
-    context.renderer.value.domElement.addEventListener(
+    renderer.value.domElement.addEventListener(
       "keyup",
       sceneStates.spectatorPosition.onKeyUp,
     );
 
-    context.renderer.value.domElement.addEventListener(
-      "blur",
-      (event: FocusEvent) => {
-        sceneStates.spectatorRotation.onBlur(event);
-        sceneStates.spectatorPosition.onBlur(event);
-      },
-    );
+    renderer.value.domElement.addEventListener("blur", (event: FocusEvent) => {
+      sceneStates.spectatorRotation.onBlur(event);
+      sceneStates.spectatorPosition.onBlur(event);
+    });
   },
   { once: true },
 );
@@ -126,14 +131,20 @@ const spectatorRefs = {
 };
 
 watch(
-  () => sceneStates.currentCameraFov.value,
-  (newFov) => {
+  () => [sceneStates.transformingInfo, sceneStates.currentCam],
+  ([transform, cam]) => {
+    const newFov = transform?.value?.fov ?? cam!.value!.fov;
     if (camera.value) {
       camera.value.fov = newFov!;
       camera.value.updateProjectionMatrix();
     }
   },
+  { deep: true },
 );
+
+onMounted(() => {
+  useAutosave(sceneStates, props.workspace);
+});
 </script>
 
 <template>
@@ -202,7 +213,7 @@ watch(
           />
         </div>
         <div class="flex">
-          <p>FOV:</p>
+          <p>VFOV:</p>
           <AdjustableInput
             v-model="sceneStates.spectatorCameraFov"
             class="right-adjustable-input"
@@ -222,9 +233,18 @@ watch(
         <!-- Camera -->
         <TresPerspectiveCamera
           ref="camera"
-          :position="sceneStates.currentCameraPosition.value"
-          :rotation="sceneStates.currentCameraRotation.value"
-          :fov="sceneStates.currentCameraFov.value"
+          :position="
+            sceneStates.transformingInfo.value?.position ??
+            sceneStates.currentCam.value?.position
+          "
+          :rotation="
+            sceneStates.transformingInfo.value?.rotation ??
+            sceneStates.currentCam.value?.rotation
+          "
+          :fov="
+            sceneStates.transformingInfo.value?.fov ??
+            sceneStates.currentCam.value?.fov
+          "
         />
 
         <CameraObject
@@ -243,10 +263,7 @@ watch(
 
         <!-- 3D Objects -->
         <Suspense>
-          <ModelLoader
-            path="/models/test-model/poly.gltf"
-            :position="[0, 2.5, 0]"
-          />
+          <ModelLoader :path="modelResp.filePath" :position="[0, 0, 0]" />
         </Suspense>
 
         <!-- Grid -->
@@ -269,7 +286,7 @@ watch(
   </ClientOnly>
 </template>
 
-<style>
+<style scoped>
 #canvas {
   height: 100%;
   width: 100%;

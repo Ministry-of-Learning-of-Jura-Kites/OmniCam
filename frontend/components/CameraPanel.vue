@@ -13,10 +13,16 @@ import {
   Settings,
   ChevronLeft,
   ChevronDown,
-  MapPinPlus,
-  RotateCcw,
+  MapPinPlusInside,
 } from "lucide-vue-next";
 import { SCENE_STATES_KEY } from "./3d/scene-states-provider/create-scene-states";
+
+const props = defineProps({
+  workspace: {
+    type: String,
+    default: null,
+  },
+});
 
 const sceneStates = inject(SCENE_STATES_KEY)!;
 
@@ -41,13 +47,12 @@ const moveCameraHere = (id: string) => {
 };
 
 const deleteCamera = (id: string) => {
+  if (sceneStates.currentCamId.value == id) {
+    sceneStates.currentCamId.value = null;
+  }
   // eslint-disable-next-line @typescript-eslint/no-dynamic-delete
   delete sceneStates.cameras[id];
 };
-
-// watch(sceneStates.cameras, (cams) => {
-//   console.log(cams[Object.keys(cams)[0] as string]?.rotation);
-// });
 </script>
 
 <template>
@@ -57,20 +62,21 @@ const deleteCamera = (id: string) => {
         <Camera class="h-5 w-5" />
         Camera Gallery
       </h2>
-      <Button
+      <!-- <Button
         size="sm"
         @click="sceneStates.cameraManagement.switchToSpectator()"
       >
         <RotateCcw class="h-4 w-4" />
-      </Button>
+      </Button> -->
       <Button
         size="sm"
+        :disabled="props.workspace == null"
         @click="
           spawnCamera();
           $event.currentTarget.blur();
         "
       >
-        <MapPinPlus class="h-4 w-4" />
+        <MapPinPlusInside class="h-4 w-4" />
       </Button>
     </div>
 
@@ -123,6 +129,8 @@ const deleteCamera = (id: string) => {
           <Input
             id="camera-name"
             v-model="sceneStates.cameras[selectedCamId]!.name"
+            :disabled="props.workspace == null"
+            @change="sceneStates.markedForCheck.add(selectedCamId)"
           />
         </div>
 
@@ -132,7 +140,9 @@ const deleteCamera = (id: string) => {
             <Input
               id="pos-x"
               v-model.number="sceneStates.cameras[selectedCamId]!.position.x"
+              :disabled="props.workspace == null"
               type="number"
+              @change="sceneStates.markedForCheck.add(selectedCamId)"
             />
           </div>
           <div>
@@ -140,7 +150,9 @@ const deleteCamera = (id: string) => {
             <Input
               id="pos-y"
               v-model.number="sceneStates.cameras[selectedCamId]!.position.y"
+              :disabled="props.workspace == null"
               type="number"
+              @change="sceneStates.markedForCheck.add(selectedCamId)"
             />
           </div>
           <div>
@@ -148,7 +160,9 @@ const deleteCamera = (id: string) => {
             <Input
               id="pos-z"
               v-model.number="sceneStates.cameras[selectedCamId]!.position.z"
+              :disabled="props.workspace == null"
               type="number"
+              @change="sceneStates.markedForCheck.add(selectedCamId)"
             />
           </div>
         </div>
@@ -161,7 +175,9 @@ const deleteCamera = (id: string) => {
             <Input
               id="angle-x"
               v-model.number="sceneStates.cameras[selectedCamId]!.rotation.x"
+              :disabled="props.workspace == null"
               type="number"
+              @change="sceneStates.markedForCheck.add(selectedCamId)"
             />
           </div>
           <div>
@@ -171,7 +187,9 @@ const deleteCamera = (id: string) => {
             <Input
               id="angle-y"
               v-model.number="sceneStates.cameras[selectedCamId]!.rotation.y"
+              :disabled="props.workspace == null"
               type="number"
+              @change="sceneStates.markedForCheck.add(selectedCamId)"
             />
           </div>
           <div>
@@ -181,7 +199,9 @@ const deleteCamera = (id: string) => {
             <Input
               id="angle-z"
               v-model.number="sceneStates.cameras[selectedCamId]!.rotation.z"
+              :disabled="props.workspace == null"
               type="number"
+              @change="sceneStates.markedForCheck.add(selectedCamId)"
             />
           </div>
         </div>
@@ -191,9 +211,11 @@ const deleteCamera = (id: string) => {
           <Input
             id="fov"
             v-model.number="sceneStates.cameras[selectedCamId]!.fov"
+            :disabled="props.workspace == null"
             type="number"
             min="10"
-            max="360"
+            max="180"
+            @change="sceneStates.markedForCheck.add(selectedCamId)"
           />
         </div>
 
@@ -203,7 +225,8 @@ const deleteCamera = (id: string) => {
             variant="ghost"
             @click="
               sceneStates.cameras[selectedCamId]!.isHidingArrows =
-                !sceneStates.cameras[selectedCamId]!.isHidingArrows
+                !sceneStates.cameras[selectedCamId]!.isHidingArrows;
+              sceneStates.markedForCheck.add(selectedCamId);
             "
           >
             <Eye
@@ -219,7 +242,8 @@ const deleteCamera = (id: string) => {
             variant="ghost"
             @click="
               sceneStates.cameras[selectedCamId]!.isHidingWheels =
-                !sceneStates.cameras[selectedCamId]!.isHidingWheels
+                !sceneStates.cameras[selectedCamId]!.isHidingWheels;
+              sceneStates.markedForCheck.add(selectedCamId);
             "
           >
             <Eye
@@ -242,8 +266,11 @@ const deleteCamera = (id: string) => {
           <Button
             size="sm"
             variant="ghost"
-            :disabled="!sceneStates.currentCamId"
-            @click="deleteCamera(sceneStates.currentCamId.value!)"
+            :disabled="!sceneStates.currentCamId || props.workspace == null"
+            @click="
+              deleteCamera(selectedCamId);
+              sceneStates.markedForCheck.add(selectedCamId);
+            "
           >
             <Trash2 class="h-3 w-3" />
             Delete

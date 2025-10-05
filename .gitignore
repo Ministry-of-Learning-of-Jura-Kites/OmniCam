@@ -29,4 +29,8 @@ sqlc-gen
 .vscode/debug_bin.exe
 
 uploads
+
 frontend/public/models/**
+
+frontend/messages/protobufs
+backend/pkg/messages/protobufs

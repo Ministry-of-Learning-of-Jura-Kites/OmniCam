@@ -6,6 +6,8 @@ import FormDialog from "~/components/dialog/FormDialog.vue";
 import SuccessDialog from "~/components/dialog/SuccessDialog.vue";
 import ContentCard from "~/components/card/ContentCard.vue";
 import CustomPagination from "~/components/pagination/CustomPagination.vue";
+import { uuidToBase64Url } from "~/lib/utils";
+import { Plus } from "lucide-vue-next";
 
 export interface Model {
   id: string;
@@ -123,7 +125,7 @@ async function fetchModel() {
   const projectId = route.params.projectId as string;
   try {
     const response = await $fetch<ModelGetRequest>(
-      `${config.public.NUXT_PUBLIC_URL}/api/v1/projects/${projectId}/models`,
+      `http://${config.public.NUXT_PUBLIC_BACKEND_HOST}/api/v1/projects/${projectId}/models`,
       {
         method: "GET",
         query: {
@@ -150,10 +152,6 @@ async function fetchModel() {
       models.value = {};
       totalData.value = 0;
     }
-
-    console.log(models.value, "c");
-    console.log(totalData.value);
-    console.log(totalData.value);
   } catch (err) {
     console.error("fetchModel error", err);
   }
@@ -182,7 +180,7 @@ async function createModel() {
 
   const projectId = route.params.projectId as string;
   const response = await $fetch<ModelReturnRequest>(
-    `${config.public.NUXT_PUBLIC_URL}/api/v1/projects/${projectId}/models`,
+    `http://${config.public.NUXT_PUBLIC_BACKEND_HOST}/api/v1/projects/${projectId}/models`,
     {
       method: "POST",
       body: formData,
@@ -197,11 +195,9 @@ async function createModel() {
 
 async function updateModel(modelId: string) {
   const projectId = route.params.projectId as string;
-  console.log(modelId);
-  console.log(modelForm);
   try {
     const response = await $fetch<ModelReturnRequest>(
-      `${config.public.NUXT_PUBLIC_URL}/api/v1/projects/${projectId}/models/${modelId}`,
+      `http://${config.public.NUXT_PUBLIC_BACKEND_HOST}/api/v1/projects/${projectId}/models/${modelId}`,
       {
         method: "PUT",
         body: {
@@ -210,8 +206,6 @@ async function updateModel(modelId: string) {
         },
       },
     );
-    console.log(models.value);
-    console.log(response);
     models.value = {
       ...models.value,
       [modelId]: {
@@ -224,10 +218,8 @@ async function updateModel(modelId: string) {
         projectId: response.data.projectId,
       },
     };
-    console.log("new Model", models.value[modelId]);
     successDialog.value = true;
     successMessage.value = `You have successfully update ${response.data.name}`;
-    console.log("Updated row:", modelId);
   } catch (err) {
     console.error("Update failed", err);
   }
@@ -238,7 +230,7 @@ async function deleteRow(id: string) {
     const projectId = route.params.projectId as string;
 
     await $fetch(
-      `${config.public.NUXT_PUBLIC_URL}/api/v1/projects/${projectId}/models/${id}`,
+      `http://${config.public.NUXT_PUBLIC_BACKEND_HOST}/api/v1/projects/${projectId}/models/${id}`,
       {
         method: "DELETE",
       },
@@ -247,7 +239,6 @@ async function deleteRow(id: string) {
     models.value = Object.fromEntries(
       Object.entries(models.value).filter(([key]) => key !== id),
     );
-    console.log("Deleted row:", id);
     successDialog.value = true;
     successMessage.value = `You have successfully delete ${id}`;
 
@@ -280,10 +271,8 @@ function handleDeleteRow(row: Model) {
 
 // Form submit handler
 function handleEditFormSubmit() {
-  console.log("a");
   isEditFormDialogOpen.value = false;
   confirmDialog.value = true;
-  console.log(confirmDialog.value);
 }
 
 function handleConfirmSubmit() {
@@ -294,7 +283,6 @@ function handleConfirmSubmit() {
   if (confirmMessage.value.includes("delete")) {
     deleteRow(currentEditId.value);
   } else {
-    console.log("is in");
     updateModel(currentEditId.value);
   }
 
@@ -315,7 +303,7 @@ async function handleUpdateImage(file: File | undefined, modelId: string) {
 
   try {
     const res = await $fetch<{ imagePath: string; message: string }>(
-      `${config.public.NUXT_PUBLIC_URL}/api/v1/projects/${projectId}/models/${modelId}/image`,
+      `http://${config.public.NUXT_PUBLIC_BACKEND_HOST}/api/v1/projects/${projectId}/models/${modelId}/image`,
       {
         method: "PUT",
         body: formData,
@@ -344,19 +332,7 @@ onMounted(() => {
   fetchModel();
 });
 
-watch(
-  modelForm,
-  (modelForm) => {
-    console.log(modelForm);
-  },
-  {
-    once: false,
-  },
-);
-
-watch([page, pageSize], async ([page, pageSize]) => {
-  console.log(page);
-  console.log(pageSize);
+watch([page, pageSize], async () => {
   await fetchModel();
 });
 </script>
@@ -365,7 +341,9 @@ watch([page, pageSize], async ([page, pageSize]) => {
   <div>
     <div class="flex flex-col items-center min-h-screen p-4">
       <div class="w-full max-w-7xl flex justify-end mb-4">
-        <Button type="button" @click="handleCreate" />
+        <Button type="button" @click="handleCreate">
+          <Plus />
+        </Button>
       </div>
 
       <div class="w-full max-w-7xl flex justify-center mb-4">
@@ -376,7 +354,7 @@ watch([page, pageSize], async ([page, pageSize]) => {
             :name="model.name"
             :description="model.description"
             :image-path="model.imagePath ?? ''"
-            :redirect-link="`models/${id}`"
+            :redirect-link="`/projects/${route.params.projectId}/models/${uuidToBase64Url(id)}`"
             @update="handleEditRow({ ...model, id })"
             @delete="handleDeleteRow({ ...model, id })"
             @update-image="
