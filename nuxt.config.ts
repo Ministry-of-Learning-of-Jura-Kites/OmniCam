@@ -50,7 +50,7 @@ export default defineNuxtConfig({
   },
   runtimeConfig: {
     public: {
-      NUXT_PUBLIC_URL: process.env.NUXT_PUBLIC_URL,
+      NUXT_PUBLIC_BACKEND_HOST: process.env.NUXT_PUBLIC_BACKEND_HOST,
     },
   },
 });

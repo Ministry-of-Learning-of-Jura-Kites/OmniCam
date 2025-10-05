@@ -5,6 +5,7 @@ import ConfirmDialog from "~/components/dialog/ConfirmDialog.vue";
 import SuccessDialog from "~/components/dialog/SuccessDialog.vue";
 import ContentCard from "~/components/card/ContentCard.vue";
 import CustomPagination from "~/components/pagination/CustomPagination.vue";
+import { uuidToBase64Url } from "~/lib/utils";
 
 interface Project {
   id: string;
@@ -67,7 +68,7 @@ async function fetchProjects() {
     error.value = null;
 
     const response = await $fetch<{ data: Project[]; count: number }>(
-      `${config.public.NUXT_PUBLIC_URL}/api/v1/projects`,
+      `http://${config.public.NUXT_PUBLIC_BACKEND_HOST}/api/v1/projects`,
       {
         method: "GET",
         query: { page: page.value, pageSize: pageSize.value },
@@ -102,7 +103,7 @@ async function createProject() {
     if (projectForm.image) formData.append("image", projectForm.image);
 
     const { data } = await $fetch<{ data: Project }>(
-      `${config.public.NUXT_PUBLIC_URL}/api/v1/projects`,
+      `http://${config.public.NUXT_PUBLIC_BACKEND_HOST}/api/v1/projects`,
       { method: "POST", body: formData },
     );
 
@@ -123,7 +124,7 @@ async function updateProject(id: string) {
       description: projectForm.description,
     };
     const { data } = await $fetch<{ data: Project }>(
-      `${config.public.NUXT_PUBLIC_URL}/api/v1/projects/${id}`,
+      `http://${config.public.NUXT_PUBLIC_BACKEND_HOST}/api/v1/projects/${id}`,
       { method: "PUT", body },
     );
     const { id: pid, ...rest } = data;
@@ -141,7 +142,7 @@ async function updateProjectImage(id: string, file: File) {
   formData.append("image", file);
   try {
     const { imagePath } = await $fetch<{ imagePath: string }>(
-      `${config.public.NUXT_PUBLIC_URL}/api/v1/projects/${id}/image`,
+      `http://${config.public.NUXT_PUBLIC_BACKEND_HOST}/api/v1/projects/${id}/image`,
       { method: "PUT", body: formData },
     );
     if (projects.value[id]) {
@@ -159,9 +160,12 @@ async function updateProjectImage(id: string, file: File) {
 
 async function deleteProject(id: string) {
   try {
-    await $fetch(`${config.public.NUXT_PUBLIC_URL}/api/v1/projects/${id}`, {
-      method: "DELETE",
-    });
+    await $fetch(
+      `http://${config.public.NUXT_PUBLIC_BACKEND_HOST}/api/v1/projects/${id}`,
+      {
+        method: "DELETE",
+      },
+    );
     const { [id]: _, ...rest } = projects.value;
     projects.value = rest;
     successMessage.value = `Project deleted successfully.`;
@@ -255,7 +259,7 @@ onMounted(fetchProjects);
         :key="id"
         :name="project.name"
         :description="project.description"
-        :redirect-link="`/projects/${id}`"
+        :redirect-link="`/projects/${uuidToBase64Url(id)}`"
         :image-path="project.imagePath || ''"
         @update="handleEditRow(id)"
         @delete="handleDeleteProject(id, project.name)"

@@ -1,6 +1,7 @@
 package controller_projects
 
 import (
+	"encoding/base64"
 	"fmt"
 	"net/http"
 	"os"
@@ -23,7 +24,12 @@ type DeleteProjectRoute struct {
 
 func (t *DeleteProjectRoute) delete(c *gin.Context) {
 	strId := c.Param("projectId")
-	projectId, err := uuid.Parse(strId)
+	decodedBytes, err := base64.RawURLEncoding.DecodeString(strId)
+	if err != nil {
+		t.Logger.Error("error decoding Base64", zap.Error(err))
+		return
+	}
+	projectId, err := uuid.FromBytes(decodedBytes)
 	if err != nil {
 		t.Logger.Error("error while converting str id to uuid", zap.Error(err))
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid project ID"})

@@ -15,6 +15,7 @@ type FunctionalityKey = (typeof functionalityKeys)[number];
 
 export function useSpectatorPosition(sceneStates: SceneStates) {
   let isKeyDown: Partial<Record<FunctionalityKey, boolean>> = {};
+  let lastKeyDown = Date.now();
 
   function isFunctionalityKey(key: string): key is FunctionalityKey {
     return (functionalityKeys as readonly string[]).includes(key);
@@ -51,8 +52,10 @@ export function useSpectatorPosition(sceneStates: SceneStates) {
   }
 
   function refreshCameraState() {
+    const duration = Date.now() - lastKeyDown;
+    lastKeyDown = Date.now();
     if (sceneStates.tresContext.value?.camera == undefined) {
-      requestAnimationFrame(refreshCameraState);
+      setTimeout(() => requestAnimationFrame(refreshCameraState), 10);
       return;
     }
     const spectatorCamera = sceneStates.tresContext.value?.camera;
@@ -72,29 +75,37 @@ export function useSpectatorPosition(sceneStates: SceneStates) {
       let deltaVec = new THREE.Vector3();
       switch (key) {
         case "KeyW":
-          deltaVec = forward.multiplyScalar(SPECTATOR_MOVING_SENTIVITY);
+          deltaVec = forward.multiplyScalar(
+            SPECTATOR_MOVING_SENTIVITY * duration,
+          );
           break;
         case "KeyS":
-          deltaVec = forward.multiplyScalar(-SPECTATOR_MOVING_SENTIVITY);
+          deltaVec = forward.multiplyScalar(
+            -SPECTATOR_MOVING_SENTIVITY * duration,
+          );
           break;
         case "KeyA":
-          deltaVec = right.multiplyScalar(-SPECTATOR_MOVING_SENTIVITY);
+          deltaVec = right.multiplyScalar(
+            -SPECTATOR_MOVING_SENTIVITY * duration,
+          );
           break;
         case "KeyD":
-          deltaVec = right.multiplyScalar(SPECTATOR_MOVING_SENTIVITY);
+          deltaVec = right.multiplyScalar(
+            SPECTATOR_MOVING_SENTIVITY * duration,
+          );
           break;
         case "Space":
-          deltaVec.y = SPECTATOR_MOVING_SENTIVITY;
+          deltaVec.y = SPECTATOR_MOVING_SENTIVITY * duration;
           break;
         case "Shift":
-          deltaVec.y = -SPECTATOR_MOVING_SENTIVITY;
+          deltaVec.y = -SPECTATOR_MOVING_SENTIVITY * duration;
           break;
         default:
           break;
       }
-      sceneStates.currentCameraPosition.value?.add(deltaVec);
+      sceneStates.currentCam.value?.position.add(deltaVec);
     }
-    requestAnimationFrame(refreshCameraState);
+    setTimeout(() => requestAnimationFrame(refreshCameraState), 10);
   }
 
   function onBlur(_e: FocusEvent) {
