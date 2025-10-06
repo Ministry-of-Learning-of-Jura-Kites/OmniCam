@@ -10,12 +10,15 @@ import (
 )
 
 type RegisterRequest struct {
-	Name     string `json:"name" binding:"required"`
+	Name     string `json:"name" binding:"required,utf8only"`
+	Surname  string `json:"surname" binding:"required,utf8only"`
+	Username string `json:"username" binding:"required,base64"`
 	Email    string `json:"email" binding:"required,email"`
 	Password string `json:"password" binding:"required"`
 }
 
 func (t *AuthRoute) register(c *gin.Context) {
+	utils.RegisterCustomValidations()
 	var req RegisterRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		t.Logger.Debug("invalid form data", zap.Error(err))
@@ -33,6 +36,8 @@ func (t *AuthRoute) register(c *gin.Context) {
 	user, err := t.DB.CreateUser(c, db_sqlc_gen.CreateUserParams{
 		Name:     req.Name,
 		Email:    req.Email,
+		Username: req.Username,
+		Surname:  req.Surname,
 		Password: []byte(hashedPassword),
 	})
 	if err != nil {
@@ -41,7 +46,7 @@ func (t *AuthRoute) register(c *gin.Context) {
 		return
 	}
 
-	jwtToken, err := utils.GenerateJWT(user.ID.String(), user.Name, t.Env.JWTSecret, int32(t.Env.JWTExpireTime))
+	jwtToken, err := utils.GenerateJWT(user.Name, user.Surname, user.ID.String(), user.Username, t.Env.JWTSecret, int32(t.Env.JWTExpireTime))
 	if err != nil {
 		t.Logger.Error("failed to generate JWT", zap.Error(err))
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to login"})

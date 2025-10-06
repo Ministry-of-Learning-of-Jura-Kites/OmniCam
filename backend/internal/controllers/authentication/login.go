@@ -43,7 +43,7 @@ func (t *AuthRoute) login(c *gin.Context) {
 		return
 	}
 
-	jwtToken, err := utils.GenerateJWT(user.ID.String(), user.Name, t.Env.JWTSecret, int32(t.Env.JWTExpireTime))
+	jwtToken, err := utils.GenerateJWT(user.Name, user.Surname, user.ID.String(), user.Username, t.Env.JWTSecret, int32(t.Env.JWTExpireTime))
 	if err != nil {
 		t.Logger.Error("failed to generate JWT token", zap.Error(err))
 		c.JSON(http.StatusBadRequest, gin.H{"message": "gen jwt token failed"})
