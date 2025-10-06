@@ -7,10 +7,14 @@ import (
 	"github.com/gorilla/websocket"
 	"go.uber.org/zap"
 	config_env "omnicam.com/backend/config"
-	controller_test "omnicam.com/backend/internal/controllers"
+
+	// controller_test "omnicam.com/backend/internal/controllers"
+	"omnicam.com/backend/internal/controllers/authentication"
+
 	controller_camera "omnicam.com/backend/internal/controllers/cameras"
 	controller_model "omnicam.com/backend/internal/controllers/models"
 	controller_projects "omnicam.com/backend/internal/controllers/projects"
+	"omnicam.com/backend/internal/controllers/users"
 	controller_workspaces "omnicam.com/backend/internal/controllers/workspaces"
 	db_sqlc_gen "omnicam.com/backend/pkg/db/sqlc-gen"
 )
@@ -30,19 +34,19 @@ func InitRoutes(deps Dependencies, router gin.IRouter) {
 	// // log panics to zap
 	// router.Use(ginzap.RecoveryWithZap(logger, true))
 
-	testRoute := controller_test.TestRoute{
-		Logger:  deps.Logger,
-		Env:     deps.Env,
-		Queries: deps.DB,
-	}
+	// testRoute := controller_test.TestRoute{
+	// 	Logger:  deps.Logger,
+	// 	Env:     deps.Env,
+	// 	Queries: deps.DB,
+	// }
 
-	getUserRoute := controller_test.GetUserRoute{
-		Logger: deps.Logger,
-		Env:    deps.Env,
-		DB:     deps.DB,
-	}
-	router.GET("/test", testRoute.Get)
-	router.GET("/user", getUserRoute.Get)
+	// getUserRoute := controller_test.GetUserRoute{
+	// 	Logger: deps.Logger,
+	// 	Env:    deps.Env,
+	// 	DB:     deps.DB,
+	// }
+	// router.GET("/test", testRoute.Get)
+	// router.GET("/user", getUserRoute.Get)
 
 	deleteProjectRoute := controller_projects.DeleteProjectRoute{
 		Logger: deps.Logger,
@@ -127,6 +131,7 @@ func InitRoutes(deps Dependencies, router gin.IRouter) {
 		DB:     deps.DB,
 	}
 	putImageModelRoute.InitUpdateImageRoute(router)
+
 	putImageProjectRoute := controller_projects.PutImageProjectRoute{
 		Logger: deps.Logger,
 		Env:    deps.Env,
@@ -134,4 +139,31 @@ func InitRoutes(deps Dependencies, router gin.IRouter) {
 	}
 	putImageProjectRoute.InitUpdateImageRoute(router)
 
+	registerRoute := authentication.AuthRoute{
+		Logger: deps.Logger,
+		Env:    deps.Env,
+		DB:     deps.DB,
+	}
+	registerRoute.InitRegisterRouter(router)
+
+	loginRoute := authentication.AuthRoute{
+		Logger: deps.Logger,
+		Env:    deps.Env,
+		DB:     deps.DB,
+	}
+	loginRoute.InitLoginRouter(router)
+
+	logoutRoute := authentication.AuthRoute{
+		Logger: deps.Logger,
+		Env:    deps.Env,
+		DB:     deps.DB,
+	}
+	logoutRoute.InitLogoutRouter(router)
+
+	getUserRoute := users.UserRoute{
+		Logger: deps.Logger,
+		Env:    deps.Env,
+		DB:     deps.DB,
+	}
+	getUserRoute.InitUserRouter(router)
 }
