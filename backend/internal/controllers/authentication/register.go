@@ -10,11 +10,11 @@ import (
 )
 
 type RegisterRequest struct {
-	Name     string `json:"name" binding:"required,utf8only"`
-	Surname  string `json:"surname" binding:"required,utf8only"`
-	Username string `json:"username" binding:"required,base64"`
-	Email    string `json:"email" binding:"required,email"`
-	Password string `json:"password" binding:"required"`
+	FirstName string `json:"first_name" binding:"required,utf8only"`
+	LastName  string `json:"last_name" binding:"required,utf8only"`
+	Username  string `json:"username" binding:"required,base64"`
+	Email     string `json:"email" binding:"required,email"`
+	Password  string `json:"password" binding:"required"`
 }
 
 func (t *AuthRoute) register(c *gin.Context) {
@@ -34,11 +34,11 @@ func (t *AuthRoute) register(c *gin.Context) {
 	}
 
 	user, err := t.DB.CreateUser(c, db_sqlc_gen.CreateUserParams{
-		Name:     req.Name,
-		Email:    req.Email,
-		Username: req.Username,
-		Surname:  req.Surname,
-		Password: []byte(hashedPassword),
+		FirstName: req.FirstName,
+		Email:     req.Email,
+		LastName:  req.LastName,
+		Username:  req.Username,
+		Password:  []byte(hashedPassword),
 	})
 	if err != nil {
 		t.Logger.Error("failed to create user", zap.Error(err))
@@ -46,7 +46,7 @@ func (t *AuthRoute) register(c *gin.Context) {
 		return
 	}
 
-	jwtToken, err := utils.GenerateJWT(user.Name, user.Surname, user.ID.String(), user.Username, t.Env.JWTSecret, int32(t.Env.JWTExpireTime))
+	jwtToken, err := utils.GenerateJWT(user.FirstName, user.LastName, user.ID.String(), user.Username, t.Env.JWTSecret, int32(t.Env.JWTExpireTime))
 	if err != nil {
 		t.Logger.Error("failed to generate JWT", zap.Error(err))
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to login"})
@@ -66,11 +66,14 @@ func (t *AuthRoute) register(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{
 		"data": gin.H{
 			"id":         user.ID,
-			"name":       user.Name,
+			"firstName":  user.FirstName,
+			"lastName":   user.LastName,
+			"username":   user.Username,
 			"email":      user.Email,
 			"created_at": user.CreatedAt,
 			"updated_at": user.UpdatedAt,
 		},
+		"token": jwtToken,
 	})
 }
 

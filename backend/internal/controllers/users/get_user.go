@@ -30,8 +30,8 @@ func (t *UserRoute) GetAll(c *gin.Context) {
 			"id":         u.ID,
 			"username":   u.Username,
 			"email":      u.Email,
-			"name":       u.Name,
-			"surname":    u.Surname,
+			"first_name": u.FirstName,
+			"last_name":  u.LastName,
 			"created_at": u.CreatedAt,
 			"updated_at": u.UpdatedAt,
 		})
