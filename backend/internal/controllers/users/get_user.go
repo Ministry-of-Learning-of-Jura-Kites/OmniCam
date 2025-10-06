@@ -28,8 +28,10 @@ func (t *UserRoute) GetAll(c *gin.Context) {
 	for _, u := range users {
 		resp = append(resp, gin.H{
 			"id":         u.ID,
-			"name":       u.Name,
+			"username":   u.Username,
 			"email":      u.Email,
+			"name":       u.Name,
+			"surname":    u.Surname,
 			"created_at": u.CreatedAt,
 			"updated_at": u.UpdatedAt,
 		})
