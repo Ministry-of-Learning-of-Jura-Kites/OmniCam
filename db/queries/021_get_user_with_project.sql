@@ -2,9 +2,9 @@
 SELECT
   u.id AS user_id,
   u.email,
-  u.name,
   u.username,
-  u.surname,
+  u.first_name,
+  u.last_name,
   u.password,
   u.created_at,
   u.updated_at,

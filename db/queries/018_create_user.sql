@@ -1,20 +1,20 @@
 -- name: CreateUser :one
 INSERT INTO
-  "user" (email, name, surname, username, password)
+  "user" (email, first_name, last_name, username, password)
 VALUES
   (
     sqlc.arg (email),
-    sqlc.arg (name),
-    sqlc.arg (surname),
+    sqlc.arg (first_name),
+    sqlc.arg (last_name),
     sqlc.arg (username),
     sqlc.arg (password)
   )
 RETURNING
   id,
   email,
-  name,
-  password,
+  first_name,
+  last_name,
   username,
-  surname,
+  password,
   created_at,
   updated_at;

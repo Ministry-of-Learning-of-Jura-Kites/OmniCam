@@ -2,9 +2,9 @@
 SELECT
   id,
   email,
-  name,
-  surname,
   username,
+  first_name,
+  last_name,
   password,
   created_at,
   updated_at
