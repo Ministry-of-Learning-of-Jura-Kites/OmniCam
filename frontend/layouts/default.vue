@@ -10,6 +10,11 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 
+import FailDialog from "~/components/dialog/FailDialog.vue";
+
+import { useFailDialog } from "~/composables/useFailDialog";
+const { open, message } = useFailDialog();
+
 const theme = ref<"light" | "dark">("light");
 const config = useRuntimeConfig();
 onMounted(() => {
@@ -149,5 +154,11 @@ const handleLogout = () => {
     <main class="bg-white dark:bg-gray-900">
       <slot />
     </main>
+
+    <FailDialog
+      v-model:open="open"
+      :message="message"
+      icon="fa-solid fa-circle-exclamation"
+    />
   </div>
 </template>
