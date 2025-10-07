@@ -1,26 +1,21 @@
 -- name: GetWorkspaceByID :one
 SELECT
-  name,
-  file_path,
-  description,
+  SQLC.EMBED(m),
   CASE
-    WHEN 'cameras' = ANY (
-      COALESCE(sqlc.narg (fields)::TEXT[], '{}'::TEXT[])
-    ) THEN cameras::JSONB
+    WHEN 'cameras' = ANY (COALESCE(SQLC.NARG(fields)::TEXT[], '{}'::TEXT[])) THEN umw.cameras::JSONB
     ELSE NULL::JSONB
   END AS cameras,
   CASE
-    WHEN 'base_cameras' = ANY (
-      COALESCE(sqlc.narg (fields)::TEXT[], '{}'::TEXT[])
-    ) THEN base_cameras::JSONB
+    WHEN 'base_cameras' = ANY (COALESCE(SQLC.NARG(fields)::TEXT[], '{}'::TEXT[])) THEN base_cameras::JSONB
     ELSE NULL::JSONB
   END AS base_cameras,
-  version,
+  umw.version,
   base_version,
-  created_at,
-  updated_at
+  umw.created_at,
+  umw.updated_at
 FROM
-  "user_model_workspace"
+  "user_model_workspace" AS umw
+  LEFT JOIN "model" AS m ON m.id = umw.model_id
 WHERE
-  user_id = sqlc.arg (user_id)::UUID
-  AND model_id = sqlc.arg (model_id)::UUID;
+  user_id = SQLC.ARG(user_id)::UUID
+  AND model_id = SQLC.ARG(model_id)::UUID;

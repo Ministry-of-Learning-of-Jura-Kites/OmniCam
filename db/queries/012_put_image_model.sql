@@ -1,11 +1,11 @@
 -- name: UpdateModelImage :one
 UPDATE "model"
 SET
-  image_path = sqlc.arg (image_path)::TEXT,
+  image_path = SQLC.ARG(image_path)::TEXT,
   version = version + 1,
   updated_at = NOW()
 WHERE
-  id = sqlc.arg (id)::UUID
+  id = SQLC.ARG(id)::UUID
 RETURNING
   id,
   project_id,

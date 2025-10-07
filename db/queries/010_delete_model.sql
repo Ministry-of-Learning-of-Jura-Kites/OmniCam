@@ -1,6 +1,6 @@
 -- name: DeleteModel :one
 DELETE FROM "model"
 WHERE
-  id = sqlc.arg (id)::UUID
+  id = SQLC.ARG(id)::UUID
 RETURNING
   id;

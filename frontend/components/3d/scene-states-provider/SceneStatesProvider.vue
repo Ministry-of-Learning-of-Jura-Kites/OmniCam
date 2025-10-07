@@ -36,12 +36,13 @@ for (const field of fields) {
 }
 params.append("t", String(Date.now()));
 
-const { data: modelWithCamsResp, error: modelFetchError } =
-  await useAsyncData<ModelWithCamsResp>("model_information", () =>
-    $fetch(
+const { data: modelWithCamsResp, error: modelFetchError } = await useAsyncData(
+  "model_information",
+  () =>
+    $fetch<ModelWithCamsResp>(
       `http://${runtimeConfig.public.NUXT_PUBLIC_BACKEND_HOST}/api/v1/projects/${props.projectId}/models/${props.modelId}${workspaceSuffix}?${params.toString()}`,
     ),
-  );
+);
 
 if (modelFetchError.value != undefined) {
   showError({

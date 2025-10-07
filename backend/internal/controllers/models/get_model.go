@@ -4,6 +4,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"net/http"
+	"slices"
 	"strconv"
 	"time"
 
@@ -14,19 +15,12 @@ import (
 	db_client "omnicam.com/backend/pkg/db"
 	db_sqlc_gen "omnicam.com/backend/pkg/db/sqlc-gen"
 	messages_cameras "omnicam.com/backend/pkg/messages/cameras"
+	messages_model_workspace "omnicam.com/backend/pkg/messages/model_workspace"
 )
 
 type Model struct {
-	Id          uuid.UUID                `json:"id"`
-	ProjectId   uuid.UUID                `json:"projectId"`
-	Name        string                   `json:"name"`
-	Description string                   `json:"description"`
-	FilePath    string                   `json:"filePath"`
-	ImagePath   string                   `json:"imagePath"`
-	Version     int32                    `json:"version"`
-	CreatedAt   string                   `json:"createdAt"`
-	UpdatedAt   string                   `json:"updatedAt"`
-	Cameras     messages_cameras.Cameras `json:"cameras"`
+	WorkspaceExists *bool `json:"workspaceExists,omitempty"`
+	messages_model_workspace.ModelWorkspace
 }
 
 type GetModelRoute struct {
@@ -72,17 +66,25 @@ func (t *GetModelRoute) getModelById(c *gin.Context) {
 		}
 	}
 
+	var workspaceExists *bool
+	if slices.Contains(includedFields, "workspace_exists") {
+		workspaceExists = &data.WorkspaceExists
+	}
+
 	c.JSON(http.StatusOK, gin.H{"data": Model{
-		Id:          id,
-		ProjectId:   data.ProjectID,
-		Name:        data.Name,
-		Description: data.Description,
-		FilePath:    data.FilePath,
-		ImagePath:   data.ImagePath,
-		Version:     data.Version,
-		CreatedAt:   data.CreatedAt.Time.Format(time.RFC3339),
-		UpdatedAt:   data.UpdatedAt.Time.Format(time.RFC3339),
-		Cameras:     cameras,
+		ModelWorkspace: messages_model_workspace.ModelWorkspace{
+			ModelId:     id,
+			ProjectId:   data.ProjectID,
+			Name:        data.Name,
+			Description: data.Description,
+			FilePath:    data.FilePath,
+			ImagePath:   data.ImagePath,
+			Version:     data.Version,
+			CreatedAt:   data.CreatedAt.Time.Format(time.RFC3339),
+			UpdatedAt:   data.UpdatedAt.Time.Format(time.RFC3339),
+			Cameras:     &cameras,
+		},
+		WorkspaceExists: workspaceExists,
 	}})
 }
 
@@ -132,11 +134,11 @@ func (t *GetModelRoute) getAllModel(c *gin.Context) {
 		c.JSON(http.StatusNotFound, gin.H{})
 		return
 	}
-	var dataList []Model
+	var dataList []messages_model_workspace.ModelWorkspace
 
 	for _, model := range data {
-		dataList = append(dataList, Model{
-			Id:          model.ID,
+		dataList = append(dataList, messages_model_workspace.ModelWorkspace{
+			ModelId:     model.ID,
 			ProjectId:   model.ProjectID,
 			Name:        model.Name,
 			Description: model.Description,
