@@ -24,6 +24,12 @@ To migrate database to newer version
 go install -tags 'postgres' github.com/golang-migrate/migrate/v4/cmd/migrate@latest
 ```
 
+### Protoc
+
+To compile proto files to code
+
+https://protobuf.dev/installation/
+
 ## Env
 
 Create a file frontend/.env and backend/.env, you can see meaning of each env in .env.example
