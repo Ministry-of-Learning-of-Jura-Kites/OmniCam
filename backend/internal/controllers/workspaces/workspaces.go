@@ -18,18 +18,8 @@ import (
 	db_client "omnicam.com/backend/pkg/db"
 	db_sqlc_gen "omnicam.com/backend/pkg/db/sqlc-gen"
 	messages_cameras "omnicam.com/backend/pkg/messages/cameras"
+	messages_model_workspace "omnicam.com/backend/pkg/messages/model_workspace"
 )
-
-type Workspace struct {
-	Id          uuid.UUID                 `json:"id"`
-	ModelId     uuid.UUID                 `json:"modelId"`
-	Name        string                    `json:"name"`
-	Description string                    `json:"description"`
-	Version     int32                     `json:"version"`
-	CreatedAt   string                    `json:"createdAt"`
-	UpdatedAt   string                    `json:"updatedAt"`
-	Cameras     *messages_cameras.Cameras `json:"cameras"`
-}
 
 type WorkspaceRoute struct {
 	Logger *zap.Logger
@@ -393,10 +383,13 @@ func (t *WorkspaceRoute) getWorkspaceMe(c *gin.Context) {
 		}
 	}
 
-	c.JSON(http.StatusOK, gin.H{"data": Workspace{
+	c.JSON(http.StatusOK, gin.H{"data": messages_model_workspace.ModelWorkspace{
 		ModelId:     modelId,
-		Name:        data.Name,
-		Description: data.Description,
+		Name:        data.Model.Name,
+		Description: data.Model.Description,
+		ProjectId:   data.Model.ProjectID,
+		FilePath:    data.Model.FilePath,
+		ImagePath:   data.Model.ImagePath,
 		Version:     data.Version,
 		CreatedAt:   data.CreatedAt.Time.Format(time.RFC3339),
 		UpdatedAt:   data.UpdatedAt.Time.Format(time.RFC3339),

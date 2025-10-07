@@ -11,6 +11,6 @@ FROM
 ORDER BY
   created_at ASC
 LIMIT
-  sqlc.arg (page_size)::INT
+  SQLC.ARG(page_size)::INT
 OFFSET
-  sqlc.arg (page_offset)::INT;
+  SQLC.ARG(page_offset)::INT;

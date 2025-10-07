@@ -3,10 +3,10 @@ INSERT INTO
   "project" (id, name, description, image_path)
 VALUES
   (
-    sqlc.arg (id)::UUID,
-    sqlc.arg (name)::VARCHAR,
-    sqlc.arg (description)::TEXT,
-    sqlc.arg (image_path)::TEXT
+    SQLC.ARG(id)::UUID,
+    SQLC.ARG(name)::VARCHAR,
+    SQLC.ARG(description)::TEXT,
+    SQLC.ARG(image_path)::TEXT
   )
 RETURNING
   id,

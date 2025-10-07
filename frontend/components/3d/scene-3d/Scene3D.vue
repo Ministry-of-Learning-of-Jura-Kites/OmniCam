@@ -26,26 +26,28 @@ const props = defineProps({
   },
 });
 
-const runtimeConfig = useRuntimeConfig();
+// const runtimeConfig = useRuntimeConfig();
 
-const resp = await fetch(
-  `http://${runtimeConfig.public.NUXT_PUBLIC_BACKEND_HOST}/api/v1/projects/${props.projectId}/models/${props.modelId}`,
-);
+// const resp = await fetch(
+//   `http://${runtimeConfig.public.NUXT_PUBLIC_BACKEND_HOST}/api/v1/projects/${props.projectId}/models/${props.modelId}`,
+// );
 
-const {
-  data: modelResp,
-}: {
-  data: {
-    id: string;
-    projectId: string;
-    name: string;
-    description: string;
-    imagePath: string;
-    filePath: string;
-  };
-} = await resp.json();
+// const {
+//   data: modelResp,
+// }: {
+//   data: {
+//     id: string;
+//     projectId: string;
+//     name: string;
+//     description: string;
+//     imagePath: string;
+//     filePath: string;
+//   };
+// } = await resp.json();
 
 const sceneStates = inject(SCENE_STATES_KEY)!;
+
+const { data: modelResp } = sceneStates.modelInfo;
 
 const camera: Ref<THREE.PerspectiveCamera | null> = ref(null);
 

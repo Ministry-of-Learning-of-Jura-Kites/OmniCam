@@ -51,16 +51,10 @@ CREATE TABLE "user_model_workspace" (
   user_id UUID NOT NULL REFERENCES "user" (id),
   -- reference back to model
   model_id UUID NOT NULL REFERENCES "model" (id) ON DELETE CASCADE,
-  -- filename or model name
-  name VARCHAR(255) NOT NULL,
-  -- description, mutable
-  description TEXT NOT NULL DEFAULT '',
   -- store cameras as a document
   cameras JSONB NOT NULL DEFAULT '{}'::JSONB,
   -- store branched-out cameras as a document
   base_cameras JSONB NOT NULL DEFAULT '{}'::JSONB,
-  -- storage location, mutable
-  file_path TEXT NOT NULL,
   -- version tracking
   version INT NOT NULL DEFAULT 0,
   -- branched-out version
