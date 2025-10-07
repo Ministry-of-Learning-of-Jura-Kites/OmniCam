@@ -89,7 +89,7 @@ func downloadFile(url, dest string) error {
 
 /*
 Usage:
-go run ./tools -gltf <gltf path> \
+go run ./tools/download_textures_from_gltf/main.go -gltf <gltf path> \
   -base <Base url> \
   -out textures
 ** Base url for poly.cam is https://storage.polycam.io/captures/<UUID>/
