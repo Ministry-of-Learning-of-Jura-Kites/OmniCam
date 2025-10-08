@@ -30,6 +30,12 @@ To compile proto files to code
 
 https://protobuf.dev/installation/
 
+- Protoc Golang Plugin
+
+```bash
+go install google.golang.org/protobuf/cmd/protoc-gen-go@latest
+```
+
 ## Env
 
 Create a file frontend/.env and backend/.env, you can see meaning of each env in .env.example
