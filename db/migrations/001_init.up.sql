@@ -1,4 +1,4 @@
-CREATE TYPE role AS ENUM('owner', 'collaborator');
+CREATE TYPE role AS ENUM('owner', 'project_manager', 'collaborator');
 
 CREATE TABLE "user" (
   id UUID PRIMARY KEY DEFAULT GEN_RANDOM_UUID(),

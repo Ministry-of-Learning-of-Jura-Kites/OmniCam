@@ -10,6 +10,7 @@ import (
 
 	// controller_test "omnicam.com/backend/internal/controllers"
 	"omnicam.com/backend/internal/controllers/authentication"
+	"omnicam.com/backend/internal/middleware"
 
 	controller_camera "omnicam.com/backend/internal/controllers/cameras"
 	controller_model "omnicam.com/backend/internal/controllers/models"
@@ -26,83 +27,65 @@ type Dependencies struct {
 }
 
 func InitRoutes(deps Dependencies, router gin.IRouter) {
-	// router := gin.New()
-
-	// // log gin by zap
-	// router.Use(ginzap.Ginzap(logger, time.RFC3339, false))
-
-	// // log panics to zap
-	// router.Use(ginzap.RecoveryWithZap(logger, true))
-
-	// testRoute := controller_test.TestRoute{
-	// 	Logger:  deps.Logger,
-	// 	Env:     deps.Env,
-	// 	Queries: deps.DB,
-	// }
-
-	// getUserRoute := controller_test.GetUserRoute{
-	// 	Logger: deps.Logger,
-	// 	Env:    deps.Env,
-	// 	DB:     deps.DB,
-	// }
-	// router.GET("/test", testRoute.Get)
-	// router.GET("/user", getUserRoute.Get)
+	publicRoute := router.Group("/")
+	protectedRoute := router.Group("/")
+	protectedRoute.Use(middleware.AuthMiddleware(deps.Env))
 
 	deleteProjectRoute := controller_projects.DeleteProjectRoute{
 		Logger: deps.Logger,
 		Env:    deps.Env,
 		DB:     deps.DB,
 	}
-	deleteProjectRoute.InitDeleteProjectRoute(router)
+	deleteProjectRoute.InitDeleteProjectRoute(publicRoute)
 
 	getProjectRoute := controller_projects.GetProjectRoute{
 		Logger: deps.Logger,
 		Env:    deps.Env,
 		DB:     deps.DB,
 	}
-	getProjectRoute.InitGetProjectRoute(router)
+	getProjectRoute.InitGetProjectRoute(protectedRoute)
 
 	postProjectRoute := controller_projects.PostProjectRoute{
 		Logger: deps.Logger,
 		Env:    deps.Env,
 		DB:     deps.DB,
 	}
-	postProjectRoute.InitCreateProjectRoute(router)
+	postProjectRoute.InitCreateProjectRoute(publicRoute)
 
 	updateProjectRoute := controller_projects.PutProjectRoute{
 		Logger: deps.Logger,
 		Env:    deps.Env,
 		DB:     deps.DB,
 	}
-	updateProjectRoute.InitUpdateProjectRoute(router)
+	updateProjectRoute.InitUpdateProjectRoute(publicRoute)
 
 	postModelRoute := controller_model.PostModelRoutes{
 		Logger: deps.Logger,
 		Env:    deps.Env,
 		DB:     deps.DB,
 	}
-	postModelRoute.InitCreateModelRoute(router)
+	postModelRoute.InitCreateModelRoute(publicRoute)
 
 	getModelRoute := controller_model.GetModelRoute{
 		Logger: deps.Logger,
 		Env:    deps.Env,
 		DB:     deps.DB,
 	}
-	getModelRoute.InitGetModelRoute(router)
+	getModelRoute.InitGetModelRoute(publicRoute)
 
 	putModelRoute := controller_model.PutModelRoute{
 		Logger: deps.Logger,
 		Env:    deps.Env,
 		DB:     deps.DB,
 	}
-	putModelRoute.InitUpdateModelRoute(router)
+	putModelRoute.InitUpdateModelRoute(publicRoute)
 
 	deleteModelRoute := controller_model.DeleteModelRoute{
 		Logger: deps.Logger,
 		Env:    deps.Env,
 		DB:     deps.DB,
 	}
-	deleteModelRoute.InitDeleteModelRoute(router)
+	deleteModelRoute.InitDeleteModelRoute(publicRoute)
 
 	cameraAutosaveRoute := controller_camera.CameraAutosaveRoute{
 		Logger: deps.Logger,
@@ -116,54 +99,54 @@ func InitRoutes(deps Dependencies, router gin.IRouter) {
 			},
 		},
 	}
-	cameraAutosaveRoute.InitRoute(router)
+	cameraAutosaveRoute.InitRoute(publicRoute)
 
 	workspaceRoute := controller_workspaces.WorkspaceRoute{
 		Logger: deps.Logger,
 		Env:    deps.Env,
 		DB:     deps.DB,
 	}
-	workspaceRoute.InitRoute(router)
+	workspaceRoute.InitRoute(publicRoute)
 
 	putImageModelRoute := controller_model.PutImageModelRoute{
 		Logger: deps.Logger,
 		Env:    deps.Env,
 		DB:     deps.DB,
 	}
-	putImageModelRoute.InitUpdateImageRoute(router)
+	putImageModelRoute.InitUpdateImageRoute(publicRoute)
 
 	putImageProjectRoute := controller_projects.PutImageProjectRoute{
 		Logger: deps.Logger,
 		Env:    deps.Env,
 		DB:     deps.DB,
 	}
-	putImageProjectRoute.InitUpdateImageRoute(router)
+	putImageProjectRoute.InitUpdateImageRoute(publicRoute)
 
 	registerRoute := authentication.AuthRoute{
 		Logger: deps.Logger,
 		Env:    deps.Env,
 		DB:     deps.DB,
 	}
-	registerRoute.InitRegisterRouter(router)
+	registerRoute.InitRegisterRouter(publicRoute)
 
 	loginRoute := authentication.AuthRoute{
 		Logger: deps.Logger,
 		Env:    deps.Env,
 		DB:     deps.DB,
 	}
-	loginRoute.InitLoginRouter(router)
+	loginRoute.InitLoginRouter(publicRoute)
 
 	logoutRoute := authentication.AuthRoute{
 		Logger: deps.Logger,
 		Env:    deps.Env,
 		DB:     deps.DB,
 	}
-	logoutRoute.InitLogoutRouter(router)
+	logoutRoute.InitLogoutRouter(publicRoute)
 
 	getUserRoute := users.UserRoute{
 		Logger: deps.Logger,
 		Env:    deps.Env,
 		DB:     deps.DB,
 	}
-	getUserRoute.InitUserRouter(router)
+	getUserRoute.InitUserRouter(publicRoute)
 }

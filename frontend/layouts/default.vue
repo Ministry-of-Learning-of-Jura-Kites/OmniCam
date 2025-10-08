@@ -11,7 +11,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 
 const theme = ref<"light" | "dark">("light");
-
+const config = useRuntimeConfig();
 onMounted(() => {
   const savedTheme = localStorage.getItem("theme");
   const systemPrefersDark = window.matchMedia(
@@ -42,7 +42,17 @@ const toggleTheme = () => {
 };
 
 const handleLogout = () => {
-  console.log("Logging out...");
+  try {
+    $fetch<null>(
+      "http://" + config.public.NUXT_PUBLIC_BACKEND_HOST + "/api/v1/logout",
+      {
+        method: "POST",
+      },
+    );
+    navigateTo("/authentication");
+  } catch (err) {
+    console.log(err);
+  }
 };
 </script>
 <template>
