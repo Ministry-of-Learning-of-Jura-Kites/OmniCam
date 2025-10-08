@@ -14,9 +14,8 @@ type UserClaims struct {
 	jwt.RegisteredClaims
 }
 
-func GenerateJWT(first_name string, last_name string, userID string, username string, jwtSecret string, jwtExpireTime int32) (string, error) {
-	expirationTime := time.Now().Add(time.Duration(jwtExpireTime) * time.Second)
-
+func GenerateJWT(first_name string, last_name string, userID string, username string, jwtSecret string, duration time.Duration) (string, error) {
+	expirationTime := time.Now().Add(duration)
 	claims := UserClaims{
 		UserID:    userID,
 		FirstName: first_name,
