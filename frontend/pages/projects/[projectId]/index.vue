@@ -8,6 +8,7 @@ import ContentCard from "~/components/card/ContentCard.vue";
 import CustomPagination from "~/components/pagination/CustomPagination.vue";
 import { uuidToBase64Url } from "~/lib/utils";
 import { Plus } from "lucide-vue-next";
+import type { Project } from "~/types/project";
 
 export interface Model {
   modelId: string;
@@ -55,6 +56,7 @@ const route = useRoute();
 const models = ref<Record<string, ModelWithoutId>>({});
 const totalData = ref<number>(0);
 const currentEditId = ref<string | null>(null);
+const projectDetail = ref<Project | null>(null);
 const modelForm = reactive<ModelForm>({
   name: "",
   description: "",
@@ -120,6 +122,22 @@ const formTitles = {
   file: "Model file",
   image: "Model Image",
 };
+
+async function fetchProjectById() {
+  const projectId = route.params.projectId as string;
+  try {
+    const response = await $fetch<{ data: Project }>(
+      `http://${config.public.NUXT_PUBLIC_BACKEND_HOST}/api/v1/projects/${projectId}`,
+      {
+        method: "GET",
+      },
+    );
+
+    projectDetail.value = response.data;
+  } catch (err) {
+    console.error("Failed to fetch project by id", err);
+  }
+}
 
 async function fetchModel() {
   const projectId = route.params.projectId as string;
@@ -325,6 +343,7 @@ async function handleUpdateImage(file: File | undefined, modelId: string) {
 }
 
 onMounted(() => {
+  fetchProjectById();
   fetchModel();
 });
 
@@ -334,19 +353,76 @@ watch([page, pageSize], async () => {
 </script>
 
 <template>
-  <div>
-    <div class="flex flex-col items-center min-h-screen p-4">
-      <div class="w-full max-w-7xl flex justify-end mb-4">
-        <Button type="button" @click="handleCreate">
-          <Plus />
-        </Button>
+  <div class="flex flex-col min-h-screen p-6">
+    <!-- Header -->
+    <div
+      class="w-full max-w-7xl mx-auto rounded-2xl shadow p-6 mb-6 border border-gray-300"
+    >
+      <div
+        class="flex flex-col md:flex-row md:items-center md:justify-between mb-4"
+      >
+        <h1 class="text-2xl font-semibold">
+          {{ projectDetail?.name }}
+        </h1>
       </div>
 
-      <div class="w-full max-w-7xl flex justify-center mb-4">
-        <div class="flex flex-row gap-6 overflow-x-auto w-full">
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+        <div>
+          <p class="font-medium">Created</p>
+          <p>
+            {{
+              projectDetail
+                ? new Date(projectDetail.createdAt).toLocaleDateString()
+                : "-"
+            }}
+          </p>
+        </div>
+        <div>
+          <p class="font-medium">Last Modified</p>
+          <p>
+            {{
+              projectDetail
+                ? new Date(projectDetail.updatedAt).toLocaleDateString()
+                : "-"
+            }}
+          </p>
+        </div>
+
+        <div>
+          <p class="font-medium">Total Models</p>
+          <p>{{ totalData }} models</p>
+        </div>
+        <div>
+          <p class="font-medium">Team Members</p>
+          <p>5 members</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="w-full max-w-7xl mx-auto flex flex-col lg:flex-row gap-6">
+      <!-- Left Section: Models -->
+      <div class="flex-1 rounded-2xl shadow p-6 border border-gray-300">
+        <div class="flex items-center justify-between mb-4">
+          <h2 class="text-lg font-semibold">3D Models</h2>
+          <input
+            type="text"
+            placeholder="Search models by name..."
+            class="border border-gray-300 rounded-lg px-3 py-2 text-sm w-60 focus:ring-2 focus:ring-blue-400"
+          />
+          <Button type="button" class="mt-3 md:mt-0" @click="handleCreate">
+            <Plus class="w-4 h-4 mr-1" /> Upload Models
+          </Button>
+        </div>
+
+        <!-- Models Grid -->
+        <div
+          class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-6 justify-items-center overflow-y-auto max-h-[750px]"
+        >
           <ContentCard
             v-for="(model, id) in models"
             :key="id"
+            class="w-full max-w-[280px]"
             :name="model.name"
             :description="model.description"
             :image-path="model.imagePath ?? ''"
@@ -358,21 +434,52 @@ watch([page, pageSize], async () => {
             "
           />
         </div>
+
+        <!-- Pagination -->
+        <div class="flex justify-center mt-6">
+          <CustomPagination
+            v-model:page="page"
+            :page-size="pageSize"
+            :total-item="totalData"
+          />
+        </div>
       </div>
 
-      <div class="w-full max-w-7xl flex justify-center">
-        <CustomPagination
-          v-model:page="page"
-          :page-size="pageSize"
-          :total-item="totalData"
-        />
+      <!-- Right Section: Project Info -->
+      <div class="w-full lg:w-80 flex-shrink-0 flex flex-col gap-6">
+        <div class="rounded-2xl shadow p-5 border border-gray-300">
+          <h3 class="text-md font-semibold mb-3">Project Information</h3>
+          <div class="space-y-2 text-sm">
+            <div>
+              <p class="font-medium">Project Name :</p>
+              <p>{{ projectDetail?.name }}</p>
+            </div>
+            <div>
+              <p class="font-medium">Description :</p>
+              <p>
+                {{ projectDetail?.description }}
+              </p>
+            </div>
+          </div>
+          <Button class="mt-4 w-full">Edit Information</Button>
+        </div>
+
+        <div class="rounded-2xl shadow p-5 border border-gray-300">
+          <h3 class="text-md font-semibold mb-3">Team Members</h3>
+          <div class="flex items-center gap-3">
+            <div class="w-8 h-8 rounded-full flex items-center justify-center">
+              JD
+            </div>
+            <div class="text-sm">
+              <p class="font-medium">John Doe</p>
+              <p class="">Owner</p>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
 
-    <!-- <p>Current Page: {{ page }}</p> -->
-    <!-- <div class="container py-10 mx-auto">
-      <DataTable :columns="generateKey" :data="dataArray" />
-    </div> -->
+    <!-- Dialogs -->
     <FormDialog
       v-model:open="isEditFormDialogOpen"
       v-model:model="modelForm"
@@ -390,11 +497,13 @@ watch([page, pageSize], async () => {
       :titles="formTitles"
       @submit="handleCreateFormSubmit"
     />
+
     <ConfirmDialog
       v-model:open="confirmDialog"
       :message="confirmMessage"
       @submit="handleConfirmSubmit"
     />
+
     <SuccessDialog
       v-model:open="successDialog"
       :message="successMessage"
