@@ -7,9 +7,7 @@ SELECT
   m.image_path,
   m.description,
   CASE
-    WHEN 'cameras' = ANY (
-      COALESCE(sqlc.narg (fields)::TEXT[], '{}'::TEXT[])
-    ) THEN m.cameras::JSONB
+    WHEN 'cameras' = ANY (COALESCE(SQLC.NARG(fields)::TEXT[], '{}'::TEXT[])) THEN m.cameras::JSONB
     ELSE NULL::JSONB
   END AS cameras,
   (umw.model_id IS NOT NULL)::BOOLEAN AS workspace_exists,
@@ -20,5 +18,5 @@ FROM
   "model" AS m
   LEFT JOIN "user_model_workspace" AS umw ON m.id = umw.model_id
 WHERE
-  id = sqlc.arg (id)::UUID
-  AND COALESCE(umw.user_id = sqlc.narg (user_id)::UUID, TRUE);
+  id = SQLC.ARG(id)::UUID
+  AND COALESCE(umw.user_id = SQLC.NARG(user_id)::UUID, TRUE);
