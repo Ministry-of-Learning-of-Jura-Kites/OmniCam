@@ -132,6 +132,7 @@ async function fetchModel() {
           pageSize: pageSize.value,
           page: page.value,
         },
+        credentials: "include",
       },
     );
     const now = Date.now();
@@ -184,6 +185,7 @@ async function createModel() {
     {
       method: "POST",
       body: formData,
+      credentials: "include",
     },
   );
 
@@ -204,6 +206,7 @@ async function updateModel(modelId: string) {
           name: modelForm.name,
           description: modelForm.description,
         },
+        credentials: "include",
       },
     );
     models.value = {
@@ -233,6 +236,7 @@ async function deleteRow(id: string) {
       `http://${config.public.NUXT_PUBLIC_BACKEND_HOST}/api/v1/projects/${projectId}/models/${id}`,
       {
         method: "DELETE",
+        credentials: "include",
       },
     );
 
@@ -307,6 +311,7 @@ async function handleUpdateImage(file: File | undefined, modelId: string) {
       {
         method: "PUT",
         body: formData,
+        credentials: "include",
       },
     );
 
