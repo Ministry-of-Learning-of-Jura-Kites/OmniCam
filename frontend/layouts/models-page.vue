@@ -5,6 +5,21 @@ import SceneStatesProvider from "~/components/3d/scene-states-provider/SceneStat
 
 const route = useRoute();
 
+const isPanelOpen = ref(true);
+const slotWidth = ref("100%");
+
+onMounted(() => {
+  slotWidth.value = isPanelOpen.value ? "calc(100% - 20rem)" : "100%";
+});
+
+function togglePanel() {
+  isPanelOpen.value = !isPanelOpen.value;
+  slotWidth.value = isPanelOpen.value ? "calc(100% - 20rem)" : "100%";
+}
+
+provide("isPanelOpen", isPanelOpen);
+provide("togglePanel", togglePanel);
+
 // const path = route.fullPath;
 
 // Check if it matches `/workspaces/<id>`
@@ -29,10 +44,19 @@ const workspace = computed(() => route.meta.routeInfo?.workspace);
     >
       <TopBar :workspace="workspace" />
       <div class="flex-1 flex overflow-hidden">
-        <div class="flex-1 w-full h-full">
+        <div
+          class="h-full transition-all duration-300"
+          :style="{ width: slotWidth }"
+        >
           <slot />
         </div>
-        <CameraPanel :workspace="workspace" />
+
+        <div
+          class="h-full transition-all duration-300 overflow-hidden"
+          :style="{ width: isPanelOpen ? '20rem' : '0' }"
+        >
+          <CameraPanel />
+        </div>
       </div>
     </SceneStatesProvider>
   </div>

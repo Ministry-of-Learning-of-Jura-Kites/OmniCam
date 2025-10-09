@@ -14,6 +14,8 @@ import {
   Save,
   User,
   LogOut,
+  IndentDecrease,
+  IndentIncrease,
 } from "lucide-vue-next";
 
 import { exportCamerasToJson } from "@/utils/exportScene";
@@ -33,6 +35,9 @@ const props = defineProps({
 });
 
 const sceneStates = inject(SCENE_STATES_KEY)!;
+
+const isPanelOpen = inject("isPanelOpen") as Ref<boolean>;
+const togglePanel = inject("togglePanel") as () => void;
 
 const route = useRoute();
 
@@ -203,6 +208,12 @@ function openFileDialog() {
         >
           <Download class="h-4 w-4 mr-2" />
           Export
+        </Button>
+
+        <Button size="sm" variant="outline" @click="() => togglePanel()">
+          <IndentIncrease class="h-4 w-4 mr-2" v-if="isPanelOpen" />
+          <IndentDecrease class="h-4 w-4 mr-2" v-else />
+          Panel
         </Button>
       </div>
 
