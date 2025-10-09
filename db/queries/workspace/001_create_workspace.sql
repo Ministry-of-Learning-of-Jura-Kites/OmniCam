@@ -11,8 +11,8 @@ INSERT INTO
     updated_at
   )
 SELECT
-  sqlc.arg (user_id)::UUID,
-  sqlc.arg (model_id)::UUID,
+  SQLC.ARG(user_id)::UUID,
+  SQLC.ARG(model_id)::UUID,
   cameras,
   cameras,
   version,
@@ -22,7 +22,7 @@ SELECT
 FROM
   "model"
 WHERE
-  id = sqlc.arg (model_id)::UUID
+  id = SQLC.ARG(model_id)::UUID
 RETURNING
   user_id,
   model_id,
