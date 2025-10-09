@@ -12,17 +12,21 @@ import (
 type RegisterRequest struct {
 	FirstName string `json:"firstName" binding:"required,utf8only"`
 	LastName  string `json:"lastName" binding:"required,utf8only"`
-	Username  string `json:"username" binding:"required,base64"`
+	Username  string `json:"username" binding:"required,max=255"`
 	Email     string `json:"email" binding:"required,email"`
 	Password  string `json:"password" binding:"required"`
 }
 
 func (t *AuthRoute) register(c *gin.Context) {
-	utils.RegisterCustomValidations()
 	var req RegisterRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		t.Logger.Debug("invalid form data", zap.Error(err))
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid form data"})
+		return
+	}
+
+	if !utils.IsValidUsername(req.Username) {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid username"})
 		return
 	}
 
