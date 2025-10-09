@@ -31,6 +31,19 @@ type CreateProjectRequest struct {
 }
 
 func (t *PostProjectRoute) post(c *gin.Context) {
+	username, exists := c.Get("username")
+	if !exists {
+		t.Logger.Error("username not found in context")
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+		return
+	}
+
+	user, err := t.DB.GetUserByUsername(c, username.(string))
+	if err != nil {
+		t.Logger.Error("failed to get user by username", zap.Error(err))
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "user not found"})
+		return
+	}
 	var req CreateProjectRequest
 
 	userId, err := utils.GetUuidFromCtx(c, "userId")
@@ -101,17 +114,13 @@ func (t *PostProjectRoute) post(c *gin.Context) {
 		return
 	}
 
-	queries.AddUserToProject(c, db_sqlc_gen.AddUserToProjectParams{
-		UserID:    userId,
-		ProjectID: projectID,
-		Role:      db_sqlc_gen.RoleOwner,
-	})
-
-	err = tx.Commit(c)
-	if err != nil {
-		t.Logger.Error("error while committing transaction", zap.Error(err))
-		c.JSON(http.StatusInternalServerError, gin.H{})
-		return
+	role := "owner"
+	if err := t.DB.CreateUserToProject(c, db_sqlc_gen.CreateUserToProjectParams{
+		ProjectID: project.ID,
+		UserID:    user.ID,
+		Role:      db_sqlc_gen.Role(role),
+	}); err != nil {
+		t.Logger.Error("failed to add user to project", zap.Error(err))
 	}
 
 	// --- Response ---

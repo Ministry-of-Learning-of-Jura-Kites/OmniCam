@@ -30,6 +30,20 @@ type GetProjectRoute struct {
 }
 
 func (t *GetProjectRoute) getAll(c *gin.Context) {
+	username, exists := c.Get("username")
+	if !exists {
+		t.Logger.Error("username not found in context")
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+		return
+	}
+
+	user, err := t.DB.GetUserByUsername(c, username.(string))
+	if err != nil {
+		t.Logger.Error("failed to get user by username", zap.Error(err))
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "user not found"})
+		return
+	}
+
 	page, err := strconv.Atoi(c.DefaultQuery("page", "1"))
 	if err != nil || page < 1 {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid page number"})
@@ -42,22 +56,16 @@ func (t *GetProjectRoute) getAll(c *gin.Context) {
 		return
 	}
 
-	offset := (page - 1) * pageSize
+	pageOffset := (page - 1) * pageSize
 
-	projects, err := t.DB.Queries.GetAllProjects(c, db_sqlc_gen.GetAllProjectsParams{
+	projects, err := t.DB.GetProjectsByUserId(c, db_sqlc_gen.GetProjectsByUserIdParams{
+		UserID:     user.ID,
 		PageSize:   int32(pageSize),
-		PageOffset: int32(offset),
+		PageOffset: int32(pageOffset),
 	})
 	if err != nil {
-		t.Logger.Error("Error while getting all project", zap.Error(err))
-		c.JSON(http.StatusInternalServerError, gin.H{})
-		return
-	}
-
-	totalCount, err := t.DB.Queries.CountProjects(c)
-	if err != nil {
-		t.Logger.Error("Error while counting projects", zap.Error(err))
-		c.JSON(http.StatusInternalServerError, gin.H{})
+		t.Logger.Error("failed to get projects by user id", zap.Error(err))
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to get projects"})
 		return
 	}
 
@@ -75,7 +83,6 @@ func (t *GetProjectRoute) getAll(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{
 		"data":     projectList,
-		"count":    totalCount,
 		"page":     page,
 		"pageSize": pageSize,
 	})
