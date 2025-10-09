@@ -2,7 +2,7 @@
 definePageMeta({
   layout: false,
 });
-interface registerRequest {
+interface RegisterRequest {
   firstName: string;
   lastName: string;
   username: string;
@@ -10,12 +10,12 @@ interface registerRequest {
   password: string;
 }
 
-interface loginRequest {
+interface LoginRequest {
   identifier: string;
   password: string;
 }
 
-interface user {
+interface User {
   firstName: string;
   lastName: string;
   username: string;
@@ -25,8 +25,8 @@ interface user {
   updatedAt: string;
 }
 
-interface response {
-  data: user;
+interface Response {
+  data: User;
   token: string;
 }
 
@@ -34,7 +34,7 @@ const config = useRuntimeConfig();
 
 const activeTab = ref<"signup" | "signin">("signup");
 
-const registerForm = reactive<registerRequest>({
+const registerForm = reactive<RegisterRequest>({
   firstName: "",
   lastName: "",
   username: "",
@@ -42,15 +42,15 @@ const registerForm = reactive<registerRequest>({
   password: "",
 });
 
-const loginForm = reactive<loginRequest>({
+const loginForm = reactive<LoginRequest>({
   identifier: "",
   password: "",
 });
 
-function register() {
+async function register() {
   console.log(registerForm);
   try {
-    const _response = $fetch<response>(
+    const _response = await $fetch<Response>(
       "http://" + config.public.NUXT_PUBLIC_BACKEND_HOST + "/api/v1/register",
       {
         method: "POST",
@@ -65,10 +65,10 @@ function register() {
   return;
 }
 
-function login() {
+async function login() {
   console.log(loginForm);
   try {
-    const _response = $fetch<response>(
+    const _response = await $fetch<Response>(
       "http://" + config.public.NUXT_PUBLIC_BACKEND_HOST + "/api/v1/login",
       {
         method: "POST",
@@ -79,6 +79,7 @@ function login() {
   } catch (err) {
     console.log(err);
   }
+
   return;
 }
 </script>
