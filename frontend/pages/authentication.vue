@@ -55,6 +55,7 @@ async function register() {
       {
         method: "POST",
         body: registerForm,
+        credentials: "include",
       },
     );
     navigateTo("/");
@@ -73,6 +74,7 @@ async function login() {
       {
         method: "POST",
         body: loginForm,
+        credentials: "include",
       },
     );
     navigateTo("/");
