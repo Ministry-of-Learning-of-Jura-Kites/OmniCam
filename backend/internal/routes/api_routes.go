@@ -152,5 +152,5 @@ func InitRoutes(deps Dependencies, router gin.IRouter) {
 		Env:    deps.Env,
 		DB:     deps.DB,
 	}
-	getUserRoute.InitUserRouter(publicRoute)
+	getUserRoute.InitUserRouter(protectedRoute)
 }
