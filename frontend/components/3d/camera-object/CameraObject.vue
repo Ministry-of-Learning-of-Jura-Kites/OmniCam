@@ -27,7 +27,10 @@ const cam = toRef(sceneStates.cameras, props.camId);
     <TresMesh :rotation="sceneStates.cameras[props.camId]!.rotation.clone()">
       <TresBoxGeometry :args="[0.5, 0.5, 0.5]" />
       <TresMeshBasicMaterial color="white" />
-      <CameraFrustum :fov="sceneStates.cameras[props.camId]!.fov" />
+      <CameraFrustum
+        :fov="sceneStates.cameras[props.camId]!.fov"
+        :is-hiding="sceneStates.cameras[props.camId]!.isHidingFrustum"
+      />
     </TresMesh>
     <template v-if="cam != null">
       <MovableArrow

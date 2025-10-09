@@ -57,6 +57,7 @@ function transformCamsData(
         isHidingWheels: false,
         isLockingPosition: false,
         isLockingRotation: false,
+        isHidingFrustum: false,
       };
       return [camId, cam];
     }),
@@ -108,6 +109,7 @@ export function createBaseSceneStates(
     isHidingWheels: false,
     isLockingPosition: false,
     isLockingRotation: false,
+    isHidingFrustum: false,
     controlling: undefined,
     fov: spectatorCameraFov,
   });

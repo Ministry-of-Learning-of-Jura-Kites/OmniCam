@@ -16,4 +16,5 @@ type CameraStruct struct {
 	IsHidingWheels    bool    `json:"isHidingWheels" diff:"-"`
 	IsLockingPosition bool    `json:"isLockingPosition" diff:"-"`
 	IsLockingRotation bool    `json:"isLockingRotation" diff:"-"`
+	IsHidingFrustum   bool    `json:"IsHidingFrustum" diff:"-"`
 }

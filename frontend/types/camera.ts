@@ -32,6 +32,7 @@ export interface ICamera {
   isHidingWheels: boolean;
   isLockingPosition: boolean;
   isLockingRotation: boolean;
+  isHidingFrustum: boolean;
   controlling?: {
     type: "rotation" | "moving";
     direction: "x" | "y" | "z";

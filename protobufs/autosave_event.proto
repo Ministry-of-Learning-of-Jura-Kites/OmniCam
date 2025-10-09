@@ -26,6 +26,7 @@ message Camera {
   bool is_hiding_wheels = 12;
   bool is_locking_position = 13;
   bool is_locking_rotation = 14;
+  bool is_hiding_frustum = 15;
 }
 
 message CameraSaveEvent {
