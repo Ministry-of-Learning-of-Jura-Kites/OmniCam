@@ -4,6 +4,7 @@ import { SCENE_STATES_KEY } from "../scene-states-provider/create-scene-states";
 import MovableArrow from "../movable-arrow/MovableArrow.vue";
 import TresMesh from "@tresjs/core";
 import RotationWheel from "../rotation-wheel/RotationWheel.vue";
+import CameraFrustum from "../camera-frustum/CameraFrustum.vue";
 
 const props = defineProps({
   name: {
@@ -26,6 +27,7 @@ const cam = toRef(sceneStates.cameras, props.camId);
     <TresMesh :rotation="sceneStates.cameras[props.camId]!.rotation.clone()">
       <TresBoxGeometry :args="[0.5, 0.5, 0.5]" />
       <TresMeshBasicMaterial color="white" />
+      <CameraFrustum :fov="sceneStates.cameras[props.camId]!.fov" />
     </TresMesh>
     <template v-if="cam != null">
       <MovableArrow
