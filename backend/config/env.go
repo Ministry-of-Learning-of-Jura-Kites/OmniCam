@@ -3,6 +3,7 @@ package config
 import (
 	"os"
 	"path"
+	"time"
 
 	"github.com/caarlos0/env/v11"
 	"github.com/joho/godotenv"
@@ -11,12 +12,13 @@ import (
 )
 
 type AppEnv struct {
-	Mode          string `env:"MODE"`
-	DatabaseUrl   string `env:"DATABASE_URL"`
-	ModelFilePath string `env:"MODEL_FILE_PATH"`
-	FrontendHost  string `env:"FRONTEND_HOST"`
-	JWTSecret     string `env:"JWT_SECRET"`
-	JWTExpireTime int    `env:"JWT_EXPIRE_DATE"`
+	Mode             string `env:"MODE"`
+	DatabaseUrl      string `env:"DATABASE_URL"`
+	ModelFilePath    string `env:"MODEL_FILE_PATH"`
+	FrontendHost     string `env:"FRONTEND_HOST"`
+	JWTSecret        string `env:"JWT_SECRET"`
+	RawJWTExpireTime string `env:"JWT_EXPIRE_TIME"`
+	JWTExpireTime    time.Duration
 }
 
 func InitAppEnv(logger *zap.Logger) *AppEnv {
@@ -34,6 +36,12 @@ func InitAppEnv(logger *zap.Logger) *AppEnv {
 	if err != nil {
 		logger.Fatal("Error while reading env", zap.Error(err))
 	}
+
+	dur, err := time.ParseDuration(cfg.RawJWTExpireTime)
+	if err != nil {
+		logger.Fatal("Invalid JWT_EXPIRE_TIME format", zap.Error(err))
+	}
+	cfg.JWTExpireTime = dur
 
 	logger.Info("Loaded env successfully")
 
