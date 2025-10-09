@@ -132,7 +132,10 @@ function onToggleLockRotation() {
     <Card v-if="selectedCamId && sceneStates.cameras[selectedCamId]">
       <CardHeader
         class="cursor-pointer flex items-center justify-between"
-        @click="isCameraPropertiesOpen = !isCameraPropertiesOpen"
+        @click="
+          isCameraPropertiesOpen = !isCameraPropertiesOpen;
+          sceneStates.markedForCheck.add(selectedCamId);
+        "
       >
         <CardTitle class="text-base flex items-center gap-2">
           <Settings class="h-4 w-4" />
@@ -345,7 +348,10 @@ function onToggleLockRotation() {
           <Button
             size="sm"
             variant="ghost"
-            @click="sceneStates.cameraManagement.switchToCam(selectedCamId)"
+            @click="
+              sceneStates.cameraManagement.switchToCam(selectedCamId);
+              sceneStates.markedForCheck.add(selectedCamId);
+            "
           >
             <Eye class="h-3 w-3" />
             Preview
@@ -364,8 +370,20 @@ function onToggleLockRotation() {
             Delete
           </Button>
 
-          <Button size="sm" class="flex-1">
-            <Eye class="h-3 w-3 mr-2" />
+          <Button
+            size="sm"
+            class="flex-1"
+            @click="
+              sceneStates.cameras[selectedCamId]!.isHidingFrustum =
+                !sceneStates.cameras[selectedCamId]!.isHidingFrustum;
+              sceneStates.markedForCheck.add(selectedCamId);
+            "
+          >
+            <Eye
+              v-if="!sceneStates.cameras[selectedCamId]!.isHidingFrustum"
+              class="h-3 w-3"
+            />
+            <EyeOff v-else class="h-3 w-3" />
             Frustum
           </Button>
 
@@ -373,7 +391,10 @@ function onToggleLockRotation() {
             size="sm"
             variant="outline"
             class="flex-1"
-            @click="moveCameraHere(selectedCamId!)"
+            @click="
+              moveCameraHere(selectedCamId!);
+              sceneStates.markedForCheck.add(selectedCamId);
+            "
             :disabled="
               sceneStates.cameras[selectedCamId]!.isLockingPosition ||
               sceneStates.cameras[selectedCamId]!.isLockingRotation

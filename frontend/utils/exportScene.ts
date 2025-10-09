@@ -20,6 +20,7 @@ export function exportCamerasToJson(cameras: Record<string, ICamera>) {
       IsHidingWheels: camera.isHidingWheels,
       IsLockingPosition: camera.isLockingPosition,
       IsLockingRotation: camera.isLockingRotation,
+      IsHidingFrustum: camera.isHidingFrustum,
     };
   });
 

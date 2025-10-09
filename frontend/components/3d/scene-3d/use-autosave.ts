@@ -36,6 +36,7 @@ function formatCam(camId: string, cam: ICamera): Camera {
     isHidingWheels: cam.isHidingWheels,
     isLockingPosition: cam.isLockingPosition,
     isLockingRotation: cam.isLockingRotation,
+    isHidingFrustum: cam.isHidingFrustum,
   };
 }
 
