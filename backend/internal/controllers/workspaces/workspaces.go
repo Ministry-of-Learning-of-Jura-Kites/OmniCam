@@ -4,6 +4,7 @@ import (
 	"cmp"
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"reflect"
@@ -12,13 +13,16 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
 	"github.com/r3labs/diff/v3"
 	"go.uber.org/zap"
 	config_env "omnicam.com/backend/config"
+	"omnicam.com/backend/internal/utils"
 	db_client "omnicam.com/backend/pkg/db"
 	db_sqlc_gen "omnicam.com/backend/pkg/db/sqlc-gen"
 	messages_cameras "omnicam.com/backend/pkg/messages/cameras"
 	messages_model_workspace "omnicam.com/backend/pkg/messages/model_workspace"
+	messages_workspace "omnicam.com/backend/pkg/messages/workspace"
 )
 
 type WorkspaceRoute struct {
@@ -218,7 +222,7 @@ type ResolveRequest struct {
 
 // }
 
-func (t *WorkspaceRoute) postMergeWorkspaceMe(c *gin.Context) {
+func (t *WorkspaceRoute) postMergeWorkspace(c *gin.Context) {
 	strProjectId := c.Param("modelId")
 	userId := uuid.Nil
 
@@ -345,10 +349,50 @@ func (t *WorkspaceRoute) postMergeWorkspaceMe(c *gin.Context) {
 	}
 }
 
-func (t *WorkspaceRoute) getWorkspaceMe(c *gin.Context) {
-	strProjectId := c.Param("modelId")
+func (t *WorkspaceRoute) postWorkspaceMe(c *gin.Context) {
+	strModelId := c.Param("modelId")
+	modelId, err := utils.ParseUuidBase64(strModelId)
+	if err != nil {
+		t.Logger.Error("error while converting str id to uuid", zap.Error(err))
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid model ID"})
+		return
+	}
 
-	decodedBytes, err := base64.RawURLEncoding.DecodeString(strProjectId)
+	workspace, err := t.DB.Queries.CreateWorkspace(c, db_sqlc_gen.CreateWorkspaceParams{
+		UserID:  uuid.Nil,
+		ModelID: *modelId,
+	})
+
+	if err != nil {
+		t.Logger.Error("error while creating workspace", zap.Error(err))
+		if errors.Is(err, pgx.ErrNoRows) {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "workspace already exists"})
+			return
+		}
+		c.JSON(http.StatusInternalServerError, gin.H{})
+		return
+	}
+
+	c.JSON(http.StatusCreated, gin.H{
+		"data": messages_workspace.WorkspaceRawCams{
+			WorkspaceNoCams: messages_workspace.WorkspaceNoCams{
+				ModelId:     workspace.ModelID,
+				UserId:      workspace.UserID,
+				Version:     workspace.Version,
+				BaseVersion: workspace.BaseVersion,
+				CreatedAt:   workspace.CreatedAt.Time.Format(time.RFC3339),
+				UpdatedAt:   workspace.UpdatedAt.Time.Format(time.RFC3339),
+			},
+			Cameras:     json.RawMessage(workspace.Cameras),
+			BaseCameras: json.RawMessage(workspace.BaseCameras),
+		},
+	})
+}
+
+func (t *WorkspaceRoute) getWorkspaceMe(c *gin.Context) {
+	strModelId := c.Param("modelId")
+
+	decodedBytes, err := base64.RawURLEncoding.DecodeString(strModelId)
 	if err != nil {
 		t.Logger.Error("error decoding Base64", zap.Error(err))
 		return
@@ -398,7 +442,8 @@ func (t *WorkspaceRoute) getWorkspaceMe(c *gin.Context) {
 }
 
 func (t *WorkspaceRoute) InitRoute(router gin.IRouter) gin.IRouter {
-	router.POST("/projects/:projectId/models/:modelId/workspaces/merge", t.postMergeWorkspaceMe)
+	router.POST("/projects/:projectId/models/:modelId/workspaces/merge", t.postMergeWorkspace)
+	router.POST("/projects/:projectId/models/:modelId/workspaces/me", t.postWorkspaceMe)
 	router.GET("/projects/:projectId/models/:modelId/workspaces/me", t.getWorkspaceMe)
 	return router
 }

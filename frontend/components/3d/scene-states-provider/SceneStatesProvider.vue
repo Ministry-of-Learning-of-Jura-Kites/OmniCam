@@ -7,6 +7,7 @@ import {
   type ModelWithCamsResp,
 } from "./create-scene-states";
 import { useWebSocket, type UseWebSocketReturn } from "@vueuse/core";
+import { MODEL_INFO_KEY } from "~/constants/state-keys";
 
 const props = defineProps({
   projectId: {
@@ -28,7 +29,7 @@ const runtimeConfig = useRuntimeConfig();
 const workspaceSuffix =
   props.workspace == null ? "" : `/workspaces/${props.workspace}`;
 
-const fields = ["cameras"];
+const fields = ["cameras", "workspace_exists"];
 
 const params = new URLSearchParams();
 for (const field of fields) {
@@ -36,20 +37,28 @@ for (const field of fields) {
 }
 params.append("t", String(Date.now()));
 
-const { data: modelWithCamsResp, error: modelFetchError } = await useAsyncData(
-  "model_information",
-  () =>
-    $fetch<ModelWithCamsResp>(
-      `http://${runtimeConfig.public.NUXT_PUBLIC_BACKEND_HOST}/api/v1/projects/${props.projectId}/models/${props.modelId}${workspaceSuffix}?${params.toString()}`,
-    ),
-);
+let modelWithCamsResp = useState<ModelWithCamsResp | undefined>(MODEL_INFO_KEY);
+const error = ref<unknown | undefined>(undefined);
 
-if (modelFetchError.value != undefined) {
-  showError({
-    statusCode: 404,
-    statusMessage: "Not Found",
-    fatal: true,
-  });
+if (modelWithCamsResp.value == undefined) {
+  console.log("Undefined YAY", modelWithCamsResp.value);
+  const { data: fetchedModelWithCamsResp, error: modelFetchError } =
+    await useAsyncData("model_information", () =>
+      $fetch<ModelWithCamsResp>(
+        `http://${runtimeConfig.public.NUXT_PUBLIC_BACKEND_HOST}/api/v1/projects/${props.projectId}/models/${props.modelId}${workspaceSuffix}?${params.toString()}`,
+      ),
+    );
+
+  if (modelFetchError.value != undefined) {
+    error.value = modelFetchError.value;
+    showError({
+      statusCode: 404,
+      statusMessage: "Not Found",
+      fatal: true,
+    });
+  }
+
+  modelWithCamsResp = fetchedModelWithCamsResp;
 }
 
 const websocketUrl = `ws://${runtimeConfig.public.NUXT_PUBLIC_BACKEND_HOST}/api/v1/projects/${props.projectId}/models/${props.modelId}/autosave`;
@@ -89,5 +98,5 @@ if (sceneStates.error != null) {
 </script>
 
 <template>
-  <slot v-if="modelFetchError == undefined" />
+  <slot v-if="error == undefined" />
 </template>

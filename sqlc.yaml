@@ -6,7 +6,7 @@ plugins:
       sha256: 4ca52949f4dc04b55188439f5de0ae20af2a71e3534b87907f2a7f466bda59ec
 sql:
   - schema: db/migrations
-    queries: db/queries
+    queries: db/queries/**
     engine: postgresql
     codegen:
       - plugin: golang
