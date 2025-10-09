@@ -72,6 +72,7 @@ async function fetchProjects() {
       {
         method: "GET",
         query: { page: page.value, pageSize: pageSize.value },
+        credentials: "include",
       },
     );
     const data = response?.data || [];
@@ -104,7 +105,7 @@ async function createProject() {
 
     const { data } = await $fetch<{ data: Project }>(
       `http://${config.public.NUXT_PUBLIC_BACKEND_HOST}/api/v1/projects`,
-      { method: "POST", body: formData },
+      { method: "POST", body: formData, credentials: "include" },
     );
 
     const { id, ...rest } = data;
@@ -125,7 +126,7 @@ async function updateProject(id: string) {
     };
     const { data } = await $fetch<{ data: Project }>(
       `http://${config.public.NUXT_PUBLIC_BACKEND_HOST}/api/v1/projects/${id}`,
-      { method: "PUT", body },
+      { method: "PUT", body, credentials: "include" },
     );
     const { id: pid, ...rest } = data;
     projects.value[pid] = rest;
@@ -143,7 +144,7 @@ async function updateProjectImage(id: string, file: File) {
   try {
     const { imagePath } = await $fetch<{ imagePath: string }>(
       `http://${config.public.NUXT_PUBLIC_BACKEND_HOST}/api/v1/projects/${id}/image`,
-      { method: "PUT", body: formData },
+      { method: "PUT", body: formData, credentials: "include" },
     );
     if (projects.value[id]) {
       projects.value[id] = {
@@ -164,6 +165,7 @@ async function deleteProject(id: string) {
       `http://${config.public.NUXT_PUBLIC_BACKEND_HOST}/api/v1/projects/${id}`,
       {
         method: "DELETE",
+        credentials: "include",
       },
     );
     const { [id]: _, ...rest } = projects.value;
