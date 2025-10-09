@@ -47,6 +47,7 @@ const handleLogout = () => {
       "http://" + config.public.NUXT_PUBLIC_BACKEND_HOST + "/api/v1/logout",
       {
         method: "POST",
+        credentials: "include",
       },
     );
     navigateTo("/authentication");
