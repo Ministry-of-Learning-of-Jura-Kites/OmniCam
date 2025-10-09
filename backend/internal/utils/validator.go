@@ -1,8 +1,9 @@
 package utils
 
 import (
-	"encoding/base64"
+	"slices"
 	"strings"
+	"unicode"
 	"unicode/utf8"
 
 	"github.com/gin-gonic/gin/binding"
@@ -15,14 +16,14 @@ func RegisterCustomValidations() {
 			s := strings.TrimSpace(fl.Field().String())
 			return s != "" && utf8.ValidString(s)
 		})
-
-		_ = v.RegisterValidation("base64", func(fl validator.FieldLevel) bool {
-			s := fl.Field().String()
-			if s == "" {
-				return false
-			}
-			_, err := base64.StdEncoding.DecodeString(s)
-			return err == nil
-		})
 	}
+}
+
+func IsValidUsername(username string) bool {
+	for _, ch := range username {
+		if !isEnglishAlphabet(ch) && !unicode.IsNumber(ch) && !slices.Contains([]rune{'-', '_', '.'}, ch) {
+			return false
+		}
+	}
+	return true
 }

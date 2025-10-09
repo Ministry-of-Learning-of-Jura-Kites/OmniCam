@@ -7,11 +7,14 @@ import (
 	"github.com/gin-gonic/gin"
 	config_env "omnicam.com/backend/config"
 	api_routes "omnicam.com/backend/internal/routes"
+	"omnicam.com/backend/internal/utils"
 	db_client "omnicam.com/backend/pkg/db"
 	"omnicam.com/backend/pkg/logger"
 )
 
 func main() {
+	utils.RegisterCustomValidations()
+
 	logger := logger.InitLogger()
 	defer logger.Sync()
 
