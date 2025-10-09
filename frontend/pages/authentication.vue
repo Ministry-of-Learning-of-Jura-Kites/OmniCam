@@ -47,10 +47,10 @@ const loginForm = reactive<loginRequest>({
   password: "",
 });
 
-function register() {
+async function register() {
   console.log(registerForm);
   try {
-    const _response = $fetch<response>(
+    const _response = await $fetch<response>(
       "http://" + config.public.NUXT_PUBLIC_BACKEND_HOST + "/api/v1/register",
       {
         method: "POST",
@@ -65,10 +65,10 @@ function register() {
   return;
 }
 
-function login() {
+async function login() {
   console.log(loginForm);
   try {
-    const _response = $fetch<response>(
+    const _response = await $fetch<response>(
       "http://" + config.public.NUXT_PUBLIC_BACKEND_HOST + "/api/v1/login",
       {
         method: "POST",
@@ -79,6 +79,7 @@ function login() {
   } catch (err) {
     console.log(err);
   }
+
   return;
 }
 </script>
