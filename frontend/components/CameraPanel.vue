@@ -70,7 +70,7 @@ const deleteCamera = (id: string) => {
       </Button> -->
       <Button
         size="sm"
-        :disabled="props.workspace == null"
+        :disabled="props.workspace != null"
         @click="
           spawnCamera();
           $event.currentTarget.blur();
