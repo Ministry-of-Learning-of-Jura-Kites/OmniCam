@@ -51,13 +51,13 @@ func (t *AuthRoute) login(c *gin.Context) {
 	}
 
 	c.SetCookie(
-		"auth_token",             // cookie name
-		jwtToken,                 // value
-		int(t.Env.JWTExpireTime), // max age in seconds
-		"/",                      // path
-		"",                       // domain (empty = current domain)
-		false,                    // secure (set true if using HTTPS)
-		true,                     // httpOnly
+		"auth_token",                       // cookie name
+		jwtToken,                           // value
+		int(t.Env.JWTExpireTime.Seconds()), // max age in seconds
+		"/",                                // path
+		"",                                 // domain (empty = current domain)
+		false,                              // secure (set true if using HTTPS)
+		true,                               // httpOnly
 	)
 
 	c.JSON(http.StatusOK, gin.H{
