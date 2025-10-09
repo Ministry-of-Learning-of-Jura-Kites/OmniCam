@@ -37,6 +37,10 @@ export function useSpectatorRotation(sceneStates: SceneStates) {
     if (!isDragging.value || sceneStates.currentCam.value.rotation == null)
       return;
 
+    const camPreviewId = sceneStates.currentCamId.value;
+    const isLock = sceneStates.cameras[camPreviewId!]?.isLockingRotation;
+    if (isLock) return;
+
     const deltaX = e.movementX;
     let yaw =
       sceneStates.currentCam.value.rotation.y -

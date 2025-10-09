@@ -34,6 +34,8 @@ function formatCam(camId: string, cam: ICamera): Camera {
     fov: cam.fov,
     isHidingArrows: cam.isHidingArrows,
     isHidingWheels: cam.isHidingWheels,
+    isLockingPosition: cam.isLockingPosition,
+    isLockingRotation: cam.isLockingRotation,
   };
 }
 

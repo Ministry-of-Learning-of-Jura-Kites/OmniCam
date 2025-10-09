@@ -19,6 +19,8 @@ export function importJsonToCameras(
       Fov: number;
       IsHidingArrows: boolean;
       IsHidingWheels: boolean;
+      IsLockingPosition: boolean;
+      IsLockingRotation: boolean;
     }>;
 
     const newCameras: Record<string, ICamera> = {};
@@ -29,7 +31,9 @@ export function importJsonToCameras(
         fov: camera.Fov,
         isHidingArrows: camera.IsHidingArrows,
         isHidingWheels: camera.IsHidingWheels,
-        controlling: null,
+        isLockingPosition: camera.IsLockingPosition,
+        isLockingRotation: camera.IsLockingRotation,
+        controlling: undefined,
         position: new THREE.Vector3(camera.PosX, camera.PosY, camera.PosZ),
         rotation: new THREE.Euler().setFromQuaternion(
           new THREE.Quaternion(
