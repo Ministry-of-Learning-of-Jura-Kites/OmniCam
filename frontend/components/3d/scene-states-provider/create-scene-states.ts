@@ -55,6 +55,8 @@ function transformCamsData(
         fov: rawCam.fov,
         isHidingArrows: false,
         isHidingWheels: false,
+        isLockingPosition: false,
+        isLockingRotation: false,
       };
       return [camId, cam];
     }),
@@ -104,6 +106,8 @@ export function createBaseSceneStates(
     position: spectatorCameraPosition,
     isHidingArrows: false,
     isHidingWheels: false,
+    isLockingPosition: false,
+    isLockingRotation: false,
     controlling: undefined,
     fov: spectatorCameraFov,
   });
