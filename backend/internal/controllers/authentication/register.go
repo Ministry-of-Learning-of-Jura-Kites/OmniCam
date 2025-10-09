@@ -10,8 +10,8 @@ import (
 )
 
 type RegisterRequest struct {
-	FirstName string `json:"first_name" binding:"required,utf8only"`
-	LastName  string `json:"last_name" binding:"required,utf8only"`
+	FirstName string `json:"firstName" binding:"required,utf8only"`
+	LastName  string `json:"lastName" binding:"required,utf8only"`
 	Username  string `json:"username" binding:"required,base64"`
 	Email     string `json:"email" binding:"required,email"`
 	Password  string `json:"password" binding:"required"`
@@ -46,7 +46,7 @@ func (t *AuthRoute) register(c *gin.Context) {
 		return
 	}
 
-	jwtToken, err := utils.GenerateJWT(user.FirstName, user.LastName, user.ID.String(), user.Username, t.Env.JWTSecret, int32(t.Env.JWTExpireTime))
+	jwtToken, err := utils.GenerateJWT(user.FirstName, user.LastName, user.ID.String(), user.Username, t.Env.JWTSecret, t.Env.JWTExpireTime)
 	if err != nil {
 		t.Logger.Error("failed to generate JWT", zap.Error(err))
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to login"})
