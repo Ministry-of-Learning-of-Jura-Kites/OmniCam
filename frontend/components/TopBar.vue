@@ -42,7 +42,7 @@ const props = defineProps({
 const sceneStates = inject(SCENE_STATES_KEY)!;
 
 const isPanelOpen = inject(IS_PANEL_OPEN_KEY);
-const togglePanel = inject(TOGGLE_PANEL_KEY);
+const togglePanel = inject(TOGGLE_PANEL_KEY)!;
 
 const route = useRoute();
 
