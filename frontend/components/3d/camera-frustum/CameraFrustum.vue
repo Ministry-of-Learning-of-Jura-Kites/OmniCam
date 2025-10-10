@@ -17,8 +17,20 @@ const props = withDefaults(
   },
 );
 
+let oldGeometry: THREE.BufferGeometry | null = null;
+
 const frustumGeometry = computed(() => {
-  return createFrustumGeometry(props.fov, props.aspect, props.length);
+  const geom = createFrustumGeometry(props.fov, props.aspect, props.length);
+
+  // Dispose of old geometry if it exists
+  if (oldGeometry) oldGeometry.dispose();
+  oldGeometry = geom;
+
+  return geom;
+});
+
+onUnmounted(() => {
+  oldGeometry?.dispose();
 });
 </script>
 

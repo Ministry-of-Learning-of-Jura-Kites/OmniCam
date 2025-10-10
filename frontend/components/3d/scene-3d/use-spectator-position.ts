@@ -65,7 +65,7 @@ export function useSpectatorPosition(sceneStates: SceneStates) {
       FunctionalityKey,
       boolean,
     ][]) {
-      if (!isDown) {
+      if (!isDown || isLock) {
         continue;
       }
       const forward = new THREE.Vector3();
@@ -75,37 +75,36 @@ export function useSpectatorPosition(sceneStates: SceneStates) {
       const right = new THREE.Vector3();
       right.crossVectors(forward, up).normalize();
       let deltaVec = new THREE.Vector3();
-      if (!isLock) {
-        switch (key) {
-          case "KeyW":
-            deltaVec = forward.multiplyScalar(
-              SPECTATOR_MOVING_SENTIVITY * duration,
-            );
-            break;
-          case "KeyS":
-            deltaVec = forward.multiplyScalar(
-              -SPECTATOR_MOVING_SENTIVITY * duration,
-            );
-            break;
-          case "KeyA":
-            deltaVec = right.multiplyScalar(
-              -SPECTATOR_MOVING_SENTIVITY * duration,
-            );
-            break;
-          case "KeyD":
-            deltaVec = right.multiplyScalar(
-              SPECTATOR_MOVING_SENTIVITY * duration,
-            );
-            break;
-          case "Space":
-            deltaVec.y = SPECTATOR_MOVING_SENTIVITY * duration;
-            break;
-          case "Shift":
-            deltaVec.y = -SPECTATOR_MOVING_SENTIVITY * duration;
-            break;
-          default:
-            break;
-        }
+
+      switch (key) {
+        case "KeyW":
+          deltaVec = forward.multiplyScalar(
+            SPECTATOR_MOVING_SENTIVITY * duration,
+          );
+          break;
+        case "KeyS":
+          deltaVec = forward.multiplyScalar(
+            -SPECTATOR_MOVING_SENTIVITY * duration,
+          );
+          break;
+        case "KeyA":
+          deltaVec = right.multiplyScalar(
+            -SPECTATOR_MOVING_SENTIVITY * duration,
+          );
+          break;
+        case "KeyD":
+          deltaVec = right.multiplyScalar(
+            SPECTATOR_MOVING_SENTIVITY * duration,
+          );
+          break;
+        case "Space":
+          deltaVec.y = SPECTATOR_MOVING_SENTIVITY * duration;
+          break;
+        case "Shift":
+          deltaVec.y = -SPECTATOR_MOVING_SENTIVITY * duration;
+          break;
+        default:
+          break;
       }
       sceneStates.currentCam.value?.position.add(deltaVec);
     }
