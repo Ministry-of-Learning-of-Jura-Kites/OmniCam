@@ -18,4 +18,4 @@ FROM
   LEFT JOIN user_to_project utp ON u.id = utp.user_id
   LEFT JOIN project p ON p.id = utp.project_id
 WHERE
-  u.email = sqlc.arg (email);
+  u.email = SQLC.ARG(email);

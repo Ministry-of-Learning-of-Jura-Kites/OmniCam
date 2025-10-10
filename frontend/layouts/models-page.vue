@@ -28,10 +28,7 @@ provide("togglePanel", togglePanel);
 // const match = m ? m[1] : null;
 
 // const workspace = ref(match);
-
 const workspace = computed(() => route.meta.routeInfo?.workspace);
-
-// provide(WORKSPACE_KEY, workspace);
 </script>
 
 <template>

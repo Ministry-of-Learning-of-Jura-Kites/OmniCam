@@ -2,7 +2,6 @@ package controller_projects
 
 import (
 	"encoding/base64"
-	"fmt"
 	"net/http"
 	"os"
 	"path"
@@ -13,13 +12,13 @@ import (
 	"go.uber.org/zap"
 	config_env "omnicam.com/backend/config"
 	"omnicam.com/backend/internal"
-	db_sqlc_gen "omnicam.com/backend/pkg/db/sqlc-gen"
+	db_client "omnicam.com/backend/pkg/db"
 )
 
 type DeleteProjectRoute struct {
 	Logger *zap.Logger
 	Env    *config_env.AppEnv
-	DB     *db_sqlc_gen.Queries
+	DB     *db_client.DB
 }
 
 func (t *DeleteProjectRoute) delete(c *gin.Context) {
@@ -37,7 +36,7 @@ func (t *DeleteProjectRoute) delete(c *gin.Context) {
 	}
 
 	// --- Get project ---
-	_, err = t.DB.GetProjectById(c, projectId)
+	_, err = t.DB.Queries.GetProjectById(c, projectId)
 	if err != nil {
 		t.Logger.Error("failed to get project", zap.Error(err))
 		c.JSON(http.StatusNotFound, gin.H{"error": "project not found"})
@@ -48,7 +47,7 @@ func (t *DeleteProjectRoute) delete(c *gin.Context) {
 	t.deleteFolder(projectImageFolder)
 
 	// --- Delete all models under this project ---
-	models, err := t.DB.GetModelsByProjectID(c, projectId)
+	models, err := t.DB.Queries.GetModelsByProjectID(c, projectId)
 	if err != nil {
 		t.Logger.Error("failed to get models for project", zap.Error(err))
 	} else {
@@ -59,7 +58,7 @@ func (t *DeleteProjectRoute) delete(c *gin.Context) {
 			if model.ImagePath != "" {
 				t.deleteFolder(path.Join(internal.Root, "uploads", "model", projectId.String()))
 			}
-			_, err := t.DB.DeleteModel(c, model.ID)
+			_, err := t.DB.Queries.DeleteModel(c, model.ID)
 			if err != nil {
 				t.Logger.Error("failed to delete model from DB", zap.Error(err))
 			}
@@ -67,7 +66,7 @@ func (t *DeleteProjectRoute) delete(c *gin.Context) {
 	}
 
 	// --- Delete project record from DB ---
-	data, err := t.DB.DeleteProject(c, projectId)
+	data, err := t.DB.Queries.DeleteProject(c, projectId)
 	if err != nil {
 		t.Logger.Error("failed to delete project", zap.Error(err))
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to delete project"})
@@ -87,7 +86,7 @@ func (t *DeleteProjectRoute) deleteFolder(folderPath string) {
 	}
 
 	absPath, _ := filepath.Abs(folderPath)
-	fmt.Println("Deleting folder:", absPath)
+	t.Logger.Info("Deleting folder", zap.String("absPath", absPath))
 
 	if err := os.RemoveAll(absPath); err != nil {
 		t.Logger.Error("failed to remove folder", zap.String("path", absPath), zap.Error(err))

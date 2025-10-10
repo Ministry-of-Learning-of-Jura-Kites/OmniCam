@@ -26,6 +26,7 @@ import Tooltip from "./ui/tooltip/Tooltip.vue";
 import TooltipTrigger from "./ui/tooltip/TooltipTrigger.vue";
 import TooltipContent from "./ui/tooltip/TooltipContent.vue";
 import TooltipProvider from "./ui/tooltip/TooltipProvider.vue";
+import { MODEL_INFO_KEY } from "~/constants/state-keys";
 
 const props = defineProps({
   workspace: {
@@ -50,7 +51,7 @@ async function saveModelToPublic() {
   const runtimeConfig = useRuntimeConfig();
   const resp = await fetch(
     `http://${runtimeConfig.public.NUXT_PUBLIC_BACKEND_HOST}/api/v1/projects/${route.params.projectId}/models/${route.params.modelId}/workspaces/merge`,
-    { method: "POST" },
+    { method: "POST", credentials: "include" },
   );
 
   if (!resp.ok) {
@@ -95,6 +96,29 @@ function openFileDialog() {
   input.click();
   input.remove();
 }
+
+async function createWorkspace() {
+  const runtimeConfig = useRuntimeConfig();
+
+  try {
+    const data = await $fetch(
+      `http://${runtimeConfig.public.NUXT_PUBLIC_BACKEND_HOST}/api/v1/projects/${route.params.projectId}/models/${route.params.modelId}/workspaces/me`,
+      {
+        method: "POST",
+        credentials: "include",
+      },
+    );
+    useState(MODEL_INFO_KEY, () => data);
+    navigateTo(
+      `/projects/${route.params.projectId}/models/${route.params.modelId}/workspaces/me`,
+    );
+  } catch (err) {
+    console.error(err);
+    showError({
+      message: "Failed to create workspace",
+    });
+  }
+}
 </script>
 
 <template>
@@ -126,7 +150,9 @@ function openFileDialog() {
           </div>
         </Card>
         <div class="flex items-center justify-center h-4 w-4">
-          <Tooltip v-if="sceneStates.markedForCheck.size > 0">
+          <Tooltip
+            v-if="workspace != null && sceneStates.markedForCheck.size > 0"
+          >
             <TooltipTrigger>
               <RefreshCcw class="animate-spin"
             /></TooltipTrigger>
@@ -182,19 +208,25 @@ function openFileDialog() {
           Exit Workspace
         </Button>
 
-        <Button
-          v-if="workspace == null"
-          size="sm"
-          variant="outline"
-          @click="
-            navigateTo(
-              `/projects/${route.params.projectId}/models/${route.params.modelId}/workspaces/me`,
-            )
-          "
-        >
-          <PackageOpen class="h-4 w-4 mr-2" />
-          Open Workspace
-        </Button>
+        <template v-if="workspace == null">
+          <Button
+            v-if="sceneStates.modelInfo.data.workspaceExists"
+            size="sm"
+            variant="outline"
+            @click="
+              navigateTo(
+                `/projects/${route.params.projectId}/models/${route.params.modelId}/workspaces/me`,
+              )
+            "
+          >
+            <PackageOpen class="h-4 w-4 mr-2" />
+            Open Workspace
+          </Button>
+          <Button v-else size="sm" variant="outline" @click="createWorkspace()">
+            <PackageOpen class="h-4 w-4 mr-2" />
+            Create Workspace
+          </Button>
+        </template>
 
         <Button size="sm" variant="outline" @click="() => openFileDialog()">
           <Upload class="h-4 w-4 mr-2" />

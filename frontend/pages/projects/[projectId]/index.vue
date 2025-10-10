@@ -10,7 +10,7 @@ import { uuidToBase64Url } from "~/lib/utils";
 import { Plus } from "lucide-vue-next";
 
 export interface Model {
-  id: string;
+  modelId: string;
   projectId: string;
   name: string;
   description: string;
@@ -47,7 +47,7 @@ export type ModelForm = {
   file: File | null;
   image: File | null;
 };
-export type ModelWithoutId = Omit<Model, "id">;
+export type ModelWithoutId = Omit<Model, "modelId">;
 
 const config = useRuntimeConfig();
 const route = useRoute();
@@ -139,8 +139,8 @@ async function fetchModel() {
     if (response.data != null) {
       models.value = response.data.reduce<Record<string, ModelWithoutId>>(
         (acc, model) => {
-          const { id, imagePath, ...rest } = model;
-          acc[id] = {
+          const { modelId, imagePath, ...rest } = model;
+          acc[modelId] = {
             ...rest,
             imagePath: imagePath ? `${imagePath}?t=${now}` : undefined,
           };
@@ -168,15 +168,6 @@ async function createModel() {
 
   if (modelForm.image) {
     formData.append("image", modelForm.image);
-  }
-
-  for (const [key, value] of formData.entries()) {
-    // For files, log the name
-    if (value instanceof File) {
-      console.log(`${key}: ${value.name} (${value.size} bytes)`);
-    } else {
-      console.log(`${key}: ${value}`);
-    }
   }
 
   const projectId = route.params.projectId as string;
@@ -259,7 +250,7 @@ function handleCreate() {
 }
 
 function handleEditRow(row: Model) {
-  currentEditId.value = row.id;
+  currentEditId.value = row.modelId;
   confirmMessage.value = `Do you want to update this ${row.name}`;
   isEditFormDialogOpen.value = true;
   modelForm.description = row.description;
@@ -268,7 +259,7 @@ function handleEditRow(row: Model) {
 }
 
 function handleDeleteRow(row: Model) {
-  currentEditId.value = row.id;
+  currentEditId.value = row.modelId;
   confirmDialog.value = true;
   confirmMessage.value = `Do you want to delete this ${row.name}`;
 }
@@ -360,8 +351,8 @@ watch([page, pageSize], async () => {
             :description="model.description"
             :image-path="model.imagePath ?? ''"
             :redirect-link="`/projects/${route.params.projectId}/models/${uuidToBase64Url(id)}`"
-            @update="handleEditRow({ ...model, id })"
-            @delete="handleDeleteRow({ ...model, id })"
+            @update="handleEditRow({ ...model, modelId: id })"
+            @delete="handleDeleteRow({ ...model, modelId: id })"
             @update-image="
               (file: File | undefined) => handleUpdateImage(file, id)
             "

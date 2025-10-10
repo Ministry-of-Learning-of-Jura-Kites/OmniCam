@@ -19,6 +19,12 @@ const customDialect = {
       ...postgresql.tokenizerOptions.reservedDataTypes,
       "bytea",
     ],
+    reservedFunctionNames: [
+      ...postgresql.tokenizerOptions.reservedFunctionNames,
+      "sqlc.embed",
+      "sqlc.arg",
+      "sqlc.narg",
+    ],
   },
 };
 
