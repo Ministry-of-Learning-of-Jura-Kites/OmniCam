@@ -409,7 +409,7 @@ func (t *WorkspaceRoute) getWorkspaceMe(c *gin.Context) {
 
 	username := c.GetString("username")
 
-	userInfo, err := t.DB.GetUserOfProject(c, db_sqlc_gen.GetUserOfProjectParams{
+	userInfo, err := t.DB.Queries.GetUserOfProject(c, db_sqlc_gen.GetUserOfProjectParams{
 		Username: pgtype.Text{
 			String: username,
 			Valid:  true,
