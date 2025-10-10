@@ -2,6 +2,7 @@ import type { TresContext } from "@tresjs/core";
 import type { ICamera } from "~/types/camera";
 import type { IUserData } from "~/types/obj-3d-user-data";
 import * as THREE from "three";
+import { getAxisVector } from "~/lib/utils";
 
 export const ROTATING_TYPE = "rotation";
 
@@ -29,12 +30,6 @@ export class RotatingUserData implements IUserData {
       default:
         break;
     }
-  }
-
-  private axisFromType(type: "x" | "y" | "z"): THREE.Vector3 {
-    if (type === "x") return new THREE.Vector3(1, 0, 0);
-    if (type === "y") return new THREE.Vector3(0, 1, 0);
-    return new THREE.Vector3(0, 0, 1);
   }
 
   handlePointerDownEvent = (event: PointerEvent) => {
@@ -82,7 +77,7 @@ export class RotatingUserData implements IUserData {
 
     const quaternion = this.initialCamQuaternion.clone();
     const rotation = new THREE.Quaternion().setFromAxisAngle(
-      this.axisFromType(this.type).multiplyScalar(direction),
+      getAxisVector(this.type).multiplyScalar(direction),
       delta,
     );
     quaternion.premultiply(rotation);
