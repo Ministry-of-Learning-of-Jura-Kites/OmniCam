@@ -1,15 +1,14 @@
 package controller_projects
 
 import (
-	"encoding/base64"
 	"net/http"
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
 	"go.uber.org/zap"
 	config_env "omnicam.com/backend/config"
+	"omnicam.com/backend/internal/utils"
 	db_client "omnicam.com/backend/pkg/db"
 	db_sqlc_gen "omnicam.com/backend/pkg/db/sqlc-gen"
 )
@@ -26,31 +25,50 @@ type UpdateProjectRequest struct {
 }
 
 func (t *PutProjectRoute) put(c *gin.Context) {
-	strId := c.Param("projectId")
+	strProjectId := c.Param("projectId")
+	projectId, err := utils.ParseUuidBase64(strProjectId)
+	if err != nil {
+		t.Logger.Error("error while converting str id to uuid", zap.Error(err))
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid model ID"})
+		return
+	}
+
+	userId, err := utils.GetUuidFromCtx(c, "userId")
+	if err != nil {
+		t.Logger.Error("error while getting userId form", zap.Error(err))
+		c.JSON(http.StatusInternalServerError, gin.H{})
+		return
+	}
+
+	pgUserId, err := utils.UuidToPgUuid(userId)
+	if err != nil {
+		t.Logger.Error("Error while convert uuid to pgtype", zap.Error(err))
+		c.JSON(http.StatusInternalServerError, gin.H{})
+		return
+	}
+
+	// Check if user is in project
+	_, err = t.DB.Queries.GetUserOfProject(c, db_sqlc_gen.GetUserOfProjectParams{
+		UserID:    pgUserId,
+		Projectid: *projectId,
+	})
+	if err != nil {
+		t.Logger.Debug("user of project not found", zap.String("projectId", strProjectId), zap.String("userId", userId.String()), zap.Error(err))
+		c.JSON(http.StatusForbidden, gin.H{})
+		return
+	}
 
 	var req UpdateProjectRequest
 
-	err := c.ShouldBindJSON(&req)
+	err = c.ShouldBindJSON(&req)
 	if err != nil {
 		t.Logger.Debug("error while validating body", zap.Error(err))
 		c.JSON(http.StatusBadRequest, gin.H{})
 		return
 	}
 
-	decodedBytes, err := base64.RawURLEncoding.DecodeString(strId)
-	if err != nil {
-		t.Logger.Error("error decoding Base64", zap.Error(err))
-		return
-	}
-	id, err := uuid.FromBytes(decodedBytes)
-	if err != nil {
-		t.Logger.Error("error while converting str id to uuid", zap.Error(err))
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid projectId"})
-		return
-	}
-
 	params := db_sqlc_gen.UpdateProjectParams{
-		ID: id,
+		ID: *projectId,
 	}
 
 	if req.Name != nil {

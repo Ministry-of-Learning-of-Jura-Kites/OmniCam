@@ -1,18 +1,18 @@
 package controller_projects
 
 import (
-	"encoding/base64"
 	"net/http"
 	"os"
 	"path"
 	"path/filepath"
 
 	"github.com/gin-gonic/gin"
-	"github.com/google/uuid"
 	"go.uber.org/zap"
 	config_env "omnicam.com/backend/config"
 	"omnicam.com/backend/internal"
+	"omnicam.com/backend/internal/utils"
 	db_client "omnicam.com/backend/pkg/db"
+	db_sqlc_gen "omnicam.com/backend/pkg/db/sqlc-gen"
 )
 
 type DeleteProjectRoute struct {
@@ -22,21 +22,41 @@ type DeleteProjectRoute struct {
 }
 
 func (t *DeleteProjectRoute) delete(c *gin.Context) {
-	strId := c.Param("projectId")
-	decodedBytes, err := base64.RawURLEncoding.DecodeString(strId)
-	if err != nil {
-		t.Logger.Error("error decoding Base64", zap.Error(err))
-		return
-	}
-	projectId, err := uuid.FromBytes(decodedBytes)
+	strProjectId := c.Param("projectId")
+	projectId, err := utils.ParseUuidBase64(strProjectId)
 	if err != nil {
 		t.Logger.Error("error while converting str id to uuid", zap.Error(err))
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid project ID"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid model ID"})
+		return
+	}
+
+	userId, err := utils.GetUuidFromCtx(c, "userId")
+	if err != nil {
+		t.Logger.Error("error while getting userId form", zap.Error(err))
+		c.JSON(http.StatusInternalServerError, gin.H{})
+		return
+	}
+
+	pgUserId, err := utils.UuidToPgUuid(userId)
+	if err != nil {
+		t.Logger.Error("Error while convert uuid to pgtype", zap.Error(err))
+		c.JSON(http.StatusInternalServerError, gin.H{})
+		return
+	}
+
+	// Check if user is in project
+	_, err = t.DB.Queries.GetUserOfProject(c, db_sqlc_gen.GetUserOfProjectParams{
+		UserID:    pgUserId,
+		Projectid: *projectId,
+	})
+	if err != nil {
+		t.Logger.Debug("user of project not found", zap.String("projectId", strProjectId), zap.String("userId", userId.String()), zap.Error(err))
+		c.JSON(http.StatusForbidden, gin.H{})
 		return
 	}
 
 	// --- Get project ---
-	_, err = t.DB.Queries.GetProjectById(c, projectId)
+	_, err = t.DB.Queries.GetProjectById(c, *projectId)
 	if err != nil {
 		t.Logger.Error("failed to get project", zap.Error(err))
 		c.JSON(http.StatusNotFound, gin.H{"error": "project not found"})
@@ -47,7 +67,7 @@ func (t *DeleteProjectRoute) delete(c *gin.Context) {
 	t.deleteFolder(projectImageFolder)
 
 	// --- Delete all models under this project ---
-	models, err := t.DB.Queries.GetModelsByProjectID(c, projectId)
+	models, err := t.DB.Queries.GetModelsByProjectID(c, *projectId)
 	if err != nil {
 		t.Logger.Error("failed to get models for project", zap.Error(err))
 	} else {
@@ -66,7 +86,7 @@ func (t *DeleteProjectRoute) delete(c *gin.Context) {
 	}
 
 	// --- Delete project record from DB ---
-	data, err := t.DB.Queries.DeleteProject(c, projectId)
+	data, err := t.DB.Queries.DeleteProject(c, *projectId)
 	if err != nil {
 		t.Logger.Error("failed to delete project", zap.Error(err))
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to delete project"})
