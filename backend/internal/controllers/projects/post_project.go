@@ -32,12 +32,22 @@ type CreateProjectRequest struct {
 func (t *PostProjectRoute) post(c *gin.Context) {
 	var req CreateProjectRequest
 
+	username := c.GetString("username")
+
+	user, err := t.DB.Queries.GetUserByIdentifier(c, username)
+
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{})
+	}
+
 	if err := c.ShouldBind(&req); err != nil {
 		t.Logger.Debug("error while validating form", zap.Error(err))
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid form data"})
 		return
 	}
+
 	projectID := uuid.New()
+
 	var imageWebPath string
 	imageFile, err := c.FormFile("image")
 	if err == nil {
@@ -63,7 +73,16 @@ func (t *PostProjectRoute) post(c *gin.Context) {
 		imageWebPath = "/uploads/project/" + projectID.String() + "/image" + ext
 	}
 
-	project, err := t.DB.Queries.CreateProject(c, db_sqlc_gen.CreateProjectParams{
+	tx, err := t.DB.Pool.Begin(c)
+	if err != nil {
+		t.Logger.Error("error while creating transaction", zap.Error(err))
+		c.JSON(http.StatusInternalServerError, gin.H{})
+		return
+	}
+
+	queries := t.DB.Queries.WithTx(tx)
+
+	project, err := queries.CreateProject(c, db_sqlc_gen.CreateProjectParams{
 		ID:          projectID,
 		Name:        req.Name,
 		Description: req.Description,
@@ -78,6 +97,19 @@ func (t *PostProjectRoute) post(c *gin.Context) {
 			return
 		}
 		t.Logger.Error("error while creating project", zap.Error(err))
+		c.JSON(http.StatusInternalServerError, gin.H{})
+		return
+	}
+
+	queries.AddUserToProject(c, db_sqlc_gen.AddUserToProjectParams{
+		UserID:    user.ID,
+		ProjectID: projectID,
+		Role:      db_sqlc_gen.RoleOwner,
+	})
+
+	err = tx.Commit(c)
+	if err != nil {
+		t.Logger.Error("error while committing transaction", zap.Error(err))
 		c.JSON(http.StatusInternalServerError, gin.H{})
 		return
 	}

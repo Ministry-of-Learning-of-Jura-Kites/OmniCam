@@ -29,7 +29,11 @@ type Dependencies struct {
 func InitRoutes(deps Dependencies, router gin.IRouter) {
 	publicRoute := router.Group("/")
 	protectedRoute := router.Group("/")
-	protectedRoute.Use(middleware.AuthMiddleware(deps.Env))
+	authMiddleware := middleware.AuthMiddleware{
+		Env:    deps.Env,
+		Logger: deps.Logger,
+	}
+	protectedRoute.Use(authMiddleware.CreateHandler())
 
 	deleteProjectRoute := controller_projects.DeleteProjectRoute{
 		Logger: deps.Logger,
@@ -49,8 +53,9 @@ func InitRoutes(deps Dependencies, router gin.IRouter) {
 		Logger: deps.Logger,
 		Env:    deps.Env,
 		DB:     deps.DB,
+		DBConn: deps.DBConn,
 	}
-	postProjectRoute.InitCreateProjectRoute(publicRoute)
+	postProjectRoute.InitCreateProjectRoute(protectedRoute)
 
 	updateProjectRoute := controller_projects.PutProjectRoute{
 		Logger: deps.Logger,

@@ -359,8 +359,21 @@ func (t *WorkspaceRoute) postWorkspaceMe(c *gin.Context) {
 		return
 	}
 
+	anyUserId, exists := c.Get("userId")
+	if !exists {
+		t.Logger.Error("Cannot find userId from AuthMiddleware")
+		c.JSON(http.StatusInternalServerError, gin.H{})
+		return
+	}
+	userId, ok := anyUserId.(uuid.UUID)
+	if !ok {
+		t.Logger.Error("Cannot cast userId to uuid.UUID")
+		c.JSON(http.StatusInternalServerError, gin.H{})
+		return
+	}
+
 	workspace, err := t.DB.Queries.CreateWorkspace(c, db_sqlc_gen.CreateWorkspaceParams{
-		UserID:  uuid.Nil,
+		UserID:  userId,
 		ModelID: *modelId,
 	})
 

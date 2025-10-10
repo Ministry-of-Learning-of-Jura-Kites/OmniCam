@@ -46,7 +46,7 @@ async function saveModelToPublic() {
   const runtimeConfig = useRuntimeConfig();
   const resp = await fetch(
     `http://${runtimeConfig.public.NUXT_PUBLIC_BACKEND_HOST}/api/v1/projects/${route.params.projectId}/models/${route.params.modelId}/workspaces/merge`,
-    { method: "POST" },
+    { method: "POST", credentials: "include" },
   );
 
   if (!resp.ok) {
@@ -100,6 +100,7 @@ async function createWorkspace() {
       `http://${runtimeConfig.public.NUXT_PUBLIC_BACKEND_HOST}/api/v1/projects/${route.params.projectId}/models/${route.params.modelId}/workspaces/me`,
       {
         method: "POST",
+        credentials: "include",
       },
     );
     useState(MODEL_INFO_KEY, () => data);
