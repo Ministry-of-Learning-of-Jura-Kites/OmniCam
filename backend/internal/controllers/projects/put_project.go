@@ -10,13 +10,14 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 	"go.uber.org/zap"
 	config_env "omnicam.com/backend/config"
+	db_client "omnicam.com/backend/pkg/db"
 	db_sqlc_gen "omnicam.com/backend/pkg/db/sqlc-gen"
 )
 
 type PutProjectRoute struct {
 	Logger *zap.Logger
 	Env    *config_env.AppEnv
-	DB     *db_sqlc_gen.Queries
+	DB     *db_client.DB
 }
 
 type UpdateProjectRequest struct {
@@ -64,7 +65,7 @@ func (t *PutProjectRoute) put(c *gin.Context) {
 		params.Description = pgtype.Text{Valid: false}
 	}
 
-	project, err := t.DB.UpdateProject(c, params)
+	project, err := t.DB.Queries.UpdateProject(c, params)
 	if err != nil {
 		t.Logger.Error("error while updating project", zap.Error(err))
 		c.JSON(http.StatusInternalServerError, gin.H{})

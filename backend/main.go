@@ -44,7 +44,7 @@ func main() {
 	api_routes.InitRoutes(api_routes.Dependencies{
 		Logger: logger,
 		Env:    env,
-		DB:     client_db.Queries,
+		DB:     client_db,
 	}, apiV1)
 
 	router.Run()
