@@ -10,13 +10,14 @@ import (
 	"go.uber.org/zap"
 	config_env "omnicam.com/backend/config"
 	"omnicam.com/backend/internal" // 👈 use Root
+	db_client "omnicam.com/backend/pkg/db"
 	db_sqlc_gen "omnicam.com/backend/pkg/db/sqlc-gen"
 )
 
 type PutImageModelRoute struct {
 	Logger *zap.Logger
 	Env    *config_env.AppEnv
-	DB     *db_sqlc_gen.Queries
+	DB     *db_client.DB
 }
 
 func (t *PutImageModelRoute) updateImage(c *gin.Context) {
@@ -81,7 +82,7 @@ func (t *PutImageModelRoute) updateImage(c *gin.Context) {
 
 	// Web path for DB/frontend
 	webImagePath := "/uploads/model/" + projectId.String() + "/" + modelId.String() + "/image" + imageExt
-	_, err = t.DB.UpdateModelImage(c, db_sqlc_gen.UpdateModelImageParams{
+	_, err = t.DB.Queries.UpdateModelImage(c, db_sqlc_gen.UpdateModelImageParams{
 		ID:        modelId,
 		ImagePath: webImagePath,
 	})

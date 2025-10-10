@@ -10,6 +10,7 @@ import (
 	"github.com/google/uuid"
 	"go.uber.org/zap"
 	config_env "omnicam.com/backend/config"
+	db_client "omnicam.com/backend/pkg/db"
 	db_sqlc_gen "omnicam.com/backend/pkg/db/sqlc-gen"
 )
 
@@ -25,7 +26,7 @@ type Project struct {
 type GetProjectRoute struct {
 	Logger *zap.Logger
 	Env    *config_env.AppEnv
-	DB     *db_sqlc_gen.Queries
+	DB     *db_client.DB
 }
 
 func (t *GetProjectRoute) getAll(c *gin.Context) {
@@ -43,7 +44,7 @@ func (t *GetProjectRoute) getAll(c *gin.Context) {
 
 	offset := (page - 1) * pageSize
 
-	projects, err := t.DB.GetAllProjects(c, db_sqlc_gen.GetAllProjectsParams{
+	projects, err := t.DB.Queries.GetAllProjects(c, db_sqlc_gen.GetAllProjectsParams{
 		PageSize:   int32(pageSize),
 		PageOffset: int32(offset),
 	})
@@ -53,7 +54,7 @@ func (t *GetProjectRoute) getAll(c *gin.Context) {
 		return
 	}
 
-	totalCount, err := t.DB.CountProjects(c)
+	totalCount, err := t.DB.Queries.CountProjects(c)
 	if err != nil {
 		t.Logger.Error("Error while counting projects", zap.Error(err))
 		c.JSON(http.StatusInternalServerError, gin.H{})
@@ -95,7 +96,7 @@ func (t *GetProjectRoute) getById(c *gin.Context) {
 		return
 	}
 
-	project, err := t.DB.GetProjectById(c, id)
+	project, err := t.DB.Queries.GetProjectById(c, id)
 	if err != nil {
 		t.Logger.Error("project not found", zap.Error(err))
 		c.JSON(http.StatusNotFound, gin.H{})

@@ -11,6 +11,7 @@ import (
 	"github.com/google/uuid"
 	"go.uber.org/zap"
 	config_env "omnicam.com/backend/config"
+	db_client "omnicam.com/backend/pkg/db"
 	db_sqlc_gen "omnicam.com/backend/pkg/db/sqlc-gen"
 	messages_cameras "omnicam.com/backend/pkg/messages/cameras"
 )
@@ -31,7 +32,7 @@ type Model struct {
 type GetModelRoute struct {
 	Logger *zap.Logger
 	Env    *config_env.AppEnv
-	DB     *db_sqlc_gen.Queries
+	DB     *db_client.DB
 }
 
 func (t *GetModelRoute) getModelById(c *gin.Context) {
@@ -51,7 +52,7 @@ func (t *GetModelRoute) getModelById(c *gin.Context) {
 
 	includedFields := c.QueryArray("fields")
 
-	data, err := t.DB.GetModelByID(c, db_sqlc_gen.GetModelByIDParams{
+	data, err := t.DB.Queries.GetModelByID(c, db_sqlc_gen.GetModelByIDParams{
 		Fields: includedFields,
 		ID:     id,
 	})
@@ -114,7 +115,7 @@ func (t *GetModelRoute) getAllModel(c *gin.Context) {
 
 	offset := (page - 1) * pageSize
 	// column1 -> projectId column2 -> page size column3 -> offset (the data from desc (createBy))
-	data, err := t.DB.GetAllfdfModels(c, db_sqlc_gen.GetAllfdfModelsParams{
+	data, err := t.DB.Queries.GetAllfdfModels(c, db_sqlc_gen.GetAllfdfModelsParams{
 		ProjectID:  projectId,
 		PageSize:   int32(pageSize),
 		PageOffset: int32(offset),
@@ -125,7 +126,7 @@ func (t *GetModelRoute) getAllModel(c *gin.Context) {
 		return
 	}
 
-	dataCount, err := t.DB.CountModels(c, projectId)
+	dataCount, err := t.DB.Queries.CountModels(c, projectId)
 	if err != nil {
 		t.Logger.Error("models not found or database error", zap.Error(err))
 		c.JSON(http.StatusNotFound, gin.H{})
