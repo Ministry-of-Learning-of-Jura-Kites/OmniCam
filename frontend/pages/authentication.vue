@@ -48,7 +48,7 @@ const loginForm = reactive<LoginRequest>({
 });
 
 async function register() {
-  console.log(registerForm);
+  // console.log(registerForm);
   try {
     const _response = await $fetch<Response>(
       "http://" + config.public.NUXT_PUBLIC_BACKEND_HOST + "/api/v1/register",
@@ -67,7 +67,7 @@ async function register() {
 }
 
 async function login() {
-  console.log(loginForm);
+  // console.log(loginForm);
   try {
     const _response = await $fetch<Response>(
       "http://" + config.public.NUXT_PUBLIC_BACKEND_HOST + "/api/v1/login",

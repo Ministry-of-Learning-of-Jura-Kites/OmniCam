@@ -170,15 +170,6 @@ async function createModel() {
     formData.append("image", modelForm.image);
   }
 
-  for (const [key, value] of formData.entries()) {
-    // For files, log the name
-    if (value instanceof File) {
-      console.log(`${key}: ${value.name} (${value.size} bytes)`);
-    } else {
-      console.log(`${key}: ${value}`);
-    }
-  }
-
   const projectId = route.params.projectId as string;
   const response = await $fetch<ModelReturnRequest>(
     `http://${config.public.NUXT_PUBLIC_BACKEND_HOST}/api/v1/projects/${projectId}/models`,
