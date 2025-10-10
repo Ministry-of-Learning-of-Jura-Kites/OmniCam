@@ -115,7 +115,7 @@ func (t *PostProjectRoute) post(c *gin.Context) {
 	}
 
 	role := "owner"
-	if err := t.DB.CreateUserToProject(c, db_sqlc_gen.CreateUserToProjectParams{
+	if _, err := t.DB.AddUserToProject(c, db_sqlc_gen.AddUserToProjectParams{
 		ProjectID: project.ID,
 		UserID:    user.ID,
 		Role:      db_sqlc_gen.Role(role),
