@@ -7,8 +7,8 @@ CREATE TABLE "user" (
   username VARCHAR(255) NOT NULL UNIQUE,
   last_name VARCHAR(255) NOT NULL,
   password BYTEA NOT NULL,
-  created_at TIMESTAMPTZ DEFAULT NOW(),
-  updated_at TIMESTAMPTZ DEFAULT NOW()
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
 CREATE TABLE "project" (
@@ -16,8 +16,8 @@ CREATE TABLE "project" (
   name VARCHAR(255) NOT NULL UNIQUE,
   description TEXT NOT NULL DEFAULT '',
   image_path TEXT NOT NULL,
-  created_at TIMESTAMPTZ DEFAULT NOW(),
-  updated_at TIMESTAMPTZ DEFAULT NOW()
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
 CREATE TABLE "user_to_project" (
@@ -41,8 +41,8 @@ CREATE TABLE "model" (
   image_path TEXT NOT NULL,
   -- version tracking
   version INT NOT NULL DEFAULT 0,
-  created_at TIMESTAMPTZ DEFAULT NOW(),
-  updated_at TIMESTAMPTZ DEFAULT NOW()
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
 -- snapshots of models per user
@@ -51,20 +51,14 @@ CREATE TABLE "user_model_workspace" (
   user_id UUID NOT NULL REFERENCES "user" (id),
   -- reference back to model
   model_id UUID NOT NULL REFERENCES "model" (id) ON DELETE CASCADE,
-  -- filename or model name
-  name VARCHAR(255) NOT NULL,
-  -- description, mutable
-  description TEXT NOT NULL DEFAULT '',
   -- store cameras as a document
   cameras JSONB NOT NULL DEFAULT '{}'::JSONB,
   -- store branched-out cameras as a document
   base_cameras JSONB NOT NULL DEFAULT '{}'::JSONB,
-  -- storage location, mutable
-  file_path TEXT NOT NULL,
   -- version tracking
   version INT NOT NULL DEFAULT 0,
   -- branched-out version
   base_version INT NOT NULL,
-  created_at TIMESTAMPTZ DEFAULT NOW(),
-  updated_at TIMESTAMPTZ DEFAULT NOW()
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );

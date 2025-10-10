@@ -12,10 +12,10 @@ SELECT
 FROM
   "model"
 WHERE
-  project_id = sqlc.arg (project_id)::UUID
+  project_id = SQLC.ARG(project_id)::UUID
 ORDER BY
   created_at DESC
 LIMIT
-  sqlc.arg (page_size)::INT
+  SQLC.ARG(page_size)::INT
 OFFSET
-  sqlc.arg (page_offset)::INT;
+  SQLC.ARG(page_offset)::INT;

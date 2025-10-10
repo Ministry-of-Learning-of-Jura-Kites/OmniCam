@@ -2,7 +2,6 @@ package controller_projects
 
 import (
 	"encoding/base64"
-	"fmt"
 	"net/http"
 	"os"
 	"path"
@@ -87,7 +86,7 @@ func (t *DeleteProjectRoute) deleteFolder(folderPath string) {
 	}
 
 	absPath, _ := filepath.Abs(folderPath)
-	fmt.Println("Deleting folder:", absPath)
+	t.Logger.Info("Deleting folder", zap.String("absPath", absPath))
 
 	if err := os.RemoveAll(absPath); err != nil {
 		t.Logger.Error("failed to remove folder", zap.String("path", absPath), zap.Error(err))

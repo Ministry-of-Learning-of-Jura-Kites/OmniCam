@@ -5,18 +5,7 @@ import SceneStatesProvider from "~/components/3d/scene-states-provider/SceneStat
 
 const route = useRoute();
 
-// const path = route.fullPath;
-
-// Check if it matches `/workspaces/<id>`
-// const regex = /workspaces\/([^/]+)\/?$/;
-// const m = path.match(regex);
-// const match = m ? m[1] : null;
-
-// const workspace = ref(match);
-
 const workspace = computed(() => route.meta.routeInfo?.workspace);
-
-// provide(WORKSPACE_KEY, workspace);
 </script>
 
 <template>

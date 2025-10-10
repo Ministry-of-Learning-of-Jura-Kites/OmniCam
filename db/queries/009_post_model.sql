@@ -10,12 +10,12 @@ INSERT INTO
   )
 VALUES
   (
-    sqlc.arg (id)::UUID,
-    sqlc.arg (project_id)::UUID,
-    sqlc.arg (name),
-    sqlc.arg (description),
-    sqlc.arg (file_path),
-    sqlc.arg (image_path)
+    SQLC.ARG(id)::UUID,
+    SQLC.ARG(project_id)::UUID,
+    SQLC.ARG(name),
+    SQLC.ARG(description),
+    SQLC.ARG(file_path),
+    SQLC.ARG(image_path)
   )
 RETURNING
   id,
