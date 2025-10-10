@@ -14,6 +14,7 @@ import (
 	"go.uber.org/zap"
 	config_env "omnicam.com/backend/config"
 	"omnicam.com/backend/internal"
+	"omnicam.com/backend/internal/utils"
 	db_client "omnicam.com/backend/pkg/db"
 	db_sqlc_gen "omnicam.com/backend/pkg/db/sqlc-gen"
 )
@@ -32,15 +33,9 @@ type CreateProjectRequest struct {
 func (t *PostProjectRoute) post(c *gin.Context) {
 	var req CreateProjectRequest
 
-	anyUserId, exists := c.Get("userId")
-	if !exists {
-		t.Logger.Error("Cannot find userId from AuthMiddleware")
-		c.JSON(http.StatusInternalServerError, gin.H{})
-		return
-	}
-	userId, ok := anyUserId.(uuid.UUID)
-	if !ok {
-		t.Logger.Error("Cannot cast userId to uuid.UUID")
+	userId, err := utils.GetUuidFromCtx(c, "userId")
+	if err != nil {
+		t.Logger.Error("error while getting userId form", zap.Error(err))
 		c.JSON(http.StatusInternalServerError, gin.H{})
 		return
 	}
