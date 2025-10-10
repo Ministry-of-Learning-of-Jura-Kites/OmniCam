@@ -40,7 +40,7 @@ func InitRoutes(deps Dependencies, router gin.IRouter) {
 		Env:    deps.Env,
 		DB:     deps.DB,
 	}
-	deleteProjectRoute.InitDeleteProjectRoute(publicRoute)
+	deleteProjectRoute.InitDeleteProjectRoute(protectedRoute)
 
 	getProjectRoute := controller_projects.GetProjectRoute{
 		Logger: deps.Logger,
@@ -61,14 +61,14 @@ func InitRoutes(deps Dependencies, router gin.IRouter) {
 		Env:    deps.Env,
 		DB:     deps.DB,
 	}
-	updateProjectRoute.InitUpdateProjectRoute(publicRoute)
+	updateProjectRoute.InitUpdateProjectRoute(protectedRoute)
 
 	postModelRoute := controller_model.PostModelRoutes{
 		Logger: deps.Logger,
 		Env:    deps.Env,
 		DB:     deps.DB,
 	}
-	postModelRoute.InitCreateModelRoute(publicRoute)
+	postModelRoute.InitCreateModelRoute(protectedRoute)
 
 	getModelRoute := controller_model.GetModelRoute{
 		Logger: deps.Logger,
@@ -82,14 +82,14 @@ func InitRoutes(deps Dependencies, router gin.IRouter) {
 		Env:    deps.Env,
 		DB:     deps.DB,
 	}
-	putModelRoute.InitUpdateModelRoute(publicRoute)
+	putModelRoute.InitUpdateModelRoute(protectedRoute)
 
 	deleteModelRoute := controller_model.DeleteModelRoute{
 		Logger: deps.Logger,
 		Env:    deps.Env,
 		DB:     deps.DB,
 	}
-	deleteModelRoute.InitDeleteModelRoute(publicRoute)
+	deleteModelRoute.InitDeleteModelRoute(protectedRoute)
 
 	cameraAutosaveRoute := controller_camera.CameraAutosaveRoute{
 		Logger: deps.Logger,
@@ -103,7 +103,7 @@ func InitRoutes(deps Dependencies, router gin.IRouter) {
 			},
 		},
 	}
-	cameraAutosaveRoute.InitRoute(publicRoute)
+	cameraAutosaveRoute.InitRoute(protectedRoute)
 
 	workspaceRoute := controller_workspaces.WorkspaceRoute{
 		Logger: deps.Logger,
@@ -117,14 +117,14 @@ func InitRoutes(deps Dependencies, router gin.IRouter) {
 		Env:    deps.Env,
 		DB:     deps.DB,
 	}
-	putImageModelRoute.InitUpdateImageRoute(publicRoute)
+	putImageModelRoute.InitUpdateImageRoute(protectedRoute)
 
 	putImageProjectRoute := controller_projects.PutImageProjectRoute{
 		Logger: deps.Logger,
 		Env:    deps.Env,
 		DB:     deps.DB,
 	}
-	putImageProjectRoute.InitUpdateImageRoute(publicRoute)
+	putImageProjectRoute.InitUpdateImageRoute(protectedRoute)
 
 	registerRoute := authentication.AuthRoute{
 		Logger: deps.Logger,

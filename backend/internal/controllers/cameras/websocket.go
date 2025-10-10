@@ -1,7 +1,6 @@
 package controller_camera
 
 import (
-	"encoding/base64"
 	"encoding/json"
 	"net/http"
 
@@ -11,6 +10,7 @@ import (
 	"go.uber.org/zap"
 	"google.golang.org/protobuf/proto"
 	config_env "omnicam.com/backend/config"
+	"omnicam.com/backend/internal/utils"
 	db_client "omnicam.com/backend/pkg/db"
 	db_sqlc_gen "omnicam.com/backend/pkg/db/sqlc-gen"
 	messages_cameras "omnicam.com/backend/pkg/messages/cameras"
@@ -59,7 +59,7 @@ func (t *CameraAutosaveRoute) handleEventDelete(c *gin.Context, conn *websocket.
 	conn.WriteMessage(websocket.TextMessage, []byte("ok"))
 }
 
-func (t *CameraAutosaveRoute) handleEventUpsert(c *gin.Context, conn *websocket.Conn, modelId uuid.UUID, upsert *camera.Camera) {
+func (t *CameraAutosaveRoute) handleEventUpsert(c *gin.Context, userId uuid.UUID, conn *websocket.Conn, modelId uuid.UUID, upsert *camera.Camera) {
 	camera := messages_cameras.CameraStruct{
 		Name:           upsert.Name,
 		AngleX:         upsert.AngleX,
@@ -83,7 +83,7 @@ func (t *CameraAutosaveRoute) handleEventUpsert(c *gin.Context, conn *websocket.
 	err = t.DB.Queries.UpdateWorkspaceCams(c, db_sqlc_gen.UpdateWorkspaceCamsParams{
 		Key:     []string{upsert.Id},
 		Value:   marshalled,
-		UserID:  uuid.Nil,
+		UserID:  userId,
 		ModelID: modelId,
 	})
 	if err != nil {
@@ -95,23 +95,24 @@ func (t *CameraAutosaveRoute) handleEventUpsert(c *gin.Context, conn *websocket.
 }
 
 func (t *CameraAutosaveRoute) get(c *gin.Context) {
-	strId := c.Param("modelId")
-
-	decodedBytes, err := base64.RawURLEncoding.DecodeString(strId)
-	if err != nil {
-		t.Logger.Error("error decoding Base64", zap.Error(err))
-		return
-	}
-	modelId, err := uuid.FromBytes(decodedBytes)
+	strModelId := c.Param("modelId")
+	modelId, err := utils.ParseUuidBase64(strModelId)
 	if err != nil {
 		t.Logger.Error("error while converting str id to uuid", zap.Error(err))
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid model ID"})
 		return
 	}
 
+	userId, err := utils.GetUuidFromCtx(c, "userId")
+	if err != nil {
+		t.Logger.Error("error while getting userId form", zap.Error(err))
+		c.JSON(http.StatusInternalServerError, gin.H{})
+		return
+	}
+
 	_, err = t.DB.Queries.GetWorkspaceByID(c, db_sqlc_gen.GetWorkspaceByIDParams{
-		UserID:  uuid.Nil,
-		ModelID: modelId,
+		UserID:  userId,
+		ModelID: *modelId,
 	})
 	if err != nil {
 		t.Logger.Error("workspace not found", zap.Error(err))
@@ -144,9 +145,9 @@ func (t *CameraAutosaveRoute) get(c *gin.Context) {
 			for _, event := range events.Events {
 				switch event.Type {
 				case camera.CameraEventType_CAMERA_EVENT_TYPE_DELETE:
-					t.handleEventDelete(c, conn, modelId, event.GetDeleteId())
+					t.handleEventDelete(c, conn, *modelId, event.GetDeleteId())
 				case camera.CameraEventType_CAMERA_EVENT_TYPE_UPSERT:
-					t.handleEventUpsert(c, conn, modelId, event.GetUpsert())
+					t.handleEventUpsert(c, userId, conn, *modelId, event.GetUpsert())
 				}
 			}
 		}

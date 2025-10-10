@@ -225,7 +225,12 @@ type ResolveRequest struct {
 
 func (t *WorkspaceRoute) postMergeWorkspace(c *gin.Context) {
 	strProjectId := c.Param("modelId")
-	userId := uuid.Nil
+	userId, err := utils.GetUuidFromCtx(c, "userId")
+	if err != nil {
+		t.Logger.Error("error while getting userId form", zap.Error(err))
+		c.JSON(http.StatusInternalServerError, gin.H{})
+		return
+	}
 
 	decodedBytes, err := base64.RawURLEncoding.DecodeString(strProjectId)
 	if err != nil {
