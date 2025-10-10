@@ -211,8 +211,8 @@ function openFileDialog() {
         </Button>
 
         <Button size="sm" variant="outline" @click="() => togglePanel()">
-          <IndentIncrease class="h-4 w-4 mr-2" v-if="isPanelOpen" />
-          <IndentDecrease class="h-4 w-4 mr-2" v-else />
+          <IndentIncrease v-if="isPanelOpen" class="h-4 w-4 mr-2" />
+          <IndentDecrease v-else class="h-4 w-4 mr-2" />
           Panel
         </Button>
       </div>

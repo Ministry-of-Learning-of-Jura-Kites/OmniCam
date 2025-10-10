@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import * as THREE from "three";
 import { createFrustumGeometry } from "./create-frustum";
-import { boolean } from "zod";
 
 const props = withDefaults(
   defineProps<{
