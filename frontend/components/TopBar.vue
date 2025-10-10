@@ -14,6 +14,8 @@ import {
   Save,
   User,
   LogOut,
+  IndentDecrease,
+  IndentIncrease,
 } from "lucide-vue-next";
 
 import { exportCamerasToJson } from "@/utils/exportScene";
@@ -24,7 +26,11 @@ import Tooltip from "./ui/tooltip/Tooltip.vue";
 import TooltipTrigger from "./ui/tooltip/TooltipTrigger.vue";
 import TooltipContent from "./ui/tooltip/TooltipContent.vue";
 import TooltipProvider from "./ui/tooltip/TooltipProvider.vue";
-import { MODEL_INFO_KEY } from "~/constants/state-keys";
+import {
+  IS_PANEL_OPEN_KEY,
+  MODEL_INFO_KEY,
+  TOGGLE_PANEL_KEY,
+} from "~/constants/state-keys";
 
 const props = defineProps({
   workspace: {
@@ -34,6 +40,9 @@ const props = defineProps({
 });
 
 const sceneStates = inject(SCENE_STATES_KEY)!;
+
+const isPanelOpen = inject(IS_PANEL_OPEN_KEY);
+const togglePanel = inject(TOGGLE_PANEL_KEY);
 
 const route = useRoute();
 
@@ -235,6 +244,12 @@ async function createWorkspace() {
         >
           <Download class="h-4 w-4 mr-2" />
           Export
+        </Button>
+
+        <Button size="sm" variant="outline" @click="() => togglePanel()">
+          <IndentIncrease v-if="isPanelOpen" class="h-4 w-4 mr-2" />
+          <IndentDecrease v-else class="h-4 w-4 mr-2" />
+          Panel
         </Button>
       </div>
 

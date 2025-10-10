@@ -18,6 +18,9 @@ export function exportCamerasToJson(cameras: Record<string, ICamera>) {
       Fov: camera.fov,
       IsHidingArrows: camera.isHidingArrows,
       IsHidingWheels: camera.isHidingWheels,
+      IsLockingPosition: camera.isLockingPosition,
+      IsLockingRotation: camera.isLockingRotation,
+      IsHidingFrustum: camera.isHidingFrustum,
     };
   });
 
