@@ -17,6 +17,7 @@ SELECT
 FROM
   "model" AS m
   LEFT JOIN "user_model_workspace" AS umw ON m.id = umw.model_id
+  AND SQLC.NARG(user_id) = umw.user_id
 WHERE
   id = SQLC.ARG(id)::UUID
   AND COALESCE(umw.user_id = SQLC.NARG(user_id)::UUID, TRUE);

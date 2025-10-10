@@ -144,7 +144,9 @@ async function createWorkspace() {
           </div>
         </Card>
         <div class="flex items-center justify-center h-4 w-4">
-          <Tooltip v-if="sceneStates.markedForCheck.size > 0">
+          <Tooltip
+            v-if="workspace != null && sceneStates.markedForCheck.size > 0"
+          >
             <TooltipTrigger>
               <RefreshCcw class="animate-spin"
             /></TooltipTrigger>
