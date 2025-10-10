@@ -15,6 +15,7 @@ import (
 	"github.com/r3labs/diff/v3"
 	"go.uber.org/zap"
 	config_env "omnicam.com/backend/config"
+	db_client "omnicam.com/backend/pkg/db"
 	db_sqlc_gen "omnicam.com/backend/pkg/db/sqlc-gen"
 	messages_cameras "omnicam.com/backend/pkg/messages/cameras"
 )
@@ -33,7 +34,7 @@ type Workspace struct {
 type WorkspaceRoute struct {
 	Logger *zap.Logger
 	Env    *config_env.AppEnv
-	DB     *db_sqlc_gen.Queries
+	DB     *db_client.DB
 }
 
 type FieldConflict struct {
@@ -243,7 +244,7 @@ func (t *WorkspaceRoute) postMergeWorkspaceMe(c *gin.Context) {
 		return
 	}
 
-	workspaceData, err := t.DB.GetWorkspaceByID(c, db_sqlc_gen.GetWorkspaceByIDParams{
+	workspaceData, err := t.DB.Queries.GetWorkspaceByID(c, db_sqlc_gen.GetWorkspaceByIDParams{
 		Fields:  []string{"cameras", "base_cameras"},
 		UserID:  userId,
 		ModelID: modelId,
@@ -259,7 +260,7 @@ func (t *WorkspaceRoute) postMergeWorkspaceMe(c *gin.Context) {
 		return
 	}
 
-	modelData, err := t.DB.GetModelByID(c, db_sqlc_gen.GetModelByIDParams{
+	modelData, err := t.DB.Queries.GetModelByID(c, db_sqlc_gen.GetModelByIDParams{
 		Fields: []string{"cameras"},
 		ID:     modelId,
 	})
@@ -272,7 +273,7 @@ func (t *WorkspaceRoute) postMergeWorkspaceMe(c *gin.Context) {
 	switch cmp.Compare(modelData.Version, workspaceData.BaseVersion) {
 	// equal
 	case 0:
-		t.DB.UpdateModelCams(c, db_sqlc_gen.UpdateModelCamsParams{
+		t.DB.Queries.UpdateModelCams(c, db_sqlc_gen.UpdateModelCamsParams{
 			Value:   workspaceData.Cameras,
 			ModelID: modelId,
 		})
@@ -311,7 +312,7 @@ func (t *WorkspaceRoute) postMergeWorkspaceMe(c *gin.Context) {
 		}
 
 		if len(conflicts) == 0 {
-			base_version, err := t.DB.UpdateModelCams(c, db_sqlc_gen.UpdateModelCamsParams{
+			base_version, err := t.DB.Queries.UpdateModelCams(c, db_sqlc_gen.UpdateModelCamsParams{
 				Value:   mergedEncoded,
 				ModelID: modelId,
 			})
@@ -322,7 +323,7 @@ func (t *WorkspaceRoute) postMergeWorkspaceMe(c *gin.Context) {
 				return
 			}
 
-			err = t.DB.UpdateSetWorkspaceCams(c, db_sqlc_gen.UpdateSetWorkspaceCamsParams{
+			err = t.DB.Queries.UpdateSetWorkspaceCams(c, db_sqlc_gen.UpdateSetWorkspaceCamsParams{
 				Cameras:     mergedEncoded,
 				BaseCameras: mergedEncoded,
 				BaseVersion: base_version,
@@ -371,7 +372,7 @@ func (t *WorkspaceRoute) getWorkspaceMe(c *gin.Context) {
 
 	includedFields := c.QueryArray("fields")
 
-	data, err := t.DB.GetWorkspaceByID(c, db_sqlc_gen.GetWorkspaceByIDParams{
+	data, err := t.DB.Queries.GetWorkspaceByID(c, db_sqlc_gen.GetWorkspaceByIDParams{
 		Fields:  includedFields,
 		UserID:  uuid.Nil,
 		ModelID: modelId,

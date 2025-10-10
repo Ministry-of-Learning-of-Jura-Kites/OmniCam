@@ -17,13 +17,13 @@ import (
 	controller_projects "omnicam.com/backend/internal/controllers/projects"
 	"omnicam.com/backend/internal/controllers/users"
 	controller_workspaces "omnicam.com/backend/internal/controllers/workspaces"
-	db_sqlc_gen "omnicam.com/backend/pkg/db/sqlc-gen"
+	db_client "omnicam.com/backend/pkg/db"
 )
 
 type Dependencies struct {
 	Logger *zap.Logger
 	Env    *config_env.AppEnv
-	DB     *db_sqlc_gen.Queries
+	DB     *db_client.DB
 }
 
 func InitRoutes(deps Dependencies, router gin.IRouter) {

@@ -14,13 +14,14 @@ import (
 	"go.uber.org/zap"
 	config_env "omnicam.com/backend/config"
 	"omnicam.com/backend/internal"
+	db_client "omnicam.com/backend/pkg/db"
 	db_sqlc_gen "omnicam.com/backend/pkg/db/sqlc-gen"
 )
 
 type PostProjectRoute struct {
 	Logger *zap.Logger
 	Env    *config_env.AppEnv
-	DB     *db_sqlc_gen.Queries
+	DB     *db_client.DB
 }
 
 type CreateProjectRequest struct {
@@ -62,7 +63,7 @@ func (t *PostProjectRoute) post(c *gin.Context) {
 		imageWebPath = "/uploads/project/" + projectID.String() + "/image" + ext
 	}
 
-	project, err := t.DB.CreateProject(c, db_sqlc_gen.CreateProjectParams{
+	project, err := t.DB.Queries.CreateProject(c, db_sqlc_gen.CreateProjectParams{
 		ID:          projectID,
 		Name:        req.Name,
 		Description: req.Description,

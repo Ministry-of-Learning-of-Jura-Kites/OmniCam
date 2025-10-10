@@ -6,13 +6,13 @@ import (
 	config_env "omnicam.com/backend/config"
 
 	// db_client "omnicam.com/backend/pkg/db"
-	db_sqlc_gen "omnicam.com/backend/pkg/db/sqlc-gen"
+	db_client "omnicam.com/backend/pkg/db"
 )
 
 type TestRoute struct {
-	Logger  *zap.Logger
-	Env     *config_env.AppEnv
-	Queries *db_sqlc_gen.Queries
+	Logger *zap.Logger
+	Env    *config_env.AppEnv
+	DB     *db_client.DB
 }
 
 func (t *TestRoute) Get(c *gin.Context) {
