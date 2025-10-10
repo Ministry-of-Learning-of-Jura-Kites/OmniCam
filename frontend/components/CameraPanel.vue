@@ -18,12 +18,12 @@ import {
 } from "lucide-vue-next";
 import { SCENE_STATES_KEY } from "./3d/scene-states-provider/create-scene-states";
 
-const props = defineProps({
-  workspace: {
-    type: String,
-    default: null,
-  },
-});
+// const props = defineProps({
+//   workspace: {
+//     type: String,
+//     default: null,
+//   },
+// });
 
 const sceneStates = inject(SCENE_STATES_KEY)!;
 
@@ -204,8 +204,8 @@ function onToggleLockRotation() {
         <div class="flex items-center gap-2">
           <input
             id="lock-position"
-            type="checkbox"
             v-model="sceneStates.cameras[selectedCamId]!.isLockingPosition"
+            type="checkbox"
             @change="onToggleLockPosition"
           />
           <label for="lock-position">Lock Position</label>
@@ -265,8 +265,8 @@ function onToggleLockRotation() {
         <div class="flex items-center gap-2">
           <input
             id="lock-rotation"
-            type="checkbox"
             v-model="sceneStates.cameras[selectedCamId]!.isLockingRotation"
+            type="checkbox"
             @change="onToggleLockRotation"
           />
           <label for="lock-rotation">Lock Rotation</label>
@@ -391,10 +391,6 @@ function onToggleLockRotation() {
             size="sm"
             variant="outline"
             class="flex-1"
-            @click="
-              moveCameraHere(selectedCamId!);
-              sceneStates.markedForCheck.add(selectedCamId);
-            "
             :disabled="
               sceneStates.cameras[selectedCamId]!.isLockingPosition ||
               sceneStates.cameras[selectedCamId]!.isLockingRotation
@@ -404,6 +400,10 @@ function onToggleLockRotation() {
                 sceneStates.cameras[selectedCamId]!.isLockingPosition ||
                 sceneStates.cameras[selectedCamId]!.isLockingRotation,
             }"
+            @click="
+              moveCameraHere(selectedCamId!);
+              sceneStates.markedForCheck.add(selectedCamId);
+            "
           >
             Move Here
           </Button>
