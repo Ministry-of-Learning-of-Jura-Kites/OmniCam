@@ -3,9 +3,9 @@ INSERT INTO
   user_to_project (user_id, project_id, role)
 VALUES
   (
-    sqlc.arg (user_id),
-    sqlc.arg (project_id),
-    sqlc.arg (role)
+    SQLC.ARG(user_id),
+    SQLC.ARG(project_id),
+    SQLC.ARG(role)
   )
 RETURNING
   user_id,

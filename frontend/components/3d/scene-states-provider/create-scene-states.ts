@@ -14,7 +14,16 @@ import type { UseWebSocketReturn } from "@vueuse/core";
 
 export interface ModelWithCamsResp {
   data: {
-    modelId: string;
+    workspaceExists: boolean | null;
+    modelId: string; // uuid.UUID -> string
+    name: string;
+    description: string;
+    version: number; // int32 -> number
+    createdAt: string;
+    updatedAt: string;
+    projectId: string; // uuid.UUID -> string
+    filePath: string;
+    imagePath: string;
     cameras: Record<
       string,
       {
@@ -94,6 +103,8 @@ export function createBaseSceneStates(
 
   const tresCanvasParent: Ref<HTMLDivElement | null> = ref(null);
 
+  const modelInfo = modelWithCamsResp;
+
   const camsData = transformCamsData(modelWithCamsResp);
 
   const cameras = reactive<Record<string, ICamera>>(camsData!);
@@ -131,6 +142,7 @@ export function createBaseSceneStates(
     cameras,
     error: null,
     markedForCheck,
+    modelInfo,
   } as const;
 
   // websocket.ws.value!.onclose = (_closeEvent: CloseEvent) => {

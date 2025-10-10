@@ -1,10 +1,10 @@
 -- name: UpdateProjectImage :one
 UPDATE "project"
 SET
-  image_path = sqlc.arg (image_path)::TEXT,
+  image_path = SQLC.ARG(image_path)::TEXT,
   updated_at = NOW()
 WHERE
-  id = sqlc.arg (id)::UUID
+  id = SQLC.ARG(id)::UUID
 RETURNING
   id,
   name,

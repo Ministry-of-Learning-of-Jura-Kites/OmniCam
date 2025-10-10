@@ -1,11 +1,11 @@
 -- name: UpdateProject :one
 UPDATE "project"
 SET
-  name = COALESCE(sqlc.narg (name)::VARCHAR, name),
-  description = COALESCE(sqlc.narg (description)::TEXT, description),
+  name = COALESCE(SQLC.NARG(name)::VARCHAR, name),
+  description = COALESCE(SQLC.NARG(description)::TEXT, description),
   updated_at = NOW()
 WHERE
-  id = sqlc.arg (id)::UUID
+  id = SQLC.ARG(id)::UUID
 RETURNING
   id,
   name,

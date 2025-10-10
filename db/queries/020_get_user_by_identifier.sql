@@ -11,7 +11,7 @@ SELECT
 FROM
   "user"
 WHERE
-  email = sqlc.arg (identifier)
-  OR username = sqlc.arg (identifier)
+  email = SQLC.ARG(identifier)
+  OR username = SQLC.ARG(identifier)
 LIMIT
   1;
