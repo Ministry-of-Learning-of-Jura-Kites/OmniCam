@@ -11,13 +11,14 @@ import (
 
 	config_env "omnicam.com/backend/config"
 	"omnicam.com/backend/internal"
+	db_client "omnicam.com/backend/pkg/db"
 	db_sqlc_gen "omnicam.com/backend/pkg/db/sqlc-gen"
 )
 
 type PutImageProjectRoute struct {
 	Logger *zap.Logger
 	Env    *config_env.AppEnv
-	DB     *db_sqlc_gen.Queries
+	DB     *db_client.DB
 }
 
 func (t *PutImageProjectRoute) updateImage(c *gin.Context) {
@@ -70,7 +71,7 @@ func (t *PutImageProjectRoute) updateImage(c *gin.Context) {
 
 	webImagePath := "/uploads/project/" + projectId.String() + "/image" + imageExt
 
-	_, err = t.DB.UpdateProjectImage(c, db_sqlc_gen.UpdateProjectImageParams{
+	_, err = t.DB.Queries.UpdateProjectImage(c, db_sqlc_gen.UpdateProjectImageParams{
 		ID:        projectId,
 		ImagePath: webImagePath,
 	})

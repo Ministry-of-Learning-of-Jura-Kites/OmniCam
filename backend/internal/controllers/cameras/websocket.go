@@ -11,6 +11,7 @@ import (
 	"go.uber.org/zap"
 	"google.golang.org/protobuf/proto"
 	config_env "omnicam.com/backend/config"
+	db_client "omnicam.com/backend/pkg/db"
 	db_sqlc_gen "omnicam.com/backend/pkg/db/sqlc-gen"
 	messages_cameras "omnicam.com/backend/pkg/messages/cameras"
 	camera "omnicam.com/backend/pkg/messages/protobufs"
@@ -19,7 +20,7 @@ import (
 type CameraAutosaveRoute struct {
 	Logger   *zap.Logger
 	Env      *config_env.AppEnv
-	DB       *db_sqlc_gen.Queries
+	DB       *db_client.DB
 	Upgrader websocket.Upgrader
 }
 
@@ -45,7 +46,7 @@ func (t *CameraAutosaveRoute) handleEventDelete(c *gin.Context, conn *websocket.
 		return
 	}
 
-	err = t.DB.UpdateWorkspaceCams(c, db_sqlc_gen.UpdateWorkspaceCamsParams{
+	err = t.DB.Queries.UpdateWorkspaceCams(c, db_sqlc_gen.UpdateWorkspaceCamsParams{
 		Key:     []string{deleteId},
 		UserID:  uuid.Nil,
 		ModelID: modelId,
@@ -79,7 +80,7 @@ func (t *CameraAutosaveRoute) handleEventUpsert(c *gin.Context, conn *websocket.
 		conn.WriteMessage(websocket.TextMessage, []byte("error"))
 		return
 	}
-	err = t.DB.UpdateWorkspaceCams(c, db_sqlc_gen.UpdateWorkspaceCamsParams{
+	err = t.DB.Queries.UpdateWorkspaceCams(c, db_sqlc_gen.UpdateWorkspaceCamsParams{
 		Key:     []string{upsert.Id},
 		Value:   marshalled,
 		UserID:  uuid.Nil,
@@ -108,7 +109,7 @@ func (t *CameraAutosaveRoute) get(c *gin.Context) {
 		return
 	}
 
-	_, err = t.DB.GetWorkspaceByID(c, db_sqlc_gen.GetWorkspaceByIDParams{
+	_, err = t.DB.Queries.GetWorkspaceByID(c, db_sqlc_gen.GetWorkspaceByIDParams{
 		UserID:  uuid.Nil,
 		ModelID: modelId,
 	})

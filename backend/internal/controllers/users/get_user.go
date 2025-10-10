@@ -6,17 +6,17 @@ import (
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
 	config_env "omnicam.com/backend/config"
-	db_sqlc_gen "omnicam.com/backend/pkg/db/sqlc-gen"
+	db_client "omnicam.com/backend/pkg/db"
 )
 
 type UserRoute struct {
 	Logger *zap.Logger
 	Env    *config_env.AppEnv
-	DB     *db_sqlc_gen.Queries
+	DB     *db_client.DB
 }
 
 func (t *UserRoute) GetAll(c *gin.Context) {
-	users, err := t.DB.GetAllUser(c)
+	users, err := t.DB.Queries.GetAllUser(c)
 	if err != nil {
 		t.Logger.Error("failed to fetch users", zap.Error(err))
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to fetch users"})
