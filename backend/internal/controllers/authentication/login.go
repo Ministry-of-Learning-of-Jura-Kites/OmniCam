@@ -7,13 +7,13 @@ import (
 	"go.uber.org/zap"
 	config_env "omnicam.com/backend/config"
 	"omnicam.com/backend/internal/utils"
-	db_sqlc_gen "omnicam.com/backend/pkg/db/sqlc-gen"
+	db_client "omnicam.com/backend/pkg/db"
 )
 
 type AuthRoute struct {
 	Logger *zap.Logger
 	Env    *config_env.AppEnv
-	DB     *db_sqlc_gen.Queries
+	DB     *db_client.DB
 }
 
 type LoginRequest struct {
@@ -29,7 +29,7 @@ func (t *AuthRoute) login(c *gin.Context) {
 		return
 	}
 
-	user, err := t.DB.GetUserByIdentifier(c, req.Identifier)
+	user, err := t.DB.Queries.GetUserByIdentifier(c, req.Identifier)
 	if err != nil {
 		t.Logger.Error("user not found", zap.Error(err))
 		c.JSON(http.StatusBadRequest, gin.H{})

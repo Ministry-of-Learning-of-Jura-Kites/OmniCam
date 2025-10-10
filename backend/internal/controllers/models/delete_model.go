@@ -13,13 +13,14 @@ import (
 	"go.uber.org/zap"
 	config_env "omnicam.com/backend/config"
 	"omnicam.com/backend/internal"
+	db_client "omnicam.com/backend/pkg/db"
 	db_sqlc_gen "omnicam.com/backend/pkg/db/sqlc-gen"
 )
 
 type DeleteModelRoute struct {
 	Logger *zap.Logger
 	Env    *config_env.AppEnv
-	DB     *db_sqlc_gen.Queries
+	DB     *db_client.DB
 }
 
 func (t *DeleteModelRoute) delete(c *gin.Context) {
@@ -36,7 +37,7 @@ func (t *DeleteModelRoute) delete(c *gin.Context) {
 		return
 	}
 
-	model, err := t.DB.GetModelByID(c, db_sqlc_gen.GetModelByIDParams{
+	model, err := t.DB.Queries.GetModelByID(c, db_sqlc_gen.GetModelByIDParams{
 		ID: modelId,
 	})
 	if err != nil {
@@ -68,7 +69,7 @@ func (t *DeleteModelRoute) delete(c *gin.Context) {
 	deleteFile(model.FilePath)
 	deleteFile(model.ImagePath)
 
-	modelId, err = t.DB.DeleteModel(c, modelId)
+	modelId, err = t.DB.Queries.DeleteModel(c, modelId)
 	if err != nil {
 		t.Logger.Error("something wrong with DB deletion", zap.Error(err))
 		c.JSON(http.StatusInternalServerError, gin.H{})

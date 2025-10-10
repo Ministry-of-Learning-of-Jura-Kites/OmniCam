@@ -37,7 +37,7 @@ func (t *AuthRoute) register(c *gin.Context) {
 		return
 	}
 
-	user, err := t.DB.CreateUser(c, db_sqlc_gen.CreateUserParams{
+	user, err := t.DB.Queries.CreateUser(c, db_sqlc_gen.CreateUserParams{
 		FirstName: req.FirstName,
 		Email:     req.Email,
 		LastName:  req.LastName,

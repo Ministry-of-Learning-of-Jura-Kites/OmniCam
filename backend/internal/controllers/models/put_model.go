@@ -10,13 +10,15 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 	"go.uber.org/zap"
 	config_env "omnicam.com/backend/config"
+	db_client "omnicam.com/backend/pkg/db"
 	db_sqlc_gen "omnicam.com/backend/pkg/db/sqlc-gen"
+	messages_model_workspace "omnicam.com/backend/pkg/messages/model_workspace"
 )
 
 type PutModelRoute struct {
 	Logger *zap.Logger
 	Env    *config_env.AppEnv
-	DB     *db_sqlc_gen.Queries
+	DB     *db_client.DB
 }
 
 type UpdateModelRequest struct {
@@ -63,7 +65,7 @@ func (t *PutModelRoute) put(c *gin.Context) {
 		params.Description = pgtype.Text{Valid: false}
 	}
 
-	data, err := t.DB.UpdateModel(c, db_sqlc_gen.UpdateModelParams{
+	data, err := t.DB.Queries.UpdateModel(c, db_sqlc_gen.UpdateModelParams{
 		ID:          modelId,
 		Name:        params.Name,
 		Description: params.Description,
@@ -74,8 +76,8 @@ func (t *PutModelRoute) put(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"data": Model{
-		Id:          modelId,
+	c.JSON(http.StatusOK, gin.H{"data": messages_model_workspace.ModelWorkspace{
+		ModelId:     modelId,
 		ProjectId:   data.ProjectID,
 		Name:        data.Name,
 		Description: data.Description,

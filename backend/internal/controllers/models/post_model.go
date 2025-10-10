@@ -12,13 +12,15 @@ import (
 	"go.uber.org/zap"
 	config_env "omnicam.com/backend/config"
 	"omnicam.com/backend/internal"
+	db_client "omnicam.com/backend/pkg/db"
 	db_sqlc_gen "omnicam.com/backend/pkg/db/sqlc-gen"
+	messages_model_workspace "omnicam.com/backend/pkg/messages/model_workspace"
 )
 
 type PostModelRoutes struct {
 	Logger *zap.Logger
 	Env    *config_env.AppEnv
-	DB     *db_sqlc_gen.Queries
+	DB     *db_client.DB
 }
 
 type CreateModelRequest struct {
@@ -104,7 +106,7 @@ func (t *PostModelRoutes) post(c *gin.Context) {
 	}
 
 	// --- Insert into DB using web paths ---
-	data, err := t.DB.CreateModel(c, db_sqlc_gen.CreateModelParams{
+	data, err := t.DB.Queries.CreateModel(c, db_sqlc_gen.CreateModelParams{
 		ID:          modelId,
 		ProjectID:   projectId,
 		Name:        req.Name,
@@ -118,8 +120,8 @@ func (t *PostModelRoutes) post(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"data": Model{
-		Id:          data.ID,
+	c.JSON(http.StatusOK, gin.H{"data": messages_model_workspace.ModelWorkspace{
+		ModelId:     data.ID,
 		ProjectId:   data.ProjectID,
 		Name:        data.Name,
 		Description: data.Description,

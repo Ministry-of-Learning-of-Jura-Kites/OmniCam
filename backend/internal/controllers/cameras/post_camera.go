@@ -5,13 +5,13 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 	"go.uber.org/zap"
 	config_env "omnicam.com/backend/config"
-	db_sqlc_gen "omnicam.com/backend/pkg/db/sqlc-gen"
+	db_client "omnicam.com/backend/pkg/db"
 )
 
 type PostCameraRoute struct {
 	Logger *zap.Logger
 	Env    *config_env.AppEnv
-	DB     *db_sqlc_gen.Queries
+	DB     *db_client.DB
 }
 
 type CreateCameraRequest struct {

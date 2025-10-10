@@ -1,6 +1,6 @@
 -- name: DeleteProject :one
 DELETE FROM "project"
 WHERE
-  id = sqlc.arg (id)::UUID
+  id = SQLC.ARG(id)::UUID
 RETURNING
   id;

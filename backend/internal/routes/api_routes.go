@@ -17,19 +17,23 @@ import (
 	controller_projects "omnicam.com/backend/internal/controllers/projects"
 	"omnicam.com/backend/internal/controllers/users"
 	controller_workspaces "omnicam.com/backend/internal/controllers/workspaces"
-	db_sqlc_gen "omnicam.com/backend/pkg/db/sqlc-gen"
+	db_client "omnicam.com/backend/pkg/db"
 )
 
 type Dependencies struct {
 	Logger *zap.Logger
 	Env    *config_env.AppEnv
-	DB     *db_sqlc_gen.Queries
+	DB     *db_client.DB
 }
 
 func InitRoutes(deps Dependencies, router gin.IRouter) {
 	publicRoute := router.Group("/")
 	protectedRoute := router.Group("/")
-	protectedRoute.Use(middleware.AuthMiddleware(deps.Env))
+	authMiddleware := middleware.AuthMiddleware{
+		Env:    deps.Env,
+		Logger: deps.Logger,
+	}
+	protectedRoute.Use(authMiddleware.CreateHandler())
 
 	deleteProjectRoute := controller_projects.DeleteProjectRoute{
 		Logger: deps.Logger,
@@ -50,7 +54,7 @@ func InitRoutes(deps Dependencies, router gin.IRouter) {
 		Env:    deps.Env,
 		DB:     deps.DB,
 	}
-	postProjectRoute.InitCreateProjectRoute(publicRoute)
+	postProjectRoute.InitCreateProjectRoute(protectedRoute)
 
 	updateProjectRoute := controller_projects.PutProjectRoute{
 		Logger: deps.Logger,
@@ -71,7 +75,7 @@ func InitRoutes(deps Dependencies, router gin.IRouter) {
 		Env:    deps.Env,
 		DB:     deps.DB,
 	}
-	getModelRoute.InitGetModelRoute(publicRoute)
+	getModelRoute.InitGetModelRoute(protectedRoute)
 
 	putModelRoute := controller_model.PutModelRoute{
 		Logger: deps.Logger,
@@ -106,7 +110,7 @@ func InitRoutes(deps Dependencies, router gin.IRouter) {
 		Env:    deps.Env,
 		DB:     deps.DB,
 	}
-	workspaceRoute.InitRoute(publicRoute)
+	workspaceRoute.InitRoute(protectedRoute)
 
 	putImageModelRoute := controller_model.PutImageModelRoute{
 		Logger: deps.Logger,

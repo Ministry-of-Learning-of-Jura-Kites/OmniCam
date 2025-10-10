@@ -8,13 +8,21 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
+	"github.com/google/uuid"
+	"go.uber.org/zap"
 	config_env "omnicam.com/backend/config"
 	"omnicam.com/backend/internal/utils"
 )
 
-func AuthMiddleware(t *config_env.AppEnv) gin.HandlerFunc {
+type AuthMiddleware struct {
+	Env    *config_env.AppEnv
+	Logger *zap.Logger
+}
+
+func (t *AuthMiddleware) CreateHandler() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		tokenStr, err := c.Cookie("auth_token")
+
 		if err != nil {
 			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{
 				"error": "missing auth token",
@@ -27,7 +35,7 @@ func AuthMiddleware(t *config_env.AppEnv) gin.HandlerFunc {
 			if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
 				return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
 			}
-			return []byte(t.JWTSecret), nil
+			return []byte(t.Env.JWTSecret), nil
 		}
 
 		token, err := jwt.ParseWithClaims(tokenStr, claims, keyFunc, jwt.WithLeeway(5*time.Second))
@@ -45,6 +53,12 @@ func AuthMiddleware(t *config_env.AppEnv) gin.HandlerFunc {
 		}
 
 		username := claims.Username
+		userId, err := uuid.Parse(claims.UserID)
+		if err != nil {
+			t.Logger.Error("error while converting str id to uuid", zap.Error(err))
+			c.JSON(http.StatusInternalServerError, gin.H{})
+			return
+		}
 
 		if strings.TrimSpace(username) == "" {
 			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{
@@ -54,6 +68,7 @@ func AuthMiddleware(t *config_env.AppEnv) gin.HandlerFunc {
 		}
 
 		c.Set("username", username)
+		c.Set("userId", userId)
 
 		c.Next()
 	}

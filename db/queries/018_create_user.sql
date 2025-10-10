@@ -3,11 +3,11 @@ INSERT INTO
   "user" (email, first_name, last_name, username, password)
 VALUES
   (
-    sqlc.arg (email),
-    sqlc.arg (first_name),
-    sqlc.arg (last_name),
-    sqlc.arg (username),
-    sqlc.arg (password)
+    SQLC.ARG(email),
+    SQLC.ARG(first_name),
+    SQLC.ARG(last_name),
+    SQLC.ARG(username),
+    SQLC.ARG(password)
   )
 RETURNING
   id,
