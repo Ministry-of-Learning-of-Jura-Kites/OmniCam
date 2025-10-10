@@ -93,7 +93,7 @@ async function fetchUsers() {
     const selectedIds = Object.keys(selected);
     const merged = fetched.map((u) => {
       if (selectedIds.includes(u.id)) {
-        return selected[u.id]?.user;
+        return selected[u.id]!.user;
       }
       return u;
     });
@@ -180,7 +180,7 @@ function toggleUserSelection(u: UserItem, checked: boolean) {
 }
 
 function isChecked(u: UserItem) {
-  return !!selected[u.id];
+  return selected[u.id] != undefined;
 }
 
 function setUserRole(userId: string, role: SelectedEntry["role"]) {
@@ -283,8 +283,8 @@ onMounted(fetchUsers);
           variant="outline"
           size="sm"
           class="ml-2"
-          @click="applyGlobalRole"
           :disabled="selectedList.length === 0"
+          @click="applyGlobalRole"
         >
           Apply
         </Button>
@@ -308,7 +308,7 @@ onMounted(fetchUsers);
             >
               <div class="flex items-center gap-3">
                 <Checkbox
-                  :checked="isChecked(u)"
+                  :model-value="isChecked(u)"
                   @update:model-value="
                     (v) => toggleUserSelection(u, v === true)
                   "
@@ -326,11 +326,11 @@ onMounted(fetchUsers);
                       ? selected[u.id]?.role
                       : (u.role ?? 'collaborator')
                   "
-                  @update:model-value="
-                    (val: SelectedEntry['role']) => setUserRole(u.id, val)
-                  "
                   class="w-56"
                   :disabled="!isChecked(u)"
+                  @update:model-value="
+                    (val) => setUserRole(u.id, val as SelectedEntry['role'])
+                  "
                 >
                   <SelectTrigger>
                     <SelectValue />
@@ -356,8 +356,8 @@ onMounted(fetchUsers);
           <Button
             size="sm"
             variant="outline"
-            @click="goPage(page - 1)"
             :disabled="page <= 1"
+            @click="goPage(page - 1)"
           >
             Prev
           </Button>
@@ -379,8 +379,8 @@ onMounted(fetchUsers);
           <Button
             size="sm"
             variant="outline"
-            @click="goPage(page + 1)"
             :disabled="page >= totalPages"
+            @click="goPage(page + 1)"
           >
             Next
           </Button>
@@ -390,7 +390,7 @@ onMounted(fetchUsers);
       <DialogFooter class="mt-4">
         <div class="w-full flex justify-end gap-2">
           <Button variant="outline" @click="handleCancel">Cancel</Button>
-          <Button @click="handleConfirm" :disabled="selectedList.length === 0">
+          <Button :disabled="selectedList.length === 0" @click="handleConfirm">
             Add ({{ selectedList.length }})
           </Button>
         </div>
