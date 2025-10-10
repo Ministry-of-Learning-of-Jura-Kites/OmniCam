@@ -32,12 +32,17 @@ type CreateProjectRequest struct {
 func (t *PostProjectRoute) post(c *gin.Context) {
 	var req CreateProjectRequest
 
-	username := c.GetString("username")
-
-	user, err := t.DB.Queries.GetUserByIdentifier(c, username)
-
-	if err != nil {
-		c.JSON(http.StatusUnauthorized, gin.H{})
+	anyUserId, exists := c.Get("userId")
+	if !exists {
+		t.Logger.Error("Cannot find userId from AuthMiddleware")
+		c.JSON(http.StatusInternalServerError, gin.H{})
+		return
+	}
+	userId, ok := anyUserId.(uuid.UUID)
+	if !ok {
+		t.Logger.Error("Cannot cast userId to uuid.UUID")
+		c.JSON(http.StatusInternalServerError, gin.H{})
+		return
 	}
 
 	if err := c.ShouldBind(&req); err != nil {
@@ -102,7 +107,7 @@ func (t *PostProjectRoute) post(c *gin.Context) {
 	}
 
 	queries.AddUserToProject(c, db_sqlc_gen.AddUserToProjectParams{
-		UserID:    user.ID,
+		UserID:    userId,
 		ProjectID: projectID,
 		Role:      db_sqlc_gen.RoleOwner,
 	})

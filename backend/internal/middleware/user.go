@@ -22,7 +22,7 @@ type AuthMiddleware struct {
 func (t *AuthMiddleware) CreateHandler() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		tokenStr, err := c.Cookie("auth_token")
-		fmt.Println("token", tokenStr)
+
 		if err != nil {
 			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{
 				"error": "missing auth token",
