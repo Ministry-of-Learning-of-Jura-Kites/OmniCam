@@ -71,7 +71,7 @@ func InitRoutes(deps Dependencies, router gin.IRouter) {
 		Env:    deps.Env,
 		DB:     deps.DB,
 	}
-	getModelRoute.InitGetModelRoute(publicRoute)
+	getModelRoute.InitGetModelRoute(protectedRoute)
 
 	putModelRoute := controller_model.PutModelRoute{
 		Logger: deps.Logger,
@@ -106,7 +106,7 @@ func InitRoutes(deps Dependencies, router gin.IRouter) {
 		Env:    deps.Env,
 		DB:     deps.DB,
 	}
-	workspaceRoute.InitRoute(publicRoute)
+	workspaceRoute.InitRoute(protectedRoute)
 
 	putImageModelRoute := controller_model.PutImageModelRoute{
 		Logger: deps.Logger,

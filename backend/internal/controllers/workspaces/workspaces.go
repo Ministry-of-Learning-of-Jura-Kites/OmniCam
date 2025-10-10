@@ -14,6 +14,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/r3labs/diff/v3"
 	"go.uber.org/zap"
 	config_env "omnicam.com/backend/config"
@@ -391,16 +392,33 @@ func (t *WorkspaceRoute) postWorkspaceMe(c *gin.Context) {
 
 func (t *WorkspaceRoute) getWorkspaceMe(c *gin.Context) {
 	strModelId := c.Param("modelId")
-
-	decodedBytes, err := base64.RawURLEncoding.DecodeString(strModelId)
-	if err != nil {
-		t.Logger.Error("error decoding Base64", zap.Error(err))
-		return
-	}
-	modelId, err := uuid.FromBytes(decodedBytes)
+	modelId, err := utils.ParseUuidBase64(strModelId)
 	if err != nil {
 		t.Logger.Error("error while converting str id to uuid", zap.Error(err))
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid model ID"})
+		return
+	}
+
+	strProjectId := c.Param("projectId")
+	projectId, err := utils.ParseUuidBase64(strProjectId)
+	if err != nil {
+		t.Logger.Error("error while converting str id to uuid", zap.Error(err))
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid project ID"})
+		return
+	}
+
+	username := c.GetString("username")
+
+	userInfo, err := t.DB.GetUserOfProject(c, db_sqlc_gen.GetUserOfProjectParams{
+		Username: pgtype.Text{
+			String: username,
+			Valid:  true,
+		},
+		Projectid: *projectId,
+	})
+	if err != nil {
+		t.Logger.Error("user of project not found", zap.String("projectId", strProjectId), zap.String("username", username), zap.Error(err))
+		c.JSON(http.StatusNotFound, gin.H{})
 		return
 	}
 
@@ -408,8 +426,8 @@ func (t *WorkspaceRoute) getWorkspaceMe(c *gin.Context) {
 
 	data, err := t.DB.Queries.GetWorkspaceByID(c, db_sqlc_gen.GetWorkspaceByIDParams{
 		Fields:  includedFields,
-		UserID:  uuid.Nil,
-		ModelID: modelId,
+		UserID:  userInfo.ID,
+		ModelID: *modelId,
 	})
 	if err != nil {
 		t.Logger.Error("model not found", zap.Error(err))
@@ -428,7 +446,7 @@ func (t *WorkspaceRoute) getWorkspaceMe(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{"data": messages_model_workspace.ModelWorkspace{
-		ModelId:     modelId,
+		ModelId:     *modelId,
 		Name:        data.Model.Name,
 		Description: data.Model.Description,
 		ProjectId:   data.Model.ProjectID,
