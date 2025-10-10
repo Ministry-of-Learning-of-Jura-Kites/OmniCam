@@ -41,19 +41,25 @@ let modelWithCamsResp = useState<ModelWithCamsResp | undefined>(MODEL_INFO_KEY);
 const error = ref<unknown | undefined>(undefined);
 
 if (modelWithCamsResp.value == undefined) {
-  console.log("Undefined YAY", modelWithCamsResp.value);
+  // Support credentials for both server-side and client-side fetching
+  const headers = useRequestHeaders(["cookie"]);
+
   const { data: fetchedModelWithCamsResp, error: modelFetchError } =
     await useAsyncData("model_information", () =>
       $fetch<ModelWithCamsResp>(
         `http://${runtimeConfig.public.NUXT_PUBLIC_BACKEND_HOST}/api/v1/projects/${props.projectId}/models/${props.modelId}${workspaceSuffix}?${params.toString()}`,
+        {
+          headers: headers,
+          credentials: "include",
+        },
       ),
     );
 
   if (modelFetchError.value != undefined) {
     error.value = modelFetchError.value;
     showError({
-      statusCode: 404,
-      statusMessage: "Not Found",
+      statusCode: modelFetchError.value.statusCode,
+      statusMessage: modelFetchError.value.statusMessage,
       fatal: true,
     });
   }

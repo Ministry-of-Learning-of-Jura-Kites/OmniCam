@@ -40,7 +40,7 @@ func (t *GetModelRoute) getModelById(c *gin.Context) {
 		return
 	}
 
-	strProjectId := c.Param("modelId")
+	strProjectId := c.Param("projectId")
 	projectId, err := utils.ParseUuidBase64(strProjectId)
 	if err != nil {
 		t.Logger.Error("error while converting str id to uuid", zap.Error(err))
