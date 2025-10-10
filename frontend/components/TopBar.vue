@@ -26,7 +26,11 @@ import Tooltip from "./ui/tooltip/Tooltip.vue";
 import TooltipTrigger from "./ui/tooltip/TooltipTrigger.vue";
 import TooltipContent from "./ui/tooltip/TooltipContent.vue";
 import TooltipProvider from "./ui/tooltip/TooltipProvider.vue";
-import { MODEL_INFO_KEY } from "~/constants/state-keys";
+import {
+  IS_PANEL_OPEN_KEY,
+  MODEL_INFO_KEY,
+  TOGGLE_PANEL_KEY,
+} from "~/constants/state-keys";
 
 const props = defineProps({
   workspace: {
@@ -37,8 +41,8 @@ const props = defineProps({
 
 const sceneStates = inject(SCENE_STATES_KEY)!;
 
-const isPanelOpen = inject("isPanelOpen") as Ref<boolean>;
-const togglePanel = inject("togglePanel") as () => void;
+const isPanelOpen = inject(IS_PANEL_OPEN_KEY);
+const togglePanel = inject(TOGGLE_PANEL_KEY);
 
 const route = useRoute();
 

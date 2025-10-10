@@ -2,6 +2,7 @@
 import TopBar from "@/components/TopBar.vue";
 import CameraPanel from "@/components/CameraPanel.vue";
 import SceneStatesProvider from "~/components/3d/scene-states-provider/SceneStatesProvider.vue";
+import { IS_PANEL_OPEN_KEY, TOGGLE_PANEL_KEY } from "~/constants/state-keys";
 
 const route = useRoute();
 
@@ -17,17 +18,9 @@ function togglePanel() {
   slotWidth.value = isPanelOpen.value ? "calc(100% - 20rem)" : "100%";
 }
 
-provide("isPanelOpen", isPanelOpen);
-provide("togglePanel", togglePanel);
+provide(IS_PANEL_OPEN_KEY, isPanelOpen);
+provide(TOGGLE_PANEL_KEY, togglePanel);
 
-// const path = route.fullPath;
-
-// Check if it matches `/workspaces/<id>`
-// const regex = /workspaces\/([^/]+)\/?$/;
-// const m = path.match(regex);
-// const match = m ? m[1] : null;
-
-// const workspace = ref(match);
 const workspace = computed(() => route.meta.routeInfo?.workspace);
 </script>
 
