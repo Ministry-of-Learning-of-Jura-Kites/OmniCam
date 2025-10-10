@@ -12,6 +12,8 @@ export function useCameraManagement(sceneStates: SceneStates) {
       rotation: new THREE.Euler().copy(sceneStates.spectatorCameraRotation),
       isHidingArrows: false,
       isHidingWheels: false,
+      isLockingPosition: false,
+      isLockingRotation: false,
       controlling: undefined,
       fov: 60,
     };

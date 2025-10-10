@@ -14,15 +14,16 @@ import {
   ChevronLeft,
   ChevronDown,
   MapPinPlusInside,
+  LockKeyhole,
 } from "lucide-vue-next";
 import { SCENE_STATES_KEY } from "./3d/scene-states-provider/create-scene-states";
 
-const props = defineProps({
-  workspace: {
-    type: String,
-    default: null,
-  },
-});
+// const props = defineProps({
+//   workspace: {
+//     type: String,
+//     default: null,
+//   },
+// });
 
 const sceneStates = inject(SCENE_STATES_KEY)!;
 
@@ -53,6 +54,26 @@ const deleteCamera = (id: string) => {
   // eslint-disable-next-line @typescript-eslint/no-dynamic-delete
   delete sceneStates.cameras[id];
 };
+
+function onToggleLockPosition() {
+  const cam = sceneStates.cameras[selectedCamId.value!]!;
+
+  if (cam.isLockingPosition) {
+    cam.isHidingArrows = true;
+  } else {
+    cam.isHidingArrows = false;
+  }
+}
+
+function onToggleLockRotation() {
+  const cam = sceneStates.cameras[selectedCamId.value!]!;
+
+  if (cam.isLockingRotation) {
+    cam.isHidingWheels = true;
+  } else {
+    cam.isHidingWheels = false;
+  }
+}
 </script>
 
 <template>
@@ -70,7 +91,6 @@ const deleteCamera = (id: string) => {
       </Button> -->
       <Button
         size="sm"
-        :disabled="props.workspace == null"
         @click="
           spawnCamera();
           $event.currentTarget.blur();
@@ -112,7 +132,10 @@ const deleteCamera = (id: string) => {
     <Card v-if="selectedCamId && sceneStates.cameras[selectedCamId]">
       <CardHeader
         class="cursor-pointer flex items-center justify-between"
-        @click="isCameraPropertiesOpen = !isCameraPropertiesOpen"
+        @click="
+          isCameraPropertiesOpen = !isCameraPropertiesOpen;
+          sceneStates.markedForCheck.add(selectedCamId);
+        "
       >
         <CardTitle class="text-base flex items-center gap-2">
           <Settings class="h-4 w-4" />
@@ -129,7 +152,6 @@ const deleteCamera = (id: string) => {
           <Input
             id="camera-name"
             v-model="sceneStates.cameras[selectedCamId]!.name"
-            :disabled="props.workspace == null"
             @change="sceneStates.markedForCheck.add(selectedCamId)"
           />
         </div>
@@ -140,7 +162,11 @@ const deleteCamera = (id: string) => {
             <Input
               id="pos-x"
               v-model.number="sceneStates.cameras[selectedCamId]!.position.x"
-              :disabled="props.workspace == null"
+              :disabled="sceneStates.cameras[selectedCamId]!.isLockingPosition"
+              :class="{
+                'bg-gray-200 cursor-not-allowed':
+                  sceneStates.cameras[selectedCamId]!.isLockingPosition,
+              }"
               type="number"
               @change="sceneStates.markedForCheck.add(selectedCamId)"
             />
@@ -150,7 +176,11 @@ const deleteCamera = (id: string) => {
             <Input
               id="pos-y"
               v-model.number="sceneStates.cameras[selectedCamId]!.position.y"
-              :disabled="props.workspace == null"
+              :disabled="sceneStates.cameras[selectedCamId]!.isLockingPosition"
+              :class="{
+                'bg-gray-200 cursor-not-allowed':
+                  sceneStates.cameras[selectedCamId]!.isLockingPosition,
+              }"
               type="number"
               @change="sceneStates.markedForCheck.add(selectedCamId)"
             />
@@ -160,11 +190,25 @@ const deleteCamera = (id: string) => {
             <Input
               id="pos-z"
               v-model.number="sceneStates.cameras[selectedCamId]!.position.z"
-              :disabled="props.workspace == null"
+              :disabled="sceneStates.cameras[selectedCamId]!.isLockingPosition"
+              :class="{
+                'bg-gray-200 cursor-not-allowed':
+                  sceneStates.cameras[selectedCamId]!.isLockingPosition,
+              }"
               type="number"
               @change="sceneStates.markedForCheck.add(selectedCamId)"
             />
           </div>
+        </div>
+
+        <div class="flex items-center gap-2">
+          <input
+            id="lock-position"
+            v-model="sceneStates.cameras[selectedCamId]!.isLockingPosition"
+            type="checkbox"
+            @change="onToggleLockPosition"
+          />
+          <label for="lock-position">Lock Position</label>
         </div>
 
         <div class="grid grid-cols-3 gap-2">
@@ -175,7 +219,11 @@ const deleteCamera = (id: string) => {
             <Input
               id="angle-x"
               v-model.number="sceneStates.cameras[selectedCamId]!.rotation.x"
-              :disabled="props.workspace == null"
+              :disabled="sceneStates.cameras[selectedCamId]!.isLockingRotation"
+              :class="{
+                'bg-gray-200 cursor-not-allowed':
+                  sceneStates.cameras[selectedCamId]!.isLockingRotation,
+              }"
               type="number"
               @change="sceneStates.markedForCheck.add(selectedCamId)"
             />
@@ -187,7 +235,11 @@ const deleteCamera = (id: string) => {
             <Input
               id="angle-y"
               v-model.number="sceneStates.cameras[selectedCamId]!.rotation.y"
-              :disabled="props.workspace == null"
+              :disabled="sceneStates.cameras[selectedCamId]!.isLockingRotation"
+              :class="{
+                'bg-gray-200 cursor-not-allowed':
+                  sceneStates.cameras[selectedCamId]!.isLockingRotation,
+              }"
               type="number"
               @change="sceneStates.markedForCheck.add(selectedCamId)"
             />
@@ -199,11 +251,25 @@ const deleteCamera = (id: string) => {
             <Input
               id="angle-z"
               v-model.number="sceneStates.cameras[selectedCamId]!.rotation.z"
-              :disabled="props.workspace == null"
+              :disabled="sceneStates.cameras[selectedCamId]!.isLockingRotation"
+              :class="{
+                'bg-gray-200 cursor-not-allowed':
+                  sceneStates.cameras[selectedCamId]!.isLockingRotation,
+              }"
               type="number"
               @change="sceneStates.markedForCheck.add(selectedCamId)"
             />
           </div>
+        </div>
+
+        <div class="flex items-center gap-2">
+          <input
+            id="lock-rotation"
+            v-model="sceneStates.cameras[selectedCamId]!.isLockingRotation"
+            type="checkbox"
+            @change="onToggleLockRotation"
+          />
+          <label for="lock-rotation">Lock Rotation</label>
         </div>
 
         <div>
@@ -211,7 +277,6 @@ const deleteCamera = (id: string) => {
           <Input
             id="fov"
             v-model.number="sceneStates.cameras[selectedCamId]!.fov"
-            :disabled="props.workspace == null"
             type="number"
             min="10"
             max="180"
@@ -223,41 +288,70 @@ const deleteCamera = (id: string) => {
           <Button
             size="sm"
             variant="ghost"
+            :disabled="sceneStates.cameras[selectedCamId]!.isLockingPosition"
+            :class="{
+              'bg-gray-200 cursor-not-allowed':
+                sceneStates.cameras[selectedCamId]!.isLockingPosition,
+            }"
             @click="
               sceneStates.cameras[selectedCamId]!.isHidingArrows =
                 !sceneStates.cameras[selectedCamId]!.isHidingArrows;
               sceneStates.markedForCheck.add(selectedCamId);
             "
           >
-            <Eye
-              v-if="!sceneStates.cameras[selectedCamId]!.isHidingArrows"
-              class="h-3 w-3"
-            />
-            <EyeOff v-else class="h-3 w-3" />
+            <template
+              v-if="sceneStates.cameras[selectedCamId]!.isLockingPosition"
+            >
+              <LockKeyhole class="h-3 w-3" />
+            </template>
+
+            <template v-else>
+              <Eye
+                v-if="!sceneStates.cameras[selectedCamId]!.isHidingArrows"
+                class="h-3 w-3"
+              />
+              <EyeOff v-else class="h-3 w-3" />
+            </template>
             Arrows
           </Button>
 
           <Button
             size="sm"
             variant="ghost"
+            :disabled="sceneStates.cameras[selectedCamId]!.isLockingRotation"
+            :class="{
+              'bg-gray-200 cursor-not-allowed':
+                sceneStates.cameras[selectedCamId]!.isLockingRotation,
+            }"
             @click="
               sceneStates.cameras[selectedCamId]!.isHidingWheels =
                 !sceneStates.cameras[selectedCamId]!.isHidingWheels;
               sceneStates.markedForCheck.add(selectedCamId);
             "
           >
-            <Eye
-              v-if="!sceneStates.cameras[selectedCamId]!.isHidingWheels"
-              class="h-3 w-3"
-            />
-            <EyeOff v-else class="h-3 w-3" />
+            <template
+              v-if="sceneStates.cameras[selectedCamId]!.isLockingRotation"
+            >
+              <LockKeyhole class="h-3 w-3" />
+            </template>
+
+            <template v-else>
+              <Eye
+                v-if="!sceneStates.cameras[selectedCamId]!.isHidingWheels"
+                class="h-3 w-3"
+              />
+              <EyeOff v-else class="h-3 w-3" />
+            </template>
             Wheels
           </Button>
 
           <Button
             size="sm"
             variant="ghost"
-            @click="sceneStates.cameraManagement.switchToCam(selectedCamId)"
+            @click="
+              sceneStates.cameraManagement.switchToCam(selectedCamId);
+              sceneStates.markedForCheck.add(selectedCamId);
+            "
           >
             <Eye class="h-3 w-3" />
             Preview
@@ -266,7 +360,7 @@ const deleteCamera = (id: string) => {
           <Button
             size="sm"
             variant="ghost"
-            :disabled="!sceneStates.currentCamId || props.workspace == null"
+            :disabled="!sceneStates.currentCamId"
             @click="
               deleteCamera(selectedCamId);
               sceneStates.markedForCheck.add(selectedCamId);
@@ -276,8 +370,20 @@ const deleteCamera = (id: string) => {
             Delete
           </Button>
 
-          <Button size="sm" class="flex-1">
-            <Eye class="h-3 w-3 mr-2" />
+          <Button
+            size="sm"
+            class="flex-1"
+            @click="
+              sceneStates.cameras[selectedCamId]!.isHidingFrustum =
+                !sceneStates.cameras[selectedCamId]!.isHidingFrustum;
+              sceneStates.markedForCheck.add(selectedCamId);
+            "
+          >
+            <Eye
+              v-if="!sceneStates.cameras[selectedCamId]!.isHidingFrustum"
+              class="h-3 w-3"
+            />
+            <EyeOff v-else class="h-3 w-3" />
             Frustum
           </Button>
 
@@ -285,7 +391,19 @@ const deleteCamera = (id: string) => {
             size="sm"
             variant="outline"
             class="flex-1"
-            @click="moveCameraHere(selectedCamId!)"
+            :disabled="
+              sceneStates.cameras[selectedCamId]!.isLockingPosition ||
+              sceneStates.cameras[selectedCamId]!.isLockingRotation
+            "
+            :class="{
+              'bg-gray-200 cursor-not-allowed':
+                sceneStates.cameras[selectedCamId]!.isLockingPosition ||
+                sceneStates.cameras[selectedCamId]!.isLockingRotation,
+            }"
+            @click="
+              moveCameraHere(selectedCamId!);
+              sceneStates.markedForCheck.add(selectedCamId);
+            "
           >
             Move Here
           </Button>
@@ -314,7 +432,6 @@ input[type="number"] {
 }
 
 input {
-  width: 100%;
   border-radius: 5px;
   border: 1px solid black;
   outline: 1px solid white;

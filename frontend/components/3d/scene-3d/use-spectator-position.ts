@@ -59,11 +59,13 @@ export function useSpectatorPosition(sceneStates: SceneStates) {
       return;
     }
     const spectatorCamera = sceneStates.tresContext.value?.camera;
+    const camPreviewId = sceneStates.currentCamId.value;
+    const isLock = sceneStates.cameras[camPreviewId!]?.isLockingPosition;
     for (const [key, isDown] of Object.entries(isKeyDown) as [
       FunctionalityKey,
       boolean,
     ][]) {
-      if (!isDown) {
+      if (!isDown || isLock) {
         continue;
       }
       const forward = new THREE.Vector3();
@@ -73,6 +75,7 @@ export function useSpectatorPosition(sceneStates: SceneStates) {
       const right = new THREE.Vector3();
       right.crossVectors(forward, up).normalize();
       let deltaVec = new THREE.Vector3();
+
       switch (key) {
         case "KeyW":
           deltaVec = forward.multiplyScalar(

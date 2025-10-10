@@ -67,7 +67,7 @@ export class RotatingUserData implements IUserData {
 
   handlePointerUpEvent = (_event: PointerEvent) => {
     this.isDragging = false;
-    this.cam.controlling = null;
+    this.cam.controlling = undefined;
     document.removeEventListener("pointerup", this.handlePointerUpEvent);
     document.removeEventListener("pointermove", this.handlePointerMoveEvent);
   };
