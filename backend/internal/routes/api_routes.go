@@ -53,7 +53,6 @@ func InitRoutes(deps Dependencies, router gin.IRouter) {
 		Logger: deps.Logger,
 		Env:    deps.Env,
 		DB:     deps.DB,
-		DBConn: deps.DBConn,
 	}
 	postProjectRoute.InitCreateProjectRoute(protectedRoute)
 
