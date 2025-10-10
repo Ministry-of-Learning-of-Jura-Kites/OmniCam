@@ -1,6 +1,7 @@
 import type { TresContext } from "@tresjs/core";
 import type { ICamera } from "~/types/camera";
 import type { IUserData } from "~/types/obj-3d-user-data";
+import * as THREE from "three";
 
 export const ROTATING_TYPE = "rotation";
 
@@ -11,7 +12,8 @@ export class RotatingUserData implements IUserData {
 
   isDragging = false;
 
-  downAngle: number | undefined = undefined;
+  initialCamQuaternion = new THREE.Quaternion();
+  downAngle = 0;
 
   constructor(type: string, obj: ICamera, context: TresContext) {
     this.type = type as "x" | "y" | "z";
@@ -29,6 +31,12 @@ export class RotatingUserData implements IUserData {
     }
   }
 
+  private axisFromType(type: "x" | "y" | "z"): THREE.Vector3 {
+    if (type === "x") return new THREE.Vector3(1, 0, 0);
+    if (type === "y") return new THREE.Vector3(0, 1, 0);
+    return new THREE.Vector3(0, 0, 1);
+  }
+
   handlePointerDownEvent = (event: PointerEvent) => {
     this.isDragging = true;
     this.cam.controlling = {
@@ -38,17 +46,17 @@ export class RotatingUserData implements IUserData {
     document.addEventListener("pointermove", this.handlePointerMoveEvent);
     document.addEventListener("pointerup", this.handlePointerUpEvent);
 
-    const objNdc = this.cam.position.clone();
-    objNdc.project(this.context.camera.value!);
+    this.initialCamQuaternion.setFromEuler(this.cam.rotation);
 
     const ele = this.context.renderer.value.domElement;
     const rect = ele.getBoundingClientRect();
 
-    const scaledX = ((event.clientX - rect.left) / rect.width!) * 2 - 1;
-    const scaledY = -((event.clientY - rect.top) / rect.height!) * 2 + 1;
-
-    const downAngle = Math.atan2(scaledY - objNdc.y, scaledX - objNdc.x);
-    this.downAngle = downAngle;
+    const scaledX = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+    const scaledY = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+    const objNdc = this.cam.position
+      .clone()
+      .project(this.context.camera.value!);
+    this.downAngle = Math.atan2(scaledY - objNdc.y, scaledX - objNdc.x);
   };
 
   handlePointerMoveEvent = (event: PointerEvent) => {
@@ -58,11 +66,28 @@ export class RotatingUserData implements IUserData {
     const ele = this.context.renderer.value.domElement;
     const rect = ele.getBoundingClientRect();
 
-    const scaledX = ((event.clientX - rect.left) / rect.width!) * 2 - 1;
-    const scaledY = -((event.clientY - rect.top) / rect.height!) * 2 + 1;
+    const scaledX = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+    const scaledY = -((event.clientY - rect.top) / rect.height) * 2 + 1;
 
     const moveAngle = Math.atan2(scaledY - objNdc.y, scaledX - objNdc.x);
-    this.cam.rotation[this.type] = moveAngle + this.downAngle!;
+
+    const delta = moveAngle - this.downAngle!;
+
+    const cameraDirection = new THREE.Vector3();
+
+    this.context.camera.value!.getWorldDirection(cameraDirection);
+
+    // Clockwise/Anticlockwise depend on side of object looked from
+    const direction = -Math.sign(cameraDirection[this.type]);
+
+    const quaternion = this.initialCamQuaternion.clone();
+    const rotation = new THREE.Quaternion().setFromAxisAngle(
+      this.axisFromType(this.type).multiplyScalar(direction),
+      delta,
+    );
+    quaternion.premultiply(rotation);
+
+    this.cam.rotation.setFromQuaternion(quaternion);
   };
 
   handlePointerUpEvent = (_event: PointerEvent) => {
