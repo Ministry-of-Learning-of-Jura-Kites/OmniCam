@@ -12,7 +12,9 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
+	"github.com/jackc/pgerrcode"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/r3labs/diff/v3"
 	"go.uber.org/zap"
@@ -373,6 +375,11 @@ func (t *WorkspaceRoute) postWorkspaceMe(c *gin.Context) {
 	if err != nil {
 		t.Logger.Error("error while creating workspace", zap.Error(err))
 		if errors.Is(err, pgx.ErrNoRows) {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "workspace already exists"})
+			return
+		}
+		var e *pgconn.PgError
+		if errors.As(err, &e) && e.Code == pgerrcode.UniqueViolation {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "workspace already exists"})
 			return
 		}
