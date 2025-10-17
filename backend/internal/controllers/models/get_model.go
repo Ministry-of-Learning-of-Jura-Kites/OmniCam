@@ -1,7 +1,6 @@
 package controller_model
 
 import (
-	"encoding/base64"
 	"encoding/json"
 	"net/http"
 	"slices"
@@ -9,7 +8,6 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
 	"go.uber.org/zap"
 	config_env "omnicam.com/backend/config"
@@ -121,15 +119,9 @@ func (t *GetModelRoute) getModelById(c *gin.Context) {
 func (t *GetModelRoute) getAllModel(c *gin.Context) {
 	strProjectId := c.Param("projectId")
 
-	decodedBytes, err := base64.RawURLEncoding.DecodeString(strProjectId)
+	projectId, err := utils.ParseUuidBase64(strProjectId)
 	if err != nil {
-		t.Logger.Error("error decoding Base64", zap.Error(err))
-		return
-	}
-	projectId, err := uuid.FromBytes(decodedBytes)
-	if err != nil {
-		t.Logger.Error("error while converting str id to uuid", zap.Error(err))
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid model ID"})
+		c.JSON(http.StatusBadRequest, gin.H{})
 		return
 	}
 
@@ -148,7 +140,7 @@ func (t *GetModelRoute) getAllModel(c *gin.Context) {
 	offset := (page - 1) * pageSize
 	// column1 -> projectId column2 -> page size column3 -> offset (the data from desc (createBy))
 	data, err := t.DB.Queries.GetAllfdfModels(c, db_sqlc_gen.GetAllfdfModelsParams{
-		ProjectID:  projectId,
+		ProjectID:  *projectId,
 		PageSize:   int32(pageSize),
 		PageOffset: int32(offset),
 	})
@@ -158,7 +150,7 @@ func (t *GetModelRoute) getAllModel(c *gin.Context) {
 		return
 	}
 
-	dataCount, err := t.DB.Queries.CountModels(c, projectId)
+	dataCount, err := t.DB.Queries.CountModels(c, *projectId)
 	if err != nil {
 		t.Logger.Error("models not found or database error", zap.Error(err))
 		c.JSON(http.StatusNotFound, gin.H{})
