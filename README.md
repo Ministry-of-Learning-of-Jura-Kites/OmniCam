@@ -36,6 +36,10 @@ https://protobuf.dev/installation/
 go install google.golang.org/protobuf/cmd/protoc-gen-go@latest
 ```
 
+\*\* Make sure installed binaries from go is in PATH env
+
+To do this, add `export PATH="$PATH:$(go env GOBIN)"` to ~/.bashrc
+
 ## Env
 
 Create a file frontend/.env and backend/.env, you can see meaning of each env in .env.example
@@ -48,6 +52,8 @@ Create a file frontend/.env and backend/.env, you can see meaning of each env in
 
 ### Run on Save (pucelle.run-on-save)
 
+### Proto Formatter (zxh404.vscode-proto3)
+
 # Running
 
 Frontend Dev -> `npm run dev`
@@ -55,6 +61,12 @@ Frontend Dev -> `npm run dev`
 Swagger -> `npm run swagger`
 
 Backend -> `go ./backend/main.go`
+
+## After pulling
+
+- npm install
+
+- npm run sqlc && npm run proto
 
 # Database
 
