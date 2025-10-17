@@ -1,7 +1,6 @@
 package controller_model
 
 import (
-	"encoding/base64"
 	"net/http"
 	"os"
 	"path"
@@ -9,7 +8,6 @@ import (
 	"strings" // Import the strings package
 
 	"github.com/gin-gonic/gin"
-	"github.com/google/uuid"
 	"go.uber.org/zap"
 	config_env "omnicam.com/backend/config"
 	"omnicam.com/backend/internal"
@@ -25,13 +23,8 @@ type DeleteModelRoute struct {
 }
 
 func (t *DeleteModelRoute) delete(c *gin.Context) {
-	strId := c.Param("modelId")
-	decodedBytes, err := base64.RawURLEncoding.DecodeString(strId)
-	if err != nil {
-		t.Logger.Error("error decoding Base64", zap.Error(err))
-		return
-	}
-	modelId, err := uuid.FromBytes(decodedBytes)
+	strModelId := c.Param("modelId")
+	modelId, err := utils.ParseUuidBase64(strModelId)
 	if err != nil {
 		t.Logger.Error("error while converting str id to uuid", zap.Error(err))
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid model ID"})
@@ -42,7 +35,7 @@ func (t *DeleteModelRoute) delete(c *gin.Context) {
 	projectId, err := utils.ParseUuidBase64(strProjectId)
 	if err != nil {
 		t.Logger.Error("error while converting str id to uuid", zap.Error(err))
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid model ID"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid project ID"})
 		return
 	}
 
@@ -72,7 +65,7 @@ func (t *DeleteModelRoute) delete(c *gin.Context) {
 	}
 
 	model, err := t.DB.Queries.GetModelByID(c, db_sqlc_gen.GetModelByIDParams{
-		ID: modelId,
+		ID: *modelId,
 	})
 	if err != nil {
 		t.Logger.Error("failed to get model", zap.Error(err))
@@ -103,7 +96,7 @@ func (t *DeleteModelRoute) delete(c *gin.Context) {
 	deleteFile(model.FilePath)
 	deleteFile(model.ImagePath)
 
-	modelId, err = t.DB.Queries.DeleteModel(c, modelId)
+	_, err = t.DB.Queries.DeleteModel(c, *modelId)
 	if err != nil {
 		t.Logger.Error("something wrong with DB deletion", zap.Error(err))
 		c.JSON(http.StatusInternalServerError, gin.H{})

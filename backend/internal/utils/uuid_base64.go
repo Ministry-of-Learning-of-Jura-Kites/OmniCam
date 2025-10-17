@@ -32,3 +32,11 @@ func GetUuidFromCtx(c *gin.Context, key string) (uuid.UUID, error) {
 
 	return userId, nil
 }
+
+func UuidToBase64(id uuid.UUID) (string, error) {
+	strId, err := id.MarshalBinary()
+	if err != nil {
+		return "", err
+	}
+	return base64.RawURLEncoding.EncodeToString(strId), nil
+}
