@@ -20,12 +20,12 @@ type ProjectForm = { name: string; description: string; image: File | null };
 
 const formFields = {
   name: { type: "text" as const, required: true },
-  description: { type: "textarea" as const, required: true },
+  description: { type: "textarea" as const, required: false },
   image: { type: "file" as const, required: false },
 };
 const editFields = {
   name: { type: "text" as const, required: true },
-  description: { type: "textarea" as const, required: true },
+  description: { type: "textarea" as const, required: false },
 };
 
 const formTitles = {
