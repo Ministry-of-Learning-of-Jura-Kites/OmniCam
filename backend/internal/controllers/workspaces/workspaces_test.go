@@ -321,3 +321,127 @@ func TestMergeWorkspaceInvalidModelId(t *testing.T) {
 	require.Equal(t, http.StatusBadRequest, w.Code)
 	require.Contains(t, w.Body.String(), "invalid project ID")
 }
+
+// func TestWorkspaceEndpoints(t *testing.T) {
+// 	ctx := t.Context()
+
+// 	env := config_env.AppEnv{
+// 		JWTSecret:     "123",
+// 		JWTExpireTime: 168 * time.Hour,
+// 	}
+
+// 	foundDbName, conn, err, cleanup := testutils.GetTestDb(ctx)
+// 	if err != nil {
+// 		log.Fatalln(err)
+// 	}
+// 	defer cleanup()
+
+// 	dbName = foundDbName
+
+// 	query := db_sqlc_gen.New(conn)
+
+// 	testutils.TestDb.Queries = *query
+
+// 	db := &db_client.DB{
+// 		Queries: query,
+// 		Pool:    conn,
+// 	}
+
+// 	logger := logger.InitLogger()
+
+// 	router = gin.Default()
+// 	apiV1 := router.Group("/api/v1")
+// 	protectedRoute := apiV1.Group("/")
+// 	authMiddleware := middleware.AuthMiddleware{
+// 		Env:    &env,
+// 		Logger: logger,
+// 	}
+// 	protectedRoute.Use(authMiddleware.CreateHandler())
+
+// 	route := WorkspaceRoute{
+// 		Logger: logger,
+// 		Env:    &env,
+// 		DB:     db,
+// 	}
+
+// 	route.InitRoute(protectedRoute)
+
+// 	defer func() {
+// 		testutils.TestDb.Cleanup()
+// 	}()
+
+// 	// Add the user to project1 for tests requiring permissions
+// 	_, err = testutils.TestDb.Queries.AddUserToProject(t.Context(), db_sqlc_gen.AddUserToProjectParams{
+// 		UserID:    user.ID,
+// 		ProjectID: project1Id,
+// 		Role:      db_sqlc_gen.RoleCollaborator,
+// 	})
+// 	require.NoError(t, err)
+
+// 	type testCase struct {
+// 		name           string
+// 		method         string
+// 		url            string
+// 		expectedStatus int
+// 		expectedBody   string
+// 	}
+
+// 	project1Base64, _ := utils.UuidToBase64(project1Id)
+// 	project2Base64, _ := utils.UuidToBase64(project2Id)
+// 	model1Base64, _ := utils.UuidToBase64(model1Id)
+// 	model2Base64, _ := utils.UuidToBase64(model2Id)
+
+// 	tests := []testCase{
+// 		{
+// 			name:           "No workspace, no permission",
+// 			method:         "GET",
+// 			url:            fmt.Sprintf("/api/v1/projects/%s/models/%s/workspaces/me", project2Base64, model2Base64),
+// 			expectedStatus: http.StatusNotFound,
+// 		},
+// 		{
+// 			name:           "Create workspace successfully",
+// 			method:         "POST",
+// 			url:            fmt.Sprintf("/api/v1/projects/%s/models/%s/workspaces/me", project1Base64, model1Base64),
+// 			expectedStatus: http.StatusCreated,
+// 		},
+// 		{
+// 			name:           "Create workspace already exists",
+// 			method:         "POST",
+// 			url:            fmt.Sprintf("/api/v1/projects/%s/models/%s/workspaces/me", project1Base64, model1Base64),
+// 			expectedStatus: http.StatusBadRequest,
+// 			expectedBody:   "workspace already exists",
+// 		},
+// 		{
+// 			name:           "Merge workspace no changes",
+// 			method:         "POST",
+// 			url:            fmt.Sprintf("/api/v1/projects/%s/models/%s/workspaces/merge", project1Base64, model1Base64),
+// 			expectedStatus: http.StatusNotFound,
+// 		},
+// 		{
+// 			name:           "Merge workspace invalid model ID",
+// 			method:         "POST",
+// 			url:            fmt.Sprintf("/api/v1/projects/%s/models/!!!invalid/workspaces/merge", project1Base64),
+// 			expectedStatus: http.StatusBadRequest,
+// 			expectedBody:   "invalid project ID",
+// 		},
+// 	}
+
+// 	for _, tc := range tests {
+// 		t.Run(tc.name, func(t *testing.T) {
+// 			require.NoError(t, testutils.Truncate(t.Context(), dbName))
+// 			seedData(t.Context())
+
+// 			w := httptest.NewRecorder()
+// 			req, err := http.NewRequest(tc.method, tc.url, nil)
+// 			require.NoError(t, err)
+
+// 			req.AddCookie(&http.Cookie{Name: "auth_token", Value: token})
+// 			router.ServeHTTP(w, req)
+
+// 			require.Equal(t, tc.expectedStatus, w.Code)
+// 			if tc.expectedBody != "" {
+// 				require.Contains(t, w.Body.String(), tc.expectedBody)
+// 			}
+// 		})
+// 	}
+// }

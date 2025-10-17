@@ -23,6 +23,8 @@ import (
 	db_sqlc_gen "omnicam.com/backend/pkg/db/sqlc-gen"
 )
 
+// TODO: Change docker container logic to scripts wrapper of go test instead to gain more control
+
 var (
 	TestDb         *TestDbStruct
 	DbNames        = make(chan string, maxPoolSize)
