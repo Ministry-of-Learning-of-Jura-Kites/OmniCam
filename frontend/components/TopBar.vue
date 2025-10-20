@@ -264,5 +264,56 @@ async function createWorkspace() {
         </Button>
       </div>
     </div>
+
+    <!-- Scene Controls -->
+    <div class="flex items-center gap-2">
+      <Button size="sm" variant="outline">
+        <RotateCcw class="h-4 w-4 mr-2" />
+        Reset View
+      </Button>
+
+      <Button size="sm" variant="outline">
+        <Maximize class="h-4 w-4 mr-2" />
+        Fullscreen
+      </Button>
+
+      <div class="h-6 w-px bg-border mx-2" />
+
+      <Button size="sm" variant="outline">
+        <Save class="h-4 w-4 mr-2" />
+        Save
+      </Button>
+
+      <Button size="sm" variant="outline" @click="() => openFileDialog()">
+        <Upload class="h-4 w-4 mr-2" />
+        Import
+      </Button>
+
+      <Button
+        size="sm"
+        variant="outline"
+        @click="() => exportCamerasToJson(sceneStates.cameras)"
+      >
+        <Download class="h-4 w-4 mr-2" />
+        Export
+      </Button>
+
+      <Button size="sm" variant="outline" @click="() => togglePanel()">
+        <IndentIncrease class="h-4 w-4 mr-2" v-if="isPanelOpen" />
+        <IndentDecrease class="h-4 w-4 mr-2" v-if="!isPanelOpen" />
+        Panel
+      </Button>
+    </div>
+
+    <!-- User Actions -->
+    <div class="flex items-center gap-2">
+      <Button size="sm" variant="ghost">
+        <User class="h-4 w-4 mr-2" />
+        Profile
+      </Button>
+      <Button size="sm" variant="ghost">
+        <LogOut class="h-4 w-4" />
+      </Button>
+    </div>
   </TooltipProvider>
 </template>
