@@ -2,7 +2,6 @@ package controller_workspaces
 
 import (
 	"cmp"
-	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -13,7 +12,9 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
+	"github.com/jackc/pgerrcode"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/r3labs/diff/v3"
 	"go.uber.org/zap"
@@ -181,7 +182,7 @@ type ResolveRequest struct {
 // 		t.Logger.Error("error decoding Base64", zap.Error(err))
 // 		return
 // 	}
-// 	modelId, err := uuid.FromBytes(decodedBytes)
+// 	modelId, err := uuid.ParseBytes(decodedBytes)
 // 	if err != nil {
 // 		t.Logger.Error("error while converting str id to uuid", zap.Error(err))
 // 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid model ID"})
@@ -224,25 +225,25 @@ type ResolveRequest struct {
 // }
 
 func (t *WorkspaceRoute) postMergeWorkspace(c *gin.Context) {
-	strProjectId := c.Param("modelId")
-	userId := uuid.Nil
-
-	decodedBytes, err := base64.RawURLEncoding.DecodeString(strProjectId)
+	userId, err := utils.GetUuidFromCtx(c, "userId")
 	if err != nil {
-		t.Logger.Error("error decoding Base64", zap.Error(err))
+		t.Logger.Error("error while getting userId form", zap.Error(err))
+		c.JSON(http.StatusInternalServerError, gin.H{})
 		return
 	}
-	modelId, err := uuid.FromBytes(decodedBytes)
+
+	strModelId := c.Param("modelId")
+	modelId, err := utils.ParseUuidBase64(strModelId)
 	if err != nil {
 		t.Logger.Error("error while converting str id to uuid", zap.Error(err))
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid model ID"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid project ID"})
 		return
 	}
 
 	workspaceData, err := t.DB.Queries.GetWorkspaceByID(c, db_sqlc_gen.GetWorkspaceByIDParams{
 		Fields:  []string{"cameras", "base_cameras"},
 		UserID:  userId,
-		ModelID: modelId,
+		ModelID: *modelId,
 	})
 	if err != nil {
 		t.Logger.Error("model not found", zap.Error(err))
@@ -257,7 +258,7 @@ func (t *WorkspaceRoute) postMergeWorkspace(c *gin.Context) {
 
 	modelData, err := t.DB.Queries.GetModelByID(c, db_sqlc_gen.GetModelByIDParams{
 		Fields: []string{"cameras"},
-		ID:     modelId,
+		ID:     *modelId,
 	})
 	if err != nil {
 		t.Logger.Error("model not found", zap.Error(err))
@@ -270,7 +271,7 @@ func (t *WorkspaceRoute) postMergeWorkspace(c *gin.Context) {
 	case 0:
 		t.DB.Queries.UpdateModelCams(c, db_sqlc_gen.UpdateModelCamsParams{
 			Value:   workspaceData.Cameras,
-			ModelID: modelId,
+			ModelID: *modelId,
 		})
 		c.JSON(http.StatusOK, gin.H{})
 		return
@@ -309,7 +310,7 @@ func (t *WorkspaceRoute) postMergeWorkspace(c *gin.Context) {
 		if len(conflicts) == 0 {
 			base_version, err := t.DB.Queries.UpdateModelCams(c, db_sqlc_gen.UpdateModelCamsParams{
 				Value:   mergedEncoded,
-				ModelID: modelId,
+				ModelID: *modelId,
 			})
 
 			if err != nil {
@@ -323,7 +324,7 @@ func (t *WorkspaceRoute) postMergeWorkspace(c *gin.Context) {
 				BaseCameras: mergedEncoded,
 				BaseVersion: base_version,
 				UserID:      uuid.Nil,
-				ModelID:     modelId,
+				ModelID:     *modelId,
 			})
 
 			if err != nil {
@@ -374,6 +375,11 @@ func (t *WorkspaceRoute) postWorkspaceMe(c *gin.Context) {
 	if err != nil {
 		t.Logger.Error("error while creating workspace", zap.Error(err))
 		if errors.Is(err, pgx.ErrNoRows) {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "workspace already exists"})
+			return
+		}
+		var e *pgconn.PgError
+		if errors.As(err, &e) && e.Code == pgerrcode.UniqueViolation {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "workspace already exists"})
 			return
 		}

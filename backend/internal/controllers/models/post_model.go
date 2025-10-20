@@ -1,7 +1,6 @@
 package controller_model
 
 import (
-	"encoding/base64"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -12,6 +11,7 @@ import (
 	"go.uber.org/zap"
 	config_env "omnicam.com/backend/config"
 	"omnicam.com/backend/internal"
+	"omnicam.com/backend/internal/utils"
 	db_client "omnicam.com/backend/pkg/db"
 	db_sqlc_gen "omnicam.com/backend/pkg/db/sqlc-gen"
 	messages_model_workspace "omnicam.com/backend/pkg/messages/model_workspace"
@@ -31,16 +31,12 @@ type CreateModelRequest struct {
 func (t *PostModelRoutes) post(c *gin.Context) {
 	var req CreateModelRequest
 	modelId := uuid.New()
-	strId := c.Param("projectId")
-	decodedBytes, err := base64.RawURLEncoding.DecodeString(strId)
-	if err != nil {
-		t.Logger.Error("error decoding Base64", zap.Error(err))
-		return
-	}
-	projectId, err := uuid.FromBytes(decodedBytes)
+
+	strProjectId := c.Param("projectId")
+	projectId, err := utils.ParseUuidBase64(strProjectId)
 	if err != nil {
 		t.Logger.Error("error while converting str id to uuid", zap.Error(err))
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid project ID"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid model ID"})
 		return
 	}
 
@@ -108,7 +104,7 @@ func (t *PostModelRoutes) post(c *gin.Context) {
 	// --- Insert into DB using web paths ---
 	data, err := t.DB.Queries.CreateModel(c, db_sqlc_gen.CreateModelParams{
 		ID:          modelId,
-		ProjectID:   projectId,
+		ProjectID:   *projectId,
 		Name:        req.Name,
 		Description: req.Description,
 		FilePath:    webFilePath,  // web path

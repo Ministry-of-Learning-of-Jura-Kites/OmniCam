@@ -6,11 +6,11 @@ import (
 	"path/filepath"
 
 	"github.com/gin-gonic/gin"
-	"github.com/google/uuid"
 	"go.uber.org/zap"
 
 	config_env "omnicam.com/backend/config"
 	"omnicam.com/backend/internal"
+	"omnicam.com/backend/internal/utils"
 	db_client "omnicam.com/backend/pkg/db"
 	db_sqlc_gen "omnicam.com/backend/pkg/db/sqlc-gen"
 )
@@ -22,11 +22,36 @@ type PutImageProjectRoute struct {
 }
 
 func (t *PutImageProjectRoute) updateImage(c *gin.Context) {
-	projectIdStr := c.Param("projectId")
-	projectId, err := uuid.Parse(projectIdStr)
+	strProjectId := c.Param("projectId")
+	projectId, err := utils.ParseUuidBase64(strProjectId)
 	if err != nil {
-		t.Logger.Error("Invalid projectId", zap.String("projectId", projectIdStr), zap.Error(err))
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid project ID"})
+		t.Logger.Error("error while converting str id to uuid", zap.Error(err))
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid model ID"})
+		return
+	}
+
+	userId, err := utils.GetUuidFromCtx(c, "userId")
+	if err != nil {
+		t.Logger.Error("error while getting userId form", zap.Error(err))
+		c.JSON(http.StatusInternalServerError, gin.H{})
+		return
+	}
+
+	pgUserId, err := utils.UuidToPgUuid(userId)
+	if err != nil {
+		t.Logger.Error("Error while convert uuid to pgtype", zap.Error(err))
+		c.JSON(http.StatusInternalServerError, gin.H{})
+		return
+	}
+
+	// Check if user is in project
+	_, err = t.DB.Queries.GetUserOfProject(c, db_sqlc_gen.GetUserOfProjectParams{
+		UserID:    pgUserId,
+		Projectid: *projectId,
+	})
+	if err != nil {
+		t.Logger.Debug("user of project not found", zap.String("projectId", strProjectId), zap.String("userId", userId.String()), zap.Error(err))
+		c.JSON(http.StatusForbidden, gin.H{})
 		return
 	}
 
@@ -72,7 +97,7 @@ func (t *PutImageProjectRoute) updateImage(c *gin.Context) {
 	webImagePath := "/uploads/project/" + projectId.String() + "/image" + imageExt
 
 	_, err = t.DB.Queries.UpdateProjectImage(c, db_sqlc_gen.UpdateProjectImageParams{
-		ID:        projectId,
+		ID:        *projectId,
 		ImagePath: webImagePath,
 	})
 	if err != nil {

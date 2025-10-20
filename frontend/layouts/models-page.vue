@@ -45,7 +45,7 @@ const workspace = computed(() => route.meta.routeInfo?.workspace);
           class="h-full transition-all duration-300 overflow-hidden"
           :style="{ width: isPanelOpen ? '20rem' : '0' }"
         >
-          <CameraPanel />
+          <CameraPanel :workspace="workspace" />
         </div>
       </div>
     </SceneStatesProvider>

@@ -1,7 +1,6 @@
 package controller_projects
 
 import (
-	"encoding/base64"
 	"net/http"
 	"strconv"
 	"time"
@@ -10,6 +9,7 @@ import (
 	"github.com/google/uuid"
 	"go.uber.org/zap"
 	config_env "omnicam.com/backend/config"
+	"omnicam.com/backend/internal/utils"
 	db_client "omnicam.com/backend/pkg/db"
 	db_sqlc_gen "omnicam.com/backend/pkg/db/sqlc-gen"
 )
@@ -83,20 +83,14 @@ func (t *GetProjectRoute) getAll(c *gin.Context) {
 
 func (t *GetProjectRoute) getById(c *gin.Context) {
 	strId := c.Param("projectId")
-
-	decodedBytes, err := base64.RawURLEncoding.DecodeString(strId)
-	if err != nil {
-		t.Logger.Error("error decoding Base64", zap.Error(err))
-		return
-	}
-	id, err := uuid.FromBytes(decodedBytes)
+	id, err := utils.ParseUuidBase64(strId)
 	if err != nil {
 		t.Logger.Error("error while converting str id to uuid", zap.Error(err))
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid projectId"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid project ID"})
 		return
 	}
 
-	project, err := t.DB.Queries.GetProjectById(c, id)
+	project, err := t.DB.Queries.GetProjectById(c, *id)
 	if err != nil {
 		t.Logger.Error("project not found", zap.Error(err))
 		c.JSON(http.StatusNotFound, gin.H{})
@@ -104,7 +98,7 @@ func (t *GetProjectRoute) getById(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{"data": Project{
-		Id:          id,
+		Id:          *id,
 		Name:        project.Name,
 		Description: project.Description,
 		ImagePath:   project.ImagePath,

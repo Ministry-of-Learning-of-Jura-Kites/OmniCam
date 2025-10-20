@@ -1,15 +1,14 @@
 package controller_model
 
 import (
-	"encoding/base64"
 	"net/http"
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
 	"go.uber.org/zap"
 	config_env "omnicam.com/backend/config"
+	"omnicam.com/backend/internal/utils"
 	db_client "omnicam.com/backend/pkg/db"
 	db_sqlc_gen "omnicam.com/backend/pkg/db/sqlc-gen"
 	messages_model_workspace "omnicam.com/backend/pkg/messages/model_workspace"
@@ -27,17 +26,44 @@ type UpdateModelRequest struct {
 }
 
 func (t *PutModelRoute) put(c *gin.Context) {
-	strId := c.Param("modelId")
-
-	decodedBytes, err := base64.RawURLEncoding.DecodeString(strId)
-	if err != nil {
-		t.Logger.Error("error decoding Base64", zap.Error(err))
-		return
-	}
-	modelId, err := uuid.FromBytes(decodedBytes)
+	strModelId := c.Param("modelId")
+	modelId, err := utils.ParseUuidBase64(strModelId)
 	if err != nil {
 		t.Logger.Error("error while converting str id to uuid", zap.Error(err))
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid model ID"})
+		return
+	}
+
+	strProjectId := c.Param("projectId")
+	projectId, err := utils.ParseUuidBase64(strProjectId)
+	if err != nil {
+		t.Logger.Error("error while converting str id to uuid", zap.Error(err))
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid model ID"})
+		return
+	}
+
+	userId, err := utils.GetUuidFromCtx(c, "userId")
+	if err != nil {
+		t.Logger.Error("error while getting userId form", zap.Error(err))
+		c.JSON(http.StatusInternalServerError, gin.H{})
+		return
+	}
+
+	pgUserId, err := utils.UuidToPgUuid(userId)
+	if err != nil {
+		t.Logger.Error("Error while convert uuid to pgtype", zap.Error(err))
+		c.JSON(http.StatusInternalServerError, gin.H{})
+		return
+	}
+
+	// Check if user is in project
+	_, err = t.DB.Queries.GetUserOfProject(c, db_sqlc_gen.GetUserOfProjectParams{
+		UserID:    pgUserId,
+		Projectid: *projectId,
+	})
+	if err != nil {
+		t.Logger.Debug("user of project not found", zap.String("projectId", strProjectId), zap.String("userId", userId.String()), zap.Error(err))
+		c.JSON(http.StatusForbidden, gin.H{})
 		return
 	}
 
@@ -50,7 +76,7 @@ func (t *PutModelRoute) put(c *gin.Context) {
 	}
 
 	params := db_sqlc_gen.UpdateModelParams{
-		ID: modelId,
+		ID: *modelId,
 	}
 
 	if req.Name != nil {
@@ -65,11 +91,7 @@ func (t *PutModelRoute) put(c *gin.Context) {
 		params.Description = pgtype.Text{Valid: false}
 	}
 
-	data, err := t.DB.Queries.UpdateModel(c, db_sqlc_gen.UpdateModelParams{
-		ID:          modelId,
-		Name:        params.Name,
-		Description: params.Description,
-	})
+	data, err := t.DB.Queries.UpdateModel(c, params)
 	if err != nil {
 		t.Logger.Error("error while updating project", zap.Error(err))
 		c.JSON(http.StatusInternalServerError, gin.H{})
@@ -77,7 +99,7 @@ func (t *PutModelRoute) put(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{"data": messages_model_workspace.ModelWorkspace{
-		ModelId:     modelId,
+		ModelId:     *modelId,
 		ProjectId:   data.ProjectID,
 		Name:        data.Name,
 		Description: data.Description,
