@@ -18,12 +18,12 @@ import {
 } from "lucide-vue-next";
 import { SCENE_STATES_KEY } from "./3d/scene-states-provider/create-scene-states";
 
-// const props = defineProps({
-//   workspace: {
-//     type: String,
-//     default: null,
-//   },
-// });
+const props = defineProps({
+  workspace: {
+    type: String,
+    default: null,
+  },
+});
 
 const sceneStates = inject(SCENE_STATES_KEY)!;
 
@@ -91,6 +91,7 @@ function onToggleLockRotation() {
       </Button> -->
       <Button
         size="sm"
+        :disabled="props.workspace == null"
         @click="
           spawnCamera();
           $event.currentTarget.blur();
