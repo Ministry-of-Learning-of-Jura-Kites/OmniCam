@@ -7,7 +7,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"log"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -17,6 +16,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
+	"go.uber.org/zap"
 	config_env "omnicam.com/backend/config"
 	"omnicam.com/backend/internal/middleware"
 	"omnicam.com/backend/internal/testutils"
@@ -30,6 +30,8 @@ import (
 
 var router *gin.Engine
 
+var Db *db_client.DB
+
 var user db_sqlc_gen.CreateUserRow
 var project1Id uuid.UUID
 var project2Id uuid.UUID
@@ -38,13 +40,15 @@ var model2Id uuid.UUID
 var token string
 var dbName string
 
-func seedData(ctx context.Context) {
+var testLogger = logger.InitLogger(true)
+
+func seedData(ctx context.Context) error {
 	hashedPassword, err := utils.HashPassword("test123")
 	if err != nil {
-		log.Fatalln(err)
+		return err
 	}
 
-	user, err = testutils.TestDb.Queries.CreateUser(ctx, db_sqlc_gen.CreateUserParams{
+	user, err = Db.Queries.CreateUser(ctx, db_sqlc_gen.CreateUserParams{
 		Email:     "test@example.com",
 		FirstName: "test",
 		LastName:  "naja",
@@ -52,33 +56,33 @@ func seedData(ctx context.Context) {
 		Password:  []byte(hashedPassword),
 	})
 	if err != nil {
-		log.Fatalln(err)
+		return err
 	}
 
 	project1Id = uuid.New()
-	_, err = testutils.TestDb.Queries.CreateProject(ctx, db_sqlc_gen.CreateProjectParams{
+	_, err = Db.Queries.CreateProject(ctx, db_sqlc_gen.CreateProjectParams{
 		ID:          project1Id,
 		Name:        "project 1",
 		Description: "",
 		ImagePath:   "",
 	})
 	if err != nil {
-		log.Fatalln(err)
+		return err
 	}
 
 	project2Id = uuid.New()
-	_, err = testutils.TestDb.Queries.CreateProject(ctx, db_sqlc_gen.CreateProjectParams{
+	_, err = Db.Queries.CreateProject(ctx, db_sqlc_gen.CreateProjectParams{
 		ID:          project2Id,
 		Name:        "project 2",
 		Description: "",
 		ImagePath:   "",
 	})
 	if err != nil {
-		log.Fatalln(err)
+		return err
 	}
 
 	model1Id = uuid.New()
-	_, err = testutils.TestDb.Queries.CreateModel(ctx, db_sqlc_gen.CreateModelParams{
+	_, err = Db.Queries.CreateModel(ctx, db_sqlc_gen.CreateModelParams{
 		ID:          model1Id,
 		ProjectID:   project1Id,
 		Name:        "model 1",
@@ -87,11 +91,11 @@ func seedData(ctx context.Context) {
 		ImagePath:   "",
 	})
 	if err != nil {
-		log.Fatalln(err)
+		return err
 	}
 
 	model2Id = uuid.New()
-	_, err = testutils.TestDb.Queries.CreateModel(ctx, db_sqlc_gen.CreateModelParams{
+	_, err = Db.Queries.CreateModel(ctx, db_sqlc_gen.CreateModelParams{
 		ID:          model2Id,
 		ProjectID:   project2Id,
 		Name:        "model 2",
@@ -100,27 +104,27 @@ func seedData(ctx context.Context) {
 		ImagePath:   "",
 	})
 	if err != nil {
-		log.Fatalln(err)
+		return err
 	}
 
 	token, err = utils.GenerateJWT(user.FirstName, user.LastName, user.ID.String(), user.Username, "123", 168*time.Second)
 	if err != nil {
-		log.Fatalln(err)
+		return err
 	}
+	return nil
 }
 
 func TestMain(m *testing.M) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	env := config_env.AppEnv{
-		JWTSecret:     "123",
-		JWTExpireTime: 168 * time.Hour,
-	}
+	env := config_env.InitAppEnv(testLogger)
+	env.JWTSecret = "123"
+	env.JWTExpireTime = 168 * time.Hour
 
-	foundDbName, conn, err, cleanup := testutils.GetTestDb(ctx)
+	foundDbName, conn, err, cleanup := testutils.GetTestDb(ctx, env)
 	if err != nil {
-		log.Fatalln(err)
+		testLogger.Fatal("failed to allocate test db", zap.Error(err))
 	}
 	defer cleanup()
 
@@ -128,38 +132,34 @@ func TestMain(m *testing.M) {
 
 	query := db_sqlc_gen.New(conn)
 
-	testutils.TestDb.Queries = *query
-
-	db := &db_client.DB{
+	Db = &db_client.DB{
 		Queries: query,
 		Pool:    conn,
 	}
-
-	logger := logger.InitLogger()
 
 	router = gin.Default()
 	apiV1 := router.Group("/api/v1")
 	protectedRoute := apiV1.Group("/")
 	authMiddleware := middleware.AuthMiddleware{
-		Env:    &env,
-		Logger: logger,
+		Env:    env,
+		Logger: testLogger,
 	}
 	protectedRoute.Use(authMiddleware.CreateHandler())
 
 	route := WorkspaceRoute{
-		Logger: logger,
-		Env:    &env,
-		DB:     db,
+		Logger: testLogger,
+		Env:    env,
+		DB:     Db,
 	}
 
 	route.InitRoute(protectedRoute)
 
 	exitCode := m.Run()
 
-	defer func() {
-		testutils.TestDb.Cleanup()
-		os.Exit(exitCode)
-	}()
+	cancel()
+	cleanup()
+
+	os.Exit(exitCode)
 }
 
 func TestNoWorkspaceNoPermission(t *testing.T) {
@@ -199,7 +199,7 @@ func TestCreateAndGetWorkspace(t *testing.T) {
 	require.NoError(t, err)
 
 	// Add the user to the project, since getWorkspaceMe requires permission
-	_, err = testutils.TestDb.Queries.AddUserToProject(t.Context(), db_sqlc_gen.AddUserToProjectParams{
+	_, err = Db.Queries.AddUserToProject(t.Context(), db_sqlc_gen.AddUserToProjectParams{
 		UserID:    user.ID,
 		ProjectID: project1Id,
 		Role:      db_sqlc_gen.RoleCollaborator,
@@ -332,7 +332,7 @@ func TestMergeWorkspaceInvalidModelId(t *testing.T) {
 
 // 	foundDbName, conn, err, cleanup := testutils.GetTestDb(ctx)
 // 	if err != nil {
-// 		log.Fatalln(err)
+// 		logger.Fatal(err)
 // 	}
 // 	defer cleanup()
 
@@ -340,7 +340,7 @@ func TestMergeWorkspaceInvalidModelId(t *testing.T) {
 
 // 	query := db_sqlc_gen.New(conn)
 
-// 	testutils.TestDb.Queries = *query
+// 	Db.Queries = *query
 
 // 	db := &db_client.DB{
 // 		Queries: query,
@@ -371,7 +371,7 @@ func TestMergeWorkspaceInvalidModelId(t *testing.T) {
 // 	}()
 
 // 	// Add the user to project1 for tests requiring permissions
-// 	_, err = testutils.TestDb.Queries.AddUserToProject(t.Context(), db_sqlc_gen.AddUserToProjectParams{
+// 	_, err = Db.Queries.AddUserToProject(t.Context(), db_sqlc_gen.AddUserToProjectParams{
 // 		UserID:    user.ID,
 // 		ProjectID: project1Id,
 // 		Role:      db_sqlc_gen.RoleCollaborator,

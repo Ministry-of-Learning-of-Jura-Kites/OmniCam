@@ -15,7 +15,7 @@ import (
 func main() {
 	utils.RegisterCustomValidations()
 
-	logger := logger.InitLogger()
+	logger := logger.InitLogger(false)
 	defer logger.Sync()
 
 	env := config_env.InitAppEnv(logger)

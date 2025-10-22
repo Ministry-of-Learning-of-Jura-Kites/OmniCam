@@ -6,164 +6,60 @@ package testutils
 import (
 	"context"
 	"fmt"
-	"io"
 	"log"
-	"path/filepath"
+	"net/url"
+	"strings"
 	"sync"
 
-	"github.com/docker/go-connections/nat"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
-	"github.com/testcontainers/testcontainers-go/network"
-	"github.com/testcontainers/testcontainers-go/wait"
 
-	tc "github.com/testcontainers/testcontainers-go"
-	"omnicam.com/backend/internal"
+	"omnicam.com/backend/config"
 	db_sqlc_gen "omnicam.com/backend/pkg/db/sqlc-gen"
+	"omnicam.com/backend/pkg/logger"
 )
 
 // TODO: Change docker container logic to scripts wrapper of go test instead to gain more control
 
 var (
-	TestDb         *TestDbStruct
+	// TestDb         *TestDbStruct
 	DbNames        = make(chan string, maxPoolSize)
 	DbPools        = map[string]*pgxpool.Pool{}
 	LockTemplateDb sync.Mutex
-	initOnce       sync.Once
 	currentCount   = 0
 	maxPoolSize    = 5
+	initOnce       sync.Once
 )
 
 type TestDbStruct struct {
-	DSN      string
-	Queries  db_sqlc_gen.Queries
-	pool     *pgxpool.Pool
-	Cleanup  func()
-	Host     string
-	Port     string
-	User     string
-	Password string
-	Database string
+	Queries *db_sqlc_gen.Queries
+	pool    *pgxpool.Pool
+	Cleanup func()
 }
 
-func startTestDB(ctx context.Context) (*TestDbStruct, error) {
-	net, err := network.New(ctx)
+func changeDatabase(dbURL string, newDB string) (string, error) {
+	// Parse the URL
+	u, err := url.Parse(dbURL)
 	if err != nil {
-		return nil, err
+		return "", fmt.Errorf("failed to parse URL: %w", err)
 	}
 
-	container, err := tc.Run(ctx, "postgres:17",
-		tc.WithExposedPorts("5432/tcp"),
-		tc.WithEnv(map[string]string{
-			"POSTGRES_USER":     "postgres",
-			"POSTGRES_PASSWORD": "password",
-			"POSTGRES_DB":       "omnicam",
-		}),
-		network.WithNetwork([]string{"db"}, net),
-		tc.WithWaitStrategy(wait.ForSQL("5432/tcp", "pgx", func(host string, port nat.Port) string {
-			return fmt.Sprintf("postgres://postgres:password@%s:%s/omnicam?sslmode=disable", host, port.Port())
-		})),
-	)
-	if err != nil {
-		return nil, fmt.Errorf("failed to start postgres container: %w", err)
+	// The database name is typically the "path" component (e.g. /mydb)
+	path := strings.TrimPrefix(u.Path, "/")
+	if path == "" {
+		return "", fmt.Errorf("no database name found in URL")
 	}
 
-	host, err := container.Host(ctx)
-	if err != nil {
-		return nil, err
-	}
+	// Replace it with the new database
+	u.Path = "/" + newDB
 
-	mappedPort, err := container.MappedPort(ctx, "5432/tcp")
-	if err != nil {
-		return nil, err
-	}
-
-	// Build DSN
-	inNetDsn := "postgres://postgres:password@db:5432/omnicam?sslmode=disable"
-
-	dsn := fmt.Sprintf("postgres://postgres:password@%s:%s/omnicam?sslmode=disable", host, mappedPort.Port())
-
-	// Wait for readiness (already ensured by wait.ForSQL)
-	log.Printf("Postgres started\nDSN in network: %s\nDSN: %s", inNetDsn, dsn)
-
-	// ---- Run migrations (using migrate CLI image) ----
-	migrationsPath := filepath.Join(internal.Root, "db", "migrations")
-	migrateCon, err := tc.Run(
-		ctx,
-		"migrate/migrate",
-		network.WithNetwork([]string{"migrate"}, net),
-		tc.WithFiles(tc.ContainerFile{
-			HostFilePath:      migrationsPath,
-			ContainerFilePath: "/migrations",
-			FileMode:          0o644,
-		}),
-		tc.WithCmdArgs(
-			"-path",
-			"/migrations",
-			"-database",
-			inNetDsn,
-			"up",
-		),
-		tc.WithWaitStrategy(wait.ForExit()),
-	)
-	if err != nil {
-		container.Terminate(ctx)
-		return nil, fmt.Errorf("failed to start migration container: %w", err)
-	}
-
-	state, err := migrateCon.State(ctx)
-	if err != nil {
-		log.Fatalf("failed to get container state: %v", err)
-	}
-
-	if state.ExitCode != 0 {
-		logsReader, _ := migrateCon.Logs(ctx)
-		defer logsReader.Close()
-
-		rawLog, _ := io.ReadAll(logsReader)
-		return nil, fmt.Errorf("error while running migration container\n Logs:%s", string(rawLog))
-	}
-	log.Printf("Finished migrating db")
-
-	adminConn, err := pgx.Connect(ctx, dsn)
-	if err != nil {
-		log.Fatalf("connect admin: %v", err)
-	}
-	defer adminConn.Close(ctx)
-
-	_, err = adminConn.Exec(ctx, `ALTER DATABASE omnicam WITH IS_TEMPLATE TRUE;`)
-	if err != nil {
-		log.Fatalf("create database: %v", err)
-	}
-
-	return &TestDbStruct{
-		DSN:  dsn,
-		Host: host,
-		Port: mappedPort.Port(),
-		Cleanup: func() {
-			if err := container.Terminate(ctx); err != nil {
-				log.Printf("failed to terminate container: %v", err)
-			}
-
-			if err := net.Remove(ctx); err != nil {
-				log.Printf("failed to remove network: %s", err)
-			}
-		},
-	}, nil
+	return u.String(), nil
 }
 
-func GetTestDb(ctx context.Context) (string, *pgxpool.Pool, error, func()) {
-	initOnce.Do(func() {
-		ctx := context.Background()
-
-		testDb, err := startTestDB(ctx)
-		if err != nil {
-			log.Fatalln(err)
-		}
-
-		TestDb = testDb
-	})
+func GetTestDb(ctx context.Context, env *config.AppEnv) (string, *pgxpool.Pool, error, func()) {
+	logger := logger.InitLogger(true)
+	defer logger.Sync()
 
 	// Allocate 1 db
 	var dbName string
@@ -175,22 +71,28 @@ func GetTestDb(ctx context.Context) (string, *pgxpool.Pool, error, func()) {
 			id, _ := uuid.NewUUID()
 			dbName := fmt.Sprintf("omnicam_%s", id.String())
 
-			adminConn, err := pgx.Connect(ctx, TestDb.DSN)
+			log.Printf("Creating new DB %s", dbName)
+
+			adminConn, err := pgx.Connect(ctx, env.DatabaseUrl)
 			if err != nil {
 				LockTemplateDb.Unlock()
-				return "", nil, fmt.Errorf("connect admin: %w", err), nil
+				return "", nil, fmt.Errorf("connect admin with url %s failed: %w", env.DatabaseUrl, err), nil
 			}
 			_, err = adminConn.Exec(ctx, fmt.Sprintf(`CREATE DATABASE "%s" WITH TEMPLATE omnicam OWNER postgres;`, dbName))
 			adminConn.Close(ctx)
 			if err != nil {
 				LockTemplateDb.Unlock()
-				return "", nil, fmt.Errorf("create database: %w", err), nil
+				return "", nil, fmt.Errorf("create database %s failed: %w", dbName, err), nil
 			}
 
 			currentCount++
 			LockTemplateDb.Unlock()
 
-			cfg, err := pgxpool.ParseConfig(TestDb.DSN)
+			dbUrl, err := changeDatabase(env.DatabaseUrl, dbName)
+			if err != nil {
+				return "", nil, err, nil
+			}
+			cfg, err := pgxpool.ParseConfig(dbUrl)
 			if err != nil {
 				return "", nil, err, nil
 			}
