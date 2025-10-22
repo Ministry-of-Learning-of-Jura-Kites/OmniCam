@@ -46,7 +46,7 @@
     "editor.formatOnSave": true
   },
   "code-runner.executorMapByGlob": {
-    "*_test.go": "go run tools/backend_test/main.go --args -tags=unit_test $dir"
+    "*_test.go": "go run tools/backend_test/main.go -- $fullFileName --args -tags=unit_test"
   },
   "go.buildTags": "unit_test"
 }

@@ -6,14 +6,16 @@ package testutils
 import (
 	"context"
 	"fmt"
-	"log"
 	"net/url"
 	"strings"
 	"sync"
+	"testing"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"go.uber.org/zap"
 
 	"omnicam.com/backend/config"
 	db_sqlc_gen "omnicam.com/backend/pkg/db/sqlc-gen"
@@ -57,7 +59,17 @@ func changeDatabase(dbURL string, newDB string) (string, error) {
 	return u.String(), nil
 }
 
-func GetTestDb(ctx context.Context, env *config.AppEnv) (string, *pgxpool.Pool, error, func()) {
+func getCleanupFunc(ctx context.Context, dbName string, logger *zap.Logger) func(t *testing.T) {
+	return func(t *testing.T) {
+		if err := Truncate(ctx, dbName, logger); err != nil {
+			t.Errorf("cleanup failed for DB %s: %v", dbName, err)
+		} else {
+			DbNames <- dbName
+		}
+	}
+}
+
+func GetTestDb(ctx context.Context, env *config.AppEnv) (string, *pgxpool.Pool, error, func(t *testing.T)) {
 	logger := logger.InitLogger(true)
 	defer logger.Sync()
 
@@ -71,12 +83,18 @@ func GetTestDb(ctx context.Context, env *config.AppEnv) (string, *pgxpool.Pool, 
 			id, _ := uuid.NewUUID()
 			dbName := fmt.Sprintf("omnicam_%s", id.String())
 
-			log.Printf("Creating new DB %s", dbName)
+			logger.Info("Creating new DB", zap.String("dbName", dbName))
 
-			adminConn, err := pgx.Connect(ctx, env.DatabaseUrl)
-			if err != nil {
-				LockTemplateDb.Unlock()
-				return "", nil, fmt.Errorf("connect admin with url %s failed: %w", env.DatabaseUrl, err), nil
+			var adminConn *pgx.Conn
+			var err error
+			for adminConn == nil {
+				adminConn, err = pgx.Connect(ctx, env.DatabaseUrl)
+				if err != nil {
+					LockTemplateDb.Unlock()
+					return "", nil, fmt.Errorf("connect admin with url %s failed: %w", env.DatabaseUrl, err), nil
+				}
+				// Use polling for now
+				time.Sleep(10 * time.Microsecond)
 			}
 			_, err = adminConn.Exec(ctx, fmt.Sprintf(`CREATE DATABASE "%s" WITH TEMPLATE omnicam OWNER postgres;`, dbName))
 			adminConn.Close(ctx)
@@ -103,9 +121,7 @@ func GetTestDb(ctx context.Context, env *config.AppEnv) (string, *pgxpool.Pool, 
 				return "", nil, err, nil
 			}
 			DbPools[dbName] = conn
-			return dbName, conn, nil, func() {
-				DbNames <- dbName
-			}
+			return dbName, conn, nil, getCleanupFunc(ctx, dbName, logger)
 		} else {
 			// Wait for an available DB from the pool
 			LockTemplateDb.Unlock()
@@ -113,9 +129,7 @@ func GetTestDb(ctx context.Context, env *config.AppEnv) (string, *pgxpool.Pool, 
 		}
 	}
 
-	return dbName, DbPools[dbName], nil, func() {
-		DbNames <- dbName
-	}
+	return dbName, DbPools[dbName], nil, getCleanupFunc(ctx, dbName, logger)
 
 	// DbSem <- struct{}{}
 
@@ -139,7 +153,7 @@ func GetTestDb(ctx context.Context, env *config.AppEnv) (string, *pgxpool.Pool, 
 	// 	defer func() {
 	// 		LockTemplateDb.Unlock()
 	// 	}()
-	// 	log.Printf("Creating DB %s: Acquired a lock", newDbName)
+	// 	logger.Info("Creating DB %s: Acquired a lock", newDbName)
 
 	// 	adminConn, err := pgx.Connect(ctx, TestDb.DSN)
 	// 	if err != nil {
@@ -158,7 +172,7 @@ func GetTestDb(ctx context.Context, env *config.AppEnv) (string, *pgxpool.Pool, 
 	// 	return nil, err, nil
 	// }
 
-	// log.Printf("Created DB %s: Release a lock", newDbName)
+	// logger.Info("Created DB %s: Release a lock", newDbName)
 
 	// // Connect to new database
 	// cfg, err := pgxpool.ParseConfig(TestDb.DSN)
@@ -185,13 +199,13 @@ func GetTestDb(ctx context.Context, env *config.AppEnv) (string, *pgxpool.Pool, 
 	// 	if err != nil {
 	// 		log.Fatalf("error while dropping database %s: %v", newDbName, err)
 	// 	}
-	// 	log.Printf("Destroyed DB %s: releasing semaphore...", newDbName)
+	// 	logger.Info("Destroyed DB %s: releasing semaphore...", newDbName)
 	// 	<-DbSem
 	// }
 }
 
-func Truncate(ctx context.Context, dbName string) error {
-	log.Printf("Truncating %s", dbName)
+func Truncate(ctx context.Context, dbName string, logger *zap.Logger) error {
+	logger.Info("Truncating", zap.String("dbName", dbName))
 
 	conn := DbPools[dbName]
 	rows, err := conn.Query(ctx, "SELECT tablename FROM pg_tables WHERE schemaname = 'public'")
@@ -210,13 +224,13 @@ func Truncate(ctx context.Context, dbName string) error {
 	}
 
 	// Truncate each table
+	logger.Info("Found tables", zap.Strings("tables", tables))
 	for _, table := range tables {
 		_, err := conn.Exec(ctx, fmt.Sprintf(`TRUNCATE TABLE "%s" RESTART IDENTITY CASCADE`, table)) // RESTART IDENTITY for auto-increment reset
 		if err != nil {
-			log.Printf("Error truncating table %s: %v", table, err)
-		} else {
-			log.Printf("Table %s truncated.\n", table)
+			logger.Error("Error truncating table", zap.String("table", table), zap.Error(err))
 		}
 	}
+	logger.Info("Done truncating")
 	return nil
 }
