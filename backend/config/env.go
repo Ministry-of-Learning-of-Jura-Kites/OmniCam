@@ -21,29 +21,50 @@ type AppEnv struct {
 	JWTExpireTime    time.Duration
 }
 
+func transformAppEnv(logger *zap.Logger, cfg *AppEnv, isTest bool) {
+	dur, err := time.ParseDuration(cfg.RawJWTExpireTime)
+	if err != nil && !isTest {
+		logger.Fatal("Invalid JWT_EXPIRE_TIME format", zap.Error(err))
+	}
+	cfg.JWTExpireTime = dur
+}
+
 func InitAppEnv(logger *zap.Logger) *AppEnv {
+	onSuccess := func() {
+		logger.Info("Loaded env successfully")
+	}
+
+	mode := os.Getenv("MODE")
+
+	// For test, use env of process, and don't require all env
+	if mode == "TEST" {
+		var cfg AppEnv
+		cfg, err := env.ParseAsWithOptions[AppEnv](env.Options{
+			RequiredIfNoDef: false,
+		})
+		if err != nil {
+			logger.Fatal("Error while reading env", zap.Error(err))
+		}
+		transformAppEnv(logger, &cfg, true)
+		onSuccess()
+		return &cfg
+	}
+
 	// For dev env (use getenv because this is before loading .env file)
-	if os.Getenv("MODE") == "" || os.Getenv("MODE") == "DEV" {
+	if mode == "" || mode == "DEV" {
 		godotenv.Load(path.Join(internal.Root, "backend", ".env"))
 	}
 
 	var cfg AppEnv
-	// parse with generics
 	cfg, err := env.ParseAsWithOptions[AppEnv](env.Options{
 		RequiredIfNoDef: true,
 	})
-
 	if err != nil {
 		logger.Fatal("Error while reading env", zap.Error(err))
 	}
 
-	dur, err := time.ParseDuration(cfg.RawJWTExpireTime)
-	if err != nil {
-		logger.Fatal("Invalid JWT_EXPIRE_TIME format", zap.Error(err))
-	}
-	cfg.JWTExpireTime = dur
-
-	logger.Info("Loaded env successfully")
+	transformAppEnv(logger, &cfg, false)
+	onSuccess()
 
 	return &cfg
 }

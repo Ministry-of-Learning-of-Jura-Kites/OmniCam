@@ -7,7 +7,7 @@ import (
 	"go.uber.org/zap/zapcore"
 )
 
-func InitLogger() *zap.Logger {
+func InitLogger(isTest bool) *zap.Logger {
 	encoderConfig := zap.NewProductionEncoderConfig()
 
 	encoderConfig.EncodeTime = zapcore.ISO8601TimeEncoder
@@ -22,6 +22,10 @@ func InitLogger() *zap.Logger {
 	core := zapcore.NewCore(encoder, writerSyncer, zap.DebugLevel)
 
 	logger := zap.New(core, zap.AddCaller())
+
+	if isTest {
+		logger = logger.With(zap.String("source", "test"))
+	}
 
 	return logger
 }
