@@ -97,7 +97,7 @@ func (t *DeleteProjectRoute) delete(c *gin.Context) {
 	projectFolder := path.Join(internal.Root, "uploads", projectId.String())
 	t.deleteFolder(projectFolder)
 
-	c.JSON(http.StatusAccepted, gin.H{"data": data})
+	c.JSON(http.StatusOK, gin.H{"data": data})
 }
 
 func (t *DeleteProjectRoute) deleteFolder(folderPath string) {
