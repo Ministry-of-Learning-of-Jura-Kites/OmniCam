@@ -50,7 +50,7 @@ func (t *PutProjectRoute) put(c *gin.Context) {
 	// Check if user is in project
 	_, err = t.DB.Queries.GetUserOfProject(c, db_sqlc_gen.GetUserOfProjectParams{
 		UserID:    pgUserId,
-		Projectid: *projectId,
+		Projectid: projectId,
 	})
 	if err != nil {
 		t.Logger.Debug("user of project not found", zap.String("projectId", strProjectId), zap.String("userId", userId.String()), zap.Error(err))
@@ -68,7 +68,7 @@ func (t *PutProjectRoute) put(c *gin.Context) {
 	}
 
 	params := db_sqlc_gen.UpdateProjectParams{
-		ID: *projectId,
+		ID: projectId,
 	}
 
 	if req.Name != nil {

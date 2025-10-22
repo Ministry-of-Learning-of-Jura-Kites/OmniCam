@@ -8,16 +8,16 @@ import (
 	"github.com/google/uuid"
 )
 
-func ParseUuidBase64(strId string) (*uuid.UUID, error) {
+func ParseUuidBase64(strId string) (uuid.UUID, error) {
 	decodedBytes, err := base64.RawURLEncoding.DecodeString(strId)
 	if err != nil {
-		return nil, err
+		return uuid.Nil, err
 	}
 	parsedId, err := uuid.FromBytes(decodedBytes)
 	if err != nil {
-		return nil, err
+		return uuid.Nil, err
 	}
-	return &parsedId, nil
+	return parsedId, nil
 }
 
 func GetUuidFromCtx(c *gin.Context, key string) (uuid.UUID, error) {
