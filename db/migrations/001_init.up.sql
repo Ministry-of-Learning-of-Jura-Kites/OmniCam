@@ -21,8 +21,8 @@ CREATE TABLE "project" (
 );
 
 CREATE TABLE "user_to_project" (
-  project_id UUID NOT NULL REFERENCES "project" (id),
-  user_id UUID NOT NULL REFERENCES "user" (id),
+  project_id UUID NOT NULL REFERENCES "project" (id) ON DELETE CASCADE,
+  user_id UUID NOT NULL REFERENCES "user" (id) ON DELETE CASCADE,
   role role NOT NULL,
   PRIMARY KEY (project_id, user_id)
 );

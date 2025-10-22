@@ -48,6 +48,7 @@ func setTemplateDb(ctx context.Context, dsn string) error {
 func main() {
 	ctx := context.Background()
 	logger := logger.InitLogger(true)
+	defer logger.Sync()
 
 	net, err := network.New(ctx)
 	if err != nil {
@@ -143,63 +144,43 @@ func main() {
 
 	setTemplateDb(ctx, dsn)
 
-	argsIndex := Index(os.Args, "--args")
-
-	args := []string{"test"}
-	if argsIndex != -1 {
-		args = append(args, os.Args[argsIndex+1:len(os.Args)]...)
+	// Target is after "--"
+	testArgs := os.Args[2:]
+	if len(testArgs) == 0 {
+		testArgs = []string{"test", "./..."} // default
+	} else if testArgs[0] != "test" {
+		testArgs = append([]string{"test"}, testArgs...)
 	}
 
-	env := os.Environ()
-	env = append(env, fmt.Sprintf("DATABASE_URL=%s", dsn))
-	cmd := exec.Command("go", args...)
+	// ---- Run tests one by one ----
+	env := append(os.Environ(), fmt.Sprintf("DATABASE_URL=%s", dsn))
+
+	cmd := exec.Command("go", testArgs...)
 	cmd.Env = env
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 
+	logger.Info("Running go test", zap.Strings("args", testArgs))
+
 	if err := cmd.Run(); err != nil {
-		logger.Info("tests failed")
+		logger.Info("tests failed", zap.Error(err))
+		os.Exit(1)
 	}
 
 	// // Run `go test` for each package with cloned DB
-	// pkgs := getTestPackages()
+	// pkgs := getTestPackages(target, logger)
 	// for _, pkg := range pkgs {
-	// 	testDBName := fmt.Sprintf("test_%s", strings.ReplaceAll(pkg, "/", "_"))
-
-	// 	fmt.Printf("Running tests for package %s using DB %s...\n", pkg, testDBName)
-
 	// 	// Set environment variable for test to use
 	// 	env := os.Environ()
-	// 	env = append(env, fmt.Sprintf("DATABASE_URL=%s", testDBName))
-	// 	cmd := exec.Command("go", "test")
+	// 	env = append(env, fmt.Sprintf("DATABASE_URL=%s", dsn))
+	// 	testArgs := append([]string{"test", pkg}, args...)
+	// 	cmd := exec.Command("go", testArgs...)
 	// 	cmd.Env = env
 	// 	cmd.Stdout = os.Stdout
 	// 	cmd.Stderr = os.Stderr
 
 	// 	if err := cmd.Run(); err != nil {
-	// 		logger.Info("tests failed for package %s: %v", pkg, err)
+	// 		logger.Info("tests failed for package", zap.String("pkg", pkg), zap.Error(err))
 	// 	}
 	// }
-
-	fmt.Println("All tests completed.")
-}
-
-// // getTestPackages returns a list of packages to run tests for
-// func getTestPackages() []string {
-// 	cmd := exec.Command("go", "list", "./...")
-// 	out, err := cmd.Output()
-// 	if err != nil {
-// 		logger.Fatal("failed to list packages: %v", err)
-// 	}
-// 	pkgs := strings.Fields(string(out))
-// 	return pkgs
-// }
-
-func Index[T comparable](slice []T, target T) int {
-	for i, v := range slice {
-		if v == target {
-			return i
-		}
-	}
-	return -1
 }
