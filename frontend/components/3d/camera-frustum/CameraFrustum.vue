@@ -16,33 +16,48 @@ const props = withDefaults(
     isHiding: false,
   },
 );
+const lineMaterial = new THREE.LineBasicMaterial({ color: 0x400c00 });
+const meshMaterial = new THREE.MeshBasicMaterial({
+  color: 0xff7a5c,
+  transparent: false,
+  opacity: 1,
+  side: THREE.DoubleSide,
+});
 
-let oldGeometry: THREE.BufferGeometry | null = null;
+let oldGeometries: ReturnType<typeof createFrustumGeometry> | null = null;
 
-const frustumGeometry = computed(() => {
-  const geom = createFrustumGeometry(props.fov, props.aspect, props.length);
+const frustumGeometries = computed(() => {
+  const pair = createFrustumGeometry(props.fov, props.aspect, props.length);
 
   // Dispose of old geometry if it exists
-  if (oldGeometry) oldGeometry.dispose();
-  oldGeometry = geom;
+  if (oldGeometries) {
+    oldGeometries.mesh.dispose();
+    oldGeometries.lines.dispose();
+  }
+  oldGeometries = pair;
 
-  return geom;
+  return pair;
 });
 
 onUnmounted(() => {
-  oldGeometry?.dispose();
+  if (oldGeometries) {
+    oldGeometries.mesh.dispose();
+    oldGeometries.lines.dispose();
+  }
+  lineMaterial.dispose();
+  meshMaterial.dispose();
 });
 </script>
 
 <template>
   <TresLineSegments
-    :geometry="frustumGeometry"
-    :material="new THREE.LineBasicMaterial({ color: 0x400c00 })"
+    :geometry="frustumGeometries.lines"
+    :material="lineMaterial"
     :visible="!isHiding"
   />
   <TresMesh
-    :geometry="frustumGeometry"
-    :material="new THREE.LineBasicMaterial({ color: 0xff7a5c })"
+    :geometry="frustumGeometries.mesh"
+    :material="meshMaterial"
     :visible="!isHiding"
   />
 </template>
