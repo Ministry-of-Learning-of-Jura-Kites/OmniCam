@@ -5,6 +5,7 @@ import MovableArrow from "../movable-arrow/MovableArrow.vue";
 import TresMesh from "@tresjs/core";
 import RotationWheel from "../rotation-wheel/RotationWheel.vue";
 import CameraFrustum from "../camera-frustum/CameraFrustum.vue";
+import * as THREE from "three";
 
 const props = defineProps({
   name: {
@@ -20,18 +21,42 @@ const props = defineProps({
 const sceneStates = inject(SCENE_STATES_KEY)!;
 
 const cam = toRef(sceneStates.cameras, props.camId);
+
+const camQuat = computed(() => {
+  const quaternion = new THREE.Quaternion().setFromEuler(cam!.value.rotation);
+  return quaternion;
+});
 </script>
 
 <template>
-  <TresMesh :position="sceneStates.cameras[props.camId]!.position.clone()">
-    <TresMesh :rotation="sceneStates.cameras[props.camId]!.rotation.clone()">
-      <TresBoxGeometry :args="[0.5, 0.5, 0.5]" />
-      <TresMeshBasicMaterial color="white" />
+  <TresMesh :position="[cam!.position.x, cam!.position.y, cam!.position.z]">
+    <TresObject3D :quaternion="camQuat">
+      <!-- Use quaternion for applying on top of local rotation -->
+      <TresMesh :rotation="[Math.PI / 2, 0, 0]" :position="[0, 0, 0.25 + 0.06]">
+        <TresCylinderGeometry :args="[0.2, 0.2, 0.5]" />
+        <TresMeshBasicMaterial color="white" />
+      </TresMesh>
+      <TresMesh :rotation="[Math.PI / 2, 0, 0]" :position="[0, 0, 0.06]">
+        <TresCylinderGeometry :args="[0.05, 0.05, 0.12]" />
+        <TresMeshBasicMaterial color="black" />
+      </TresMesh>
+      <TresMesh :rotation="[Math.PI / 2, 0, 0]" :position="[0, 0, 0.5 + 0.1]">
+        <TresCylinderGeometry :args="[0.05, 0.05, 0.1]" />
+        <TresMeshBasicMaterial color="white" />
+      </TresMesh>
+      <TresMesh :rotation="[Math.PI / 5, 0, 0]" :position="[0, 0.07, 0.71]">
+        <TresCylinderGeometry :args="[0.05, 0.05, 0.25]" />
+        <TresMeshBasicMaterial color="white" />
+      </TresMesh>
+      <TresMesh :rotation="[Math.PI / 5, 0, 0]" :position="[0, 0.17, 0.78]">
+        <TresCylinderGeometry :args="[0.15, 0.15, 0.02]" />
+        <TresMeshBasicMaterial color="white" />
+      </TresMesh>
       <CameraFrustum
         :fov="sceneStates.cameras[props.camId]!.fov"
         :is-hiding="sceneStates.cameras[props.camId]!.isHidingFrustum"
       />
-    </TresMesh>
+    </TresObject3D>
     <template v-if="cam != null">
       <MovableArrow
         v-model="cam"
