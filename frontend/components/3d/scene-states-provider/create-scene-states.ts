@@ -11,6 +11,7 @@ import { useCameraManagement } from "../scene-3d/use-camera-management";
 import { useSpectatorRotation } from "../scene-3d/use-spectator-rotation";
 import { useSpectatorPosition } from "../scene-3d/use-spectator-position";
 import type { UseWebSocketReturn } from "@vueuse/core";
+import type { Camera } from "~/messages/protobufs/autosave_event";
 
 export interface ModelWithCamsResp {
   data: {
@@ -24,20 +25,7 @@ export interface ModelWithCamsResp {
     projectId: string; // uuid.UUID -> string
     filePath: string;
     imagePath: string;
-    cameras: Record<
-      string,
-      {
-        name: string;
-        angleX: number;
-        angleY: number;
-        angleZ: number;
-        angleW: number;
-        posX: number;
-        posY: number;
-        posZ: number;
-        fov: number;
-      }
-    >;
+    cameras: Record<string, Camera>;
   };
 }
 
@@ -62,11 +50,11 @@ function transformCamsData(
           "YXZ",
         ),
         fov: rawCam.fov,
-        isHidingArrows: false,
-        isHidingWheels: false,
-        isLockingPosition: false,
-        isLockingRotation: false,
-        isHidingFrustum: false,
+        isHidingArrows: rawCam.isHidingArrows,
+        isHidingWheels: rawCam.isHidingWheels,
+        isLockingPosition: rawCam.isLockingPosition,
+        isLockingRotation: rawCam.isLockingRotation,
+        isHidingFrustum: rawCam.isHidingFrustum,
       };
       return [camId, cam];
     }),
@@ -109,6 +97,8 @@ export function createBaseSceneStates(
   const modelInfo = modelWithCamsResp;
 
   const camsData = transformCamsData(modelWithCamsResp);
+
+  console.log(camsData);
 
   const cameras = reactive<Record<string, ICamera>>(camsData!);
 

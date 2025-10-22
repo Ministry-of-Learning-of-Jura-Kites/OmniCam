@@ -90,7 +90,7 @@ func (t *GetProjectRoute) getById(c *gin.Context) {
 		return
 	}
 
-	project, err := t.DB.Queries.GetProjectById(c, *id)
+	project, err := t.DB.Queries.GetProjectById(c, id)
 	if err != nil {
 		t.Logger.Error("project not found", zap.Error(err))
 		c.JSON(http.StatusNotFound, gin.H{})
@@ -98,7 +98,7 @@ func (t *GetProjectRoute) getById(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{"data": Project{
-		Id:          *id,
+		Id:          id,
 		Name:        project.Name,
 		Description: project.Description,
 		ImagePath:   project.ImagePath,

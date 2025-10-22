@@ -14,6 +14,7 @@ export function useCameraManagement(sceneStates: SceneStates) {
       isHidingWheels: false,
       isLockingPosition: false,
       isLockingRotation: false,
+      isHidingFrustum: true,
       controlling: undefined,
       fov: 60,
     };

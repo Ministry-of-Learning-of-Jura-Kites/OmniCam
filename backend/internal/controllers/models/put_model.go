@@ -59,7 +59,7 @@ func (t *PutModelRoute) put(c *gin.Context) {
 	// Check if user is in project
 	_, err = t.DB.Queries.GetUserOfProject(c, db_sqlc_gen.GetUserOfProjectParams{
 		UserID:    pgUserId,
-		Projectid: *projectId,
+		Projectid: projectId,
 	})
 	if err != nil {
 		t.Logger.Debug("user of project not found", zap.String("projectId", strProjectId), zap.String("userId", userId.String()), zap.Error(err))
@@ -76,7 +76,7 @@ func (t *PutModelRoute) put(c *gin.Context) {
 	}
 
 	params := db_sqlc_gen.UpdateModelParams{
-		ID: *modelId,
+		ID: modelId,
 	}
 
 	if req.Name != nil {
@@ -99,7 +99,7 @@ func (t *PutModelRoute) put(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{"data": messages_model_workspace.ModelWorkspace{
-		ModelId:     *modelId,
+		ModelId:     modelId,
 		ProjectId:   data.ProjectID,
 		Name:        data.Name,
 		Description: data.Description,

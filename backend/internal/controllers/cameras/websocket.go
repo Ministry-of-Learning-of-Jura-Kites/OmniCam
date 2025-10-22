@@ -25,22 +25,14 @@ type CameraAutosaveRoute struct {
 }
 
 func (t *CameraAutosaveRoute) handleEventDelete(c *gin.Context, conn *websocket.Conn, modelId uuid.UUID, deleteId string) {
-	// eventContent := event.GetDeleteId()
+	userId, err := utils.GetUuidFromCtx(c, "userId")
+	if err != nil {
+		t.Logger.Error("error while getting userId form", zap.Error(err))
+		c.JSON(http.StatusInternalServerError, gin.H{})
+		return
+	}
 
-	// var cameras Cameras
-	// err := json.Unmarshal(workspace.Cameras, &cameras)
-	// if err != nil {
-	// 	conn.WriteMessage(websocket.TextMessage, []byte("error"))
-	// 	return
-	// }
-	// delete(cameras, deleteId)
-	// marshalled, err := json.Marshal(cameras)
-	// if err != nil {
-	// 	conn.WriteMessage(websocket.TextMessage, []byte("error"))
-	// 	return
-	// }
-
-	_, err := uuid.Parse(deleteId)
+	_, err = uuid.Parse(deleteId)
 	if err != nil {
 		conn.WriteMessage(websocket.TextMessage, []byte("error"))
 		return
@@ -48,7 +40,7 @@ func (t *CameraAutosaveRoute) handleEventDelete(c *gin.Context, conn *websocket.
 
 	err = t.DB.Queries.UpdateWorkspaceCams(c, db_sqlc_gen.UpdateWorkspaceCamsParams{
 		Key:     []string{deleteId},
-		UserID:  uuid.Nil,
+		UserID:  userId,
 		ModelID: modelId,
 	})
 	if err != nil {
@@ -61,17 +53,20 @@ func (t *CameraAutosaveRoute) handleEventDelete(c *gin.Context, conn *websocket.
 
 func (t *CameraAutosaveRoute) handleEventUpsert(c *gin.Context, userId uuid.UUID, conn *websocket.Conn, modelId uuid.UUID, upsert *camera.Camera) {
 	camera := messages_cameras.CameraStruct{
-		Name:           upsert.Name,
-		AngleX:         upsert.AngleX,
-		AngleY:         upsert.AngleY,
-		AngleZ:         upsert.AngleZ,
-		AngleW:         upsert.AngleW,
-		PosX:           upsert.PosX,
-		PosY:           upsert.PosY,
-		PosZ:           upsert.PosZ,
-		Fov:            upsert.Fov,
-		IsHidingArrows: upsert.IsHidingArrows,
-		IsHidingWheels: upsert.IsHidingWheels,
+		Name:              upsert.Name,
+		AngleX:            upsert.AngleX,
+		AngleY:            upsert.AngleY,
+		AngleZ:            upsert.AngleZ,
+		AngleW:            upsert.AngleW,
+		PosX:              upsert.PosX,
+		PosY:              upsert.PosY,
+		PosZ:              upsert.PosZ,
+		Fov:               upsert.Fov,
+		IsHidingArrows:    upsert.IsHidingArrows,
+		IsHidingWheels:    upsert.IsHidingWheels,
+		IsLockingPosition: upsert.IsLockingPosition,
+		IsLockingRotation: upsert.IsLockingRotation,
+		IsHidingFrustum:   upsert.IsHidingFrustum,
 	}
 
 	marshalled, err := json.Marshal(camera)
@@ -112,7 +107,7 @@ func (t *CameraAutosaveRoute) get(c *gin.Context) {
 
 	_, err = t.DB.Queries.GetWorkspaceByID(c, db_sqlc_gen.GetWorkspaceByIDParams{
 		UserID:  userId,
-		ModelID: *modelId,
+		ModelID: modelId,
 	})
 	if err != nil {
 		t.Logger.Error("workspace not found", zap.Error(err))
@@ -145,9 +140,9 @@ func (t *CameraAutosaveRoute) get(c *gin.Context) {
 			for _, event := range events.Events {
 				switch event.Type {
 				case camera.CameraEventType_CAMERA_EVENT_TYPE_DELETE:
-					t.handleEventDelete(c, conn, *modelId, event.GetDeleteId())
+					t.handleEventDelete(c, conn, modelId, event.GetDeleteId())
 				case camera.CameraEventType_CAMERA_EVENT_TYPE_UPSERT:
-					t.handleEventUpsert(c, userId, conn, *modelId, event.GetUpsert())
+					t.handleEventUpsert(c, userId, conn, modelId, event.GetUpsert())
 				}
 			}
 		}
