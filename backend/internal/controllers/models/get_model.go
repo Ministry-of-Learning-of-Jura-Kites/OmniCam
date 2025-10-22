@@ -55,7 +55,7 @@ func (t *GetModelRoute) getModelById(c *gin.Context) {
 			String: username,
 			Valid:  true,
 		},
-		Projectid: *projectId,
+		Projectid: projectId,
 	})
 	if err != nil {
 		t.Logger.Error("user of project not found", zap.String("projectId", strProjectId), zap.String("username", username), zap.Error(err))
@@ -72,7 +72,7 @@ func (t *GetModelRoute) getModelById(c *gin.Context) {
 
 	data, err := t.DB.Queries.GetModelByID(c, db_sqlc_gen.GetModelByIDParams{
 		Fields: includedFields,
-		ID:     *modelId,
+		ID:     modelId,
 		UserID: pgtype.UUID{
 			Bytes: [16]byte(uuidBytes),
 			Valid: true,
@@ -101,7 +101,7 @@ func (t *GetModelRoute) getModelById(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{"data": Model{
 		ModelWorkspace: messages_model_workspace.ModelWorkspace{
-			ModelId:     *modelId,
+			ModelId:     modelId,
 			ProjectId:   data.ProjectID,
 			Name:        data.Name,
 			Description: data.Description,
@@ -140,7 +140,7 @@ func (t *GetModelRoute) getAllModel(c *gin.Context) {
 	offset := (page - 1) * pageSize
 	// column1 -> projectId column2 -> page size column3 -> offset (the data from desc (createBy))
 	data, err := t.DB.Queries.GetAllfdfModels(c, db_sqlc_gen.GetAllfdfModelsParams{
-		ProjectID:  *projectId,
+		ProjectID:  projectId,
 		PageSize:   int32(pageSize),
 		PageOffset: int32(offset),
 	})
@@ -150,7 +150,7 @@ func (t *GetModelRoute) getAllModel(c *gin.Context) {
 		return
 	}
 
-	dataCount, err := t.DB.Queries.CountModels(c, *projectId)
+	dataCount, err := t.DB.Queries.CountModels(c, projectId)
 	if err != nil {
 		t.Logger.Error("models not found or database error", zap.Error(err))
 		c.JSON(http.StatusNotFound, gin.H{})

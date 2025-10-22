@@ -47,7 +47,7 @@ func (t *PutImageProjectRoute) updateImage(c *gin.Context) {
 	// Check if user is in project
 	_, err = t.DB.Queries.GetUserOfProject(c, db_sqlc_gen.GetUserOfProjectParams{
 		UserID:    pgUserId,
-		Projectid: *projectId,
+		Projectid: projectId,
 	})
 	if err != nil {
 		t.Logger.Debug("user of project not found", zap.String("projectId", strProjectId), zap.String("userId", userId.String()), zap.Error(err))
@@ -97,7 +97,7 @@ func (t *PutImageProjectRoute) updateImage(c *gin.Context) {
 	webImagePath := "/uploads/project/" + projectId.String() + "/image" + imageExt
 
 	_, err = t.DB.Queries.UpdateProjectImage(c, db_sqlc_gen.UpdateProjectImageParams{
-		ID:        *projectId,
+		ID:        projectId,
 		ImagePath: webImagePath,
 	})
 	if err != nil {

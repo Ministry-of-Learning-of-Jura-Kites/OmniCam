@@ -47,7 +47,7 @@ func (t *DeleteProjectRoute) delete(c *gin.Context) {
 	// Check if user is in project
 	_, err = t.DB.Queries.GetUserOfProject(c, db_sqlc_gen.GetUserOfProjectParams{
 		UserID:    pgUserId,
-		Projectid: *projectId,
+		Projectid: projectId,
 	})
 	if err != nil {
 		t.Logger.Debug("user of project not found", zap.String("projectId", strProjectId), zap.String("userId", userId.String()), zap.Error(err))
@@ -56,7 +56,7 @@ func (t *DeleteProjectRoute) delete(c *gin.Context) {
 	}
 
 	// --- Get project ---
-	_, err = t.DB.Queries.GetProjectById(c, *projectId)
+	_, err = t.DB.Queries.GetProjectById(c, projectId)
 	if err != nil {
 		t.Logger.Error("failed to get project", zap.Error(err))
 		c.JSON(http.StatusNotFound, gin.H{"error": "project not found"})
@@ -67,7 +67,7 @@ func (t *DeleteProjectRoute) delete(c *gin.Context) {
 	t.deleteFolder(projectImageFolder)
 
 	// --- Delete all models under this project ---
-	models, err := t.DB.Queries.GetModelsByProjectID(c, *projectId)
+	models, err := t.DB.Queries.GetModelsByProjectID(c, projectId)
 	if err != nil {
 		t.Logger.Error("failed to get models for project", zap.Error(err))
 	} else {
@@ -86,7 +86,7 @@ func (t *DeleteProjectRoute) delete(c *gin.Context) {
 	}
 
 	// --- Delete project record from DB ---
-	data, err := t.DB.Queries.DeleteProject(c, *projectId)
+	data, err := t.DB.Queries.DeleteProject(c, projectId)
 	if err != nil {
 		t.Logger.Error("failed to delete project", zap.Error(err))
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to delete project"})
