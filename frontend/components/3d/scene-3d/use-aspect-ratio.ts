@@ -35,15 +35,13 @@ export function updateAspectOnResize(sceneStates: SceneStates) {
   };
 
   if ((canvasSize?.height ?? 0) == (height ?? 0)) {
-    sceneStates.aspectMargin.value = {
-      width: ((canvasSize?.width ?? 0) - (width ?? 0)) / 2 + "px",
-      height: "100%",
-    };
+    sceneStates.aspectMargin.width =
+      ((canvasSize?.width ?? 0) - (width ?? 0)) / 2 + "px";
+    sceneStates.aspectMargin.height = "100%";
   } else {
-    sceneStates.aspectMargin.value = {
-      width: "100%",
-      height: ((canvasSize?.height ?? 0) - (height ?? 0)) / 2 + "px",
-    };
+    sceneStates.aspectMargin.width = "100%";
+    sceneStates.aspectMargin.height =
+      ((canvasSize?.height ?? 0) - (height ?? 0)) / 2 + "px";
   }
 }
 
