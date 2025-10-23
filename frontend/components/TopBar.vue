@@ -90,7 +90,7 @@ function openFileDialog() {
 
     try {
       const text = await file.text();
-      importJsonToCameras(sceneStates.cameras, text);
+      importJsonToCameras(sceneStates, text);
     } catch (err) {
       console.error("Failed to import cameras:", err);
     }
