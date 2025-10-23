@@ -58,8 +58,6 @@ switch (props.direction) {
     break;
 }
 
-sceneStates?.draggableObjects.add(wheel);
-
 const isActuallyHiding = computed(() => {
   const shouldHide =
     props.isHiding ||
@@ -70,15 +68,20 @@ const isActuallyHiding = computed(() => {
   return shouldHide;
 });
 
+function onHidingChange(isHiding: boolean) {
+  if (isHiding) {
+    sceneStates?.draggableObjects.delete(wheel);
+  } else {
+    sceneStates?.draggableObjects.add(wheel);
+  }
+}
+
+onHidingChange(props.isHiding);
+
 watch(
   () => props.isHiding,
-  (isHiding) => {
-    if (isHiding) {
-      sceneStates?.draggableObjects.delete(wheel);
-    } else {
-      sceneStates?.draggableObjects.add(wheel);
-    }
-  },
+  (newVal) => onHidingChange(newVal),
+  { immediate: true },
 );
 
 onBeforeUnmount(() => {
