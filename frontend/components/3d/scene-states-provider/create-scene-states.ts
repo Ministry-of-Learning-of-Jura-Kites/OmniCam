@@ -12,6 +12,8 @@ import { useSpectatorRotation } from "../scene-3d/use-spectator-rotation";
 import { useSpectatorPosition } from "../scene-3d/use-spectator-position";
 import type { UseWebSocketReturn } from "@vueuse/core";
 import type { Camera } from "~/messages/protobufs/autosave_event";
+import { useAspectRatio as useAspectRatioManagement } from "../scene-3d/use-aspect-ratio";
+import { useAutosave } from "../scene-3d/use-autosave";
 
 export interface ModelWithCamsResp {
   data: {
@@ -50,6 +52,8 @@ function transformCamsData(
           "YXZ",
         ),
         fov: rawCam.fov,
+        // mock aspect for now
+        aspect: 16 / 9,
         isHidingArrows: rawCam.isHidingArrows,
         isHidingWheels: rawCam.isHidingWheels,
         isLockingPosition: rawCam.isLockingPosition,
@@ -98,14 +102,13 @@ export function createBaseSceneStates(
 
   const camsData = transformCamsData(modelWithCamsResp);
 
-  console.log(camsData);
-
   const cameras = reactive<Record<string, ICamera>>(camsData!);
 
   const spectatorCam: Reactive<ICamera> = reactive({
     name: "",
     rotation: spectatorCameraRotation,
     position: spectatorCameraPosition,
+    aspect: 0,
     isHidingArrows: false,
     isHidingWheels: false,
     isLockingPosition: false,
@@ -123,6 +126,35 @@ export function createBaseSceneStates(
 
   const markedForCheck = reactive(new Set<string>());
 
+  const screenSize = reactive({
+    width: undefined as number | undefined,
+    height: undefined as number | undefined,
+  });
+
+  const aspectMarginType = ref<"horizontal" | "vertical">("horizontal");
+
+  const aspectMargin = computed(() => {
+    const canvas = tresContext.value?.renderer.domElement;
+
+    const canvasSize = {
+      width: canvas?.clientWidth,
+      height: canvas?.clientHeight,
+    };
+
+    if ((canvasSize?.height ?? 0) == (screenSize?.height ?? 0)) {
+      return {
+        width: ((canvasSize?.width ?? 0) - (screenSize?.width ?? 0)) / 2 + "px",
+        height: "100%",
+      };
+    } else {
+      return {
+        width: "100%",
+        height:
+          ((canvasSize?.height ?? 0) - (screenSize?.height ?? 0)) / 2 + "px",
+      };
+    }
+  });
+
   const sceneStates = {
     tresContext,
     draggableObjects,
@@ -139,6 +171,9 @@ export function createBaseSceneStates(
     error: null,
     markedForCheck,
     modelInfo,
+    screenSize,
+    aspectMargin,
+    aspectMarginType,
   } as const;
 
   // websocket.ws.value!.onclose = (_closeEvent: CloseEvent) => {
@@ -150,10 +185,21 @@ export function createBaseSceneStates(
 
 export function createSceneStatesWithHelper(
   sceneStates: Awaited<BaseSceneStates>,
+  workspace: string | null,
 ) {
+  const aspectRatioManagement = useAspectRatioManagement(sceneStates);
+
+  onMounted(() => {
+    useAutosave(sceneStates, workspace);
+  });
+
   const sceneStatesWithCam = {
     ...sceneStates,
-    cameraManagement: useCameraManagement(sceneStates),
+    aspectRatioManagement: aspectRatioManagement,
+    cameraManagement: useCameraManagement(
+      sceneStates,
+      aspectRatioManagement.handleResize,
+    ),
     spectatorPosition: useSpectatorPosition(sceneStates),
     spectatorRotation: useSpectatorRotation(sceneStates),
   };
