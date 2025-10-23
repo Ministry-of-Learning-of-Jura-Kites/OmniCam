@@ -10,10 +10,10 @@ FROM
   project p
   INNER JOIN user_to_project up ON p.id = up.project_id
 WHERE
-  up.user_id = sqlc.arg (user_id)
+  up.user_id = SQLC.ARG(user_id)
 ORDER BY
   p.created_at DESC
 LIMIT
-  sqlc.arg (page_size)::INT
+  SQLC.ARG(page_size)::INT
 OFFSET
-  sqlc.arg (page_offset)::INT;
+  SQLC.ARG(page_offset)::INT;
