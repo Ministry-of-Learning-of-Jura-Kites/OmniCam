@@ -13,17 +13,37 @@ export function useCameraManagement(sceneStates: SceneStates) {
       position: new THREE.Vector3().copy(sceneStates.spectatorCameraPosition),
       rotation: new THREE.Euler().copy(sceneStates.spectatorCameraRotation),
       fov: 60,
-      frustumColor: {
-        r: 0.6 + Math.random() * 0.25,
-        g: 0.6 + Math.random() * 0.25,
-        b: 0.6 + Math.random() * 0.25,
-        a: 0.5,
-      },
+      frustumColor: randomVividColor(),
       frustumLength: 10,
     };
     sceneStates.markedForCheck.add(camId);
     console.log(sceneStates.cameras[camId].frustumColor);
     return camId;
+  }
+
+  function randomVividColor() {
+    //preset
+    const high = 0.85 + Math.random() * 0.15; // ~0.85–1.00
+    const mid = 0.5 + Math.random() * 0.3; // ~0.5–0.8
+    const low = 0.1 + Math.random() * 0.2; // ~0.1–0.3
+
+    const patterns: [number, number, number][] = [
+      [high, high, low],
+      [high, mid, mid],
+      [high, mid, low],
+      [high, low, low],
+    ];
+
+    const chosen = patterns[Math.floor(Math.random() * patterns.length)];
+
+    const shuffled = chosen!.sort(() => Math.random() - 0.5);
+
+    return {
+      r: shuffled[0],
+      g: shuffled[1],
+      b: shuffled[2],
+      a: 0.5,
+    };
   }
 
   function getCams() {
