@@ -133,7 +133,7 @@ export function createBaseSceneStates(
 
   const aspectMarginType = ref<"horizontal" | "vertical">("horizontal");
 
-  const aspectMargin = ref({
+  const aspectMargin = reactive({
     width: "0",
     height: "0",
   });

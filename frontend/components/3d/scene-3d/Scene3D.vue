@@ -144,15 +144,15 @@ watch(
       >
         <div
           :style="{
-            width: sceneStates.aspectMargin.value.width ?? '0px',
-            height: sceneStates.aspectMargin.value.height ?? '0px',
+            width: sceneStates.aspectMargin.width ?? '0px',
+            height: sceneStates.aspectMargin.height ?? '0px',
           }"
           class="bg-black align-start pointer-events-auto"
         ></div>
         <div
           :style="{
-            width: sceneStates.aspectMargin.value.width ?? '0px',
-            height: sceneStates.aspectMargin.value.height ?? '0px',
+            width: sceneStates.aspectMargin.width ?? '0px',
+            height: sceneStates.aspectMargin.height ?? '0px',
           }"
           class="bg-black align-end pointer-events-auto"
         ></div>
