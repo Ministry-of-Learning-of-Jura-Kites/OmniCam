@@ -56,7 +56,12 @@ const camQuat = computed(() => {
         <TresCylinderGeometry :args="[0.15, 0.15, 0.02]" />
         <TresMeshBasicMaterial color="white" />
       </TresMesh>
-      <CameraFrustum :fov="cam!.fov" :is-hiding="cam!.isHidingFrustum" />
+      <CameraFrustum
+        :fov="cam!.fov"
+        :length="cam!.frustumLength"
+        :color="cam!.frustumColor"
+        :is-hiding="cam!.isHidingFrustum"
+      />
     </TresObject3D>
     <template v-if="cam != null">
       <MovableArrow

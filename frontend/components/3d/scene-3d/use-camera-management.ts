@@ -13,8 +13,16 @@ export function useCameraManagement(sceneStates: SceneStates) {
       position: new THREE.Vector3().copy(sceneStates.spectatorCameraPosition),
       rotation: new THREE.Euler().copy(sceneStates.spectatorCameraRotation),
       fov: 60,
+      frustumColor: {
+        r: 0.6 + Math.random() * 0.25,
+        g: 0.6 + Math.random() * 0.25,
+        b: 0.6 + Math.random() * 0.25,
+        a: 0.5,
+      },
+      frustumLength: 10,
     };
     sceneStates.markedForCheck.add(camId);
+    console.log(sceneStates.cameras[camId].frustumColor);
     return camId;
   }
 

@@ -10,7 +10,15 @@ enum CameraEventType {
   CAMERA_EVENT_TYPE_UPSERT = 1;
 }
 
-// Camera model
+// RGBA color message
+message ColorRGBA {
+  double r = 1;
+  double g = 2;
+  double b = 3;
+  double a = 4;
+}
+
+// Camera message
 message Camera {
   string id = 1;
   string name = 2;
@@ -22,11 +30,13 @@ message Camera {
   double pos_y = 8;
   double pos_z = 9;
   double fov = 10;
-  bool is_hiding_arrows = 11;
-  bool is_hiding_wheels = 12;
-  bool is_locking_position = 13;
-  bool is_locking_rotation = 14;
-  bool is_hiding_frustum = 15;
+  ColorRGBA frustum_color = 11;
+  double frustum_length = 12;
+  bool is_hiding_arrows = 13;
+  bool is_hiding_wheels = 14;
+  bool is_locking_position = 15;
+  bool is_locking_rotation = 16;
+  bool is_hiding_frustum = 17;
 }
 
 message CameraSaveEvent {

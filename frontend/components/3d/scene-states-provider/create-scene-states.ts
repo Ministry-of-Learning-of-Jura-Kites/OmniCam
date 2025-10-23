@@ -56,6 +56,8 @@ export function transformProtoEventToCamera(rawCam: Camera): ICamera {
     isLockingPosition: rawCam.isLockingPosition,
     isLockingRotation: rawCam.isLockingRotation,
     isHidingFrustum: rawCam.isHidingFrustum,
+    frustumColor: rawCam.frustumColor!,
+    frustumLength: rawCam.frustumLength,
   };
 }
 
@@ -116,6 +118,8 @@ export function createBaseSceneStates(
     rotation: spectatorCameraRotation,
     aspectWidth: 0,
     aspectHeight: 1,
+    frustumColor: { r: 0, g: 0, b: 0, a: 0 },
+    frustumLength: 0,
   });
 
   const currentCam = computed<ICamera>(() => {
