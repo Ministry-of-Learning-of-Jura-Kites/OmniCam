@@ -237,7 +237,6 @@ function handleCancel() {
   for (const key in selected) delete selected[key];
   emit("update:open", false);
 }
-console.log("User role in AddUserDialog:", props.userRole);
 onMounted(fetchUsers);
 </script>
 
