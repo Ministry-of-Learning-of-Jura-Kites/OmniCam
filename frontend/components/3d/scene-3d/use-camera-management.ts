@@ -2,24 +2,16 @@ import { v4 as uuidv4 } from "uuid";
 import { gsap } from "gsap";
 import type { SceneStates } from "~/types/scene-states";
 import * as THREE from "three";
+import { cameraDefault } from "~/types/camera";
 
-export function useCameraManagement(
-  sceneStates: SceneStates,
-  handleResize: () => void,
-) {
+export function useCameraManagement(sceneStates: SceneStates) {
   function spawnCameraHere() {
     const camId = uuidv4();
     sceneStates.cameras[camId] = {
+      ...cameraDefault,
       name: "Untitled " + Object.keys(sceneStates.cameras).length.toString(),
       position: new THREE.Vector3().copy(sceneStates.spectatorCameraPosition),
       rotation: new THREE.Euler().copy(sceneStates.spectatorCameraRotation),
-      aspect: 4 / 3,
-      isHidingArrows: false,
-      isHidingWheels: false,
-      isLockingPosition: false,
-      isLockingRotation: false,
-      isHidingFrustum: true,
-      controlling: undefined,
       fov: 60,
     };
     sceneStates.markedForCheck.add(camId);
@@ -58,7 +50,6 @@ export function useCameraManagement(
     await Promise.all(tasks);
     sceneStates.currentCamId.value = camId;
     sceneStates.transformingInfo.value = undefined;
-    handleResize();
   }
 
   async function switchToSpectator() {
@@ -87,7 +78,6 @@ export function useCameraManagement(
     await Promise.all(tasks);
     sceneStates.currentCamId.value = null;
     sceneStates.transformingInfo.value = undefined;
-    handleResize();
   }
   return {
     spawnCameraHere,

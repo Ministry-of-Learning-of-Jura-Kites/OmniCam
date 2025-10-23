@@ -18,11 +18,10 @@ export type AutosaveEvent =
   | { type: "delete"; data: string }
   | { type: "upsert"; data: ICamera };
 
-function formatCam(camId: string, cam: ICamera): Camera {
+export function transformCameraToProtoEvent(cam: ICamera): Omit<Camera, "id"> {
   const quaternion = new THREE.Quaternion();
   quaternion.setFromEuler(cam.rotation);
   return {
-    id: camId,
     name: cam.name,
     angleX: quaternion.x,
     angleY: quaternion.y,
@@ -40,6 +39,13 @@ function formatCam(camId: string, cam: ICamera): Camera {
   };
 }
 
+export function transformCameraToProtoEventWithId(
+  camId: string,
+  cam: ICamera,
+): Camera {
+  return { ...transformCameraToProtoEvent(cam), id: camId };
+}
+
 export function useAutosave(
   sceneStates: SceneStates,
   workspace: string | null,
@@ -50,7 +56,7 @@ export function useAutosave(
 
   const lastSynced: Map<string, Camera> = new Map(
     Object.entries(sceneStates.cameras!).map(([camId, cam]) => {
-      return [camId, formatCam(camId, cam)];
+      return [camId, transformCameraToProtoEventWithId(camId, cam)];
     }),
   );
 
@@ -78,14 +84,14 @@ export function useAutosave(
         });
         continue;
       }
-      const formattedCam = formatCam(camId, cam);
+      const formattedCam = transformCameraToProtoEventWithId(camId, cam);
       // If is newly added, or changed
       if (prev == undefined || !isEqual(prev, formattedCam)) {
         changed.push({
           type: CameraEventType.CAMERA_EVENT_TYPE_UPSERT,
           upsert: formattedCam,
         });
-        lastSynced.set(camId, formatCam(camId, cam));
+        lastSynced.set(camId, transformCameraToProtoEventWithId(camId, cam));
       }
     }
 

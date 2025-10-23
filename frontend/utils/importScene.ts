@@ -1,52 +1,20 @@
 import type { ICamera } from "~/types/camera";
-import * as THREE from "three";
+import type { Camera } from "~/messages/protobufs/autosave_event";
+import type { SceneStates } from "~/types/scene-states";
+import { transformProtoEventToCamera } from "~/components/3d/scene-states-provider/create-scene-states";
 
 export function importJsonToCameras(
-  sceneCameras: Record<string, ICamera>,
+  sceneStates: SceneStates,
   jsonData: string,
 ) {
   try {
-    const data = JSON.parse(jsonData) as Array<{
-      id: string;
-      Name: string;
-      AngleX: number;
-      AngleY: number;
-      AngleZ: number;
-      AngleW: number;
-      PosX: number;
-      PosY: number;
-      PosZ: number;
-      Fov: number;
-      IsHidingArrows: boolean;
-      IsHidingWheels: boolean;
-      IsLockingPosition: boolean;
-      IsLockingRotation: boolean;
-      IsHidingFrustum: boolean;
-    }>;
+    const sceneCameras = sceneStates.cameras;
+    const data = JSON.parse(jsonData) as Record<string, Camera>;
 
     const newCameras: Record<string, ICamera> = {};
 
-    for (const camera of data) {
-      newCameras[camera.id] = {
-        name: camera.Name,
-        fov: camera.Fov,
-        isHidingArrows: camera.IsHidingArrows,
-        isHidingWheels: camera.IsHidingWheels,
-        isLockingPosition: camera.IsLockingPosition,
-        isLockingRotation: camera.IsLockingRotation,
-        isHidingFrustum: camera.IsHidingFrustum,
-        controlling: undefined,
-        position: new THREE.Vector3(camera.PosX, camera.PosY, camera.PosZ),
-        rotation: new THREE.Euler().setFromQuaternion(
-          new THREE.Quaternion(
-            camera.AngleX,
-            camera.AngleY,
-            camera.AngleZ,
-            camera.AngleW,
-          ),
-          "YXZ",
-        ),
-      };
+    for (const [id, camera] of Object.entries(data)) {
+      newCameras[id] = transformProtoEventToCamera(camera);
     }
 
     Object.keys(sceneCameras).forEach((key) => {
@@ -54,6 +22,10 @@ export function importJsonToCameras(
     });
 
     Object.assign(sceneCameras, newCameras);
+
+    for (const camId of Object.keys(newCameras)) {
+      sceneStates.markedForCheck.add(camId);
+    }
   } catch (err) {
     console.error("Failed to import cameras JSON:", err);
   }

@@ -6,7 +6,7 @@ import type {
   SceneStatesWithHelper,
 } from "~/types/scene-states";
 import * as THREE from "three";
-import type { ICamera } from "~/types/camera";
+import { cameraDefault, type ICamera } from "~/types/camera";
 import { useCameraManagement } from "../scene-3d/use-camera-management";
 import { useSpectatorRotation } from "../scene-3d/use-spectator-rotation";
 import { useSpectatorPosition } from "../scene-3d/use-spectator-position";
@@ -34,32 +34,37 @@ export interface ModelWithCamsResp {
 export const SCENE_STATES_KEY: InjectionKey<SceneStatesWithHelper> =
   Symbol("3d-scene-states");
 
+export function transformProtoEventToCamera(rawCam: Camera): ICamera {
+  return {
+    name: rawCam.name,
+    position: new THREE.Vector3(rawCam.posX, rawCam.posY, rawCam.posZ),
+    rotation: new THREE.Euler().setFromQuaternion(
+      new THREE.Quaternion(
+        rawCam.angleX,
+        rawCam.angleY,
+        rawCam.angleZ,
+        rawCam.angleW,
+      ),
+      "YXZ",
+    ),
+    fov: rawCam.fov,
+    // mock aspect for now
+    aspectWidth: 4,
+    aspectHeight: 3,
+    isHidingArrows: rawCam.isHidingArrows,
+    isHidingWheels: rawCam.isHidingWheels,
+    isLockingPosition: rawCam.isLockingPosition,
+    isLockingRotation: rawCam.isLockingRotation,
+    isHidingFrustum: rawCam.isHidingFrustum,
+  };
+}
+
 function transformCamsData(
   modelWithCamsResp: ModelWithCamsResp,
 ): Record<string, ICamera> {
   return Object.fromEntries(
     Object.entries(modelWithCamsResp.data.cameras).map(([camId, rawCam]) => {
-      const cam: ICamera = {
-        name: rawCam.name,
-        position: new THREE.Vector3(rawCam.posX, rawCam.posY, rawCam.posZ),
-        rotation: new THREE.Euler().setFromQuaternion(
-          new THREE.Quaternion(
-            rawCam.angleX,
-            rawCam.angleY,
-            rawCam.angleZ,
-            rawCam.angleW,
-          ),
-          "YXZ",
-        ),
-        fov: rawCam.fov,
-        // mock aspect for now
-        aspect: 16 / 9,
-        isHidingArrows: rawCam.isHidingArrows,
-        isHidingWheels: rawCam.isHidingWheels,
-        isLockingPosition: rawCam.isLockingPosition,
-        isLockingRotation: rawCam.isLockingRotation,
-        isHidingFrustum: rawCam.isHidingFrustum,
-      };
+      const cam = transformProtoEventToCamera(rawCam);
       return [camId, cam];
     }),
   );
@@ -105,17 +110,12 @@ export function createBaseSceneStates(
   const cameras = reactive<Record<string, ICamera>>(camsData!);
 
   const spectatorCam: Reactive<ICamera> = reactive({
-    name: "",
-    rotation: spectatorCameraRotation,
-    position: spectatorCameraPosition,
-    aspect: 0,
-    isHidingArrows: false,
-    isHidingWheels: false,
-    isLockingPosition: false,
-    isLockingRotation: false,
-    isHidingFrustum: false,
-    controlling: undefined,
+    ...structuredClone(cameraDefault),
     fov: spectatorCameraFov,
+    position: spectatorCameraPosition,
+    rotation: spectatorCameraRotation,
+    aspectWidth: 0,
+    aspectHeight: 1,
   });
 
   const currentCam = computed<ICamera>(() => {
@@ -133,26 +133,9 @@ export function createBaseSceneStates(
 
   const aspectMarginType = ref<"horizontal" | "vertical">("horizontal");
 
-  const aspectMargin = computed(() => {
-    const canvas = tresContext.value?.renderer.domElement;
-
-    const canvasSize = {
-      width: canvas?.clientWidth,
-      height: canvas?.clientHeight,
-    };
-
-    if ((canvasSize?.height ?? 0) == (screenSize?.height ?? 0)) {
-      return {
-        width: ((canvasSize?.width ?? 0) - (screenSize?.width ?? 0)) / 2 + "px",
-        height: "100%",
-      };
-    } else {
-      return {
-        width: "100%",
-        height:
-          ((canvasSize?.height ?? 0) - (screenSize?.height ?? 0)) / 2 + "px",
-      };
-    }
+  const aspectMargin = reactive({
+    width: "0",
+    height: "0",
   });
 
   const sceneStates = {
@@ -196,10 +179,7 @@ export function createSceneStatesWithHelper(
   const sceneStatesWithCam = {
     ...sceneStates,
     aspectRatioManagement: aspectRatioManagement,
-    cameraManagement: useCameraManagement(
-      sceneStates,
-      aspectRatioManagement.handleResize,
-    ),
+    cameraManagement: useCameraManagement(sceneStates),
     spectatorPosition: useSpectatorPosition(sceneStates),
     spectatorRotation: useSpectatorRotation(sceneStates),
   };

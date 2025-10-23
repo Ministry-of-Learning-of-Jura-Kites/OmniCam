@@ -1,4 +1,4 @@
-import type * as THREE from "three";
+import * as THREE from "three";
 
 // export interface VectorObj {
 //   x: number;
@@ -26,7 +26,8 @@ export interface ICamera {
   position: THREE.Vector3;
   rotation: THREE.Euler;
   fov: number;
-  aspect: number;
+  aspectWidth: number;
+  aspectHeight: number;
   isHidingArrows: boolean;
   isHidingWheels: boolean;
   isLockingPosition: boolean;
@@ -37,3 +38,18 @@ export interface ICamera {
     direction: "x" | "y" | "z";
   };
 }
+
+export const cameraDefault: ICamera = {
+  name: "",
+  rotation: new THREE.Euler(),
+  position: new THREE.Vector3(),
+  fov: 60,
+  aspectWidth: 4,
+  aspectHeight: 3,
+  isHidingArrows: false,
+  isHidingWheels: false,
+  isLockingPosition: false,
+  isLockingRotation: false,
+  isHidingFrustum: true,
+  controlling: undefined,
+};
