@@ -6,16 +6,17 @@ export function updateAspectOnResize(sceneStates: SceneStates) {
   const origWidth = canvas?.clientWidth ?? 0;
   const origHeight = canvas?.clientHeight ?? 0;
 
-  const aspect = sceneStates.currentCam.value.aspect;
-
-  if (aspect == 0) {
-    return;
-  }
+  const aspect =
+    sceneStates.currentCam.value.aspectWidth /
+    sceneStates.currentCam.value.aspectHeight;
 
   let width: number;
   let height: number;
 
-  if (origWidth > origHeight * aspect) {
+  if (aspect == 0) {
+    width = origWidth;
+    height = origHeight;
+  } else if (origWidth > origHeight * aspect) {
     width = aspect * origHeight;
     height = origHeight;
     sceneStates.aspectMarginType.value = "vertical";
@@ -27,6 +28,21 @@ export function updateAspectOnResize(sceneStates: SceneStates) {
 
   sceneStates.screenSize.width = width;
   sceneStates.screenSize.height = height;
+
+  const canvasSize = {
+    width: canvas?.clientWidth,
+    height: canvas?.clientHeight,
+  };
+
+  if ((canvasSize?.height ?? 0) == (height ?? 0)) {
+    sceneStates.aspectMargin.width =
+      ((canvasSize?.width ?? 0) - (width ?? 0)) / 2 + "px";
+    sceneStates.aspectMargin.height = "100%";
+  } else {
+    sceneStates.aspectMargin.width = "100%";
+    sceneStates.aspectMargin.height =
+      ((canvasSize?.height ?? 0) - (height ?? 0)) / 2 + "px";
+  }
 }
 
 export function useAspectRatio(sceneStates: SceneStates) {
@@ -40,6 +56,10 @@ export function useAspectRatio(sceneStates: SceneStates) {
 
   onUnmounted(() => {
     window.removeEventListener("resize", handleResize);
+  });
+
+  watch(sceneStates.currentCamId, (_) => {
+    handleResize();
   });
 
   return { handleResize };
