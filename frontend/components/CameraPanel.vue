@@ -31,6 +31,17 @@ const selectedCamId = ref<string | null>(null);
 
 const isCameraPropertiesOpen = ref(true);
 
+const selectedCam = computed(() =>
+  selectedCamId.value ? sceneStates.cameras[selectedCamId.value] : null,
+);
+
+watch(
+  [() => selectedCam.value?.aspectWidth, () => selectedCam.value?.aspectHeight],
+  () => {
+    sceneStates.aspectRatioManagement.handleResize();
+  },
+);
+
 const spawnCamera = () => {
   const newCamId = sceneStates.cameraManagement.spawnCameraHere();
   if (newCamId) {
@@ -263,6 +274,25 @@ function onToggleLockRotation() {
           </div>
         </div>
 
+        <div>
+          <Label><p>Aspect Ratio</p></Label>
+          <div class="flex flex-row gap-2 justify-center items-center">
+            <Input
+              id="aspect-ratio-width"
+              v-model.number="selectedCam!.aspectWidth"
+              type="number"
+              @change="sceneStates.markedForCheck.add(selectedCamId)"
+            />
+            <p>:</p>
+            <Input
+              id="aspect-ratio-height"
+              v-model.number="selectedCam!.aspectHeight"
+              type="number"
+              @change="sceneStates.markedForCheck.add(selectedCamId)"
+            />
+          </div>
+        </div>
+
         <div class="flex items-center gap-2">
           <input
             id="lock-rotation"
@@ -349,10 +379,8 @@ function onToggleLockRotation() {
           <Button
             size="sm"
             variant="ghost"
-            @click="
-              sceneStates.cameraManagement.switchToCam(selectedCamId);
-              sceneStates.markedForCheck.add(selectedCamId);
-            "
+            :disabled="sceneStates.currentCamId.value == selectedCamId"
+            @click="sceneStates.cameraManagement.switchToCam(selectedCamId)"
           >
             <Eye class="h-3 w-3" />
             Preview
@@ -361,7 +389,7 @@ function onToggleLockRotation() {
           <Button
             size="sm"
             variant="ghost"
-            :disabled="!sceneStates.currentCamId"
+            :disabled="sceneStates.currentCamId.value == selectedCamId"
             @click="
               deleteCamera(selectedCamId);
               sceneStates.markedForCheck.add(selectedCamId);
@@ -437,5 +465,7 @@ input {
   border: 1px solid black;
   outline: 1px solid white;
   box-sizing: border-box;
+
+  margin-top: 4px;
 }
 </style>
