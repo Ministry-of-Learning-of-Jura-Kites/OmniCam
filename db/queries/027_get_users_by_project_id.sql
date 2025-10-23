@@ -12,6 +12,6 @@ FROM
   "user" u
   INNER JOIN user_to_project up ON u.id = up.user_id
 WHERE
-  up.project_id = sqlc.arg (project_id)::UUID
+  up.project_id = SQLC.ARG(project_id)::UUID
 ORDER BY
   u.created_at DESC;

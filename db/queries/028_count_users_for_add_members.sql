@@ -5,7 +5,7 @@ FROM
   "user" u
 WHERE
   (
-    u.username ILIKE '%' || sqlc.arg (search)::TEXT || '%'
+    u.username ILIKE '%' || SQLC.ARG(search)::TEXT || '%'
   )
   AND NOT EXISTS (
     SELECT
@@ -14,5 +14,5 @@ WHERE
       user_to_project up
     WHERE
       up.user_id = u.id
-      AND up.project_id = sqlc.arg (project_id)
+      AND up.project_id = SQLC.ARG(project_id)
   );
