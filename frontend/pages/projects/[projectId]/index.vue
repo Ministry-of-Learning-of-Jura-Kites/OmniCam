@@ -117,13 +117,14 @@ const confirmMessage = ref<string>("");
 const successDialog = ref<boolean>(false);
 const successMessage = ref<string>("");
 console.log("member", user.value);
-const isOwner = computed(() => {
-  if (!user.value || members.value.length === 0) return false;
-  const me = members.value.find((m) => m.username === user.value);
-  return me?.role === "owner";
+const userProjectRole = computed<
+  "owner" | "project_manager" | "collaborator" | null
+>(() => {
+  if (!user.value || members.value.length === 0) return null;
+  const me = members.value.find((m) => m.username === user.value?.username);
+  return me?.role as "owner" | "project_manager" | "collaborator" | null;
 });
 
-console.log("isOwner", isOwner.value);
 // const isLoading = ref(false);
 
 // dialog form config
@@ -581,14 +582,23 @@ watch([page, pageSize], async () => {
               {{ m.username[0] }}
             </div>
             <div class="text-sm flex-1">
-              <p class="font-medium">{{ m.username }}</p>
-              <p class="text-xs text-gray-500 capitalize">{{ m.role }}</p>
+              <p class="font-medium">
+                {{ m.username }}
+                <span v-if="m.username === user?.username" class="text-gray-500"
+                  >(me)</span
+                >
+              </p>
+              <p class="text-xs text-gray-500">
+                {{ m.role.replace("_", " ") }}
+              </p>
             </div>
 
             <div class="flex gap-1">
               <Button
                 size="sm"
-                :disabled="!isOwner || m.username === user"
+                :disabled="
+                  m.username === user?.username || userProjectRole !== 'owner'
+                "
                 @click="handleEditMember(m)"
               >
                 Edit
@@ -596,7 +606,14 @@ watch([page, pageSize], async () => {
               <Button
                 variant="destructive"
                 size="sm"
-                :disabled="!isOwner || m.username === user"
+                :disabled="
+                  m.username === user?.username ||
+                  !(
+                    userProjectRole === 'owner' ||
+                    (userProjectRole === 'project_manager' &&
+                      m.role === 'collaborator')
+                  )
+                "
                 @click="handleDeleteMember(m.username, m.userId)"
               >
                 Delete
@@ -606,7 +623,10 @@ watch([page, pageSize], async () => {
 
           <Button
             class="mt-4 w-full"
-            :disabled="!isOwner"
+            :disabled="
+              userProjectRole !== 'owner' &&
+              userProjectRole !== 'project_manager'
+            "
             @click="handleAddUsers"
           >
             Add Team Members
@@ -619,6 +639,7 @@ watch([page, pageSize], async () => {
     <AddUserDialog
       v-model:open="isAddUserOpen"
       :project-id="route.params.projectId as string"
+      :user-role="userProjectRole"
       @submit="handleAddUsers"
       @members-added="handleMembersAdded"
     />
