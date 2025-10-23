@@ -97,6 +97,7 @@ if (sceneStates.error != null) {
 } else {
   const sceneStatesWithHelper = createSceneStatesWithHelper(
     sceneStates as SceneStates,
+    props.workspace,
   );
 
   provide(SCENE_STATES_KEY, sceneStatesWithHelper);
