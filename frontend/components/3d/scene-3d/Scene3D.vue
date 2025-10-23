@@ -9,9 +9,8 @@ import { SCENE_STATES_KEY } from "~/components/3d/scene-states-provider/create-s
 import { useCameraUpdate } from "./use-camera-update";
 import type { IUserData } from "~/types/obj-3d-user-data";
 import ModelLoader from "../model-loader/ModelLoader.vue";
-import { useAutosave } from "./use-autosave";
 
-const props = defineProps({
+const _ = defineProps({
   projectId: {
     type: String,
     required: true,
@@ -125,9 +124,9 @@ watch(
   { deep: true },
 );
 
-onMounted(() => {
-  useAutosave(sceneStates, props.workspace);
-});
+// onMounted(() => {
+//   useAutosave(sceneStates, props.workspace);
+// });
 </script>
 
 <template>
@@ -136,6 +135,28 @@ onMounted(() => {
       :ref="sceneStates.tresCanvasParent"
       class="w-full h-full bg-background relative"
     >
+      <div
+        class="w-full h-full absolute z-3 pointer-events-none flex justify-between"
+        :class="
+          'flex-' +
+          (sceneStates.aspectMarginType.value == 'horizontal' ? 'col' : 'row')
+        "
+      >
+        <div
+          :style="{
+            width: sceneStates.aspectMargin.value.width ?? '0px',
+            height: sceneStates.aspectMargin.value.height ?? '0px',
+          }"
+          class="bg-black align-start pointer-events-auto"
+        ></div>
+        <div
+          :style="{
+            width: sceneStates.aspectMargin.value.width ?? '0px',
+            height: sceneStates.aspectMargin.value.height ?? '0px',
+          }"
+          class="bg-black align-end pointer-events-auto"
+        ></div>
+      </div>
       <div
         id="camera-props"
         class="absolute top-0 right-0 z-10 text-white flex flex-col p-2"
