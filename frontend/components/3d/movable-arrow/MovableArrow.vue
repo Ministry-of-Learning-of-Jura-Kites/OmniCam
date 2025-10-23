@@ -122,15 +122,20 @@ const isActuallyHiding = computed(() => {
   return shouldHide;
 });
 
+function onHidingChange(isHiding: boolean) {
+  if (isHiding) {
+    setMeshUndraggable();
+  } else {
+    setMeshDraggable();
+  }
+}
+
+onHidingChange(props.isHiding);
+
 watch(
   () => props.isHiding,
-  (isHiding) => {
-    if (isHiding) {
-      setMeshUndraggable();
-    } else {
-      setMeshDraggable();
-    }
-  },
+  (newVal) => onHidingChange(newVal),
+  { immediate: true },
 );
 
 onBeforeUnmount(() => {
