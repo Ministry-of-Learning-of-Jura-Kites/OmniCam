@@ -8,13 +8,14 @@ import (
 	"github.com/google/uuid"
 	"go.uber.org/zap"
 	config_env "omnicam.com/backend/config"
+	db_client "omnicam.com/backend/pkg/db"
 	db_sqlc_gen "omnicam.com/backend/pkg/db/sqlc-gen"
 )
 
 type PutUserRoleRoute struct {
 	Logger *zap.Logger
 	Env    *config_env.AppEnv
-	DB     *db_sqlc_gen.Queries
+	DB     *db_client.DB
 }
 
 type UpdateMemberRoleRequest struct {
@@ -53,7 +54,7 @@ func (t *PutUserRoleRoute) updateMemberRole(c *gin.Context) {
 		return
 	}
 
-	err = t.DB.PutUserRole(c, db_sqlc_gen.PutUserRoleParams{
+	err = t.DB.Queries.PutUserRole(c, db_sqlc_gen.PutUserRoleParams{
 		Role:      db_sqlc_gen.Role(req.Role),
 		ProjectID: projectID,
 		UserID:    userID,

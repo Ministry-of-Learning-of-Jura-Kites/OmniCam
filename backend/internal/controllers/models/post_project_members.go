@@ -8,6 +8,7 @@ import (
 	"github.com/google/uuid"
 	"go.uber.org/zap"
 	config_env "omnicam.com/backend/config"
+	db_client "omnicam.com/backend/pkg/db"
 	db_sqlc_gen "omnicam.com/backend/pkg/db/sqlc-gen"
 )
 
@@ -20,7 +21,7 @@ type AddProjectMembersRequest struct {
 type PostProjectMembersRoute struct {
 	Logger *zap.Logger
 	Env    *config_env.AppEnv
-	DB     *db_sqlc_gen.Queries
+	DB     *db_client.DB
 }
 
 func (t *PostProjectMembersRoute) addProjectMembers(c *gin.Context) {
@@ -65,7 +66,7 @@ func (t *PostProjectMembersRoute) addProjectMembers(c *gin.Context) {
 			Role:      db_sqlc_gen.Role(m.Role),
 		}
 
-		if err := t.DB.PostProjectMembers(c, param); err != nil {
+		if err := t.DB.Queries.PostProjectMembers(c, param); err != nil {
 			t.Logger.Error("failed to upsert project member", zap.Error(err))
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "database error"})
 			return

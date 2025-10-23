@@ -10,6 +10,7 @@ import (
 	"github.com/google/uuid"
 	"go.uber.org/zap"
 	config_env "omnicam.com/backend/config"
+	db_client "omnicam.com/backend/pkg/db"
 	db_sqlc_gen "omnicam.com/backend/pkg/db/sqlc-gen"
 )
 
@@ -26,7 +27,7 @@ type UserResponse struct {
 type UsersForAddMembersRoute struct {
 	Logger *zap.Logger
 	Env    *config_env.AppEnv
-	DB     *db_sqlc_gen.Queries
+	DB     *db_client.DB
 }
 
 func (t *UsersForAddMembersRoute) getAllUsersForAddMembers(c *gin.Context) {
@@ -60,7 +61,7 @@ func (t *UsersForAddMembersRoute) getAllUsersForAddMembers(c *gin.Context) {
 	search := c.DefaultQuery("search", "")
 	pageOffset := (page - 1) * pageSize
 
-	users, err := t.DB.GetUsersForAddMembers(c, db_sqlc_gen.GetUsersForAddMembersParams{
+	users, err := t.DB.Queries.GetUsersForAddMembers(c, db_sqlc_gen.GetUsersForAddMembersParams{
 		PageSize:   int32(pageSize),
 		PageOffset: int32(pageOffset),
 		Search:     search,
@@ -72,7 +73,7 @@ func (t *UsersForAddMembersRoute) getAllUsersForAddMembers(c *gin.Context) {
 		return
 	}
 
-	total, err := t.DB.CountUsersForAddMembers(c, db_sqlc_gen.CountUsersForAddMembersParams{
+	total, err := t.DB.Queries.CountUsersForAddMembers(c, db_sqlc_gen.CountUsersForAddMembersParams{
 		Search:    search,
 		ProjectID: projectID,
 	})

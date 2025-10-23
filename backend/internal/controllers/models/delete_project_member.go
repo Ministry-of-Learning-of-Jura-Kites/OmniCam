@@ -8,13 +8,14 @@ import (
 	"github.com/google/uuid"
 	"go.uber.org/zap"
 	config_env "omnicam.com/backend/config"
+	db_client "omnicam.com/backend/pkg/db"
 	db_sqlc_gen "omnicam.com/backend/pkg/db/sqlc-gen"
 )
 
 type DeleteProjectMemberRoute struct {
 	Logger *zap.Logger
 	Env    *config_env.AppEnv
-	DB     *db_sqlc_gen.Queries
+	DB     *db_client.DB
 }
 
 func (t *DeleteProjectMemberRoute) deleteMember(c *gin.Context) {
@@ -43,7 +44,7 @@ func (t *DeleteProjectMemberRoute) deleteMember(c *gin.Context) {
 		return
 	}
 
-	err = t.DB.DeleteProjectMember(c, db_sqlc_gen.DeleteProjectMemberParams{
+	err = t.DB.Queries.DeleteProjectMember(c, db_sqlc_gen.DeleteProjectMemberParams{
 		UserID:    userID,
 		ProjectID: projectID,
 	})

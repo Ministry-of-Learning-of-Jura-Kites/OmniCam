@@ -38,7 +38,7 @@ func (t *PostProjectRoute) post(c *gin.Context) {
 		return
 	}
 
-	user, err := t.DB.GetUserByUsername(c, username.(string))
+	user, err := t.DB.Queries.GetUserByUsername(c, username.(string))
 	if err != nil {
 		t.Logger.Error("failed to get user by username", zap.Error(err))
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "user not found"})
@@ -46,7 +46,7 @@ func (t *PostProjectRoute) post(c *gin.Context) {
 	}
 	var req CreateProjectRequest
 
-	userId, err := utils.GetUuidFromCtx(c, "userId")
+	_, err = utils.GetUuidFromCtx(c, "userId")
 	if err != nil {
 		t.Logger.Error("error while getting userId form", zap.Error(err))
 		c.JSON(http.StatusInternalServerError, gin.H{})
@@ -115,7 +115,7 @@ func (t *PostProjectRoute) post(c *gin.Context) {
 	}
 
 	role := "owner"
-	if _, err := t.DB.AddUserToProject(c, db_sqlc_gen.AddUserToProjectParams{
+	if _, err := t.DB.Queries.AddUserToProject(c, db_sqlc_gen.AddUserToProjectParams{
 		ProjectID: project.ID,
 		UserID:    user.ID,
 		Role:      db_sqlc_gen.Role(role),

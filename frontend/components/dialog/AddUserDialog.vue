@@ -25,6 +25,7 @@ const props = defineProps<{
   open: boolean;
   projectId: string;
   initialSelected?: { userId: string; role: string }[];
+  userRole: "owner" | "project_manager" | "collaborator" | null;
 }>();
 
 const emit = defineEmits<{
@@ -47,21 +48,30 @@ type UserItem = {
 
 type SelectedEntry = {
   user: UserItem;
-  role: "owner" | "project_manager" | "collaborator";
+  role: "project_manager" | "collaborator";
 };
 const isSuccessDialogOpen = ref(false);
 const successMessage = ref("");
 const page = ref(1);
-const pageSize = ref(5);
+const pageSize = ref(3);
 const total = ref(0);
 const users = ref<UserItem[]>([]);
 const searchText = ref("");
 const loading = ref(false);
 const debounceTimer = ref<number | null>(null);
 const selected = reactive<Record<string, SelectedEntry>>({});
-const globalRole = ref<"owner" | "project_manager" | "collaborator">(
-  "collaborator",
+const globalRole = ref<"project_manager" | "collaborator">(
+  props.userRole === "owner" ? "project_manager" : "collaborator",
 );
+const availableRoles = computed(() => {
+  if (props.userRole === "owner") {
+    return ["project_manager", "collaborator"];
+  }
+  if (props.userRole === "project_manager") {
+    return ["collaborator"];
+  }
+  return [];
+});
 
 async function fetchUsers() {
   loading.value = true;
@@ -98,12 +108,12 @@ async function fetchUsers() {
       return u;
     });
 
-    const missingSelected = selectedIds
-      .filter((id) => !merged.some((u) => u?.id === id))
-      .map((id) => selected[id]?.user);
+    // const missingSelected = selectedIds
+    //   .filter((id) => !merged.some((u) => u?.id === id))
+    //   .map((id) => selected[id]?.user);
 
     users.value = [
-      ...missingSelected.filter((u): u is UserItem => u !== undefined),
+      // ...missingSelected.filter((u): u is UserItem => u !== undefined),
       ...merged,
     ];
   } catch (err) {
@@ -227,7 +237,7 @@ function handleCancel() {
   for (const key in selected) delete selected[key];
   emit("update:open", false);
 }
-
+console.log("User role in AddUserDialog:", props.userRole);
 onMounted(fetchUsers);
 </script>
 
@@ -275,10 +285,16 @@ onMounted(fetchUsers);
             <SelectValue placeholder="Select role" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="project_manager">Project Manager</SelectItem>
-            <SelectItem value="collaborator">Collaborator</SelectItem>
+            <SelectItem
+              v-for="role in availableRoles"
+              :key="role"
+              :value="role"
+            >
+              {{ role.replace("_", " ") }}
+            </SelectItem>
           </SelectContent>
         </Select>
+
         <Button
           variant="outline"
           size="sm"
@@ -336,11 +352,13 @@ onMounted(fetchUsers);
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="owner">Owner</SelectItem>
-                    <SelectItem value="project_manager"
-                      >Project Manager</SelectItem
+                    <SelectItem
+                      v-for="role in availableRoles"
+                      :key="role"
+                      :value="role"
                     >
-                    <SelectItem value="collaborator">Collaborator</SelectItem>
+                      {{ role.replace("_", " ") }}
+                    </SelectItem>
                   </SelectContent>
                 </Select>
               </div>

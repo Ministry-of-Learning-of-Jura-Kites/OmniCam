@@ -13,10 +13,13 @@ import {
 import FailDialog from "~/components/dialog/FailDialog.vue";
 
 import { useFailDialog } from "~/composables/useFailDialog";
+import { useAuth } from "~/composables/useAuth";
 const { open, message } = useFailDialog();
 
 const theme = ref<"light" | "dark">("light");
 const config = useRuntimeConfig();
+const auth = await useAuth();
+const { user } = auth;
 onMounted(() => {
   const savedTheme = localStorage.getItem("theme");
   const systemPrefersDark = window.matchMedia(
@@ -123,12 +126,14 @@ const handleLogout = () => {
                   <div
                     class="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center"
                   >
-                    <span class="text-white text-sm font-medium"> B </span>
+                    <span class="text-white text-sm font-medium">
+                      {{ user?.username[0]?.toUpperCase() ?? "?" }}
+                    </span>
                   </div>
                 </button>
               </DropdownMenuTrigger>
               <DropdownMenuContent class="w-56">
-                <DropdownMenuLabel>Nonthacha</DropdownMenuLabel>
+                <DropdownMenuLabel>{{ user?.first_name }}</DropdownMenuLabel>
                 <DropdownMenuSeparator />
                 <DropdownMenuGroup>
                   <DropdownMenuItem>

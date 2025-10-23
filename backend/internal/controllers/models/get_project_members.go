@@ -8,13 +8,13 @@ import (
 	"github.com/google/uuid"
 	"go.uber.org/zap"
 	config_env "omnicam.com/backend/config"
-	db_sqlc_gen "omnicam.com/backend/pkg/db/sqlc-gen"
+	db_client "omnicam.com/backend/pkg/db"
 )
 
 type GetProjectMembersRoute struct {
 	Logger *zap.Logger
 	Env    *config_env.AppEnv
-	DB     *db_sqlc_gen.Queries
+	DB     *db_client.DB
 }
 
 func (t *GetProjectMembersRoute) getProjectMembers(c *gin.Context) {
@@ -31,7 +31,7 @@ func (t *GetProjectMembersRoute) getProjectMembers(c *gin.Context) {
 		return
 	}
 
-	members, err := t.DB.GetProjectMembers(c, projectId)
+	members, err := t.DB.Queries.GetProjectMembers(c, projectId)
 	if err != nil {
 		t.Logger.Error("failed to get project members", zap.Error(err))
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to retrieve project members"})
