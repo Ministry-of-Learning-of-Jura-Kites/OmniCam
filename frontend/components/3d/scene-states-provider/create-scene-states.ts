@@ -133,26 +133,9 @@ export function createBaseSceneStates(
 
   const aspectMarginType = ref<"horizontal" | "vertical">("horizontal");
 
-  const aspectMargin = computed(() => {
-    const canvas = tresContext.value?.renderer.domElement;
-
-    const canvasSize = {
-      width: canvas?.clientWidth,
-      height: canvas?.clientHeight,
-    };
-
-    if ((canvasSize?.height ?? 0) == (screenSize?.height ?? 0)) {
-      return {
-        width: ((canvasSize?.width ?? 0) - (screenSize?.width ?? 0)) / 2 + "px",
-        height: "100%",
-      };
-    } else {
-      return {
-        width: "100%",
-        height:
-          ((canvasSize?.height ?? 0) - (screenSize?.height ?? 0)) / 2 + "px",
-      };
-    }
+  const aspectMargin = ref({
+    width: "0",
+    height: "0",
   });
 
   const sceneStates = {
