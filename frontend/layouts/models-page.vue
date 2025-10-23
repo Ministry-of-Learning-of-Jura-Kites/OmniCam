@@ -9,6 +9,9 @@ const route = useRoute();
 const isPanelOpen = ref(true);
 const slotWidth = ref("100%");
 
+provide("isPanelOpen", isPanelOpen);
+provide("togglePanel", togglePanel);
+
 onMounted(() => {
   slotWidth.value = isPanelOpen.value ? "calc(100% - 20rem)" : "100%";
 });
