@@ -4,6 +4,10 @@ import CameraPanel from "@/components/CameraPanel.vue";
 import SceneStatesProvider from "~/components/3d/scene-states-provider/SceneStatesProvider.vue";
 import { IS_PANEL_OPEN_KEY, TOGGLE_PANEL_KEY } from "~/constants/state-keys";
 
+import FailDialog from "~/components/dialog/FailDialog.vue";
+import { useFailDialog } from "~/composables/useFailDialog";
+const { open, message } = useFailDialog();
+
 const route = useRoute();
 
 const isPanelOpen = ref(true);
@@ -51,6 +55,12 @@ const workspace = computed(() => route.meta.routeInfo?.workspace);
           <CameraPanel :workspace="workspace" />
         </div>
       </div>
+
+      <FailDialog
+        v-model:open="open"
+        :message="message"
+        icon="fa-solid fa-circle-exclamation"
+      />
     </SceneStatesProvider>
   </div>
 </template>
