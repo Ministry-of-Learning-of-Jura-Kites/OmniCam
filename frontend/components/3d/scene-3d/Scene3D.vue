@@ -10,7 +10,7 @@ import { useCameraUpdate } from "./use-camera-update";
 import type { IUserData } from "~/types/obj-3d-user-data";
 import ModelLoader from "../model-loader/ModelLoader.vue";
 
-const _ = defineProps({
+const props = defineProps({
   projectId: {
     type: String,
     required: true,
@@ -32,6 +32,20 @@ const { data: modelResp } = sceneStates.modelInfo;
 const camera: Ref<THREE.PerspectiveCamera | null> = ref(null);
 
 const canvas: Ref<InstanceType<typeof TresCanvas> | null> = ref(null);
+
+const aspect = computed(() => {
+  const width = sceneStates.currentCam.value.aspectHeight;
+  if (width == 0) {
+    return undefined;
+  }
+
+  let height = sceneStates.currentCam.value.aspectHeight;
+  if (height == 0) {
+    height = 1;
+  }
+
+  return width / height;
+});
 
 useCameraUpdate(sceneStates);
 
@@ -230,7 +244,7 @@ watch(
       <TresCanvas
         id="canvas"
         ref="canvas"
-        resize-event="parent"
+        :window-size="false"
         clear-color="#0E0C29"
         tabindex="0"
       >
@@ -249,6 +263,7 @@ watch(
             sceneStates.transformingInfo.value?.fov ??
             sceneStates.currentCam.value?.fov
           "
+          :aspect="aspect"
         />
 
         <CameraObject
@@ -256,6 +271,7 @@ watch(
           :key="camId"
           :cam-id="camId"
           :name="cam.name"
+          :workspace="props.workspace"
         />
 
         <!-- Environment and lighting, from the tresjs/cientos library -->

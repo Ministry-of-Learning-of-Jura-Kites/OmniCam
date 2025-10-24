@@ -16,6 +16,10 @@ const props = defineProps({
     type: String,
     default: "",
   },
+  workspace: {
+    type: String,
+    default: null,
+  },
 });
 
 const sceneStates = inject(SCENE_STATES_KEY)!;
@@ -58,7 +62,9 @@ const camQuat = computed(() => {
       <MovableArrow
         v-model="cam"
         :is-hiding="
-          cam.isHidingArrows || sceneStates.currentCamId.value == props.camId
+          cam.isHidingArrows ||
+          sceneStates.currentCamId.value == props.camId ||
+          props.workspace == null
         "
         :controlling="cam.controlling"
         direction="x"
@@ -68,7 +74,9 @@ const camQuat = computed(() => {
       <MovableArrow
         v-model="cam"
         :is-hiding="
-          cam.isHidingArrows || sceneStates.currentCamId.value == props.camId
+          cam.isHidingArrows ||
+          sceneStates.currentCamId.value == props.camId ||
+          props.workspace == null
         "
         :controlling="cam.controlling"
         direction="y"
@@ -78,7 +86,9 @@ const camQuat = computed(() => {
       <MovableArrow
         v-model="cam"
         :is-hiding="
-          cam.isHidingArrows || sceneStates.currentCamId.value == props.camId
+          cam.isHidingArrows ||
+          sceneStates.currentCamId.value == props.camId ||
+          props.workspace == null
         "
         :controlling="cam.controlling"
         direction="z"
@@ -88,7 +98,9 @@ const camQuat = computed(() => {
       <RotationWheel
         v-model="cam"
         :is-hiding="
-          cam.isHidingWheels || sceneStates.currentCamId.value == props.camId
+          cam.isHidingWheels ||
+          sceneStates.currentCamId.value == props.camId ||
+          props.workspace == null
         "
         direction="x"
         color="green"
@@ -96,7 +108,9 @@ const camQuat = computed(() => {
       <RotationWheel
         v-model="cam"
         :is-hiding="
-          cam.isHidingWheels || sceneStates.currentCamId.value == props.camId
+          cam.isHidingWheels ||
+          sceneStates.currentCamId.value == props.camId ||
+          props.workspace == null
         "
         direction="y"
         color="red"
@@ -104,7 +118,9 @@ const camQuat = computed(() => {
       <RotationWheel
         v-model="cam"
         :is-hiding="
-          cam.isHidingWheels || sceneStates.currentCamId.value == props.camId
+          cam.isHidingWheels ||
+          sceneStates.currentCamId.value == props.camId ||
+          props.workspace == null
         "
         direction="z"
         color="blue"
