@@ -1,13 +1,13 @@
 package controller_model
 
 import (
-	"encoding/base64"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	"go.uber.org/zap"
 	config_env "omnicam.com/backend/config"
+	"omnicam.com/backend/internal/utils"
 	db_client "omnicam.com/backend/pkg/db"
 	db_sqlc_gen "omnicam.com/backend/pkg/db/sqlc-gen"
 )
@@ -27,17 +27,10 @@ type PostProjectMembersRoute struct {
 func (t *PostProjectMembersRoute) addProjectMembers(c *gin.Context) {
 	strProjectId := c.Param("projectId")
 
-	decodedBytes, err := base64.RawURLEncoding.DecodeString(strProjectId)
+	projectID, err := utils.ParseUuidBase64(strProjectId)
 	if err != nil {
 		t.Logger.Error("error decoding Base64 projectId", zap.Error(err))
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid base64 projectId"})
-		return
-	}
-
-	projectID, err := uuid.FromBytes(decodedBytes)
-	if err != nil {
-		t.Logger.Error("error converting decoded projectId to UUID", zap.Error(err))
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid projectId"})
 		return
 	}
 
@@ -47,30 +40,23 @@ func (t *PostProjectMembersRoute) addProjectMembers(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid JSON body"})
 		return
 	}
+	var userIDs []uuid.UUID
+	var roles []string
 
 	for _, m := range req {
-		if m.ProjectID != uuid.Nil && m.ProjectID != projectID {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "projectId mismatch"})
-			return
-		}
+		userIDs = append(userIDs, m.UserID)
+		roles = append(roles, m.Role)
 	}
 
-	for _, m := range req {
-		if m.UserID == uuid.Nil {
-			continue
-		}
-
-		param := db_sqlc_gen.PostProjectMembersParams{
-			ProjectID: projectID,
-			UserID:    m.UserID,
-			Role:      db_sqlc_gen.Role(m.Role),
-		}
-
-		if err := t.DB.Queries.PostProjectMembers(c, param); err != nil {
-			t.Logger.Error("failed to upsert project member", zap.Error(err))
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "database error"})
-			return
-		}
+	err = t.DB.Queries.PostProjectMembers(c, db_sqlc_gen.PostProjectMembersParams{
+		ProjectID: projectID,
+		UserIds:   userIDs,
+		Roles:     roles,
+	})
+	if err != nil {
+		t.Logger.Error("add member to project fail", zap.Error(err))
+		c.JSON(http.StatusBadRequest, gin.H{})
+		return
 	}
 
 	c.JSON(http.StatusOK, gin.H{"status": "success"})
