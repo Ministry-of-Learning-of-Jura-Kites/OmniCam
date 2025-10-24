@@ -42,6 +42,14 @@ const registerForm = reactive<RegisterRequest>({
   password: "",
 });
 
+const touched = reactive({
+  firstName: false,
+  lastName: false,
+  username: false,
+  email: false,
+  password: false,
+});
+
 const loginForm = reactive<LoginRequest>({
   identifier: "",
   password: "",
@@ -84,6 +92,55 @@ async function login() {
 
   return;
 }
+
+function markTouched(field: keyof RegisterRequest) {
+  touched[field] = true;
+}
+
+function checkPasswordFormat(password: string): boolean {
+  if (password.length < 8 || password.length > 255) return false;
+
+  let hasNumber = false;
+  let hasSymbol = false;
+
+  for (const letter of password) {
+    if (/\d/.test(letter)) hasNumber = true;
+    if (/[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?~`]/.test(letter)) hasSymbol = true;
+  }
+
+  return hasNumber && hasSymbol;
+}
+
+const errors = computed(() => {
+  return {
+    firstName:
+      touched.firstName && !registerForm.firstName
+        ? "First name is required"
+        : "",
+    lastName:
+      touched.lastName && !registerForm.lastName ? "Last name is required" : "",
+    username:
+      touched.username && !registerForm.username ? "Username is required" : "",
+    email: touched.email && !registerForm.email ? "Email is required" : "",
+    password:
+      touched.password && !registerForm.password
+        ? "Password is required"
+        : touched.password && !checkPasswordFormat(registerForm.password)
+          ? "Password must be at least character 8, contain a number and a symbol"
+          : "",
+  };
+});
+
+// Check if any field is dirty (modified)
+const isDirty = computed(() => {
+  return (
+    registerForm.firstName !== "" ||
+    registerForm.lastName !== "" ||
+    registerForm.username !== "" ||
+    registerForm.email !== "" ||
+    registerForm.password !== ""
+  );
+});
 </script>
 
 <template>
@@ -120,8 +177,11 @@ async function login() {
                 v-model="registerForm.firstName"
                 type="text"
                 placeholder="First Name"
-                required
+                @blur="markTouched('firstName')"
               />
+              <p v-if="errors.firstName" class="text-red-600">
+                {{ errors.firstName }}
+              </p>
             </div>
 
             <div class="form-group">
@@ -130,8 +190,11 @@ async function login() {
                 v-model="registerForm.lastName"
                 type="text"
                 placeholder="Last Name"
-                required
+                @blur="markTouched('lastName')"
               />
+              <p v-if="errors.lastName" class="text-red-600">
+                {{ errors.lastName }}
+              </p>
             </div>
 
             <div class="form-group">
@@ -140,8 +203,11 @@ async function login() {
                 v-model="registerForm.username"
                 type="text"
                 placeholder="Username"
-                required
+                @blur="markTouched('username')"
               />
+              <p v-if="errors.username" class="text-red-600">
+                {{ errors.username }}
+              </p>
             </div>
 
             <div class="form-group">
@@ -150,8 +216,9 @@ async function login() {
                 v-model="registerForm.email"
                 type="email"
                 placeholder="Email"
-                required
+                @blur="markTouched('email')"
               />
+              <p v-if="errors.email" class="text-red-600">{{ errors.email }}</p>
             </div>
 
             <div class="form-group">
@@ -160,14 +227,19 @@ async function login() {
                 v-model="registerForm.password"
                 type="password"
                 placeholder="Password"
-                required
+                @blur="markTouched('password')"
               />
+              <p v-if="errors.password" class="text-red-600">
+                {{ errors.password }}
+              </p>
             </div>
 
-            <button @click.prevent="register">Sign Up</button>
+            <button :disabled="!isDirty" @click.prevent="register">
+              Sign Up
+            </button>
           </div>
 
-          <!-- Sign-In Form -->
+          <!-- Sign-In Form (unchanged) -->
           <div v-else key="signin" class="form-container">
             <div class="form-group">
               <label>Identifier <span class="required">*</span></label>
