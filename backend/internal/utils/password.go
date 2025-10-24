@@ -1,6 +1,8 @@
 package utils
 
 import (
+	"unicode"
+
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -15,4 +17,24 @@ func HashPassword(password string) (string, error) {
 func CheckPassword(hashedPassword, password string) bool {
 	err := bcrypt.CompareHashAndPassword([]byte(hashedPassword), []byte(password))
 	return err == nil
+}
+
+func CheckPasswordFormat(password string) bool {
+	if len(password) < 8 || len(password) > 255 {
+		return false
+	}
+
+	hasNumber := false
+	hasSymbol := false
+
+	for _, letter := range password {
+		if unicode.IsNumber(letter) {
+			hasNumber = true
+		}
+		if unicode.IsPunct(letter) || unicode.IsSymbol(letter) {
+			hasSymbol = true
+		}
+	}
+
+	return hasNumber && hasSymbol
 }
