@@ -1,0 +1,20 @@
+syntax = "proto3";
+
+package camera;
+
+// Go: generated under go/camera
+option go_package = "omnicam.com/gen/go/camera";
+
+enum AutosaveEventResponseType {
+  AUTOSAVE_EVENT_RESP_TYPE_ACK = 0;
+  AUTOSAVE_EVENT_RESP_TYPE_ERR = 1;
+}
+
+message AutosaveEventResponse {
+  AutosaveEventResponseType type = 1;
+
+  oneof payload {
+    uint32 sequence_number = 2; // ack
+    string err = 3;             // err
+  }
+}
