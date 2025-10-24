@@ -14,7 +14,6 @@ export function useCameraManagement(sceneStates: SceneStates) {
       rotation: new THREE.Euler().copy(sceneStates.spectatorCameraRotation),
       fov: 60,
       frustumColor: randomVividColor(),
-      frustumLength: 10,
     };
     sceneStates.markedForCheck.add(camId);
     return camId;
