@@ -35,5 +35,5 @@ export const cameraDefault: ICamera = {
   isHidingFrustum: true,
   controlling: undefined,
   frustumColor: { r: 1, g: 0.8, b: 0.2, a: 0.5 },
-  frustumLength: 0,
+  frustumLength: 10,
 };

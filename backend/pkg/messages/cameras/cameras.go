@@ -1,5 +1,7 @@
 package messages_cameras
 
+import camera "omnicam.com/backend/pkg/messages/protobufs"
+
 type Cameras = map[string]CameraStruct
 
 type ColorRGBA struct {
@@ -26,4 +28,34 @@ type CameraStruct struct {
 	IsLockingPosition bool      `json:"isLockingPosition" diff:"-"`
 	IsLockingRotation bool      `json:"isLockingRotation" diff:"-"`
 	IsHidingFrustum   bool      `json:"isHidingFrustum" diff:"-"`
+}
+
+func ProtoColorToColor(color *camera.ColorRGBA) ColorRGBA {
+	return ColorRGBA{
+		R: color.R,
+		G: color.G,
+		B: color.B,
+		A: color.A,
+	}
+}
+
+func ProtoCamToCam(protoCam *camera.Camera) CameraStruct {
+	return CameraStruct{
+		Name:              protoCam.Name,
+		AngleX:            protoCam.AngleX,
+		AngleY:            protoCam.AngleY,
+		AngleZ:            protoCam.AngleZ,
+		AngleW:            protoCam.AngleW,
+		PosX:              protoCam.PosX,
+		PosY:              protoCam.PosY,
+		PosZ:              protoCam.PosZ,
+		Fov:               protoCam.Fov,
+		FrustumColor:      ProtoColorToColor(protoCam.FrustumColor),
+		FrustumLength:     protoCam.FrustumLength,
+		IsHidingArrows:    protoCam.IsHidingArrows,
+		IsHidingWheels:    protoCam.IsHidingWheels,
+		IsLockingPosition: protoCam.IsLockingPosition,
+		IsLockingRotation: protoCam.IsLockingRotation,
+		IsHidingFrustum:   protoCam.IsHidingFrustum,
+	}
 }

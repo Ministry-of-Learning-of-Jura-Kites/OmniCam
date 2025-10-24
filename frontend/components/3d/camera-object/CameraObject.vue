@@ -60,7 +60,9 @@ const camQuat = computed(() => {
         :fov="cam!.fov"
         :length="cam!.frustumLength"
         :color="cam!.frustumColor"
-        :is-hiding="cam!.isHidingFrustum"
+        :is-hiding="
+          cam!.isHidingFrustum || camId == sceneStates.currentCamId.value
+        "
       />
     </TresObject3D>
     <template v-if="cam != null">
