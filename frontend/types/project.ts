@@ -5,6 +5,7 @@ export interface Project {
   description: string;
   createdAt: string;
   updatedAt: string;
+  imagePath?: string;
 }
 
 // export interface GetProjectsResponse {

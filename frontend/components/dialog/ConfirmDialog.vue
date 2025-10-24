@@ -40,7 +40,8 @@ function handleSubmit() {
         </DialogClose>
         <Button type="button" @click="handleSubmit">
           {{
-            props.message.toLowerCase().includes("delete")
+            props.message.toLowerCase().includes("delete") ||
+            props.message.toLowerCase().includes("remove")
               ? "Yes!, Delete"
               : "Yes!, Update"
           }}
