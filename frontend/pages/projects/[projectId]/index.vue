@@ -232,8 +232,9 @@ async function createModel() {
   fetchModel();
 }
 
-async function updateModel(modelId: string) {
+async function updateModel(id: string) {
   const projectId = route.params.projectId as string;
+  const modelId = uuidToBase64Url(id);
   try {
     const response = await $fetch<ModelReturnRequest>(
       `http://${config.public.NUXT_PUBLIC_BACKEND_HOST}/api/v1/projects/${projectId}/models/${modelId}`,
@@ -248,7 +249,7 @@ async function updateModel(modelId: string) {
     );
     models.value = {
       ...models.value,
-      [modelId]: {
+      [id]: {
         name: response.data.name,
         description: response.data.description,
         imagePath: response.data.imagePath,
@@ -258,6 +259,7 @@ async function updateModel(modelId: string) {
         projectId: response.data.projectId,
       },
     };
+    console.log("models : ", models.value);
     successDialog.value = true;
     successMessage.value = `You have successfully update ${response.data.name}`;
   } catch (err) {
@@ -267,10 +269,10 @@ async function updateModel(modelId: string) {
 
 async function deleteRow(id: string) {
   try {
-    const projectId = route.params.projectId as string;
-
+    const projectId = route.params.projectId;
+    const modelId = uuidToBase64Url(id);
     await $fetch(
-      `http://${config.public.NUXT_PUBLIC_BACKEND_HOST}/api/v1/projects/${projectId}/models/${id}`,
+      `http://${config.public.NUXT_PUBLIC_BACKEND_HOST}/api/v1/projects/${projectId}/models/${modelId}`,
       {
         method: "DELETE",
         credentials: "include",
@@ -410,13 +412,13 @@ function handleCreateFormSubmit() {
 async function handleUpdateImage(file: File | undefined, modelId: string) {
   if (!file || !modelId) return;
 
-  const projectId = route.params.projectId;
+  const projectId = route.params.projectId as string;
   const formData = new FormData();
   formData.append("image", file);
 
   try {
     const res = await $fetch<{ imagePath: string; message: string }>(
-      `http://${config.public.NUXT_PUBLIC_BACKEND_HOST}/api/v1/projects/${projectId}/models/${modelId}/image`,
+      `http://${config.public.NUXT_PUBLIC_BACKEND_HOST}/api/v1/projects/${projectId}/models/${uuidToBase64Url(modelId)}/image`,
       {
         method: "PUT",
         body: formData,
