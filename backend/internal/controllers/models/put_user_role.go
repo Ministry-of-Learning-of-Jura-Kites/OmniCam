@@ -1,11 +1,9 @@
 package controller_model
 
 import (
-	"encoding/base64"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
-	"github.com/google/uuid"
 	"go.uber.org/zap"
 	config_env "omnicam.com/backend/config"
 	"omnicam.com/backend/internal/utils"
@@ -27,12 +25,7 @@ func (t *PutUserRoleRoute) updateMemberRole(c *gin.Context) {
 	projectParam := c.Param("projectId")
 	userParam := c.Param("userId")
 
-	projectBytes, err := base64.RawURLEncoding.DecodeString(projectParam)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid project ID"})
-		return
-	}
-	projectID, err := uuid.FromBytes(projectBytes)
+	projectID, err := utils.ParseUuidBase64(projectParam)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid project ID"})
 		return

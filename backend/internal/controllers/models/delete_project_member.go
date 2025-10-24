@@ -1,11 +1,9 @@
 package controller_model
 
 import (
-	"encoding/base64"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
-	"github.com/google/uuid"
 	"go.uber.org/zap"
 	config_env "omnicam.com/backend/config"
 	"omnicam.com/backend/internal/utils"
@@ -22,12 +20,7 @@ type DeleteProjectMemberRoute struct {
 func (t *DeleteProjectMemberRoute) deleteMember(c *gin.Context) {
 
 	projectParam := c.Param("projectId")
-	decodedBytes, err := base64.RawURLEncoding.DecodeString(projectParam)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid project ID"})
-		return
-	}
-	projectID, err := uuid.FromBytes(decodedBytes)
+	projectID, err := utils.ParseUuidBase64(projectParam)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid project ID"})
 		return
