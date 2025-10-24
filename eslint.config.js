@@ -9,6 +9,12 @@ export default withNuxt([
     },
   },
   {
+    files: ["**/*.{ts,vue}"],
+    rules: {
+      "@typescript-eslint/no-dynamic-delete": "off",
+    },
+  },
+  {
     files: ["frontend/**/*.vue"],
     rules: {
       "vue/html-self-closing": [

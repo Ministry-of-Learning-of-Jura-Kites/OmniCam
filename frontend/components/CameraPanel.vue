@@ -62,7 +62,6 @@ const deleteCamera = (id: string) => {
   if (sceneStates.currentCamId.value == id) {
     sceneStates.currentCamId.value = null;
   }
-  // eslint-disable-next-line @typescript-eslint/no-dynamic-delete
   delete sceneStates.cameras[id];
 };
 

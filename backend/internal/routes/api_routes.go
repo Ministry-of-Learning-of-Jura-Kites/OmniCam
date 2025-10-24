@@ -10,12 +10,12 @@ import (
 
 	// controller_test "omnicam.com/backend/internal/controllers"
 	"omnicam.com/backend/internal/controllers/authentication"
+	controller_users "omnicam.com/backend/internal/controllers/users"
 	"omnicam.com/backend/internal/middleware"
 
 	controller_camera "omnicam.com/backend/internal/controllers/cameras"
 	controller_model "omnicam.com/backend/internal/controllers/models"
 	controller_projects "omnicam.com/backend/internal/controllers/projects"
-	"omnicam.com/backend/internal/controllers/users"
 	controller_workspaces "omnicam.com/backend/internal/controllers/workspaces"
 	db_client "omnicam.com/backend/pkg/db"
 )
@@ -147,10 +147,52 @@ func InitRoutes(deps Dependencies, router gin.IRouter) {
 	}
 	logoutRoute.InitLogoutRouter(publicRoute)
 
-	getUserRoute := users.UserRoute{
+	getUserRoute := controller_users.UserRoute{
 		Logger: deps.Logger,
 		Env:    deps.Env,
 		DB:     deps.DB,
 	}
-	getUserRoute.InitUserRouter(publicRoute)
+	getUserRoute.InitUserRouter(protectedRoute)
+
+	GetProjectMembersRoute := controller_model.GetProjectMembersRoute{
+		Logger: deps.Logger,
+		Env:    deps.Env,
+		DB:     deps.DB,
+	}
+	GetProjectMembersRoute.InitProjectMemberRouter(protectedRoute)
+
+	PostProjectMembersRoute := controller_model.PostProjectMembersRoute{
+		Logger: deps.Logger,
+		Env:    deps.Env,
+		DB:     deps.DB,
+	}
+	PostProjectMembersRoute.InitProjectMemberRouter(protectedRoute)
+
+	UsersForAddMembersRoute := controller_model.UsersForAddMembersRoute{
+		Logger: deps.Logger,
+		Env:    deps.Env,
+		DB:     deps.DB,
+	}
+	UsersForAddMembersRoute.InitUserRouter(protectedRoute)
+
+	DeleteProjectMemberRoute := controller_model.DeleteProjectMemberRoute{
+		Logger: deps.Logger,
+		Env:    deps.Env,
+		DB:     deps.DB,
+	}
+	DeleteProjectMemberRoute.InitDeleteProjectMemberRoute(protectedRoute)
+
+	PutUserRoleRoute := controller_model.PutUserRoleRoute{
+		Logger: deps.Logger,
+		Env:    deps.Env,
+		DB:     deps.DB,
+	}
+	PutUserRoleRoute.InitPutUserRoleRoute(protectedRoute)
+
+	meRoute := controller_users.GetMeRoute{
+		Logger: deps.Logger,
+		Env:    deps.Env,
+		DB:     deps.DB,
+	}
+	meRoute.InitGetMeRouter(protectedRoute)
 }
