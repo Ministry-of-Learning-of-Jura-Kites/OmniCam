@@ -17,7 +17,6 @@ export function useCameraManagement(sceneStates: SceneStates) {
       frustumLength: 10,
     };
     sceneStates.markedForCheck.add(camId);
-    console.log(sceneStates.cameras[camId].frustumColor);
     return camId;
   }
 
