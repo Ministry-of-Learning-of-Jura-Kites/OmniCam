@@ -125,7 +125,7 @@ async function updateProject(id: string) {
       description: projectForm.description,
     };
     const { data } = await $fetch<{ data: Project }>(
-      `http://${config.public.NUXT_PUBLIC_BACKEND_HOST}/api/v1/projects/${id}`,
+      `http://${config.public.NUXT_PUBLIC_BACKEND_HOST}/api/v1/projects/${uuidToBase64Url(id)}`,
       { method: "PUT", body, credentials: "include" },
     );
     const { id: pid, ...rest } = data;
@@ -143,7 +143,7 @@ async function updateProjectImage(id: string, file: File) {
   formData.append("image", file);
   try {
     const { imagePath } = await $fetch<{ imagePath: string }>(
-      `http://${config.public.NUXT_PUBLIC_BACKEND_HOST}/api/v1/projects/${id}/image`,
+      `http://${config.public.NUXT_PUBLIC_BACKEND_HOST}/api/v1/projects/${uuidToBase64Url(id)}/image`,
       { method: "PUT", body: formData, credentials: "include" },
     );
     if (projects.value[id]) {
@@ -162,7 +162,7 @@ async function updateProjectImage(id: string, file: File) {
 async function deleteProject(id: string) {
   try {
     await $fetch(
-      `http://${config.public.NUXT_PUBLIC_BACKEND_HOST}/api/v1/projects/${id}`,
+      `http://${config.public.NUXT_PUBLIC_BACKEND_HOST}/api/v1/projects/${uuidToBase64Url(id)}`,
       {
         method: "DELETE",
         credentials: "include",
