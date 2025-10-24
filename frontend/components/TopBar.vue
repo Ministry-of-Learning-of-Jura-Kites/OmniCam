@@ -51,6 +51,9 @@ const openDialog = ref(false);
 const dialogTitle = ref("");
 const dialogContent = ref("");
 
+const openResolver = ref(false);
+const conflicts = ref({});
+
 async function saveModelToPublic() {
   const runtimeConfig = useRuntimeConfig();
   const resp = await fetch(
@@ -65,15 +68,18 @@ async function saveModelToPublic() {
 
   const respJson: {
     noChanges?: boolean;
+    conflicts: Record<string, Record<string, unknown>>;
   } = await resp.json();
 
-  openDialog.value = true;
   if (respJson.noChanges) {
+    openDialog.value = true;
     dialogTitle.value = "No changes";
     dialogContent.value = "There is no changes to be published";
   } else {
-    dialogTitle.value = "Progress Saved";
-    dialogContent.value = "";
+    // dialogTitle.value = "Progress Saved";
+    // dialogContent.value = "";
+    conflicts.value = respJson.conflicts;
+    openResolver.value = true;
   }
 }
 
@@ -126,6 +132,8 @@ async function createWorkspace() {
 </script>
 
 <template>
+  <MergeConflictsResolver :visible="openResolver" :conflicts="conflicts" />
+
   <Dialog :open="openDialog" @update:open="openDialog = $event">
     <DialogContent class="sm:max-w-[425px]">
       <DialogHeader>
