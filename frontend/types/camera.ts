@@ -1,25 +1,5 @@
 import * as THREE from "three";
-
-// export interface VectorObj {
-//   x: number;
-//   y: number;
-//   z: number;
-// }
-
-// export function vectorToVectorObj(vec: THREE.Vector3) {
-//   return {
-//     x: vec.x,
-//     y: vec.y,
-//     z: vec.z,
-//   };
-// }
-// export function eulerToVectorObj(vec: THREE.Euler) {
-//   return {
-//     x: vec.x,
-//     y: vec.y,
-//     z: vec.z,
-//   };
-// }
+import type { ColorRGBA } from "~/messages/protobufs/autosave_event";
 
 export interface ICamera {
   name: string;
@@ -28,6 +8,8 @@ export interface ICamera {
   fov: number;
   aspectWidth: number;
   aspectHeight: number;
+  frustumColor: ColorRGBA;
+  frustumLength: number;
   isHidingArrows: boolean;
   isHidingWheels: boolean;
   isLockingPosition: boolean;
@@ -52,4 +34,6 @@ export const cameraDefault: ICamera = {
   isLockingRotation: false,
   isHidingFrustum: true,
   controlling: undefined,
+  frustumColor: { r: 1, g: 0.8, b: 0.2, a: 0.5 },
+  frustumLength: 0,
 };
