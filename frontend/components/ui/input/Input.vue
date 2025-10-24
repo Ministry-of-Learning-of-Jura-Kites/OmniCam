@@ -6,7 +6,7 @@ import { cn } from "@/lib/utils";
 const props = defineProps<{
   defaultValue?: string | number;
   modelValue?: string | number;
-  disabled: boolean;
+  disabled?: boolean;
   disabledClass?: string;
   class?: HTMLAttributes["class"];
 }>();
