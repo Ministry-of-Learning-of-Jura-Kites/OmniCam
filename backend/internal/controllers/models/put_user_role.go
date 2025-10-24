@@ -8,6 +8,7 @@ import (
 	"github.com/google/uuid"
 	"go.uber.org/zap"
 	config_env "omnicam.com/backend/config"
+	"omnicam.com/backend/internal/utils"
 	db_client "omnicam.com/backend/pkg/db"
 	db_sqlc_gen "omnicam.com/backend/pkg/db/sqlc-gen"
 )
@@ -37,12 +38,7 @@ func (t *PutUserRoleRoute) updateMemberRole(c *gin.Context) {
 		return
 	}
 
-	userBytes, err := base64.RawURLEncoding.DecodeString(userParam)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid user ID"})
-		return
-	}
-	userID, err := uuid.FromBytes(userBytes)
+	userID, err := utils.ParseUuidBase64(userParam)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid user ID"})
 		return
