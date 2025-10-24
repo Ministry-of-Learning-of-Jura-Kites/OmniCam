@@ -3,7 +3,7 @@ import { gsap } from "gsap";
 import type { SceneStates } from "~/types/scene-states";
 import * as THREE from "three";
 import { cameraDefault } from "~/types/camera";
-
+import { randomVividColor } from "~/utils/randomVividColor";
 export function useCameraManagement(sceneStates: SceneStates) {
   function spawnCameraHere() {
     const camId = uuidv4();
@@ -13,6 +13,8 @@ export function useCameraManagement(sceneStates: SceneStates) {
       position: new THREE.Vector3().copy(sceneStates.spectatorCameraPosition),
       rotation: new THREE.Euler().copy(sceneStates.spectatorCameraRotation),
       fov: 60,
+      frustumColor: randomVividColor(),
+      frustumLength: 10,
     };
     sceneStates.markedForCheck.add(camId);
     return camId;
