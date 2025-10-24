@@ -30,6 +30,10 @@ func (t *AuthRoute) register(c *gin.Context) {
 		return
 	}
 
+	if !utils.CheckPasswordFormat(req.Password) {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid password"})
+	}
+
 	hashedPassword, err := utils.HashPassword(req.Password)
 	if err != nil {
 		t.Logger.Error("failed to hash password", zap.Error(err))
