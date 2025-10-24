@@ -120,6 +120,8 @@ func (t *PostProjectRoute) post(c *gin.Context) {
 		Role:      db_sqlc_gen.RoleOwner,
 	}); err != nil {
 		t.Logger.Error("failed to add user to project", zap.Error(err))
+		c.JSON(http.StatusBadRequest, gin.H{})
+		return
 	}
 	tx.Commit(c)
 

@@ -1,13 +1,12 @@
 package controller_model
 
 import (
-	"encoding/base64"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
-	"github.com/google/uuid"
 	"go.uber.org/zap"
 	config_env "omnicam.com/backend/config"
+	"omnicam.com/backend/internal/utils"
 	db_client "omnicam.com/backend/pkg/db"
 )
 
@@ -19,19 +18,13 @@ type GetProjectMembersRoute struct {
 
 func (t *GetProjectMembersRoute) getProjectMembers(c *gin.Context) {
 	strId := c.Param("projectId")
-	decodedBytes, err := base64.RawURLEncoding.DecodeString(strId)
+	projectID, err := utils.ParseUuidBase64(strId)
 	if err != nil {
 		t.Logger.Error("error decoding Base64", zap.Error(err))
 		return
 	}
-	projectId, err := uuid.FromBytes(decodedBytes)
-	if err != nil {
-		t.Logger.Error("error while converting str id to uuid", zap.Error(err))
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid project ID"})
-		return
-	}
 
-	members, err := t.DB.Queries.GetProjectMembers(c, projectId)
+	members, err := t.DB.Queries.GetProjectMembers(c, projectID)
 	if err != nil {
 		t.Logger.Error("failed to get project members", zap.Error(err))
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to retrieve project members"})

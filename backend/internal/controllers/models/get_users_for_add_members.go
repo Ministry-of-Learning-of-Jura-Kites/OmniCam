@@ -1,7 +1,6 @@
 package controller_model // สร้าง package ใหม่สำหรับ user controller
 
 import (
-	"encoding/base64"
 	"net/http"
 	"strconv"
 	"time"
@@ -10,6 +9,7 @@ import (
 	"github.com/google/uuid"
 	"go.uber.org/zap"
 	config_env "omnicam.com/backend/config"
+	"omnicam.com/backend/internal/utils"
 	db_client "omnicam.com/backend/pkg/db"
 	db_sqlc_gen "omnicam.com/backend/pkg/db/sqlc-gen"
 )
@@ -33,15 +33,9 @@ type UsersForAddMembersRoute struct {
 func (t *UsersForAddMembersRoute) getAllUsersForAddMembers(c *gin.Context) {
 
 	strId := c.Param("projectId")
-	decodedBytes, err := base64.RawURLEncoding.DecodeString(strId)
+	projectID, err := utils.ParseUuidBase64(strId)
 	if err != nil {
 		t.Logger.Error("error decoding Base64", zap.Error(err))
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid project ID"})
-		return
-	}
-	projectID, err := uuid.FromBytes(decodedBytes)
-	if err != nil {
-		t.Logger.Error("error converting to uuid", zap.Error(err))
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid project ID"})
 		return
 	}
