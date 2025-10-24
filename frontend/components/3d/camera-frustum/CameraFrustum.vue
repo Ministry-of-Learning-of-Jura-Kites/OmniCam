@@ -31,6 +31,16 @@ const meshMaterial = new THREE.MeshBasicMaterial({
   side: THREE.DoubleSide,
 });
 
+watch(
+  () => props.color,
+  (color) => {
+    if (!color) return;
+    meshMaterial.color.setRGB(color.r, color.g, color.b);
+    meshMaterial.opacity = color.a ?? 1;
+  },
+  { deep: true, immediate: true },
+);
+
 let oldGeometries: ReturnType<typeof createFrustumGeometry> | null = null;
 
 const frustumGeometries = computed(() => {
