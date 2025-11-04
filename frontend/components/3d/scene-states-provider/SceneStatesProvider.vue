@@ -47,7 +47,7 @@ if (modelWithCamsResp.value == undefined) {
   const { data: fetchedModelWithCamsResp, error: modelFetchError } =
     await useAsyncData("model_information", () =>
       $fetch<ModelWithCamsResp>(
-        `http://${runtimeConfig.public.NUXT_PUBLIC_BACKEND_HOST}/api/v1/projects/${props.projectId}/models/${props.modelId}${workspaceSuffix}?${params.toString()}`,
+        `http://${runtimeConfig.public.backendHost}/api/v1/projects/${props.projectId}/models/${props.modelId}${workspaceSuffix}?${params.toString()}`,
         {
           headers: headers,
           credentials: "include",
@@ -67,7 +67,7 @@ if (modelWithCamsResp.value == undefined) {
   modelWithCamsResp = fetchedModelWithCamsResp;
 }
 
-const websocketUrl = `ws://${runtimeConfig.public.NUXT_PUBLIC_BACKEND_HOST}/api/v1/projects/${props.projectId}/models/${props.modelId}/autosave`;
+const websocketUrl = `ws://${runtimeConfig.public.backendHost}/api/v1/projects/${props.projectId}/models/${props.modelId}/autosave`;
 
 let websocket: UseWebSocketReturn<unknown> | undefined = undefined;
 if (props.workspace != undefined) {

@@ -54,7 +54,7 @@ const dialogContent = ref("");
 async function saveModelToPublic() {
   const runtimeConfig = useRuntimeConfig();
   const resp = await fetch(
-    `http://${runtimeConfig.public.NUXT_PUBLIC_BACKEND_HOST}/api/v1/projects/${route.params.projectId}/models/${route.params.modelId}/workspaces/merge`,
+    `http://${runtimeConfig.public.backendHost}/api/v1/projects/${route.params.projectId}/models/${route.params.modelId}/workspaces/merge`,
     { method: "POST", credentials: "include" },
   );
 
@@ -106,7 +106,7 @@ async function createWorkspace() {
 
   try {
     const data = await $fetch(
-      `http://${runtimeConfig.public.NUXT_PUBLIC_BACKEND_HOST}/api/v1/projects/${route.params.projectId}/models/${route.params.modelId}/workspaces/me`,
+      `http://${runtimeConfig.public.backendHost}/api/v1/projects/${route.params.projectId}/models/${route.params.modelId}/workspaces/me`,
       {
         method: "POST",
         credentials: "include",
