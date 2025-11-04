@@ -146,8 +146,7 @@ watch(
 <template>
   <ClientOnly>
     <div
-      :ref="sceneStates.tresCanvasParent"
-      class="w-full h-full bg-background relative"
+      class="h-full bg-background relative bg-black flex flex-col justify-center items-center"
     >
       <div
         class="w-full h-full absolute z-3 pointer-events-none flex justify-between"
@@ -241,67 +240,75 @@ watch(
           />
         </div>
       </div>
-      <TresCanvas
-        id="canvas"
-        ref="canvas"
-        :window-size="false"
-        clear-color="#0E0C29"
-        tabindex="0"
+      <div
+        :ref="sceneStates.tresCanvasParent"
+        :style="{
+          width: sceneStates.screenSize.width + 'px',
+          height: sceneStates.screenSize.height + 'px',
+        }"
       >
-        <!-- Camera -->
-        <TresPerspectiveCamera
-          ref="camera"
-          :position="
-            sceneStates.transformingInfo.value?.position ??
-            sceneStates.currentCam.value?.position
-          "
-          :rotation="
-            sceneStates.transformingInfo.value?.rotation ??
-            sceneStates.currentCam.value?.rotation
-          "
-          :fov="
-            sceneStates.transformingInfo.value?.fov ??
-            sceneStates.currentCam.value?.fov
-          "
-          :aspect="aspect"
-        />
+        <TresCanvas
+          id="canvas"
+          ref="canvas"
+          :window-size="false"
+          clear-color="#0E0C29"
+          tabindex="0"
+        >
+          <!-- Camera -->
+          <TresPerspectiveCamera
+            ref="camera"
+            :position="
+              sceneStates.transformingInfo.value?.position ??
+              sceneStates.currentCam.value?.position
+            "
+            :rotation="
+              sceneStates.transformingInfo.value?.rotation ??
+              sceneStates.currentCam.value?.rotation
+            "
+            :fov="
+              sceneStates.transformingInfo.value?.fov ??
+              sceneStates.currentCam.value?.fov
+            "
+            :aspect="aspect"
+          />
 
-        <CameraObject
-          v-for="[camId, cam] in Object.entries(sceneStates.cameras)"
-          :key="camId"
-          :cam-id="camId"
-          :name="cam.name"
-          :workspace="props.workspace"
-        />
+          <CameraObject
+            v-for="[camId, cam] in Object.entries(sceneStates.cameras)"
+            :key="camId"
+            :cam-id="camId"
+            :name="cam.name"
+            :workspace="props.workspace"
+          />
 
-        <!-- Environment and lighting, from the tresjs/cientos library -->
-        <Suspense>
-          <Environment preset="city" />
-        </Suspense>
-        <TresAmbientLight :intensity="0.4" />
-        <TresDirectionalLight :position="[10, 10, 5]" :intensity="1" />
+          <!-- Environment and lighting, from the tresjs/cientos library -->
+          <Suspense>
+            <Environment preset="city" />
+          </Suspense>
+          <TresAmbientLight :intensity="0.4" />
+          <TresDirectionalLight :position="[10, 10, 5]" :intensity="1" />
 
-        <!-- 3D Objects -->
-        <Suspense>
-          <ModelLoader :path="modelResp.filePath" :position="[0, 0, 0]" />
-        </Suspense>
+          <!-- 3D Objects -->
+          <Suspense>
+            <ModelLoader :path="modelResp.filePath" :position="[0, 0, 0]" />
+          </Suspense>
 
-        <!-- Grid -->
-        <Grid
-          :args="[20, 20]"
-          :cell-size="1"
-          :cell-thickness="0.5"
-          :cell-color="'#4a90e2'"
-          :section-size="5"
-          :section-thickness="1"
-          :section-color="'#ffffff'"
-          :fade-distance="50"
-          :fade-strength="1"
-          :infinite-grid="true"
-          :side="THREE.DoubleSide"
-        />
-        <!-- <Scene3dInner /> -->
-      </TresCanvas>
+          <!-- Grid -->
+          <Grid
+            :args="[20, 20]"
+            :cell-size="1"
+            :cell-thickness="0.5"
+            :cell-color="'#4a90e2'"
+            :section-size="5"
+            :section-thickness="1"
+            :section-color="'#ffffff'"
+            :fade-distance="50"
+            :fade-strength="1"
+            :infinite-grid="true"
+            :side="THREE.DoubleSide"
+          />
+          <!-- <Scene3dInner /> -->
+        </TresCanvas>
+      </div>
     </div>
   </ClientOnly>
 </template>

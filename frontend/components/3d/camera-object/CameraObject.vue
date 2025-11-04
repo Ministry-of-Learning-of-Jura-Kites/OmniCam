@@ -6,6 +6,7 @@ import TresMesh from "@tresjs/core";
 import RotationWheel from "../rotation-wheel/RotationWheel.vue";
 import CameraFrustum from "../camera-frustum/CameraFrustum.vue";
 import * as THREE from "three";
+import { safeGetAspectRatio } from "~/utils/aspect-ratio";
 
 const props = defineProps({
   name: {
@@ -58,6 +59,7 @@ const camQuat = computed(() => {
       </TresMesh>
       <CameraFrustum
         :fov="cam!.fov"
+        :aspect="safeGetAspectRatio(cam.aspectWidth, cam.aspectHeight)"
         :length="cam!.frustumLength"
         :color="cam!.frustumColor"
         :is-hiding="
