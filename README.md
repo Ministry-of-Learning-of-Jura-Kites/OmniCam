@@ -125,3 +125,21 @@ File system
 Model image -> uploads/model/{projectId}/{id}/image.jpg
 
 Project image -> uploads/project/{projectId}
+
+# Deploy
+
+Copy .env.example from
+
+- db/.env.example
+
+- frontend/.env.example
+
+- backend/.env.example
+
+Then populate with your own env into
+
+- db/.env.prod
+
+- frontend/.env.prod
+
+- backend/.env.prod
