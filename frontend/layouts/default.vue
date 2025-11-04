@@ -50,10 +50,13 @@ const toggleTheme = () => {
 
 const handleLogout = () => {
   try {
-    $fetch<null>("http://" + config.public.backendHost + "/api/v1/logout", {
-      method: "POST",
-      credentials: "include",
-    });
+    $fetch<null>(
+      "http://" + config.public.externalBackendHost + "/api/v1/logout",
+      {
+        method: "POST",
+        credentials: "include",
+      },
+    );
     navigateTo("/authentication");
   } catch (err) {
     console.log(err);

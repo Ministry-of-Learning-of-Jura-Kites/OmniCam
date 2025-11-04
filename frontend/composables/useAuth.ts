@@ -15,7 +15,7 @@ export async function useAuth() {
 
   try {
     const response = await $fetch<{ data: User }>(
-      `http://${config.public.backendHost}/api/v1/me`,
+      `http://${config.public.externalBackendHost}/api/v1/me`,
       {
         method: "GET",
         credentials: "include",

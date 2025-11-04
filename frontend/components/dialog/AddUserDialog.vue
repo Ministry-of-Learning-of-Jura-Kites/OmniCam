@@ -77,7 +77,7 @@ async function fetchUsers() {
   loading.value = true;
   try {
     const res = await $fetch<{ data: UserItem[]; count: number }>(
-      `http://${config.public.backendHost}/api/v1/projects/${props.projectId}/userForAddMembers`,
+      `http://${config.public.externalBackendHost}/api/v1/projects/${props.projectId}/userForAddMembers`,
       {
         method: "GET",
         query: {
@@ -126,7 +126,7 @@ async function addMembers(out: { userId: string; role: string }[]) {
   console.log("Submitting selected users:", out);
   try {
     const res = await $fetch(
-      `http://${config.public.backendHost}/api/v1/projects/${props.projectId}/members`,
+      `http://${config.public.externalBackendHost}/api/v1/projects/${props.projectId}/members`,
       {
         method: "POST",
         body: out,
