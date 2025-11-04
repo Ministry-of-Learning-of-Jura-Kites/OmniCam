@@ -37,10 +37,12 @@ for (const field of fields) {
 }
 params.append("t", String(Date.now()));
 
-let modelWithCamsResp = useState<ModelWithCamsResp | undefined>(MODEL_INFO_KEY);
+const modelWithCamsResp = useState<ModelWithCamsResp | undefined>(
+  MODEL_INFO_KEY,
+);
 const error = ref<unknown | undefined>(undefined);
-console.log("ggg", runtimeConfig);
-if (modelWithCamsResp.value == undefined) {
+
+if (modelWithCamsResp.value == undefined && import.meta.server) {
   // Support credentials for both server-side and client-side fetching
   const headers = useRequestHeaders(["cookie"]);
 
@@ -64,7 +66,7 @@ if (modelWithCamsResp.value == undefined) {
     });
   }
 
-  modelWithCamsResp = fetchedModelWithCamsResp;
+  modelWithCamsResp.value = fetchedModelWithCamsResp.value;
 }
 
 const websocketUrl = `ws://${runtimeConfig.public.externalBackendHost}/api/v1/projects/${props.projectId}/models/${props.modelId}/autosave`;
