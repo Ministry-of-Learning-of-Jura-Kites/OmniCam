@@ -5,16 +5,16 @@ services:
   db:
     image: postgres:17
     container_name: omnicam_postgres
-    environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: password
-      POSTGRES_DB: omnicam
+    env_file:
+      - db/.env.prod
     ports:
       - "5433:5432"
     networks:
       - net
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER}"]
       interval: 5s
       timeout: 5s
       retries: 5
@@ -23,19 +23,45 @@ services:
     image: migrate/migrate
     volumes:
       - ./db/migrations:/migrations
-    command:
-      [
-        "-path",
-        "/migrations",
-        "-database",
-        "postgres://postgres:password@db:5432/omnicam?sslmode=disable",
-        "up",
-      ]
+    command: ["-path", "/migrations", "-database", "$${DATABASE_URL}", "up"]
     networks:
       - net
     depends_on:
       db:
         condition: service_healthy
+
+  backend:
+    build:
+      context: .
+      dockerfile: ./backend/Dockerfile
+    container_name: omnicam_backend
+    env_file:
+      - ./backend/.env.prod
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./uploads:/app/uploads
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - net
+
+  frontend:
+    build:
+      context: .
+      dockerfile: ./frontend/Dockerfile
+    container_name: omnicam_frontend
+    env_file:
+      - ./frontend/.env.prod
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./uploads:/app/uploads
+    depends_on:
+      - backend
+    networks:
+      - net
 
   # redis:
   #   image: redis:8
@@ -45,3 +71,7 @@ services:
 
 networks:
   net:
+
+volumes:
+  postgres_data:
+  uploads:

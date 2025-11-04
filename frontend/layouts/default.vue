@@ -50,13 +50,10 @@ const toggleTheme = () => {
 
 const handleLogout = () => {
   try {
-    $fetch<null>(
-      "http://" + config.public.NUXT_PUBLIC_BACKEND_HOST + "/api/v1/logout",
-      {
-        method: "POST",
-        credentials: "include",
-      },
-    );
+    $fetch<null>("http://" + config.public.backendHost + "/api/v1/logout", {
+      method: "POST",
+      credentials: "include",
+    });
     navigateTo("/authentication");
   } catch (err) {
     console.log(err);
