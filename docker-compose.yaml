@@ -6,7 +6,7 @@ services:
     image: postgres:17
     container_name: omnicam_postgres
     env_file:
-      - .env.db
+      - db/.env.prod
     ports:
       - "5433:5432"
     networks:
@@ -36,7 +36,7 @@ services:
       dockerfile: ./backend/Dockerfile
     container_name: omnicam_backend
     env_file:
-      - .env.backend
+      - ./backend/.env.prod
     ports:
       - "8080:8080"
     volumes:
@@ -53,7 +53,7 @@ services:
       dockerfile: ./frontend/Dockerfile
     container_name: omnicam_frontend
     env_file:
-      - .env.frontend
+      - ./frontend/.env.prod
     ports:
       - "3000:3000"
     volumes:
