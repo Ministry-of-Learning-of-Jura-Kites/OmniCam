@@ -154,7 +154,7 @@ async function fetchProjectById() {
   const projectId = route.params.projectId as string;
   try {
     const response = await $fetch<{ data: Project }>(
-      `http://${config.public.NUXT_PUBLIC_BACKEND_HOST}/api/v1/projects/${projectId}`,
+      `http://${config.public.backendHost}/api/v1/projects/${projectId}`,
       {
         method: "GET",
         credentials: "include",
@@ -171,7 +171,7 @@ async function fetchModel() {
   const projectId = route.params.projectId as string;
   try {
     const response = await $fetch<ModelGetRequest>(
-      `http://${config.public.NUXT_PUBLIC_BACKEND_HOST}/api/v1/projects/${projectId}/models`,
+      `http://${config.public.backendHost}/api/v1/projects/${projectId}/models`,
       {
         method: "GET",
         query: {
@@ -218,7 +218,7 @@ async function createModel() {
 
   const projectId = route.params.projectId as string;
   const response = await $fetch<ModelReturnRequest>(
-    `http://${config.public.NUXT_PUBLIC_BACKEND_HOST}/api/v1/projects/${projectId}/models`,
+    `http://${config.public.backendHost}/api/v1/projects/${projectId}/models`,
     {
       method: "POST",
       body: formData,
@@ -237,7 +237,7 @@ async function updateModel(id: string) {
   const modelId = uuidToBase64Url(id);
   try {
     const response = await $fetch<ModelReturnRequest>(
-      `http://${config.public.NUXT_PUBLIC_BACKEND_HOST}/api/v1/projects/${projectId}/models/${modelId}`,
+      `http://${config.public.backendHost}/api/v1/projects/${projectId}/models/${modelId}`,
       {
         method: "PUT",
         body: {
@@ -272,7 +272,7 @@ async function deleteRow(id: string) {
     const projectId = route.params.projectId;
     const modelId = uuidToBase64Url(id);
     await $fetch(
-      `http://${config.public.NUXT_PUBLIC_BACKEND_HOST}/api/v1/projects/${projectId}/models/${modelId}`,
+      `http://${config.public.backendHost}/api/v1/projects/${projectId}/models/${modelId}`,
       {
         method: "DELETE",
         credentials: "include",
@@ -294,7 +294,7 @@ async function fetchMembers() {
   const projectId = route.params.projectId as string;
   try {
     const res = await $fetch<{ data: ProjectMember[]; count: number }>(
-      `http://${config.public.NUXT_PUBLIC_BACKEND_HOST}/api/v1/projects/${projectId}/members`,
+      `http://${config.public.backendHost}/api/v1/projects/${projectId}/members`,
       {
         method: "GET",
         credentials: "include",
@@ -311,7 +311,7 @@ async function deleteMember(userId: string) {
     const projectId = route.params.projectId as string;
     const encodedUserId = uuidToBase64Url(userId);
     await $fetch(
-      `http://${config.public.NUXT_PUBLIC_BACKEND_HOST}/api/v1/projects/${projectId}/member/${encodedUserId}`,
+      `http://${config.public.backendHost}/api/v1/projects/${projectId}/member/${encodedUserId}`,
       {
         method: "DELETE",
         credentials: "include",
@@ -333,7 +333,7 @@ async function handleSubmitRole(newRole: string) {
   const encodedUserId = uuidToBase64Url(editingMember.value.userId);
 
   await $fetch(
-    `http://${config.public.NUXT_PUBLIC_BACKEND_HOST}/api/v1/projects/${projectId}/user/${encodedUserId}/role`,
+    `http://${config.public.backendHost}/api/v1/projects/${projectId}/user/${encodedUserId}/role`,
     {
       method: "PUT",
       body: { role: newRole },
@@ -418,7 +418,7 @@ async function handleUpdateImage(file: File | undefined, modelId: string) {
 
   try {
     const res = await $fetch<{ imagePath: string; message: string }>(
-      `http://${config.public.NUXT_PUBLIC_BACKEND_HOST}/api/v1/projects/${projectId}/models/${uuidToBase64Url(modelId)}/image`,
+      `http://${config.public.backendHost}/api/v1/projects/${projectId}/models/${uuidToBase64Url(modelId)}/image`,
       {
         method: "PUT",
         body: formData,
