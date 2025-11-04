@@ -1,0 +1,10 @@
+node_modules
+.nuxt
+.dist
+.output
+*.log
+*.env
+.DS_Store
+.git
+.gitignore
+Dockerfile
