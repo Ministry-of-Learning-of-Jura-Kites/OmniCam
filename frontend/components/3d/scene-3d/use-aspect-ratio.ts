@@ -1,11 +1,10 @@
 import type { SceneStates } from "~/types/scene-states";
 
-export function updateAspectOnResize(sceneStates: SceneStates) {
-  const canvas = sceneStates.tresContext.value?.renderer.domElement;
-
-  const origWidth = canvas?.clientWidth ?? 0;
-  const origHeight = canvas?.clientHeight ?? 0;
-
+function updateAspectOnResize(
+  sceneStates: SceneStates,
+  origWidth: number,
+  origHeight: number,
+) {
   const aspect =
     sceneStates.currentCam.value.aspectWidth /
     sceneStates.currentCam.value.aspectHeight;
@@ -28,39 +27,68 @@ export function updateAspectOnResize(sceneStates: SceneStates) {
 
   sceneStates.screenSize.width = width;
   sceneStates.screenSize.height = height;
+}
 
-  const canvasSize = {
-    width: canvas?.clientWidth,
-    height: canvas?.clientHeight,
+function resizeEntriesToSize(entries: ReadonlyArray<ResizeObserverEntry>) {
+  return {
+    width: entries[0]?.contentRect.width,
+    height: entries[0]?.contentRect.height,
   };
+}
 
-  if ((canvasSize?.height ?? 0) == (height ?? 0)) {
-    sceneStates.aspectMargin.width =
-      ((canvasSize?.width ?? 0) - (width ?? 0)) / 2 + "px";
-    sceneStates.aspectMargin.height = "100%";
-  } else {
-    sceneStates.aspectMargin.width = "100%";
-    sceneStates.aspectMargin.height =
-      ((canvasSize?.height ?? 0) - (height ?? 0)) / 2 + "px";
-  }
+function updateAspectFromEleGenerator(sceneStates: SceneStates) {
+  return () => {
+    const parentOfParent =
+      sceneStates.tresContext.value?.renderer.domElement?.parentElement
+        ?.parentElement;
+
+    const size = parentOfParent?.getBoundingClientRect();
+    updateAspectOnResize(sceneStates, size?.width ?? 0, size?.height ?? 0);
+  };
 }
 
 export function useAspectRatio(sceneStates: SceneStates) {
-  const handleResize = () => {
-    updateAspectOnResize(sceneStates);
-  };
+  if (!import.meta.client) {
+    return;
+  }
+
+  const observer = new ResizeObserver((entries) => {
+    const size = resizeEntriesToSize(entries);
+    updateAspectOnResize(sceneStates, size.width ?? 0, size.height ?? 0);
+  });
+
+  const updateAspectFromEle = updateAspectFromEleGenerator(sceneStates);
 
   onMounted(() => {
-    window.addEventListener("resize", handleResize);
+    watch(
+      () => sceneStates.tresContext.value?.renderer.domElement,
+      (canvas) => {
+        const canvasParent = canvas?.parentElement;
+        const parentOfParent = canvasParent?.parentElement;
+
+        if (
+          canvas == undefined ||
+          canvasParent == undefined ||
+          parentOfParent == undefined
+        ) {
+          return;
+        }
+
+        observer.observe(parentOfParent);
+      },
+      {
+        once: true,
+      },
+    );
   });
 
   onUnmounted(() => {
-    window.removeEventListener("resize", handleResize);
+    observer.disconnect();
   });
 
   watch(sceneStates.currentCamId, (_) => {
-    handleResize();
+    updateAspectFromEle();
   });
 
-  return { handleResize };
+  return { updateAspectFromEle };
 }

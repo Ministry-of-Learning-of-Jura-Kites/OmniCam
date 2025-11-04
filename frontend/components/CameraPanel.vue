@@ -42,7 +42,7 @@ const selectedCam = computed(() =>
 watch(
   [() => selectedCam.value?.aspectWidth, () => selectedCam.value?.aspectHeight],
   () => {
-    sceneStates.aspectRatioManagement.handleResize();
+    sceneStates.aspectRatioManagement?.updateAspectFromEle();
   },
 );
 
