@@ -39,7 +39,7 @@ params.append("t", String(Date.now()));
 
 let modelWithCamsResp = useState<ModelWithCamsResp | undefined>(MODEL_INFO_KEY);
 const error = ref<unknown | undefined>(undefined);
-
+console.log("ggg", runtimeConfig);
 if (modelWithCamsResp.value == undefined) {
   // Support credentials for both server-side and client-side fetching
   const headers = useRequestHeaders(["cookie"]);
@@ -47,7 +47,7 @@ if (modelWithCamsResp.value == undefined) {
   const { data: fetchedModelWithCamsResp, error: modelFetchError } =
     await useAsyncData("model_information", () =>
       $fetch<ModelWithCamsResp>(
-        `http://${runtimeConfig.public.backendHost}/api/v1/projects/${props.projectId}/models/${props.modelId}${workspaceSuffix}?${params.toString()}`,
+        `http://${runtimeConfig.internalBackendHost}/api/v1/projects/${props.projectId}/models/${props.modelId}${workspaceSuffix}?${params.toString()}`,
         {
           headers: headers,
           credentials: "include",
@@ -67,7 +67,7 @@ if (modelWithCamsResp.value == undefined) {
   modelWithCamsResp = fetchedModelWithCamsResp;
 }
 
-const websocketUrl = `ws://${runtimeConfig.public.backendHost}/api/v1/projects/${props.projectId}/models/${props.modelId}/autosave`;
+const websocketUrl = `ws://${runtimeConfig.public.externalBackendHost}/api/v1/projects/${props.projectId}/models/${props.modelId}/autosave`;
 
 let websocket: UseWebSocketReturn<unknown> | undefined = undefined;
 if (props.workspace != undefined) {
