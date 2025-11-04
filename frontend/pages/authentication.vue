@@ -59,7 +59,7 @@ async function register() {
   // console.log(registerForm);
   try {
     const _response = await $fetch<Response>(
-      "http://" + config.public.backendHost + "/api/v1/register",
+      "http://" + config.public.externalBackendHost + "/api/v1/register",
       {
         method: "POST",
         body: registerForm,
@@ -78,7 +78,7 @@ async function login() {
   // console.log(loginForm);
   try {
     const _response = await $fetch<Response>(
-      "http://" + config.public.backendHost + "/api/v1/login",
+      "http://" + config.public.externalBackendHost + "/api/v1/login",
       {
         method: "POST",
         body: loginForm,
