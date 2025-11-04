@@ -13,7 +13,6 @@ COPY nuxt.config.ts ./
 COPY tailwind.config.js ./
 COPY tsconfig.json ./
 COPY components.json ./
-COPY eslint.config.js ./
 
 # Install dependencies
 RUN npm ci
