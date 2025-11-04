@@ -2,8 +2,6 @@
 import tailwindcss from "@tailwindcss/vite";
 import { templateCompilerOptions } from "@tresjs/core";
 
-console.log("gggg", process.env.NUXT_PUBLIC_BACKEND_HOST);
-
 export default defineNuxtConfig({
   css: [
     "~/assets/css/tailwind.css",
