@@ -49,8 +49,9 @@ export default defineNuxtConfig({
     "/projects": { redirect: "/" },
   },
   runtimeConfig: {
+    internalBackendHost: "error",
     public: {
-      backendHost: "error",
+      externalBackendHost: "error",
     },
   },
 });
