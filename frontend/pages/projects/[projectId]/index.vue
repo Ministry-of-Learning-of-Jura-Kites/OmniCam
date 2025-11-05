@@ -64,7 +64,7 @@ const config = useRuntimeConfig();
 const route = useRoute();
 const auth = await useAuth();
 const { user } = auth;
-console.log("user in project page", user);
+console.log("user in project page", user.value);
 
 const models = ref<Record<string, ModelWithoutId>>({});
 const members = ref<ProjectMember[]>([]);

@@ -16,10 +16,6 @@ try {
 } catch (err) {
   console.error("[Fail] load model fail:", err);
 }
-
-onUnmounted(() => {
-  console.log("ggg WOoHOO UN MOUNT BOYS");
-});
 </script>
 
 <template>
