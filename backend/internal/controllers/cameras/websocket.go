@@ -90,7 +90,7 @@ func (t *CameraAutosaveRoute) get(c *gin.Context) {
 		return
 	}
 
-	_, err = t.DB.Queries.GetWorkspaceByID(c, db_sqlc_gen.GetWorkspaceByIDParams{
+	workspace, err := t.DB.Queries.GetWorkspaceByID(c, db_sqlc_gen.GetWorkspaceByIDParams{
 		UserID:  userId,
 		ModelID: modelId,
 	})
@@ -106,6 +106,17 @@ func (t *CameraAutosaveRoute) get(c *gin.Context) {
 	}
 
 	go func() {
+		firstResponse := &camera.CameraSaveEventSeriesResponse{
+			LastUpdatedVersion: workspace.Version,
+		}
+		firstRespMarshalled, err := proto.Marshal(firstResponse)
+		if err != nil {
+			t.Logger.Error("error while marshelling first response", zap.Error(err))
+			c.JSON(http.StatusInternalServerError, gin.H{})
+			return
+		}
+		conn.WriteMessage(websocket.BinaryMessage, firstRespMarshalled)
+
 		defer conn.Close()
 
 		for {
