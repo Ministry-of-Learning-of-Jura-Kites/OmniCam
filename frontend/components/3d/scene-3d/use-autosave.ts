@@ -58,6 +58,8 @@ export function useAutosave(
     return;
   }
 
+  // let lastUpdatedVersion = 0;
+
   const lastSynced: Map<string, Camera> = new Map(
     Object.entries(sceneStates.cameras!).map(([camId, cam]) => {
       return [camId, transformCameraToProtoEventWithId(camId, cam)];
