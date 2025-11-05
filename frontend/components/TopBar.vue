@@ -16,6 +16,8 @@ import {
   LogOut,
   IndentDecrease,
   IndentIncrease,
+  EllipsisVertical,
+  Trash2,
 } from "lucide-vue-next";
 
 import { exportCamerasToJson } from "@/utils/exportScene";
@@ -123,6 +125,30 @@ async function createWorkspace() {
     });
   }
 }
+
+const runtimeConfig = useRuntimeConfig();
+
+async function deleteWorkspace() {
+  try {
+    await $fetch<undefined>(
+      `http://${runtimeConfig.public.externalBackendHost}/api/v1/projects/${route.params.projectId}/models/${route.params.modelId}/workspaces/me`,
+      {
+        credentials: "include",
+        method: "DELETE",
+      },
+    );
+
+    useState(MODEL_INFO_KEY, () => undefined);
+    navigateTo(
+      `/projects/${route.params.projectId}/models/${route.params.modelId}`,
+    );
+  } catch (err) {
+    console.error(err);
+    showError({
+      message: "Failed to create workspace",
+    });
+  }
+}
 </script>
 
 <template>
@@ -143,17 +169,19 @@ async function createWorkspace() {
       class="h-16 bg-card border-b border-border px-6 flex items-center justify-between"
     >
       <!-- Project Info -->
-      <div class="flex items-center gap-4">
+      <div id="left-menu" class="flex items-center gap-4">
         <Card class="px-3 py-1 bg-survey-surface">
           <div class="flex items-center gap-2">
             <div class="w-2 h-2 bg-survey-accent rounded-full" />
-            <span class="text-sm font-medium">Survey Project 01</span>
+            <span class="text-sm font-medium max-w-[50px] truncate">{{
+              sceneStates.modelInfo.data.name
+            }}</span>
             <Badge variant="secondary" class="ml-2">
               {{ props.workspace == null ? "Public" : "Workspace" }}
             </Badge>
           </div>
         </Card>
-        <div class="flex items-center justify-center h-4 w-4">
+        <div class="flex items-center justify-center">
           <Tooltip
             v-if="workspace != null && sceneStates.markedForCheck.size > 0"
           >
@@ -170,20 +198,22 @@ async function createWorkspace() {
       </div>
 
       <!-- Scene Controls -->
-      <div class="flex items-center gap-2">
+      <div id="middle-menu" class="flex items-center gap-2">
         <Button
           size="sm"
           variant="outline"
           :disabled="sceneStates.currentCamId.value == null"
           @click="sceneStates.cameraManagement.switchToSpectator()"
         >
-          <RotateCcw class="h-4 w-4 mr-2" />
-          Reset View
+          <RotateCcw class="button-icon" />
+          <span class="ml-2 button-span-text"> Reset View </span>
         </Button>
 
         <Button size="sm" variant="outline">
-          <Maximize class="h-4 w-4 mr-2" />
-          Fullscreen
+          <Tooltip>
+            <TooltipTrigger> <Maximize class="button-icon" /></TooltipTrigger>
+            <TooltipContent> Fullscreen </TooltipContent>
+          </Tooltip>
         </Button>
 
         <div class="h-6 w-px bg-border mx-2" />
@@ -194,8 +224,8 @@ async function createWorkspace() {
           variant="outline"
           @click="saveModelToPublic()"
         >
-          <Save class="h-4 w-4 mr-2" />
-          Publish
+          <Save class="button-icon" />
+          <span class="ml-2 button-span-text"> Publish </span>
         </Button>
 
         <Button
@@ -208,8 +238,8 @@ async function createWorkspace() {
             )
           "
         >
-          <LogOut class="h-4 w-4 mr-2" />
-          Exit Workspace
+          <LogOut class="button-icon" />
+          <span class="button-span-text"> Exit Workspace </span>
         </Button>
 
         <template v-if="workspace == null">
@@ -223,46 +253,78 @@ async function createWorkspace() {
               )
             "
           >
-            <PackageOpen class="h-4 w-4 mr-2" />
-            Open Workspace
+            <PackageOpen class="button-icon" />
+            <span class="ml-2 button-span-text"> Open Workspace </span>
           </Button>
           <Button v-else size="sm" variant="outline" @click="createWorkspace()">
-            <PackageOpen class="h-4 w-4 mr-2" />
-            Create Workspace
+            <PackageOpen class="button-icon" />
+            <span class="ml-2 button-span-text"> Create Workspace </span>
           </Button>
         </template>
 
-        <Button size="sm" variant="outline" @click="() => openFileDialog()">
-          <Upload class="h-4 w-4 mr-2" />
-          Import
-        </Button>
-
-        <Button
-          size="sm"
-          variant="outline"
-          @click="() => exportCamerasToJson(sceneStates.cameras)"
-        >
-          <Download class="h-4 w-4 mr-2" />
-          Export
-        </Button>
-
         <Button size="sm" variant="outline" @click="() => togglePanel()">
-          <IndentIncrease v-if="isPanelOpen" class="h-4 w-4 mr-2" />
-          <IndentDecrease v-else class="h-4 w-4 mr-2" />
-          Panel
+          <IndentIncrease v-if="isPanelOpen" class="button-icon" />
+          <IndentDecrease v-else class="button-icon" />
+          <span class="ml-2 button-span-text"> Panel </span>
         </Button>
       </div>
 
-      <!-- User Actions -->
-      <div class="flex items-center gap-2">
-        <Button size="sm" variant="ghost">
-          <User class="h-4 w-4 mr-2" />
-          Profile
-        </Button>
-        <Button size="sm" variant="ghost">
-          <LogOut class="h-4 w-4" />
-        </Button>
+      <div id="right-menu" class="flex flex-row">
+        <DropdownMenu>
+          <DropdownMenuTrigger as-child>
+            <Button size="sm" variant="outline" class="m-2">
+              <EllipsisVertical class="button-icon" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent>
+            <!-- <DropdownMenuLabel>{{ user?.first_name }}</DropdownMenuLabel> -->
+            <DropdownMenuGroup>
+              <DropdownMenuItem @click="() => openFileDialog()">
+                <Download class="button-icon" />
+                Import
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                @click="() => exportCamerasToJson(sceneStates.cameras)"
+              >
+                <Upload class="button-icon" />
+                Export
+              </DropdownMenuItem>
+            </DropdownMenuGroup>
+            <!-- <DropdownMenuSeparator /> -->
+            <DropdownMenuGroup>
+              <DropdownMenuItem
+                v-if="workspace == 'me'"
+                @click="deleteWorkspace()"
+              >
+                <Trash2 class="button-icon" />
+                <span class="button-span-text"> Delete Workspace </span>
+              </DropdownMenuItem>
+            </DropdownMenuGroup>
+          </DropdownMenuContent>
+        </DropdownMenu>
+
+        <!-- User Actions -->
+        <div class="flex items-center gap-2">
+          <Button size="sm" variant="outline">
+            <User class="button-icon" />
+          </Button>
+        </div>
       </div>
     </div>
   </TooltipProvider>
 </template>
+
+<style lang="scss" scoped>
+.button-icon {
+  width: calc(4 * 0.25rem);
+  height: calc(4 * 0.25rem);
+  color: black;
+}
+.button-span-text {
+  display: none;
+  text-overflow: ellipsis;
+  @media (width >= 53rem) {
+    display: inline;
+  }
+}
+</style>
