@@ -19,3 +19,4 @@ Dockerfile
 
 backend/pkg/messages/protobufs
 frontend/messages/protobufs
+backend/pkg/db/sqlc-gen
