@@ -51,3 +51,7 @@ message CameraSaveEvent {
 }
 
 message CameraSaveEventSeries { repeated CameraSaveEvent events = 1; }
+
+message CameraSaveEventSeriesResponse {
+  int32 last_updated_version = 1;
+}
