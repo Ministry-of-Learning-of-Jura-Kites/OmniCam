@@ -29,27 +29,24 @@ const runtimeConfig = useRuntimeConfig();
 const workspaceSuffix =
   props.workspace == null ? "" : `/workspaces/${props.workspace}`;
 
-const fields = ["cameras", "workspace_exists"];
-
-const params = new URLSearchParams();
-for (const field of fields) {
-  params.append("fields", field);
-}
-params.append("t", String(Date.now()));
-
 const modelWithCamsResp = useState<ModelWithCamsResp | undefined>(
   MODEL_INFO_KEY,
 );
 const error = ref<unknown | undefined>(undefined);
 
-if (modelWithCamsResp.value == undefined && import.meta.server) {
+if (modelWithCamsResp.value == undefined) {
+  const paramsObj = {
+    fields: ["cameras", "workspace_exists"],
+    t: Date.now(),
+  };
+  const params = objectToQueryParams(paramsObj);
   // Support credentials for both server-side and client-side fetching
   const headers = useRequestHeaders(["cookie"]);
 
   const { data: fetchedModelWithCamsResp, error: modelFetchError } =
     await useAsyncData("model_information", () =>
       $fetch<ModelWithCamsResp>(
-        `http://${runtimeConfig.internalBackendHost}/api/v1/projects/${props.projectId}/models/${props.modelId}${workspaceSuffix}?${params.toString()}`,
+        `http://${getHostFromRuntime(runtimeConfig, import.meta.client)}/api/v1/projects/${props.projectId}/models/${props.modelId}${workspaceSuffix}?${params.toString()}`,
         {
           headers: headers,
           credentials: "include",
@@ -61,18 +58,94 @@ if (modelWithCamsResp.value == undefined && import.meta.server) {
     error.value = modelFetchError.value;
     showError({
       statusCode: modelFetchError.value.statusCode,
-      statusMessage: modelFetchError.value.statusMessage,
+      statusMessage: modelFetchError.value.statusMessage + " " + error.value,
       fatal: true,
     });
   }
 
   modelWithCamsResp.value = fetchedModelWithCamsResp.value;
+} else {
+  // If exit from workspace into model
+  if (
+    props.workspace == null &&
+    modelWithCamsResp.value.data.workspaceExists == undefined
+  ) {
+    const paramsObj = {
+      fields: ["workspace_exists"],
+      t: Date.now(),
+    };
+    const params = objectToQueryParams(paramsObj);
+    const headers = useRequestHeaders(["cookie"]);
+
+    const { data: fetchedModelWithCamsResp, error: modelFetchError } =
+      await useAsyncData("model_information", () =>
+        $fetch<ModelWithCamsResp>(
+          `http://${getHostFromRuntime(runtimeConfig, import.meta.client)}/api/v1/projects/${props.projectId}/models/${props.modelId}${workspaceSuffix}?${params.toString()}`,
+          {
+            headers: headers,
+            credentials: "include",
+          },
+        ),
+      );
+
+    if (modelFetchError.value != undefined) {
+      error.value = modelFetchError.value;
+      showError({
+        statusCode: modelFetchError.value.statusCode,
+        statusMessage: modelFetchError.value.statusMessage + " " + error.value,
+        fatal: true,
+      });
+    }
+
+    modelWithCamsResp.value = {
+      ...modelWithCamsResp.value,
+      ...fetchedModelWithCamsResp.value,
+    };
+  }
+
+  // If open workspace from model page
+  else if (
+    props.workspace != null &&
+    modelWithCamsResp.value.data.workspaceExists != undefined
+  ) {
+    const paramsObj = {
+      fields: ["cameras"],
+      t: Date.now(),
+    };
+    const params = objectToQueryParams(paramsObj);
+    const headers = useRequestHeaders(["cookie"]);
+
+    const { data: fetchedModelWithCamsResp, error: modelFetchError } =
+      await useAsyncData("model_information", () =>
+        $fetch<ModelWithCamsResp>(
+          `http://${getHostFromRuntime(runtimeConfig, import.meta.client)}/api/v1/projects/${props.projectId}/models/${props.modelId}${workspaceSuffix}?${params.toString()}`,
+          {
+            headers: headers,
+            credentials: "include",
+          },
+        ),
+      );
+
+    if (modelFetchError.value != undefined) {
+      error.value = modelFetchError.value;
+      showError({
+        statusCode: modelFetchError.value.statusCode,
+        statusMessage: modelFetchError.value.statusMessage + " " + error.value,
+        fatal: true,
+      });
+    }
+
+    modelWithCamsResp.value = {
+      ...modelWithCamsResp.value,
+      ...fetchedModelWithCamsResp.value,
+    };
+  }
 }
 
-const websocketUrl = `ws://${runtimeConfig.public.externalBackendHost}/api/v1/projects/${props.projectId}/models/${props.modelId}/autosave`;
-
 let websocket: UseWebSocketReturn<unknown> | undefined = undefined;
-if (props.workspace != undefined) {
+if (props.workspace != undefined && import.meta.client) {
+  const websocketUrl = `ws://${runtimeConfig.public.externalBackendHost}/api/v1/projects/${props.projectId}/models/${props.modelId}/autosave`;
+
   websocket = useWebSocket(websocketUrl, {
     autoReconnect: {
       delay: 1000,
