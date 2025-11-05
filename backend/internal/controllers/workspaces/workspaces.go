@@ -350,6 +350,36 @@ func (t *WorkspaceRoute) postMergeWorkspace(c *gin.Context) {
 	}
 }
 
+func (t *WorkspaceRoute) deleteWorkspaceMe(c *gin.Context) {
+	strModelId := c.Param("modelId")
+	modelId, err := utils.ParseUuidBase64(strModelId)
+	if err != nil {
+		t.Logger.Error("error while converting str id to uuid", zap.Error(err))
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid model ID"})
+		return
+	}
+
+	userId, err := utils.GetUuidFromCtx(c, "userId")
+	if err != nil {
+		t.Logger.Error("error while getting userId form", zap.Error(err))
+		c.JSON(http.StatusInternalServerError, gin.H{})
+		return
+	}
+
+	err = t.DB.Queries.DeleteWorkspace(c, db_sqlc_gen.DeleteWorkspaceParams{
+		UserID:  userId,
+		ModelID: modelId,
+	})
+
+	if err != nil {
+		t.Logger.Error("error while deleting workspace", zap.Error(err))
+		c.JSON(http.StatusInternalServerError, gin.H{})
+		return
+	}
+
+	c.Status(http.StatusNoContent)
+}
+
 func (t *WorkspaceRoute) postWorkspaceMe(c *gin.Context) {
 	strModelId := c.Param("modelId")
 	modelId, err := utils.ParseUuidBase64(strModelId)
@@ -472,8 +502,10 @@ func (t *WorkspaceRoute) getWorkspaceMe(c *gin.Context) {
 }
 
 func (t *WorkspaceRoute) InitRoute(router gin.IRouter) gin.IRouter {
-	router.POST("/projects/:projectId/models/:modelId/workspaces/merge", t.postMergeWorkspace)
-	router.POST("/projects/:projectId/models/:modelId/workspaces/me", t.postWorkspaceMe)
 	router.GET("/projects/:projectId/models/:modelId/workspaces/me", t.getWorkspaceMe)
+	router.POST("/projects/:projectId/models/:modelId/workspaces/me", t.postWorkspaceMe)
+	router.DELETE("/projects/:projectId/models/:modelId/workspaces/me", t.deleteWorkspaceMe)
+
+	router.POST("/projects/:projectId/models/:modelId/workspaces/merge", t.postMergeWorkspace)
 	return router
 }
