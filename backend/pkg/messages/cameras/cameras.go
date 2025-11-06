@@ -28,6 +28,8 @@ type CameraStruct struct {
 	IsLockingPosition bool      `json:"isLockingPosition" diff:"-"`
 	IsLockingRotation bool      `json:"isLockingRotation" diff:"-"`
 	IsHidingFrustum   bool      `json:"isHidingFrustum" diff:"-"`
+	AspectWidth       float64   `json:"aspectWidth" binding:"required" diff:"aspectWidth"`
+	AspectHeight      float64   `json:"aspectHeight" binding:"required" diff:"aspectHeight"`
 }
 
 func ProtoColorToColor(color *camera.ColorRGBA) ColorRGBA {
@@ -57,5 +59,7 @@ func ProtoCamToCam(protoCam *camera.Camera) CameraStruct {
 		IsLockingPosition: protoCam.IsLockingPosition,
 		IsLockingRotation: protoCam.IsLockingRotation,
 		IsHidingFrustum:   protoCam.IsHidingFrustum,
+		AspectWidth:       protoCam.AspectWidth,
+		AspectHeight:      protoCam.AspectHeight,
 	}
 }
