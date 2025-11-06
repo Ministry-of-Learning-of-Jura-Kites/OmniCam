@@ -4,6 +4,7 @@ import { Grid, Environment } from "@tresjs/cientos";
 import AdjustableInput from "../../adjustable-input/AdjustableInput.vue";
 import { SPECTATOR_ADJ_INPUT_SENTIVITY } from "~/constants";
 import CameraObject from "../camera-object/CameraObject.vue";
+import FrustumOverlay from "../camera-frustum/FrustumOverlay.vue";
 import * as THREE from "three";
 import { SCENE_STATES_KEY } from "~/components/3d/scene-states-provider/create-scene-states";
 import { useCameraUpdate } from "./use-camera-update";
@@ -265,6 +266,8 @@ watch(
           "
           :aspect="aspect"
         />
+
+        <FrustumOverlay />
 
         <CameraObject
           v-for="[camId, cam] in Object.entries(sceneStates.cameras)"

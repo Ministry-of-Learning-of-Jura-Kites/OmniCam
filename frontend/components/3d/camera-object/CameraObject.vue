@@ -57,6 +57,7 @@ const camQuat = computed(() => {
         <TresMeshBasicMaterial color="white" />
       </TresMesh>
       <CameraFrustum
+        :id="camId"
         :fov="cam!.fov"
         :length="cam!.frustumLength"
         :color="cam!.frustumColor"
