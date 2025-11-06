@@ -1,5 +1,5 @@
 name: omnicam-services
-version: "3.8"
+# version: "3.8"
 
 services:
   db:
@@ -53,21 +53,21 @@ services:
     networks:
       - net
 
-  frontend:
-    build:
-      context: .
-      dockerfile: ./frontend/Dockerfile
-    container_name: omnicam_frontend
-    env_file:
-      - ./frontend/.env.prod
-    ports:
-      - "3000:3000"
-    volumes:
-      - ./uploads:/app/uploads
-    depends_on:
-      - backend
-    networks:
-      - net
+  # frontend:
+  #   build:
+  #     context: .
+  #     dockerfile: ./frontend/Dockerfile
+  #   container_name: omnicam_frontend
+  #   env_file:
+  #     - ./frontend/.env.prod
+  #   ports:
+  #     - "3000:3000"
+  #   volumes:
+  #     - ./uploads:/app/uploads
+  #   depends_on:
+  #     - backend
+  #   networks:
+  #     - net
 
   # redis:
   #   image: redis:8
