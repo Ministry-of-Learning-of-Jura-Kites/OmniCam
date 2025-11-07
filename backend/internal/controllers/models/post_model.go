@@ -48,67 +48,72 @@ func (t *PostModelRoutes) post(c *gin.Context) {
 
 	// --- Save .glb ---
 	file, err := c.FormFile("file")
+	fileExt := filepath.Ext(file.Filename)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "file is required"})
 		return
 	}
-	if filepath.Ext(file.Filename) != ".glb" {
+	if fileExt != ".glb" {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "model file must have .glb extension"})
 		return
 	}
 
 	// Local filesystem path
-	uploadDir := filepath.Join(internal.Root, "uploads", projectId.String(), modelId.String())
+	uploadDir := filepath.Join(internal.Root, "uploads", "3d_models")
 	if err := os.MkdirAll(uploadDir, os.ModePerm); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to create upload dir"})
 		return
 	}
 
-	fsFilePath := filepath.Join(uploadDir, "model.glb")
+	fsFilePath := filepath.Join(uploadDir, projectId.String(), modelId.String()+fileExt)
 	if err := c.SaveUploadedFile(file, fsFilePath); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to save model file"})
 		return
 	}
 
 	// Web path for DB/frontend
-	webFilePath := "/uploads/" + projectId.String() + "/" + modelId.String() + "/model.glb"
+	webFilePath := "/uploads/3d_models/" + projectId.String() + "/" + modelId.String()
 
 	// --- Handle optional image ---
 	var imageWebPath string
 	imageFile, err := c.FormFile("image")
-	if err == nil {
-		ext := filepath.Ext(imageFile.Filename)
-		if ext != ".jpg" && ext != ".png" {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "image must be .jpg or .png"})
-			return
-		}
-
-		imageDir := filepath.Join(internal.Root, "uploads", "model", projectId.String(), modelId.String())
-		if err := os.MkdirAll(imageDir, os.ModePerm); err != nil {
-			t.Logger.Error("failed to create folder for model image", zap.Error(err))
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to create folder for model image"})
-			return
-		}
-
-		fsImagePath := filepath.Join(imageDir, "image"+ext) // local filesystem path
-		if err := c.SaveUploadedFile(imageFile, fsImagePath); err != nil {
-			t.Logger.Error("failed to save model image", zap.Error(err))
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to save model image"})
-			return
-		}
-
-		imageWebPath = "/uploads/model/" + projectId.String() + "/" + modelId.String() + "/image" + ext
-		t.Logger.Info("model image uploaded", zap.String("path", fsImagePath))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "file is required"})
+		return
 	}
+	imageExt := filepath.Ext(imageFile.Filename)
+	if imageExt != ".jpg" && imageExt != ".png" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "image must be .jpg or .png"})
+		return
+	}
+
+	imageDir := filepath.Join(internal.Root, "uploads", "images")
+	if err := os.MkdirAll(imageDir, os.ModePerm); err != nil {
+		t.Logger.Error("failed to create folder for model image", zap.Error(err))
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to create folder for model image"})
+		return
+	}
+
+	fsImagePath := filepath.Join(imageDir, projectId.String(), modelId.String()+imageExt) // local filesystem path
+	if err := c.SaveUploadedFile(imageFile, fsImagePath); err != nil {
+		t.Logger.Error("failed to save model image", zap.Error(err))
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to save model image"})
+		return
+	}
+
+	imageWebPath = "/uploads/images/" + projectId.String() + "/" + modelId.String()
+	t.Logger.Info("model image uploaded", zap.String("path", fsImagePath))
 
 	// --- Insert into DB using web paths ---
 	data, err := t.DB.Queries.CreateModel(c, db_sqlc_gen.CreateModelParams{
-		ID:          modelId,
-		ProjectID:   projectId,
-		Name:        req.Name,
-		Description: req.Description,
-		FilePath:    webFilePath,  // web path
-		ImagePath:   imageWebPath, // web path
+		ID:             modelId,
+		ProjectID:      projectId,
+		Name:           req.Name,
+		Description:    req.Description,
+		FilePath:       webFilePath,  // web path
+		ImagePath:      imageWebPath, // web path
+		ImageExtension: imageExt,
+		ModelExtension: fileExt,
 	})
 	if err != nil {
 		t.Logger.Error("error while creating model", zap.Error(err))

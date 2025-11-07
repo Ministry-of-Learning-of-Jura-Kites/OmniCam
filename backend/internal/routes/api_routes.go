@@ -10,6 +10,7 @@ import (
 
 	// controller_test "omnicam.com/backend/internal/controllers"
 	"omnicam.com/backend/internal/controllers/authentication"
+	controller_files "omnicam.com/backend/internal/controllers/files"
 	controller_users "omnicam.com/backend/internal/controllers/users"
 	"omnicam.com/backend/internal/middleware"
 
@@ -195,4 +196,11 @@ func InitRoutes(deps Dependencies, router gin.IRouter) {
 		DB:     deps.DB,
 	}
 	meRoute.InitGetMeRouter(protectedRoute)
+
+	fileRoute := controller_files.FileRoute{
+		Logger: deps.Logger,
+		Env:    deps.Env,
+		DB:     deps.DB,
+	}
+	fileRoute.InitFileRouter(protectedRoute)
 }

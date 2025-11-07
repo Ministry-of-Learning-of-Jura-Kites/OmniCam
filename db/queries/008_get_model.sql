@@ -5,6 +5,8 @@ SELECT
   m.name,
   m.file_path,
   m.image_path,
+  m.image_extension,
+  m.model_extension,
   m.description,
   CASE
     WHEN 'cameras' = ANY (COALESCE(SQLC.NARG(fields)::TEXT[], '{}'::TEXT[])) THEN m.cameras::JSONB

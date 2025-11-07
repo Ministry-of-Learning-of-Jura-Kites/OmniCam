@@ -7,6 +7,8 @@ SELECT
   version,
   image_path,
   file_path,
+  image_extension,
+  model_extension,
   created_at,
   updated_at
 FROM

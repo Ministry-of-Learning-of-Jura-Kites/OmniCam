@@ -26,9 +26,13 @@ const props = defineProps({
   },
 });
 
+const config = useRuntimeConfig();
+
 const sceneStates = inject(SCENE_STATES_KEY)!;
 
 const { data: modelResp } = sceneStates.modelInfo;
+console.log("data", modelResp);
+const modelPath = `http://${config.public.externalBackendHost}/api/v1/assets/projects/${modelResp.projectId}/models/${modelResp.modelId}/file/${modelResp.fileExtension.slice(1, modelResp.fileExtension.length)}`;
 
 const camera: Ref<THREE.PerspectiveCamera | null> = ref(null);
 
@@ -319,7 +323,7 @@ onBeforeRouteLeave((to, from, next) => {
 
           <!-- 3D Objects -->
           <Suspense>
-            <ModelLoader :path="modelResp.filePath" :position="[0, 0, 0]" />
+            <ModelLoader :path="modelPath" :position="[0, 0, 0]" />
           </Suspense>
 
           <!-- Grid -->
