@@ -30,6 +30,8 @@ export function transformCameraToProtoEvent(cam: ICamera): Omit<Camera, "id"> {
     posX: cam.position.x,
     posY: cam.position.y,
     posZ: cam.position.z,
+    aspectWidth: cam.aspectWidth,
+    aspectHeight: cam.aspectHeight,
     fov: cam.fov,
     frustumColor: cam.frustumColor,
     frustumLength: cam.frustumLength,

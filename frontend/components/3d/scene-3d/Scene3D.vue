@@ -9,6 +9,7 @@ import { SCENE_STATES_KEY } from "~/components/3d/scene-states-provider/create-s
 import { useCameraUpdate } from "./use-camera-update";
 import type { IUserData } from "~/types/obj-3d-user-data";
 import ModelLoader from "../model-loader/ModelLoader.vue";
+import { onBeforeRouteLeave } from "vue-router";
 
 const props = defineProps({
   projectId: {
@@ -141,6 +142,35 @@ watch(
 // onMounted(() => {
 //   useAutosave(sceneStates, props.workspace);
 // });
+onMounted(() => {
+  const handleBeforeUnload = (event: BeforeUnloadEvent) => {
+    if (sceneStates.markedForCheck.size > 0) {
+      const message =
+        "You have unsaved camera changes. Are you sure you want to leave?";
+      event.preventDefault();
+      event.returnValue = message;
+      return message;
+    }
+  };
+  window.addEventListener("beforeunload", handleBeforeUnload);
+
+  onUnmounted(() => {
+    window.removeEventListener("beforeunload", handleBeforeUnload);
+  });
+});
+
+onBeforeRouteLeave((to, from, next) => {
+  if (sceneStates.markedForCheck.size > 0) {
+    const answer = window.confirm(
+      "You have unsaved camera changes. Are you sure you want to leave?",
+    );
+    if (!answer) {
+      next(false);
+      return;
+    }
+  }
+  next();
+});
 </script>
 
 <template>

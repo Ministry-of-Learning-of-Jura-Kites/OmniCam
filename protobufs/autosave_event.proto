@@ -37,6 +37,8 @@ message Camera {
   bool is_locking_position = 15;
   bool is_locking_rotation = 16;
   bool is_hiding_frustum = 17;
+  double aspect_width = 18;
+  double aspect_height = 19;
 }
 
 message CameraSaveEvent {

@@ -298,7 +298,7 @@ const isLockingPosition = computed(() => {
             <div class="flex flex-row gap-2 justify-center items-center">
               <Input
                 id="aspect-ratio-width"
-                v-model.number="selectedCam!.aspectWidth"
+                v-model.number="sceneStates.cameras[selectedCamId]!.aspectWidth"
                 :disabled="props.workspace == null"
                 disabled-class="disabled-input"
                 type="number"
@@ -307,7 +307,9 @@ const isLockingPosition = computed(() => {
               <p>:</p>
               <Input
                 id="aspect-ratio-height"
-                v-model.number="selectedCam!.aspectHeight"
+                v-model.number="
+                  sceneStates.cameras[selectedCamId]!.aspectHeight
+                "
                 :disabled="props.workspace == null"
                 disabled-class="disabled-input"
                 type="number"

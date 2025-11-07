@@ -49,8 +49,8 @@ export function transformProtoEventToCamera(rawCam: Camera): ICamera {
     ),
     fov: rawCam.fov,
     // mock aspect for now
-    aspectWidth: 4,
-    aspectHeight: 3,
+    aspectWidth: rawCam.aspectWidth,
+    aspectHeight: rawCam.aspectHeight,
     isHidingArrows: rawCam.isHidingArrows,
     isHidingWheels: rawCam.isHidingWheels,
     isLockingPosition: rawCam.isLockingPosition,
