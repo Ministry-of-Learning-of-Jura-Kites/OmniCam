@@ -20,7 +20,9 @@ export interface Model {
   description: string;
   version: number;
   imagePath?: string;
+  imageExtension?: string;
   filePath?: string;
+  modelExtension?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -179,14 +181,21 @@ async function fetchModel() {
         credentials: "include",
       },
     );
+    console.log(response.data);
     const now = Date.now();
     if (response.data != null) {
       models.value = response.data.reduce<Record<string, ModelWithoutId>>(
         (acc, model) => {
           const { modelId, imagePath, ...rest } = model;
+          console.log(model);
+          const ext = model.imageExtension?.slice(
+            1,
+            model.imageExtension?.length,
+          );
+          const url = `http://${config.public.externalBackendHost}/api/v1/assets/projects/${model.projectId}/models/${model.modelId}/file/${ext}?t=${now}`;
           acc[modelId] = {
             ...rest,
-            imagePath: imagePath ? `${imagePath}?t=${now}` : undefined,
+            imagePath: imagePath ? url : undefined,
           };
           return acc;
         },

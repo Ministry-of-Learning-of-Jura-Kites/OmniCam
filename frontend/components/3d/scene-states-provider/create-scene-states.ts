@@ -23,7 +23,9 @@ export interface ModelWithCamsResp {
     updatedAt: string;
     projectId: string; // uuid.UUID -> string
     filePath: string;
+    fileExtension: string;
     imagePath: string;
+    imageExtension: string;
     cameras: Record<string, Camera>;
   };
 }

@@ -635,16 +635,18 @@ func (t *WorkspaceRoute) getWorkspaceMe(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{"data": messages_model_workspace.ModelWorkspace{
-		ModelId:     modelId,
-		Name:        data.Model.Name,
-		Description: data.Model.Description,
-		ProjectId:   data.Model.ProjectID,
-		FilePath:    data.Model.FilePath,
-		ImagePath:   data.Model.ImagePath,
-		Version:     data.Version,
-		CreatedAt:   data.CreatedAt.Time.Format(time.RFC3339),
-		UpdatedAt:   data.UpdatedAt.Time.Format(time.RFC3339),
-		Cameras:     &cameras,
+		ModelId:        modelId,
+		Name:           data.Model.Name,
+		Description:    data.Model.Description,
+		ProjectId:      data.Model.ProjectID,
+		FilePath:       data.Model.FilePath,
+		ModelExtension: data.Model.ModelExtension,
+		ImagePath:      data.Model.ImagePath,
+		ImageExtension: data.Model.ImageExtension,
+		Version:        data.Version,
+		CreatedAt:      data.CreatedAt.Time.Format(time.RFC3339),
+		UpdatedAt:      data.UpdatedAt.Time.Format(time.RFC3339),
+		Cameras:        &cameras,
 	}})
 }
 
