@@ -3,7 +3,7 @@ import type {
   CameraSaveEvent,
 } from "~/messages/protobufs/autosave_event";
 import {
-  CameraEventType,
+  CameraAutosaveResponse,
   CameraSaveEventSeries,
 } from "~/messages/protobufs/autosave_event";
 import type { ICamera } from "~/types/camera";
@@ -66,6 +66,17 @@ export function useAutosave(
     }),
   );
 
+  watch(
+    () => sceneStates.websocket?.data.value,
+    async (messageBlob) => {
+      if (messageBlob) {
+        const messageArrayBuf = await (messageBlob as Blob).arrayBuffer();
+        const messageByteArr = new Uint8Array(messageArrayBuf);
+        const resp = CameraAutosaveResponse.decode(messageByteArr);
+      }
+    },
+  );
+
   setInterval(() => {
     if (sceneStates.markedForCheck.size == 0) {
       return;
@@ -85,8 +96,9 @@ export function useAutosave(
       if (cam == undefined) {
         lastSynced.delete(camId);
         changed.push({
-          type: CameraEventType.CAMERA_EVENT_TYPE_DELETE,
-          deleteId: camId,
+          delete: {
+            id: camId,
+          },
         });
         continue;
       }
@@ -94,8 +106,9 @@ export function useAutosave(
       // If is newly added, or changed
       if (prev == undefined || !isEqual(prev, formattedCam)) {
         changed.push({
-          type: CameraEventType.CAMERA_EVENT_TYPE_UPSERT,
-          upsert: formattedCam,
+          upsert: {
+            camera: formattedCam,
+          },
         });
         lastSynced.set(camId, transformCameraToProtoEventWithId(camId, cam));
       }
