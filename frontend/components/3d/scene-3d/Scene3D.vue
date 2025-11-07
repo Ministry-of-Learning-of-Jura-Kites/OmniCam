@@ -176,7 +176,7 @@ onBeforeRouteLeave((to, from, next) => {
 <template>
   <ClientOnly>
     <div
-      class="h-full bg-background relative bg-black flex flex-col justify-center items-center"
+      class="h-full relative bg-black flex flex-col justify-center items-center"
     >
       <div
         class="w-full h-full absolute z-3 pointer-events-none flex justify-between"
