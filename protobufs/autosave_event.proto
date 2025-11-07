@@ -41,17 +41,27 @@ message Camera {
   double aspect_height = 19;
 }
 
-message CameraSaveEvent {
-  CameraEventType type = 1;
+message CameraDeleteEvent { string id = 1; }
 
-  oneof payload {
-    string delete_id = 2; // for delete
-    Camera upsert = 3;    // for upsert
+message CameraUpsertEvent { Camera camera = 1; }
+
+message CameraSaveEvent {
+  oneof event {
+    CameraDeleteEvent delete = 1;
+    CameraUpsertEvent upsert = 2;
   }
 }
 
 message CameraSaveEventSeries { repeated CameraSaveEvent events = 1; }
 
-message CameraSaveEventSeriesResponse {
-  int32 last_updated_version = 1;
+enum CameraAutosaveResponseType {
+  ACK = 0;
+}
+
+message CameraAutosaveResponse {
+  oneof payload { CameraAutosaveResponse_ACK ack = 1; }
+}
+
+message CameraAutosaveResponse_ACK {
+  int32 last_updated_version = 1; // for ACK
 }
