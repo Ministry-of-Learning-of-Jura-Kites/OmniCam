@@ -70,20 +70,20 @@ func (t *PostProjectRoute) post(c *gin.Context) {
 			return
 		}
 
-		uploadDir := filepath.Join(internal.Root, "uploads", "project", projectID.String())
+		uploadDir := filepath.Join(internal.Root, "uploads", "images")
 		if mkErr := os.MkdirAll(uploadDir, os.ModePerm); mkErr != nil {
 			t.Logger.Error("failed to create upload dir", zap.Error(mkErr))
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to create upload dir"})
 			return
 		}
 
-		fsImagePath := filepath.Join(uploadDir, "image"+ext) // local filesystem path
+		fsImagePath := filepath.Join(uploadDir, projectID.String()+ext) // local filesystem path
 		if saveErr := c.SaveUploadedFile(imageFile, fsImagePath); saveErr != nil {
 			t.Logger.Error("failed to save project image", zap.Error(saveErr))
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to save project image"})
 			return
 		}
-		imageWebPath = "/uploads/project/" + projectID.String() + "/image" + ext
+		imageWebPath = "/uploads/images/" + projectID.String() + ext
 	}
 
 	tx, err := t.DB.Pool.Begin(c)

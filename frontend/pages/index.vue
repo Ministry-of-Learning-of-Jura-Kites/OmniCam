@@ -5,7 +5,8 @@ import ConfirmDialog from "~/components/dialog/ConfirmDialog.vue";
 import SuccessDialog from "~/components/dialog/SuccessDialog.vue";
 import ContentCard from "~/components/card/ContentCard.vue";
 import CustomPagination from "~/components/pagination/CustomPagination.vue";
-import { uuidToBase64Url } from "~/lib/uuid";
+import { uuidToBase64Url } from "~/lib/utils";
+import type Stream from "stream";
 
 interface Project {
   id: string;
@@ -14,6 +15,7 @@ interface Project {
   createdAt: string;
   updatedAt: string;
   imagePath?: string;
+  imageData?: Stream;
 }
 type ProjectWithoutId = Omit<Project, "id">;
 type ProjectForm = { name: string; description: string; image: File | null };
@@ -77,13 +79,22 @@ async function fetchProjects() {
     );
     const data = response?.data || [];
     const count = response?.count || 0;
-    const now = Date.now();
     projects.value = data.reduce<Record<string, ProjectWithoutId>>((acc, p) => {
       const { id, imagePath, ...rest } = p;
+      const now = Date.now();
+
+      let url: string | undefined = undefined;
+      if (imagePath) {
+        const extMatch = imagePath.match(/\.(\w+)$/);
+        const ext = extMatch ? extMatch[1] : "png";
+        url = `http://${config.public.externalBackendHost}/api/v1/assets/projects/${id}/file/${ext}?t=${now}`;
+      }
+
       acc[id] = {
         ...rest,
-        imagePath: imagePath ? `${imagePath}?t=${now}` : undefined,
+        imagePath: url,
       };
+
       return acc;
     }, {});
 

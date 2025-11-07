@@ -8,9 +8,22 @@ const props = defineProps<{
 }>();
 
 let nodes: Record<string, TresObject3D>;
+console.log("path", props.path);
 
 try {
-  const gltf = await useGLTF(props.path ?? "");
+  const response = await fetch(props.path ?? "", {
+    method: "GET",
+    credentials: "include", // <-- Important! sends cookies/session
+  });
+
+  if (!response.ok) {
+    throw new Error(`HTTP ${response.status} ${response.statusText}`);
+  }
+
+  const blob = await response.blob();
+  const blobUrl = URL.createObjectURL(blob);
+
+  const gltf = await useGLTF(blobUrl);
   nodes = gltf.nodes;
   console.log("[Success] load model success:", nodes);
 } catch (err) {

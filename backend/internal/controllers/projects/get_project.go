@@ -15,12 +15,13 @@ import (
 )
 
 type Project struct {
-	Id          uuid.UUID `json:"id"`
-	Name        string    `json:"name"`
-	Description string    `json:"description"`
-	ImagePath   string    `json:"imagePath"`
-	CreatedAt   string    `json:"createdAt"`
-	UpdatedAt   string    `json:"updatedAt"`
+	Id            uuid.UUID `json:"id"`
+	Name          string    `json:"name"`
+	Description   string    `json:"description"`
+	ImagePath     string    `json:"imagePath"`
+	FileExtension string    `json:"fileExtension"`
+	CreatedAt     string    `json:"createdAt"`
+	UpdatedAt     string    `json:"updatedAt"`
 }
 
 type GetProjectRoute struct {
@@ -72,12 +73,13 @@ func (t *GetProjectRoute) getAll(c *gin.Context) {
 	var projectList []Project
 	for _, data := range projects {
 		projectList = append(projectList, Project{
-			Id:          data.ID,
-			Name:        data.Name,
-			Description: data.Description,
-			ImagePath:   data.ImagePath,
-			CreatedAt:   data.CreatedAt.Time.Format(time.RFC3339),
-			UpdatedAt:   data.UpdatedAt.Time.Format(time.RFC3339),
+			Id:            data.ID,
+			Name:          data.Name,
+			Description:   data.Description,
+			ImagePath:     data.ImagePath,
+			FileExtension: data.FileExtension,
+			CreatedAt:     data.CreatedAt.Time.Format(time.RFC3339),
+			UpdatedAt:     data.UpdatedAt.Time.Format(time.RFC3339),
 		})
 	}
 

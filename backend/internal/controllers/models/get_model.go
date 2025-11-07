@@ -101,16 +101,18 @@ func (t *GetModelRoute) getModelById(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{"data": Model{
 		ModelWorkspace: messages_model_workspace.ModelWorkspace{
-			ModelId:     modelId,
-			ProjectId:   data.ProjectID,
-			Name:        data.Name,
-			Description: data.Description,
-			FilePath:    data.FilePath,
-			ImagePath:   data.ImagePath,
-			Version:     data.Version,
-			CreatedAt:   data.CreatedAt.Time.Format(time.RFC3339),
-			UpdatedAt:   data.UpdatedAt.Time.Format(time.RFC3339),
-			Cameras:     &cameras,
+			ModelId:        modelId,
+			ProjectId:      data.ProjectID,
+			Name:           data.Name,
+			Description:    data.Description,
+			ModelExtension: data.ModelExtension,
+			FilePath:       data.FilePath,
+			ImageExtension: data.ImageExtension,
+			ImagePath:      data.ImagePath,
+			Version:        data.Version,
+			CreatedAt:      data.CreatedAt.Time.Format(time.RFC3339),
+			UpdatedAt:      data.UpdatedAt.Time.Format(time.RFC3339),
+			Cameras:        &cameras,
 		},
 		WorkspaceExists: workspaceExists,
 	}})
@@ -160,14 +162,17 @@ func (t *GetModelRoute) getAllModel(c *gin.Context) {
 
 	for _, model := range data {
 		dataList = append(dataList, messages_model_workspace.ModelWorkspace{
-			ModelId:     model.ID,
-			ProjectId:   model.ProjectID,
-			Name:        model.Name,
-			Description: model.Description,
-			ImagePath:   model.ImagePath,
-			Version:     model.Version,
-			CreatedAt:   model.CreatedAt.Time.Format(time.RFC3339),
-			UpdatedAt:   model.UpdatedAt.Time.Format(time.RFC3339),
+			ModelId:        model.ID,
+			ProjectId:      model.ProjectID,
+			Name:           model.Name,
+			Description:    model.Description,
+			ImagePath:      model.ImagePath,
+			ImageExtension: model.ImageExtension,
+			FilePath:       model.FilePath,
+			ModelExtension: model.ModelExtension,
+			Version:        model.Version,
+			CreatedAt:      model.CreatedAt.Time.Format(time.RFC3339),
+			UpdatedAt:      model.UpdatedAt.Time.Format(time.RFC3339),
 		})
 	}
 

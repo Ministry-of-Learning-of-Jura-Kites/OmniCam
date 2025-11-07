@@ -6,14 +6,16 @@ import (
 )
 
 type ModelWorkspace struct {
-	ModelId     uuid.UUID                 `json:"modelId"`
-	Name        string                    `json:"name"`
-	Description string                    `json:"description"`
-	Version     int32                     `json:"version"`
-	CreatedAt   string                    `json:"createdAt"`
-	UpdatedAt   string                    `json:"updatedAt"`
-	Cameras     *messages_cameras.Cameras `json:"cameras"`
-	ProjectId   uuid.UUID                 `json:"projectId"`
-	FilePath    string                    `json:"filePath"`
-	ImagePath   string                    `json:"imagePath"`
+	ModelId        uuid.UUID                 `json:"modelId"`
+	Name           string                    `json:"name"`
+	Description    string                    `json:"description"`
+	Version        int32                     `json:"version"`
+	CreatedAt      string                    `json:"createdAt"`
+	UpdatedAt      string                    `json:"updatedAt"`
+	Cameras        *messages_cameras.Cameras `json:"cameras"`
+	ProjectId      uuid.UUID                 `json:"projectId"`
+	FilePath       string                    `json:"filePath"`
+	ModelExtension string                    `json:"fileExtension"`
+	ImagePath      string                    `json:"imagePath"`
+	ImageExtension string                    `json:"imageExtension"`
 }
