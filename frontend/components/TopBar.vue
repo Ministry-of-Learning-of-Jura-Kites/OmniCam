@@ -61,9 +61,44 @@ const openResolver = ref(false);
 const conflicts = ref({});
 
 async function saveModelToPublic() {
+  // Mocked data
+  // const respJson = {
+  //   noChanges: false,
+  //   conflicts: {
+  //     "c6a9ff22-0962-4d88-bbbd-2053d883f43b": {
+  //       angleX: {
+  //         base: 1,
+  //         main: 2,
+  //         workspace: 1,
+  //       },
+  //       angleY: {
+  //         base: 1,
+  //         main: 2,
+  //         workspace: 1,
+  //       },
+  //       angleZ: {
+  //         base: 1,
+  //         main: 2,
+  //         workspace: 1,
+  //       },
+  //       test: {
+  //         base: {
+  //           "123": 456,
+  //         },
+  //         main: {
+  //           "123": 456,
+  //         },
+  //         workspace: {
+  //           "123": 451,
+  //         },
+  //       },
+  //     },
+  //   },
+  // };
+
   const runtimeConfig = useRuntimeConfig();
   const resp = await fetch(
-    `http://${runtimeConfig.public.externalBackendHost}/api/v1/projects/${route.params.projectId}/models/${route.params.modelId}/workspaces/merge`,
+    `http://${runtimeConfig.public.externalBackendHost}/api/v1/projects/${route.params.projectId}/models/${route.params.modelId}/workspaces/me/merge`,
     { method: "POST", credentials: "include" },
   );
 
@@ -78,14 +113,18 @@ async function saveModelToPublic() {
   } = await resp.json();
 
   if (respJson.noChanges) {
-    openDialog.value = true;
     dialogTitle.value = "No changes";
     dialogContent.value = "There is no changes to be published";
-  } else {
-    // dialogTitle.value = "Progress Saved";
-    // dialogContent.value = "";
+    openDialog.value = true;
+    return;
+  }
+  if (respJson.conflicts) {
     conflicts.value = respJson.conflicts;
     openResolver.value = true;
+  } else {
+    dialogTitle.value = "Progress Saved!";
+    dialogContent.value = "";
+    openDialog.value = true;
   }
 }
 
@@ -162,7 +201,11 @@ async function deleteWorkspace() {
 </script>
 
 <template>
-  <MergeConflictsResolver :visible="openResolver" :conflicts="conflicts" />
+  <MergeConflictsResolver
+    :visible="openResolver"
+    :conflicts="conflicts"
+    @close="openResolver = false"
+  />
 
   <Dialog :open="openDialog" @update:open="openDialog = $event">
     <DialogContent class="sm:max-w-[425px]">

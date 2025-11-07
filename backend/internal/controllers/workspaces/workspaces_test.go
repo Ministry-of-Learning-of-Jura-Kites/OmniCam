@@ -1,7 +1,7 @@
 //go:build unit_test
 // +build unit_test
 
-package controller_workspaces
+package controller_workspaces_test
 
 import (
 	"context"
@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 
@@ -16,6 +17,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
 	config_env "omnicam.com/backend/config"
+	controller_workspaces "omnicam.com/backend/internal/controllers/workspaces"
 	"omnicam.com/backend/internal/middleware"
 	"omnicam.com/backend/internal/testutils"
 	"omnicam.com/backend/internal/utils"
@@ -107,7 +109,7 @@ func setupTest(t *testing.T) *testContext {
 	authMiddleware := middleware.AuthMiddleware{Env: env, Logger: testLogger}
 	protected.Use(authMiddleware.CreateHandler())
 
-	route := WorkspaceRoute{
+	route := controller_workspaces.WorkspaceRoute{
 		Logger: testLogger,
 		Env:    env,
 		DB:     db,
@@ -134,7 +136,7 @@ func setupTest(t *testing.T) *testContext {
 	}
 }
 
-func TestWorkspacesEndpoints(t *testing.T) {
+func TestWorkspacesMe(t *testing.T) {
 	tests := []struct {
 		name string
 		run  func(t *testing.T, tc *testContext)
@@ -229,7 +231,7 @@ func TestWorkspacesEndpoints(t *testing.T) {
 				modelIdBase64, _ := utils.UuidToBase64(tc.Model1)
 
 				req, _ := http.NewRequest("POST",
-					fmt.Sprintf("/api/v1/projects/%s/models/%s/workspaces/merge", projectIdBase64, modelIdBase64),
+					fmt.Sprintf("/api/v1/projects/%s/models/%s/workspaces/me/merge", projectIdBase64, modelIdBase64),
 					nil)
 				req.AddCookie(&http.Cookie{Name: "auth_token", Value: tc.Token})
 				w := httptest.NewRecorder()
@@ -244,7 +246,7 @@ func TestWorkspacesEndpoints(t *testing.T) {
 				invalidModelId := "!!!invalid"
 
 				req, _ := http.NewRequest("POST",
-					fmt.Sprintf("/api/v1/projects/%s/models/%s/workspaces/merge", projectIdBase64, invalidModelId),
+					fmt.Sprintf("/api/v1/projects/%s/models/%s/workspaces/me/merge", projectIdBase64, invalidModelId),
 					nil)
 				req.AddCookie(&http.Cookie{Name: "auth_token", Value: tc.Token})
 
@@ -252,6 +254,392 @@ func TestWorkspacesEndpoints(t *testing.T) {
 				tc.Router.ServeHTTP(w, req)
 				require.Equal(t, http.StatusBadRequest, w.Code)
 				require.Contains(t, w.Body.String(), "invalid project ID")
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			tc := setupTest(t)
+			tt.run(t, tc)
+		})
+	}
+}
+
+func TestPostMergeWorkspace(t *testing.T) {
+	tests := []struct {
+		name string
+		run  func(t *testing.T, tc *testContext)
+	}{
+		{
+			name: "Invalid model ID returns 400",
+			run: func(t *testing.T, tc *testContext) {
+				projectIdBase64, _ := utils.UuidToBase64(tc.Project1)
+				invalidModelId := "invalid-id"
+
+				req, _ := http.NewRequest("POST",
+					fmt.Sprintf("/api/v1/projects/%s/models/%s/workspaces/me/merge", projectIdBase64, invalidModelId),
+					nil)
+				req.AddCookie(&http.Cookie{Name: "auth_token", Value: tc.Token})
+
+				w := httptest.NewRecorder()
+				tc.Router.ServeHTTP(w, req)
+
+				require.Equal(t, http.StatusBadRequest, w.Code)
+				require.Contains(t, w.Body.String(), "invalid project ID")
+			},
+		},
+		{
+			name: "Workspace not found returns 404",
+			run: func(t *testing.T, tc *testContext) {
+				projectIdBase64, _ := utils.UuidToBase64(tc.Project1)
+				modelIdBase64, _ := utils.UuidToBase64(tc.Model1)
+
+				req, _ := http.NewRequest("POST",
+					fmt.Sprintf("/api/v1/projects/%s/models/%s/workspaces/me/merge", projectIdBase64, modelIdBase64),
+					nil)
+				req.AddCookie(&http.Cookie{Name: "auth_token", Value: tc.Token})
+
+				w := httptest.NewRecorder()
+				tc.Router.ServeHTTP(w, req)
+
+				require.Equal(t, http.StatusNotFound, w.Code)
+			},
+		},
+		{
+			name: "Workspace with no changes returns noChanges=true",
+			run: func(t *testing.T, tc *testContext) {
+				// Setup a workspace where version == baseVersion
+				projectIdBase64, _ := utils.UuidToBase64(tc.Project1)
+				modelIdBase64, _ := utils.UuidToBase64(tc.Model1)
+
+				_, err := tc.DB.Queries.AddUserToProject(tc.Ctx, db_sqlc_gen.AddUserToProjectParams{
+					UserID: tc.User.ID, ProjectID: tc.Project1, Role: db_sqlc_gen.RoleCollaborator,
+				})
+				require.NoError(t, err)
+
+				// Create workspace manually in DB with equal versions
+				_, err = tc.DB.Queries.CreateWorkspace(tc.Ctx, db_sqlc_gen.CreateWorkspaceParams{
+					UserID:  tc.User.ID,
+					ModelID: tc.Model1,
+				})
+
+				req, _ := http.NewRequest("POST",
+					fmt.Sprintf("/api/v1/projects/%s/models/%s/workspaces/me/merge", projectIdBase64, modelIdBase64),
+					nil)
+				req.AddCookie(&http.Cookie{Name: "auth_token", Value: tc.Token})
+				w := httptest.NewRecorder()
+				tc.Router.ServeHTTP(w, req)
+
+				require.Equal(t, http.StatusOK, w.Code)
+				require.Contains(t, w.Body.String(), `"noChanges":true`)
+			},
+		},
+		{
+			name: "Model version equal to workspace baseVersion merges successfully",
+			run: func(t *testing.T, tc *testContext) {
+				projectIdBase64, _ := utils.UuidToBase64(tc.Project1)
+				modelIdBase64, _ := utils.UuidToBase64(tc.Model1)
+
+				_, err := tc.DB.Queries.AddUserToProject(tc.Ctx, db_sqlc_gen.AddUserToProjectParams{
+					UserID: tc.User.ID, ProjectID: tc.Project1, Role: db_sqlc_gen.RoleCollaborator,
+				})
+				require.NoError(t, err)
+
+				// Create model and workspace with equal baseVersion
+
+				_, err = tc.DB.Queries.CreateWorkspace(tc.Ctx, db_sqlc_gen.CreateWorkspaceParams{
+					UserID:  tc.User.ID,
+					ModelID: tc.Model1,
+				})
+				require.NoError(t, err)
+
+				err = tc.DB.Queries.UpdateWorkspaceCams(tc.Ctx, db_sqlc_gen.UpdateWorkspaceCamsParams{
+					Key:     []string{"123"},
+					Value:   []byte("{}"),
+					UserID:  tc.User.ID,
+					ModelID: tc.Model1,
+				})
+				require.NoError(t, err)
+
+				req, _ := http.NewRequest("POST",
+					fmt.Sprintf("/api/v1/projects/%s/models/%s/workspaces/me/merge", projectIdBase64, modelIdBase64),
+					nil)
+				req.AddCookie(&http.Cookie{Name: "auth_token", Value: tc.Token})
+				w := httptest.NewRecorder()
+				tc.Router.ServeHTTP(w, req)
+
+				require.Equal(t, http.StatusOK, w.Code)
+				require.Contains(t, w.Body.String(), `"noChanges":false`)
+			},
+		},
+		{
+			name: "Model version is higher than workspace baseVersion merges successfully",
+			run: func(t *testing.T, tc *testContext) {
+				projectIdBase64, _ := utils.UuidToBase64(tc.Project1)
+				modelIdBase64, _ := utils.UuidToBase64(tc.Model1)
+
+				_, err := tc.DB.Queries.AddUserToProject(tc.Ctx, db_sqlc_gen.AddUserToProjectParams{
+					UserID: tc.User.ID, ProjectID: tc.Project1, Role: db_sqlc_gen.RoleCollaborator,
+				})
+				require.NoError(t, err)
+
+				_, err = tc.DB.Queries.UpdateModelCams(tc.Ctx, db_sqlc_gen.UpdateModelCamsParams{
+					Value:   []byte(`{"123":{"posX":1}}`),
+					ModelID: tc.Model1,
+				})
+				require.NoError(t, err)
+
+				// Create model and workspace with equal baseVersion
+				_, err = tc.DB.Queries.CreateWorkspace(tc.Ctx, db_sqlc_gen.CreateWorkspaceParams{
+					UserID:  tc.User.ID,
+					ModelID: tc.Model1,
+				})
+				require.NoError(t, err)
+
+				err = tc.DB.Queries.UpdateWorkspaceCams(tc.Ctx, db_sqlc_gen.UpdateWorkspaceCamsParams{
+					Key:     []string{"123"},
+					Value:   []byte(`{"posX":10}`),
+					UserID:  tc.User.ID,
+					ModelID: tc.Model1,
+				})
+				require.NoError(t, err)
+
+				err = tc.DB.Queries.UpdateWorkspaceCams(tc.Ctx, db_sqlc_gen.UpdateWorkspaceCamsParams{
+					Key:     []string{"456"},
+					Value:   []byte(`{"posX":10}`),
+					UserID:  tc.User.ID,
+					ModelID: tc.Model1,
+				})
+				require.NoError(t, err)
+
+				_, err = tc.DB.Queries.UpdateModelCams(tc.Ctx, db_sqlc_gen.UpdateModelCamsParams{
+					Value:   []byte(`{"123":{"posX":12}}`),
+					ModelID: tc.Model1,
+				})
+				require.NoError(t, err)
+
+				req, _ := http.NewRequest("POST",
+					fmt.Sprintf("/api/v1/projects/%s/models/%s/workspaces/me/merge", projectIdBase64, modelIdBase64),
+					nil)
+				req.AddCookie(&http.Cookie{Name: "auth_token", Value: tc.Token})
+				w := httptest.NewRecorder()
+				tc.Router.ServeHTTP(w, req)
+
+				require.Equal(t, http.StatusOK, w.Code)
+				require.Contains(t, w.Body.String(), `"conflicts":{"123":{"posX":{"base":1,"main":12,"workspace":10}}}`)
+			},
+		},
+		// {
+		// 	name: "Workspace version ahead of model returns 500",
+		// 	run: func(t *testing.T, tc *testContext) {
+		// 		projectIdBase64, _ := utils.UuidToBase64(tc.Project1)
+		// 		modelIdBase64, _ := utils.UuidToBase64(tc.Model1)
+
+		// 		_, err := tc.DB.Queries.CreateModel(tc.Ctx, db_sqlc_gen.CreateModelParams{
+		// 			ID: tc.Model1, ProjectID: tc.Project1,
+		// 		})
+		// 		require.NoError(t, err)
+
+		// 		_, err = tc.DB.Queries.CreateWorkspace(tc.Ctx, db_sqlc_gen.CreateWorkspaceParams{
+		// 			UserID:  tc.User.ID,
+		// 			ModelID: tc.Model1,
+		// 		})
+		// 		require.NoError(t, err)
+
+		// 		req, _ := http.NewRequest("POST",
+		// 			fmt.Sprintf("/api/v1/projects/%s/models/%s/workspaces/me/merge", projectIdBase64, modelIdBase64),
+		// 			nil)
+		// 		req.AddCookie(&http.Cookie{Name: "auth_token", Value: tc.Token})
+		// 		w := httptest.NewRecorder()
+		// 		tc.Router.ServeHTTP(w, req)
+
+		// 		require.Equal(t, http.StatusInternalServerError, w.Code)
+		// 	},
+		// },
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			tc := setupTest(t)
+			tt.run(t, tc)
+		})
+	}
+}
+func TestPostResolveWorkspaceMe(t *testing.T) {
+	tests := []struct {
+		name string
+		body string
+		run  func(t *testing.T, tc *testContext)
+	}{
+		{
+			name: "Invalid model ID returns 400",
+			run: func(t *testing.T, tc *testContext) {
+				projectIdBase64, _ := utils.UuidToBase64(tc.Project1)
+				invalidModelId := "!!!bad"
+				// userIdBase64, _ := utils.UuidToBase64(tc.User.ID)
+
+				req, _ := http.NewRequest("POST",
+					fmt.Sprintf("/api/v1/projects/%s/models/%s/workspaces/me/resolve", projectIdBase64, invalidModelId),
+					nil)
+				req.AddCookie(&http.Cookie{Name: "auth_token", Value: tc.Token})
+
+				w := httptest.NewRecorder()
+				tc.Router.ServeHTTP(w, req)
+
+				require.Equal(t, http.StatusBadRequest, w.Code)
+				require.Contains(t, w.Body.String(), "invalid model ID")
+			},
+		},
+		{
+			name: "Workspace not found returns 404",
+			run: func(t *testing.T, tc *testContext) {
+				projectIdBase64, err := utils.UuidToBase64(tc.Project1)
+				require.Nil(t, err)
+				modelIdBase64, err := utils.UuidToBase64(tc.Model1)
+				require.Nil(t, err)
+				// userIdBase64, _ := utils.UuidToBase64(tc.User.ID)
+
+				req, _ := http.NewRequest("POST",
+					fmt.Sprintf("/api/v1/projects/%s/models/%s/workspaces/me/resolve", projectIdBase64, modelIdBase64),
+					nil)
+				req.AddCookie(&http.Cookie{Name: "auth_token", Value: tc.Token})
+
+				w := httptest.NewRecorder()
+				tc.Router.ServeHTTP(w, req)
+
+				require.Equal(t, http.StatusNotFound, w.Code)
+			},
+		},
+		{
+			name: "Invalid JSON body returns 400",
+			body: `invalid-json`,
+			run: func(t *testing.T, tc *testContext) {
+				projectIdBase64, _ := utils.UuidToBase64(tc.Project1)
+				modelIdBase64, _ := utils.UuidToBase64(tc.Model1)
+				// userIdBase64, _ := utils.UuidToBase64(tc.User.ID)
+
+				// Create workspace and model
+				_, err := tc.DB.Queries.CreateWorkspace(tc.Ctx, db_sqlc_gen.CreateWorkspaceParams{
+					UserID:  tc.User.ID,
+					ModelID: tc.Model1,
+				})
+				require.NoError(t, err)
+
+				err = tc.DB.Queries.UpdateWorkspaceCams(tc.Ctx, db_sqlc_gen.UpdateWorkspaceCamsParams{
+					Key:     []string{"123"},
+					Value:   []byte("{}"),
+					UserID:  tc.User.ID,
+					ModelID: tc.Model1,
+				})
+				require.NoError(t, err)
+
+				req, _ := http.NewRequest("POST",
+					fmt.Sprintf("/api/v1/projects/%s/models/%s/workspaces/me/resolve",
+						projectIdBase64, modelIdBase64),
+					strings.NewReader(`invalid-json`))
+				req.Header.Set("Content-Type", "application/json")
+				req.AddCookie(&http.Cookie{Name: "auth_token", Value: tc.Token})
+
+				w := httptest.NewRecorder()
+				tc.Router.ServeHTTP(w, req)
+
+				require.Equal(t, http.StatusBadRequest, w.Code)
+				require.Contains(t, w.Body.String(), "invalid character")
+			},
+		},
+		{
+			name: "Successfully resolved all conflicts returns 200",
+			body: `{"merged":{"CameraA":{"Field1":"sameValue"}}}`,
+			run: func(t *testing.T, tc *testContext) {
+				projectIdBase64, err := utils.UuidToBase64(tc.Project1)
+				require.Nil(t, err)
+				modelIdBase64, err := utils.UuidToBase64(tc.Model1)
+				require.Nil(t, err)
+				// userIdBase64, _ := utils.UuidToBase64(tc.User.ID)
+
+				modelCams := []byte(`{"123":{"angleX":1}}`)
+				workspaceCams := []byte(`{"angleX":2}`)
+
+				// Create model and workspace with same data
+				_, err = tc.DB.Queries.UpdateModelCams(tc.Ctx, db_sqlc_gen.UpdateModelCamsParams{
+					ModelID: tc.Model1,
+					Value:   modelCams,
+				})
+				require.NoError(t, err)
+
+				_, err = tc.DB.Queries.CreateWorkspace(tc.Ctx, db_sqlc_gen.CreateWorkspaceParams{
+					UserID:  tc.User.ID,
+					ModelID: tc.Model1,
+				})
+				require.NoError(t, err)
+
+				err = tc.DB.Queries.UpdateWorkspaceCams(tc.Ctx, db_sqlc_gen.UpdateWorkspaceCamsParams{
+					Key:     []string{"123"},
+					Value:   workspaceCams,
+					UserID:  tc.User.ID,
+					ModelID: tc.Model1,
+				})
+				require.NoError(t, err)
+
+				req, _ := http.NewRequest("POST",
+					fmt.Sprintf("/api/v1/projects/%s/models/%s/workspaces/me/resolve",
+						projectIdBase64, modelIdBase64),
+					strings.NewReader(`{"merged":{"123":{"angleX":1}}}`))
+				req.Header.Set("Content-Type", "application/json")
+				req.AddCookie(&http.Cookie{Name: "auth_token", Value: tc.Token})
+
+				w := httptest.NewRecorder()
+				tc.Router.ServeHTTP(w, req)
+
+				require.Equal(t, http.StatusOK, w.Code)
+			},
+		},
+		{
+			name: "Unresolved conflicts returns 400",
+			body: `{"merged":{"CameraA":{"Field1":"differentValue"}}}`,
+			run: func(t *testing.T, tc *testContext) {
+				projectIdBase64, _ := utils.UuidToBase64(tc.Project1)
+				modelIdBase64, _ := utils.UuidToBase64(tc.Model1)
+				// userIdBase64, _ := utils.UuidToBase64(tc.User.ID)
+
+				modelCams := []byte(`{"CameraA":{"angleX":1}}`)
+				workspaceCams := []byte(`{"angleX":2}`)
+
+				_, err := tc.DB.Queries.UpdateModelCams(tc.Ctx, db_sqlc_gen.UpdateModelCamsParams{
+					ModelID: tc.Model1,
+					Value:   modelCams,
+				})
+				require.NoError(t, err)
+
+				_, err = tc.DB.Queries.CreateWorkspace(tc.Ctx, db_sqlc_gen.CreateWorkspaceParams{
+					UserID:  tc.User.ID,
+					ModelID: tc.Model1,
+				})
+				require.NoError(t, err)
+
+				err = tc.DB.Queries.UpdateWorkspaceCams(tc.Ctx, db_sqlc_gen.UpdateWorkspaceCamsParams{
+					Key:     []string{"CameraA"},
+					Value:   workspaceCams,
+					UserID:  tc.User.ID,
+					ModelID: tc.Model1,
+				})
+				require.NoError(t, err)
+
+				req, _ := http.NewRequest("POST",
+					fmt.Sprintf("/api/v1/projects/%s/models/%s/workspaces/me/resolve",
+						projectIdBase64, modelIdBase64),
+					strings.NewReader(`{"merged":{}}`))
+				req.Header.Set("Content-Type", "application/json")
+				req.AddCookie(&http.Cookie{Name: "auth_token", Value: tc.Token})
+
+				w := httptest.NewRecorder()
+				tc.Router.ServeHTTP(w, req)
+
+				require.Equal(t, http.StatusBadRequest, w.Code)
+				require.Contains(t, w.Body.String(), "Not all conflicts are resolved")
 			},
 		},
 	}

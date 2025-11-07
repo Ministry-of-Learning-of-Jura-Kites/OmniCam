@@ -1,5 +1,7 @@
 <!-- eslint-disable @typescript-eslint/no-explicit-any -->
 <script lang="ts" setup>
+import { TriangleAlert } from "lucide-vue-next";
+
 interface ConflictItem {
   base: any;
   main: any;
@@ -32,6 +34,10 @@ const selected = reactive<Record<string, "main" | "workspace" | "manual">>({});
 const manualEdits = reactive<Record<string, string>>({});
 const manualErrors = reactive<Record<string, string | null>>({});
 
+const globalErr = ref<string | null>(null);
+
+const route = useRoute();
+const runtimeConfig = useRuntimeConfig();
 // initialize defaults whenever conflicts change
 watch(
   () => props.conflicts,
@@ -45,7 +51,7 @@ watch(
         selected[key] = "workspace";
       }
       manualEdits[key] = "";
-      manualErrors[key] = null;
+      Reflect.deleteProperty(manualErrors, key);
     }
   },
   { immediate: true },
@@ -57,7 +63,7 @@ function close() {
 
 function select(key: string, which: "main" | "workspace" | "manual") {
   selected[key] = which;
-  manualErrors[key] = null;
+  Reflect.deleteProperty(manualErrors, key);
   if (which !== "manual") manualEdits[key] = "";
 }
 
@@ -92,19 +98,23 @@ function parseManual(key: string): { ok: boolean; value?: any; err?: string } {
   }
 }
 
-function applyAll() {
-  const results: { path: string; value: any }[] = [];
+async function applyAll() {
+  // const results: { path: string; value: any }[] = [];
+  const results: Record<string, Record<string, any>> = {};
   let hasError = false;
 
   for (const camId in conflictKeys.value) {
     for (const key of conflictKeys.value[camId]!) {
       const choice = selected[key];
-      const item = props.conflicts[key];
+      const item = props.conflicts?.[camId]?.[key];
 
+      if (results[camId] == undefined) {
+        results[camId] = {};
+      }
       if (choice === "main") {
-        results.push({ path: key, value: item?.Main });
+        results[camId][key] = item?.main;
       } else if (choice === "workspace") {
-        results.push({ path: key, value: item?.Workspace });
+        results[camId][key] = item?.workspace;
       } else if (choice === "manual") {
         const parsed = parseManual(key);
         if (!parsed.ok) {
@@ -112,20 +122,37 @@ function applyAll() {
           hasError = true;
         } else {
           manualErrors[key] = null;
-          results.push({ path: key, value: parsed.value });
+          results[camId][key] = parsed.value;
         }
+      } else {
+        manualErrors[key] = key + " conflict needs to be resolved";
+        hasError = true;
       }
     }
   }
 
   if (hasError) {
     // keep dialog open and show errors
+    // TODO! Handle errors
     return;
   }
 
-  emit("resolved", results);
+  const { data, error } = await useFetch<{ error?: string }>(
+    `http://${runtimeConfig.public.externalBackendHost}/api/v1/projects/${route.params.projectId}/models/${route.params.modelId}/workspaces/me/resolve`,
+    { method: "POST", credentials: "include", body: { merged: results } },
+  );
+  if (error.value != undefined || data.value?.error != undefined) {
+    // globalErr = error
+    return;
+  }
+
+  // emit("resolved", results);
   emit("close");
 }
+
+watch(manualErrors, (errors) => {
+  console.log("gggg", errors);
+});
 </script>
 
 <template>
@@ -138,7 +165,13 @@ function applyAll() {
         class="bg-white rounded-2xl shadow-xl w-full max-w-4xl mx-4 overflow-hidden"
       >
         <header class="flex items-center justify-between px-6 py-4 border-b">
-          <h3 class="text-lg font-semibold">Resolve Merge Conflicts</h3>
+          <h3 class="text-lg font-semibold flex flex-row gap-2">
+            <span> Resolve Merge Conflicts </span
+            ><TriangleAlert
+              v-if="Object.keys(manualErrors).length != 0"
+              class="text-red-600"
+            />
+          </h3>
           <button class="text-gray-500 hover:text-gray-700" @click="close">
             ✕
           </button>
@@ -162,10 +195,11 @@ function applyAll() {
             :key="camId"
             class="border rounded-lg p-4"
           >
+            Camera Id: {{ camId }}
             <div
               v-for="key in conflictsOfCam"
               :key="key"
-              class="border rounded-lg p-4"
+              class="border rounded-lg p-4 m-3"
             >
               <div class="flex items-start justify-between">
                 <div>
@@ -231,8 +265,9 @@ function applyAll() {
                 ></textarea>
                 <div class="mt-2 text-xs text-gray-500">
                   Enter a JSON value. Example: <code>true</code>,
-                  <code>"string"</code>, <code>{"x":1}</code>.
+                  <code>"string"</code>, <code>{"x":1}</code>, <code>6.3</code>.
                 </div>
+
                 <div v-if="manualErrors[key]" class="text-xs text-red-600 mt-1">
                   {{ manualErrors[key] }}
                 </div>
@@ -246,6 +281,9 @@ function applyAll() {
         </main>
 
         <footer class="flex items-center justify-end gap-3 px-6 py-4 border-t">
+          <p v-if="globalErr != null">
+            {{ globalErr }}
+          </p>
           <button class="px-4 py-2 rounded bg-white border" @click="close">
             Cancel
           </button>
