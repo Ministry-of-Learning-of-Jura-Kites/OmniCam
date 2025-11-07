@@ -19,6 +19,16 @@ const { getFrustumGeometry } = useFrustumGeometries();
 const overlayGroup = new THREE.Group();
 
 watchEffect(() => {
+  overlayGroup.children.forEach((obj) => {
+    if (obj instanceof THREE.Mesh) {
+      obj.geometry.dispose();
+      if (Array.isArray(obj.material)) {
+        obj.material.forEach((m) => m.dispose());
+      } else {
+        obj.material.dispose();
+      }
+    }
+  });
   overlayGroup.clear();
 
   const cameraIds = visibleFrustum.value.map(([id]) => id);
@@ -32,6 +42,25 @@ watchEffect(() => {
 
       const meshA = new THREE.Mesh(geometryA, new THREE.MeshStandardMaterial());
       const meshB = new THREE.Mesh(geometryB, new THREE.MeshStandardMaterial());
+
+      const camA = visibleFrustum.value.find(
+        ([key]) => key === cameraIds[i],
+      )?.[1];
+      const camB = visibleFrustum.value.find(
+        ([key]) => key === cameraIds[j],
+      )?.[1];
+
+      meshA.position.copy(camA?.position!);
+      meshA.quaternion.copy(
+        new THREE.Quaternion().setFromEuler(camA!.rotation),
+      );
+      meshA.updateMatrixWorld(true);
+
+      meshB.position.copy(camB?.position!);
+      meshB.quaternion.copy(
+        new THREE.Quaternion().setFromEuler(camB!.rotation),
+      );
+      meshB.updateMatrixWorld(true);
 
       const intersectMesh = CSG.intersect(meshA, meshB);
 
