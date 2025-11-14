@@ -1,0 +1,66 @@
+@startuml OmniCam Physical Entity Relationship Diagram
+
+entity "user" as user {
+  *id : UUID
+  --
+  email : VARCHAR(255)
+  username : VARCHAR(255)
+  first_name : VARCHAR(255)
+  last_name : VARCHAR(255)
+  password : BYTEA
+  created_at : TIMESTAMPTZ
+  updated_at : TIMESTAMPTZ
+}
+
+entity "project" as project {
+  *id : UUID
+  --
+  name : VARCHAR(255)
+  description : TEXT
+  image_path: TEXT
+  created_at : TIMESTAMPTZ
+  updated_at : TIMESTAMPTZ
+}
+
+entity "model" as model {
+  *id : UUID
+  --
+  project_id : UUID  <<FK>>
+  name : VARCHAR(255)
+  description : TEXT
+  cameras : JSONB
+  <color:red>scale: DOUBLE</color>
+  file_path : TEXT
+  image_path : TEXT
+  version : INT
+  created_at : TIMESTAMPTZ
+  updated_at : TIMESTAMPTZ
+}
+
+entity "user_model_workspace" as user_model_workspace {
+  *model_id : UUID
+  *user_id : UUID
+  --
+  cameras : JSONB
+  base_cameras : JSONB
+  version : INT
+  base_version: INT
+  created_at TIMESTAMPTZ
+  updated_at : TIMESTAMPTZ
+}
+
+entity "user_to_project" as user_to_project {
+  *user_id : UUID
+  *project_id : UUID
+  --
+  role : Enum (Owner, Collaborator, <color:red>Reader</color>)
+}
+
+' Relationships
+user ||--o{ user_to_project : "assigned to"
+project ||--o{ user_to_project : "has members"
+
+project ||--o{ model : "contains"
+user ||--o{ user_model_workspace : "owns workspace"
+model ||--o{ user_model_workspace : "is used in workspace"
+@enduml

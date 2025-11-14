@@ -1,72 +1,79 @@
-@startuml model_crud_sequence
-actor Owner
-actor User
+@startuml OmniCam Model Sequence
+actor "Owner/Project Manager/Collaborator" as User
 participant System
 participant Project
 participant Model
 participant Workspace
 
 == C: Create (Upload Model) ==
-User -> System: Upload Model file
-System -> Project: Validate User access
-Project --> System: Access confirmed
+User -> System: Model information with 3d model file
+System -> Project: Verify Membership and role (Owner/Project Manager/Collaborator)
+Project --> System: Membership confirmed
 System -> Model: Store uploaded file
 Model --> System: Upload success
+System -> Model: Insert model information into database
+Model --> System: Insert success
 System --> User: Model uploaded successfully
 
-System -> User: Prompt to calibrate model (real-world scale)
-alt User calibrates
-    User -> System: Provide calibration input
-    System -> Model: Apply calibration
-    Model --> System: Calibration success
-    System --> User: Model calibrated
-else User skips
-    System --> User: Model uncalibrated (assumed units)
-end
+System -> User: <color:red>Prompt to calibrate model (real-world scale)</color>
 
-System -> Workspace: Create initial workspace
-Workspace --> System: Workspace ready
-System --> User: Workspace loaded
+== <color:red>Calibrate Model Scale</color> ==
+User -> System: <color:red>Provide calibration input</color>
+System -> Project: <color:red>Verify Membership and role (Owner/Project Manager/Collaborator)</color>
+Project --> System: <color:red>Membership confirmed</color>
+System -> Model: <color:red>Apply calibration</color>
+Model --> System: <color:red>Calibration success</color>
+System --> User: <color:red>Model calibrated</color>
 
 == R: Read (Open Model) ==
 User -> System: Open Model
+System -> Project: Verify Membership and role (Owner/Project Manager/Collaborator/Reader)
+Project --> System: Membership confirmed
 System -> Project: Check access
 Project --> System: Access allowed
 System -> Model: Load base model
-Model --> System: Return model data
-System -> Workspace: Create autosaving workspace for User
-Workspace --> System: Workspace ready
-System --> User: Workspace loaded
+Model --> System: Return 3d model with model information
+System --> User: Return 3d model with model information
 
 == U: Update (Save Workspace to Model, not auto) ==
 User -> System: Save Workspace to Model
+System -> Project: Verify Membership and role (Owner/Project Manager/Collaborator)
+Project --> System: Membership confirmed
 System -> Workspace: Get latest changes
 Workspace --> System: Changes data
 System -> Model: Check current model version
-alt No conflict
+alt No conflict (Same version or doesn't change the same cameras)
     System -> Model: Save changes (new version)
     Model --> System: Save success
     System --> User: Confirm saved
 else Conflict detected
-    Model --> System: Conflict error
-    System --> User: Prompt conflict resolution
-    User -> System: Choose resolution
-    alt Overwrite
-        System -> Model: Force save (new version)
-        Model --> System: Save success
-        System --> User: Confirm overwrite saved
-    else Merge
-        System --> Workspace: Load diff/merge view
-        Workspace --> User: Show merge options
-    else Cancel
-        System --> User: Save aborted
+    Model --> System: Return conflicts
+    System --> User: Return conflicts
+    System --> User: Prompt for resolving conflicts
+end
+
+== Resolve conflicts (Save Workspace to Model, not auto) ==
+User -> System: Save Workspace to Model
+System -> Project: Verify Membership and role (Owner/Project Manager/Collaborator)
+Project --> System: Membership confirmed
+System -> Workspace: Get latest changes
+Workspace --> System: Changes data
+System -> Model: Check current model version
+alt No conflict (Same version or doesn't change the same cameras)
+    System --> User: Error no conflicts
+else Conflict detected
+    System --> System: Apply resolution
+    alt Resolving complete (Model is the same as workspace)
+        System --> User: Return merged
+    else Resolving incomplete
+        System --> User: Return error
     end
 end
 
 == D: Delete (Remove Model) ==
 Owner -> System: Delete Model
-System -> Project: Verify ownership
-Project --> System: Ownership confirmed
+System -> Project: Verify Membership and role (Owner/Project Manager/Collaborator)
+Project --> System: Membership confirmed
 System -> Model: Remove model data
 Model --> System: Delete success
 System --> Owner: Model deleted

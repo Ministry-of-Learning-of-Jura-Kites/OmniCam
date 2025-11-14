@@ -1,32 +1,39 @@
-@startuml use case diagram
+@startuml OmniCam Usecase Diagram
 left to right direction
-actor Owner
+
 actor User
 
 rectangle "CCTV Placement System" {
-  
+
   usecase "Create Project" as UC1
-  usecase "Edit Project" as UC2
+  usecase "Edit Project Info" as UC2
+  usecase "Create/Edit/Delete Model" as UC12
   usecase "Add User to Project" as UC3
-  usecase "Add Co-Owner to Project" as UC4
-  usecase "Open Model" as UC5
+  usecase "Open Model" as UC4
+  usecase "Open Workspace" as UC5
   usecase "Create Workspace" as UC7
   usecase "Autosave Workspace" as UC8
   usecase "Save Workspace into Model" as UC9
   usecase "Resolve Save Conflict" as UC10
+  usecase "Update Cameras in Workspace" as UC11
 
-  Owner --> UC1
-  Owner --> UC2
-  Owner --> UC3
-  Owner --> UC4
-  Owner --> UC5
-  
-  User --> UC5
-  User --> UC9
-  User --> UC10
-  
-  UC5 --> UC7 : <<include>>
-  UC7 --> UC8 : <<include>>
-  UC9 --> UC10 : <<extend>>
+  ' One actor: User (people can have roles)
+  ' Role permissions modeled inside system
+
+  User --> UC1  : «as Owner»
+  User --> UC2  : «as Owner»
+  User --> UC3  : «as Owner»
+
+  User --> UC4  : «as Owner/Project Manager/Collaborator<color:red>/Reader</color>»
+  User --> UC5  : «as Owner/Project Manager/Collaborator<color:red>/Reader</color>»
+  User --> UC7  : «as Owner/Project Manager/Collaborator»
+  User --> UC9  : «as Owner/Project Manager/Collaborator»
+  User --> UC10 : «as Owner/Project Manager/Collaborator»
+  User --> UC11 : «as Owner/Project Manager/Collaborator»
+  User --> UC12 : «as Owner/Project Manager/Collaborator»
+
+  ' Includes / Extends
+  UC11 --> UC8 : <<include>>    ' Updating cameras triggers autosave
+  UC9 --> UC10 : <<extend>>     ' Save conflict is conditional
 }
 @enduml

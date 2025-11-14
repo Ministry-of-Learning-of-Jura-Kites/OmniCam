@@ -1,8 +1,7 @@
-@startuml system architecture diagram
+@startuml OmniCam System Architecture Diagram
 left to right direction
 
-actor Owner
-actor Collaborator as User
+actor User
 
 package "Client Application" {
   [Web UI / Desktop UI] as UI
@@ -14,26 +13,25 @@ package "Backend Service" {
   [Project Module] as Project
   together {
     [Workspace Module] as Workspace
-    [Livestream Module] as Livestream
+    [Livestream Module] as Livestream #red
   }
   [Camera Module] as Camera
 }
 
-package "Batch Persistence Service"{
-  [Batch Updater] as BatchUpdater
+package "Batch Persistence Service"  #red {
+  [Batch Updater] as BatchUpdater  #red
 }
 
 package "Data Storage" {
   [Database\n(Users, Projects, Models, Cameras, Workspaces)] as DB
-  [Model File System\n(3D Assets)] as Repo
+  [File System\n(Binary Assets)] as Repo
 }
 
-package "Messaging" {
-  [Message Queue\n(Workspace Updates)] as MessageQueue
+package "Messaging" #red {
+  [Message Queue\n(Workspace Updates)] as MessageQueue  #red
 }
 
 ' Actors interact with UI
-Owner --> UI
 User --> UI
 
 ' Client calls backend
@@ -52,11 +50,11 @@ BatchUpdater -down-> DB
 ' Backend to storage
 Auth <-> DB
 Project <-> DB
+Project <-> Repo
 Model <-> DB
 Model <-> Repo
 Workspace -> MessageQueue
 Livestream <-> MessageQueue
 Camera <--> DB
-Camera <--> Repo
 
 @enduml
