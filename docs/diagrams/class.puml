@@ -1,55 +1,87 @@
-@startuml class diagram
+@startuml Omnicam Class Diagram
 class User {
-    +userId: int
+    +userId: uuid
     +name: string
-    +editWorkspace()
-    +saveWorkspace()
+    +email : string
+    +username : string
+    +firstName : string
+    +lastName : string
+    +createWorkspace()
+    +readWorkspace()
+    +updateWorkspace()
+    +deleteWorkspace()
 }
 
 class ProjectUserRole {
-    +role: enum {Owner, Collaborator}
+    +role: enum {Owner, Collaborator, <color:red>Reader</color>}
 }
 
 class Project {
-    +projectId: int
+    +projectId: uuid
     +name: string
-    +addUser(user: User)
-    +addOwner(user: User)
-    +editProject()
+    +addUser(user: User,role: ProjectUserRole)
+    +createProject()
+    +readProject()
+    +updateProject()
+    +deleteProject()
 }
 
 class Model {
-    +modelId: int
+    +modelId: uuid
     +name: string
     +version: int
-    +editModel()
+    +createModel()
+    +readModel()
+    +updateModel()
+    +deleteModel()
     +saveChanges()
 }
 
 class Camera {
-    +cameraId: int
-    +type: string
-    +position: string
-    +move()
-    +rotate()
+    +cameraId: uuid
+    +name: string
+    +angleX: float
+    +angleY: float
+    +angleZ: float
+    +angleW: float
+    +posX: float
+    +posY: float
+    +posZ: float
+    +fov: float
+    +frustumColor: RGB
+    +frustumLength: float
+    +isHidingArrows: boolean
+    +isHidingWheels: boolean
+    +isLockingPosition: boolean
+    +isLockingRotation: boolean
+    +isHidingFrustum: boolean
+    +aspectWidth: float
+    +aspectHeight: float
+    +create()
+    +update()
+    +delete()
+    +moveCamera()
+    +rotateCamera()
 }
 
 class Workspace {
-    +workspaceId: int
-    +userId: int
-    +modelVersion: int
-    +changes: string
+    +workspaceId: uuid
+    +userId: uuid
+    +modelId: uuid
+    +cameras: Camera[]
+    +baseCameras: Camera[]
+    +version: int
+    +baseVersion: int
     +autosave()
-    +mergeWithModel()
-    +checkConflict()
+    +tryMergeIntoModel()
+    +resolveConflict()
 }
 
 ' Relationships
 Project "1" -- "1..*" Model
-Project "1" -- "1..*" User
-Model "1" -- "0..*" Camera
-Workspace "1" --> "1" User
-Workspace "1" --> "1" Model
+Model "1" *-- "0..*" Camera
+Workspace "0..*" --* "1" User
+Workspace "0..*" --* "1" Model
 User "1" -- "0..*" ProjectUserRole
 Project "1" -- "0..*" ProjectUserRole
 
