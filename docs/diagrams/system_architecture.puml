@@ -13,12 +13,12 @@ package "Backend Service" {
   [Project Module] as Project
   together {
     [Workspace Module] as Workspace
-    [Livestream Module (Not Yet Implemented)] as Livestream
+    [<color:red>Livestream Module (Not Yet Implemented)</color>] as Livestream
   }
   [Camera Module] as Camera
 }
 
-package "Batch Persistence Service (Not Yet Implemented)" {
+package "<color:red>Batch Persistence Service (Not Yet Implemented)</color>" {
   [Batch Updater (Not Yet Implemented)] as BatchUpdater
 }
 
@@ -27,7 +27,7 @@ package "Data Storage" {
   [File System\n(Binary Assets)] as Repo
 }
 
-package "Messaging (Not Yet Implemented)" {
+package "<color:red>Messaging (Not Yet Implemented)</color>" {
   [Message Queue\n(Workspace Updates)] as MessageQueue
 }
 
