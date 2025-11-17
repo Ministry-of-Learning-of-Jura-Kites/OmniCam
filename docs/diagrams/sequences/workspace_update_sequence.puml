@@ -23,10 +23,10 @@ System -> MQ: Publish "WorkspaceChanged" (delta)
 MQ -> Workspace: Deliver "WorkspaceChanged"
 Workspace --> User: Update view
 
-== Update livestream view (Not Yet Implemented) ==
+== <color:red>Update livestream view (Not Yet Implemented)</color> ==
 Workspace --> OtherUser: Update view
 
-== Late joiner (Not Yet Implemented) ==
+== <color:red>Late joiner (Not Yet Implemented)</color> ==
 OtherUser -> System: Request current state
 System -> DB: Fetch latest model
 DB --> System: Return current snapshot
