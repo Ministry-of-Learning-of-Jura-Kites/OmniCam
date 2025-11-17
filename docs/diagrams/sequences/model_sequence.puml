@@ -15,9 +15,9 @@ System -> Model: Insert model information into database
 Model --> System: Insert success
 System --> User: Model uploaded successfully
 
-System -> User: <color:red>Prompt to calibrate model (real-world scale)</color>
+System -> User: <color:red>(Not Yet Implemented) Prompt to calibrate model (real-world scale)</color>
 
-== <color:red>Calibrate Model Scale</color> ==
+== <color:red>Calibrate Model Scale (Not Yet Implemented)</color> ==
 User -> System: <color:red>Provide calibration input</color>
 System -> Project: <color:red>Verify Membership and role (Owner/Project Manager/Collaborator)</color>
 Project --> System: <color:red>Membership confirmed</color>

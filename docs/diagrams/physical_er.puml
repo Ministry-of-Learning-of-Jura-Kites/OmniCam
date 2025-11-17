@@ -29,7 +29,7 @@ entity "model" as model {
   name : VARCHAR(255)
   description : TEXT
   cameras : JSONB
-  <color:red>scale: DOUBLE</color>
+  <color:red>scale: DOUBLE (Not Yet Implemented)</color>
   file_path : TEXT
   image_path : TEXT
   version : INT
@@ -53,7 +53,7 @@ entity "user_to_project" as user_to_project {
   *user_id : UUID
   *project_id : UUID
   --
-  role : Enum (Owner, Collaborator, <color:red>Reader</color>)
+  role : Enum (Owner, Project Manager, Collaborator, <color:red>(Not Yet Implemented) Reader</color>)
 }
 
 ' Relationships

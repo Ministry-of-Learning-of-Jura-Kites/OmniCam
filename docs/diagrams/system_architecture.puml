@@ -13,13 +13,13 @@ package "Backend Service" {
   [Project Module] as Project
   together {
     [Workspace Module] as Workspace
-    [Livestream Module] as Livestream #red
+    [Livestream Module (Not Yet Implemented)] as Livestream
   }
   [Camera Module] as Camera
 }
 
-package "Batch Persistence Service"  #red {
-  [Batch Updater] as BatchUpdater  #red
+package "Batch Persistence Service (Not Yet Implemented)" {
+  [Batch Updater (Not Yet Implemented)] as BatchUpdater
 }
 
 package "Data Storage" {
@@ -27,8 +27,8 @@ package "Data Storage" {
   [File System\n(Binary Assets)] as Repo
 }
 
-package "Messaging" #red {
-  [Message Queue\n(Workspace Updates)] as MessageQueue  #red
+package "Messaging (Not Yet Implemented)" {
+  [Message Queue\n(Workspace Updates)] as MessageQueue
 }
 
 ' Actors interact with UI
