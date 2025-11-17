@@ -13,7 +13,7 @@ class User {
 }
 
 class ProjectUserRole {
-    +role: enum {Owner, Collaborator, <color:red>Reader</color>}
+    +role: enum {Owner, Project Manager, Collaborator, <color:red>(Not Yet Implemented) Reader</color>}
 }
 
 class Project {

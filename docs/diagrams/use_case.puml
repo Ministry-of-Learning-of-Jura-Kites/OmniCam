@@ -24,8 +24,8 @@ rectangle "CCTV Placement System" {
   User --> UC2  : «as Owner»
   User --> UC3  : «as Owner»
 
-  User --> UC4  : «as Owner/Project Manager/Collaborator<color:red>/Reader</color>»
-  User --> UC5  : «as Owner/Project Manager/Collaborator<color:red>/Reader</color>»
+  User --> UC4  : «as Owner/Project Manager/Collaborator<color:red>/(Not Yet Implemented)Reader</color>»
+  User --> UC5  : «as Owner/Project Manager/Collaborator<color:red>/(Not Yet Implemented)Reader</color>»
   User --> UC7  : «as Owner/Project Manager/Collaborator»
   User --> UC9  : «as Owner/Project Manager/Collaborator»
   User --> UC10 : «as Owner/Project Manager/Collaborator»
