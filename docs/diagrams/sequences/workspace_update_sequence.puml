@@ -5,13 +5,13 @@ participant "Message Queue" as MQ
 participant System
 participant "Persistence Service" as PersistenceService
 database DB
-actor OtherUser
+actor "Other User" as OtherUser
 
 == User edits Workspace ==
 User -> Workspace: Edit element
 Workspace -> MQ: Publish "WorkspaceChanged" event
 
-== System processes event ==
+== <color:red>System processes event (Not Yet Implemented)</color> ==
 MQ -> System: Deliver "WorkspaceChanged"
 System -> PersistenceService: Apply event (idempotent)
 PersistenceService -> DB: Persist new state/version
@@ -23,11 +23,10 @@ System -> MQ: Publish "WorkspaceChanged" (delta)
 MQ -> Workspace: Deliver "WorkspaceChanged"
 Workspace --> User: Update view
 
-== Other user also sees update ==
-MQ -> OtherUser: Deliver "WorkspaceChanged"
-OtherUser --> Workspace: Update view
+== Update livestream view (Not Yet Implemented) ==
+Workspace --> OtherUser: Update view
 
-== Late joiner ==
+== Late joiner (Not Yet Implemented) ==
 OtherUser -> System: Request current state
 System -> DB: Fetch latest model
 DB --> System: Return current snapshot
