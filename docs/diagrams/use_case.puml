@@ -20,9 +20,9 @@ rectangle "CCTV Placement System" {
   ' One actor: User (people can have roles)
   ' Role permissions modeled inside system
 
-  User --> UC1  : «as Owner»
-  User --> UC2  : «as Owner»
-  User --> UC3  : «as Owner»
+  User --> UC1  : «as Anyone (Become the owner)»
+  User --> UC2  : «as Owner/Project Manager»
+  User --> UC3  : «as Owner/Project Manager»
 
   User --> UC4  : «as Owner/Project Manager/Collaborator<color:red>/(Not Yet Implemented)Reader</color>»
   User --> UC5  : «as Owner/Project Manager/Collaborator<color:red>/(Not Yet Implemented)Reader</color>»
