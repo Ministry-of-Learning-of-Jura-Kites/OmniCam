@@ -22,6 +22,10 @@ package "<color:red>Batch Persistence Service (Not Yet Implemented)</color>" {
   [Batch Updater (Not Yet Implemented)] as BatchUpdater
 }
 
+package "<color:red>Machine Learning Service (Not Yet Implemented)</color>" {
+  [Placement Predictor (Not Yet Implemented)] as PlacementPredictor
+}
+
 package "Data Storage" {
   [Database\n(Users, Projects, Models, Cameras, Workspaces)] as DB
   [File System\n(Binary Assets)] as Repo
@@ -41,10 +45,15 @@ UI --> Auth
 UI --> Project
 UI --> Model
 UI --> Camera
+UI --> PlacementPredictor
+
+PlacementPredictor <-> Auth
+PlacementPredictor <-> Camera
+PlacementPredictor <--> Model
 
 ' Workspace Livestream
 Workspace <-> Livestream
-BatchUpdater <- MessageQueue
+BatchUpdater <-- MessageQueue
 BatchUpdater -down-> DB
 
 ' Backend to storage
