@@ -589,4 +589,8 @@ input {
   background-color: var(--color-gray-200);
   cursor: not-allowed;
 }
+
+Button {
+  @apply transition-colors;
+}
 </style>
