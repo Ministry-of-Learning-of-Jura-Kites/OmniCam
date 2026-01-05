@@ -170,7 +170,7 @@ async function deleteWorkspace() {
 
   <TooltipProvider>
     <div
-      class="h-16 border-b border-border px-6 flex items-center justify-between bg-black"
+      class="h-16 border-b border-border px-6 flex items-center justify-between"
     >
       <!-- Project Info -->
       <div id="left-menu" class="flex items-center gap-4">

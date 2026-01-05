@@ -13,17 +13,31 @@ export async function useAuth() {
   const config = useRuntimeConfig();
   const user = useState<User | null>("auth_user", () => null);
 
-  try {
-    const response = await $fetch<{ data: User }>(
-      `http://${config.public.externalBackendHost}/api/v1/me`,
-      {
-        method: "GET",
-        credentials: "include",
-      },
-    );
-    user.value = response.data;
-  } catch (err) {
-    console.error("fetch /me error", err);
+  const headers = useRequestHeaders(["cookie"]);
+
+  const { data, error } = await useAsyncData(
+    "auth-me",
+    () => {
+      return $fetch<{ data: User }>(
+        `http://${getHostFromRuntime(config, import.meta.client)}/api/v1/me`,
+        {
+          method: "GET",
+          headers: headers,
+          credentials: "include",
+        },
+      );
+    },
+    {
+      // Only run if we don't already have a user in state
+      immediate: !user.value,
+    },
+  );
+  if (data.value) {
+    user.value = data.value.data;
+  }
+
+  if (error.value) {
+    console.error("fetch /me error", error.value);
     user.value = null;
   }
 

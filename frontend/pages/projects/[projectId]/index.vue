@@ -62,9 +62,7 @@ export type ModelWithoutId = Omit<Model, "modelId">;
 
 const config = useRuntimeConfig();
 const route = useRoute();
-const auth = await useAuth();
-const { user } = auth;
-console.log("user in project page", user.value);
+const { user } = await useAuth();
 
 const models = ref<Record<string, ModelWithoutId>>({});
 const members = ref<ProjectMember[]>([]);
@@ -116,7 +114,7 @@ const confirmDialog = ref<boolean>(false);
 const confirmMessage = ref<string>("");
 const successDialog = ref<boolean>(false);
 const successMessage = ref<string>("");
-console.log("member", user.value);
+
 const userProjectRole = computed<
   "owner" | "project_manager" | "collaborator" | null
 >(() => {
