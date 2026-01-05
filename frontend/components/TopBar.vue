@@ -18,6 +18,8 @@ import {
   IndentIncrease,
   EllipsisVertical,
   Trash2,
+  Moon,
+  Sun,
 } from "lucide-vue-next";
 
 import { exportCamerasToJson } from "@/utils/exportScene";
@@ -52,6 +54,8 @@ const openDialog = ref(false);
 
 const dialogTitle = ref("");
 const dialogContent = ref("");
+
+const lightDarkTheme = useLightDarkTheme();
 
 async function saveModelToPublic() {
   const runtimeConfig = useRuntimeConfig();
@@ -166,7 +170,7 @@ async function deleteWorkspace() {
 
   <TooltipProvider>
     <div
-      class="h-16 bg-card border-b border-border px-6 flex items-center justify-between"
+      class="h-16 border-b border-border px-6 flex items-center justify-between"
     >
       <!-- Project Info -->
       <div id="left-menu" class="flex items-center gap-4">
@@ -269,10 +273,13 @@ async function deleteWorkspace() {
         </Button>
       </div>
 
-      <div id="right-menu" class="flex flex-row">
+      <div
+        id="right-menu"
+        class="flex flex-row justify-center items-center gap-2"
+      >
         <DropdownMenu>
           <DropdownMenuTrigger as-child>
-            <Button size="sm" variant="outline" class="m-2">
+            <Button size="sm" variant="outline">
               <EllipsisVertical class="button-icon" />
             </Button>
           </DropdownMenuTrigger>
@@ -303,6 +310,14 @@ async function deleteWorkspace() {
           </DropdownMenuContent>
         </DropdownMenu>
 
+        <Button size="sm" variant="outline" @click="lightDarkTheme.toggleTheme">
+          <Moon
+            v-if="lightDarkTheme.theme.value == 'light'"
+            class="button-icon"
+          />
+          <Sun v-else class="button-icon" />
+        </Button>
+
         <!-- User Actions -->
         <div class="flex items-center gap-2">
           <Button size="sm" variant="outline">
@@ -318,7 +333,6 @@ async function deleteWorkspace() {
 .button-icon {
   width: calc(4 * 0.25rem);
   height: calc(4 * 0.25rem);
-  color: black;
 }
 .button-span-text {
   display: none;
@@ -326,5 +340,8 @@ async function deleteWorkspace() {
   @media (width >= 53rem) {
     display: inline;
   }
+}
+Button {
+  @apply transition-colors;
 }
 </style>
