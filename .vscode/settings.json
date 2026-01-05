@@ -42,11 +42,14 @@
     "editor.formatOnSave": true
   },
   "[proto3]": {
-    "editor.defaultFormatter": "zxh404.vscode-proto3",
+    "editor.defaultFormatter": "pbkit.vscode-pbkit",
     "editor.formatOnSave": true
   },
   "code-runner.executorMapByGlob": {
     "*_test.go": "go run tools/backend_test/main.go -- $fullFileName --args -tags=unit_test"
   },
-  "go.buildTags": "unit_test"
+  "go.buildTags": "unit_test",
+  "css.customData": [
+    ".vscode/tailwind.json"
+  ],
 }

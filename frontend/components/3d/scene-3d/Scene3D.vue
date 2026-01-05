@@ -175,9 +175,7 @@ onBeforeRouteLeave((to, from, next) => {
 
 <template>
   <ClientOnly>
-    <div
-      class="h-full bg-background relative bg-black flex flex-col justify-center items-center"
-    >
+    <div class="h-full relative flex flex-col justify-center items-center">
       <div
         class="w-full h-full absolute z-3 pointer-events-none flex justify-between"
         :class="
@@ -190,14 +188,14 @@ onBeforeRouteLeave((to, from, next) => {
             width: sceneStates.aspectMargin.width ?? '0px',
             height: sceneStates.aspectMargin.height ?? '0px',
           }"
-          class="bg-black align-start pointer-events-auto"
+          class="align-start pointer-events-auto"
         ></div>
         <div
           :style="{
             width: sceneStates.aspectMargin.width ?? '0px',
             height: sceneStates.aspectMargin.height ?? '0px',
           }"
-          class="bg-black align-end pointer-events-auto"
+          class="align-end pointer-events-auto"
         ></div>
       </div>
       <div
@@ -358,7 +356,7 @@ onBeforeRouteLeave((to, from, next) => {
 }
 </style>
 
-<style scoped>
+<style lang="scss" scoped>
 .right-adjustable-input {
   width: 100%;
   padding: 1px;
