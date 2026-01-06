@@ -41,6 +41,8 @@ type FieldConflict struct {
 
 type CamProperty string
 
+const MaxMergeDepth = 10
+
 func applyChangeReflect(cam *messages_cameras.CameraStruct, c *diff.Change) error {
 	if len(c.Path) == 0 {
 		return nil
@@ -62,6 +64,11 @@ func applyChangeReflect(cam *messages_cameras.CameraStruct, c *diff.Change) erro
 		return fmt.Errorf("cannot set field: %s", field)
 	}
 
+	if c.To == nil {
+		f.Set(reflect.Zero(f.Type())) // Set to default (0, "", etc) instead of panicking
+		return nil
+	}
+
 	val := reflect.ValueOf(c.To)
 	if val.Type().ConvertibleTo(f.Type()) {
 		f.Set(val.Convert(f.Type()))
@@ -71,82 +78,67 @@ func applyChangeReflect(cam *messages_cameras.CameraStruct, c *diff.Change) erro
 	return nil
 }
 
-func threeWayMerge(base, main, workspace messages_cameras.CameraStruct) (messages_cameras.CameraStruct, map[CamProperty]interface{}) {
-	merged := base
+type ConflictMap map[CamProperty]any
 
-	conflicts := make(map[CamProperty]interface{})
+func threeWayMerge(base, main, workspace messages_cameras.CameraStruct) (messages_cameras.CameraStruct, ConflictMap) {
+	merged := base
+	conflicts := make(ConflictMap)
 
 	changesMain, _ := diff.Diff(base, main)
 	changesWork, _ := diff.Diff(base, workspace)
 
-	changeMap := map[string][2]*diff.Change{}
+	type pair struct{ main, work *diff.Change }
+	changeMap := make(map[string]pair)
 
 	for _, c := range changesMain {
-		field := strings.Join(c.Path, ".") // join full path, e.g. "Transform.AngleX"
-		changeMap[field] = [2]*diff.Change{&c, nil}
+		p := strings.Join(c.Path, "\x1f") // Use Unit Separator to avoid dot collisions
+		changeMap[p] = pair{main: &c}
 	}
-
 	for _, c := range changesWork {
-		field := strings.Join(c.Path, ".")
-		if prev, ok := changeMap[field]; ok {
-			prev[1] = &c
-			changeMap[field] = prev
-		} else {
-			changeMap[field] = [2]*diff.Change{nil, &c}
-		}
+		p := strings.Join(c.Path, "\x1f")
+		entry := changeMap[p]
+		entry.work = &c
+		changeMap[p] = entry
 	}
 
-	for _, pair := range changeMap {
-		mainChange, workChange := pair[0], pair[1]
-		if mainChange == nil && workChange == nil {
+	for _, p := range changeMap {
+		m, w := p.main, p.work
+
+		// 1. No conflict: Only Main changed
+		if w == nil {
+			applyChangeReflect(&merged, m)
 			continue
 		}
-		// If to is not equal
-		if mainChange == nil || workChange == nil || mainChange.To != workChange.To {
-			var base, mainTo, workTo any
-			var path []string
-
-			if mainChange != nil {
-				base = mainChange.From
-				mainTo = mainChange.To
-				// If workChange is nil, it doesn't change from base
-				workTo = mainChange.From
-				path = mainChange.Path
-			} else {
-				base = workChange.From
-				mainTo = workChange.From
-			}
-
-			if workChange != nil {
-				// If workChange is not nil, it changes from base
-				workTo = workChange.To
-				path = workChange.Path
-			}
-
-			traverse := &conflicts
-			for i, pathEle := range path {
-				pathEleId := CamProperty(pathEle)
-				if i == len(path)-1 {
-					(*traverse)[pathEleId] = FieldConflict{
-						Base:      base,
-						Main:      mainTo,
-						Workspace: workTo,
-					}
-					continue
-				}
-				if _, ok := (*traverse)[pathEleId]; !ok {
-					(*traverse)[pathEleId] = make(map[CamProperty]interface{})
-				}
-				leaf := (*traverse)[pathEleId]
-				casted := leaf.(map[CamProperty]interface{})
-				traverse = &casted
-			}
+		// 2. No conflict: Only Workspace changed
+		if m == nil {
+			applyChangeReflect(&merged, w)
+			continue
+		}
+		// 3. Potential conflict: Both changed
+		if reflect.DeepEqual(m.To, w.To) {
+			applyChangeReflect(&merged, m) // Both made the same change
 		} else {
-			applyChangeReflect(&merged, mainChange) // both same
+			// Actual conflict: Populate the nested map
+			buildConflictTree(conflicts, m.Path, m.From, m.To, w.To)
 		}
 	}
 
 	return merged, conflicts
+}
+
+func buildConflictTree(tree ConflictMap, path []string, b, m, w any) {
+	curr := tree
+	for i, step := range path {
+		key := CamProperty(step)
+		if i == len(path)-1 {
+			curr[key] = FieldConflict{Base: b, Main: m, Workspace: w}
+			return
+		}
+		if _, ok := curr[key]; !ok {
+			curr[key] = make(ConflictMap)
+		}
+		curr = curr[key].(ConflictMap)
+	}
 }
 
 func mergeAllCameras(base, main, workspace messages_cameras.Cameras) (messages_cameras.Cameras, map[messages_cameras.CamId]map[CamProperty]interface{}) {
@@ -209,7 +201,10 @@ type ResolveRequest struct {
 	Merged map[messages_cameras.CamId]map[CamProperty]any `json:"merged"`
 }
 
-func validateCamera(actualConflicts, merged map[CamProperty]any) error {
+func validateCamera(actualConflicts, merged map[CamProperty]any, depth uint8) error {
+	if depth >= MaxMergeDepth {
+		return fmt.Errorf("Invalid depth")
+	}
 	for key, conflict := range actualConflicts {
 		requestConflict, ok := merged[key]
 		if !ok {
@@ -226,7 +221,7 @@ func validateCamera(actualConflicts, merged map[CamProperty]any) error {
 			if !ok {
 				return fmt.Errorf("Expecting leaf on %s", key)
 			}
-			if err := validateCamera(castedActual, castedRequest); err != nil {
+			if err := validateCamera(castedActual, castedRequest, depth+1); err != nil {
 				return err
 			}
 		}
@@ -240,7 +235,7 @@ func validateResolve(actualConflicts, merged map[messages_cameras.CamId]map[CamP
 		if !ok {
 			return fmt.Errorf("Missing field %s", key)
 		}
-		if err := validateCamera(actualConflict, requestConflict); err != nil {
+		if err := validateCamera(actualConflict, requestConflict, 0); err != nil {
 			return err
 		}
 	}
