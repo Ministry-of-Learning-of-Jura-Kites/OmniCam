@@ -1,10 +1,10 @@
-import * as THREE from "three";
+import { Vector3, Euler } from "three";
 import type { ColorRGBA } from "~/messages/protobufs/autosave_event";
 
 export interface ICamera {
   name: string;
-  position: THREE.Vector3;
-  rotation: THREE.Euler;
+  position: Vector3;
+  rotation: Euler;
   fov: number;
   aspectWidth: number;
   aspectHeight: number;
@@ -23,8 +23,8 @@ export interface ICamera {
 
 export const cameraDefault: ICamera = {
   name: "",
-  rotation: new THREE.Euler(),
-  position: new THREE.Vector3(),
+  rotation: new Euler(),
+  position: new Vector3(),
   fov: 60,
   aspectWidth: 4,
   aspectHeight: 3,

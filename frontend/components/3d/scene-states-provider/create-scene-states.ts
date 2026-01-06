@@ -1,10 +1,7 @@
 import type { TresContext } from "@tresjs/core";
 import type { Reactive } from "vue";
 import type { Obj3DWithUserData } from "~/types/obj-3d-user-data";
-import type {
-  SceneStates as BaseSceneStates,
-  SceneStatesWithHelper,
-} from "~/types/scene-states";
+import type { SceneStates as BaseSceneStates } from "~/types/scene-states";
 import { Quaternion, Euler, Vector3 } from "three";
 import { cameraDefault, type ICamera } from "~/types/camera";
 import { useCameraManagement } from "../scene-3d/use-camera-management";
@@ -14,9 +11,6 @@ import type { UseWebSocketReturn } from "@vueuse/core";
 import type { Camera } from "~/messages/protobufs/autosave_event";
 import { useAspectRatio as useAspectRatioManagement } from "../scene-3d/use-aspect-ratio";
 import { useAutosave } from "../scene-3d/use-autosave";
-
-export const SCENE_STATES_KEY: InjectionKey<SceneStatesWithHelper> =
-  Symbol("3d-scene-states");
 
 export interface ModelWithCamsResp {
   data: {

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import * as THREE from "three";
+import { LineBasicMaterial, MeshBasicMaterial, Color, DoubleSide } from "three";
 import { createFrustumGeometry } from "./create-frustum";
 import type { ColorRGBA } from "~/messages/protobufs/autosave_event";
 
@@ -19,16 +19,16 @@ const props = withDefaults(
     isHiding: false,
   },
 );
-const lineMaterial = new THREE.LineBasicMaterial({ color: 0x000000 });
-const meshMaterial = new THREE.MeshBasicMaterial({
-  color: new THREE.Color(
+const lineMaterial = new LineBasicMaterial({ color: 0x000000 });
+const meshMaterial = new MeshBasicMaterial({
+  color: new Color(
     props.color?.r ?? 0.8,
     props.color?.g ?? 0.8,
     props.color?.b ?? 0.8,
   ),
   transparent: true,
   opacity: props.color?.a ?? 1,
-  side: THREE.DoubleSide,
+  side: DoubleSide,
 });
 
 watch(

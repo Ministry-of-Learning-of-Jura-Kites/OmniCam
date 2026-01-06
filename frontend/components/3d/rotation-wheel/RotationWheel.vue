@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import * as THREE from "three";
-import { SCENE_STATES_KEY } from "../scene-states-provider/create-scene-states";
+import { Mesh, MeshBasicMaterial, TorusGeometry } from "three";
+import { SCENE_STATES_KEY } from "@/constants/state-keys";
+
 import { ROTATING_TYPE, RotatingUserData } from "./rotating-event-handle";
 import { useTresContext } from "@tresjs/core";
 import type { Obj3DWithUserData } from "~/types/obj-3d-user-data";
@@ -15,7 +16,7 @@ const props = defineProps({
     default: "x",
   },
   cameraMesh: {
-    type: Object as PropType<THREE.Mesh | null>,
+    type: Object as PropType<Mesh | null>,
     default: null,
   },
   isHiding: {
@@ -32,14 +33,14 @@ const sceneStates = inject(SCENE_STATES_KEY);
 
 const context = useTresContext();
 
-const geometry = new THREE.TorusGeometry(
+const geometry = new TorusGeometry(
   ROTATING_TORUS_CONFIG.RADIUS,
   ROTATING_TORUS_CONFIG.TUBE_RADIUS,
   16,
   100,
 );
-const material = new THREE.MeshBasicMaterial({ color: props.color });
-const wheelBase = new THREE.Mesh(geometry, material);
+const material = new MeshBasicMaterial({ color: props.color });
+const wheelBase = new Mesh(geometry, material);
 
 wheelBase.userData = new RotatingUserData(props.direction, cam.value, context);
 

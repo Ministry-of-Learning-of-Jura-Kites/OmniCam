@@ -1,11 +1,11 @@
 <script setup lang="ts">
-// import type * as THREE from "three";
-import { SCENE_STATES_KEY } from "../scene-states-provider/create-scene-states";
+import { SCENE_STATES_KEY } from "@/constants/state-keys";
+
 import MovableArrow from "../movable-arrow/MovableArrow.vue";
 import TresMesh from "@tresjs/core";
 import RotationWheel from "../rotation-wheel/RotationWheel.vue";
 import CameraFrustum from "../camera-frustum/CameraFrustum.vue";
-import * as THREE from "three";
+import { Quaternion } from "three";
 import { safeGetAspectRatio } from "~/utils/aspect-ratio";
 
 const props = defineProps({
@@ -28,7 +28,7 @@ const sceneStates = inject(SCENE_STATES_KEY)!;
 const cam = toRef(sceneStates.cameras, props.camId);
 
 const camQuat = computed(() => {
-  const quaternion = new THREE.Quaternion().setFromEuler(cam!.value.rotation);
+  const quaternion = new Quaternion().setFromEuler(cam!.value.rotation);
   return quaternion;
 });
 </script>

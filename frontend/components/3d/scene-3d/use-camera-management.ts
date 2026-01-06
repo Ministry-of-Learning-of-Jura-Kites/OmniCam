@@ -1,7 +1,7 @@
 import { v4 as uuidv4 } from "uuid";
 import { gsap } from "gsap";
 import type { SceneStates } from "~/types/scene-states";
-import * as THREE from "three";
+import { Vector3, Euler } from "three";
 import { cameraDefault } from "~/types/camera";
 import { randomVividColor } from "~/utils/randomVividColor";
 export function useCameraManagement(sceneStates: SceneStates) {
@@ -10,8 +10,8 @@ export function useCameraManagement(sceneStates: SceneStates) {
     sceneStates.cameras[camId] = {
       ...cameraDefault,
       name: "Untitled " + Object.keys(sceneStates.cameras).length.toString(),
-      position: new THREE.Vector3().copy(sceneStates.spectatorCameraPosition),
-      rotation: new THREE.Euler().copy(sceneStates.spectatorCameraRotation),
+      position: new Vector3().copy(sceneStates.spectatorCameraPosition),
+      rotation: new Euler().copy(sceneStates.spectatorCameraRotation),
       fov: 60,
       frustumColor: randomVividColor(),
     };
