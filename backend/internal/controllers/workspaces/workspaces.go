@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"reflect"
 	"slices"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -33,10 +34,14 @@ type WorkspaceRoute struct {
 }
 
 type FieldConflict struct {
-	Base      messages_cameras.Cameras `json:"base"`
-	Main      messages_cameras.Cameras `json:"main"`
-	Workspace messages_cameras.Cameras `json:"workspace"`
+	Base      any `json:"base"`
+	Main      any `json:"main"`
+	Workspace any `json:"workspace"`
 }
+
+type CamProperty string
+
+const MaxMergeDepth = 10
 
 func applyChangeReflect(cam *messages_cameras.CameraStruct, c *diff.Change) error {
 	if len(c.Path) == 0 {
@@ -59,6 +64,11 @@ func applyChangeReflect(cam *messages_cameras.CameraStruct, c *diff.Change) erro
 		return fmt.Errorf("cannot set field: %s", field)
 	}
 
+	if c.To == nil {
+		f.Set(reflect.Zero(f.Type())) // Set to default (0, "", etc) instead of panicking
+		return nil
+	}
+
 	val := reflect.ValueOf(c.To)
 	if val.Type().ConvertibleTo(f.Type()) {
 		f.Set(val.Convert(f.Type()))
@@ -68,58 +78,74 @@ func applyChangeReflect(cam *messages_cameras.CameraStruct, c *diff.Change) erro
 	return nil
 }
 
-func threeWayMerge(id string, base, main, workspace messages_cameras.CameraStruct) (messages_cameras.CameraStruct, map[string]FieldConflict) {
+type ConflictMap map[CamProperty]any
+
+func threeWayMerge(base, main, workspace messages_cameras.CameraStruct) (messages_cameras.CameraStruct, ConflictMap) {
 	merged := base
-	conflicts := map[string]FieldConflict{}
+	conflicts := make(ConflictMap)
 
 	changesMain, _ := diff.Diff(base, main)
 	changesWork, _ := diff.Diff(base, workspace)
 
-	changeMap := map[string][2]*diff.Change{}
+	type pair struct{ main, work *diff.Change }
+	changeMap := make(map[string]pair)
 
 	for _, c := range changesMain {
-		field := c.Path[0]
-		changeMap[field] = [2]*diff.Change{&c, nil}
+		p := strings.Join(c.Path, "\x1f") // Use Unit Separator to avoid dot collisions
+		changeMap[p] = pair{main: &c}
 	}
 	for _, c := range changesWork {
-		field := c.Path[0]
-		if prev, ok := changeMap[field]; ok {
-			prev[1] = &c
-			changeMap[field] = prev
-		} else {
-			changeMap[field] = [2]*diff.Change{nil, &c}
-		}
+		p := strings.Join(c.Path, "\x1f")
+		entry := changeMap[p]
+		entry.work = &c
+		changeMap[p] = entry
 	}
 
-	for field, pair := range changeMap {
-		mainChange, workChange := pair[0], pair[1]
+	for _, p := range changeMap {
+		m, w := p.main, p.work
 
-		switch {
-		case mainChange != nil && workChange == nil:
-			applyChangeReflect(&merged, mainChange)
-		case workChange != nil && mainChange == nil:
-			applyChangeReflect(&merged, workChange)
-		case mainChange != nil && workChange != nil:
-			if mainChange.To != workChange.To {
-				conflicts[field] = FieldConflict{
-					Base:      mainChange.From.(messages_cameras.Cameras),
-					Main:      mainChange.To.(messages_cameras.Cameras),
-					Workspace: workChange.To.(messages_cameras.Cameras),
-				}
-			} else {
-				applyChangeReflect(&merged, mainChange) // both same
-			}
+		// 1. No conflict: Only Main changed
+		if w == nil {
+			applyChangeReflect(&merged, m)
+			continue
+		}
+		// 2. No conflict: Only Workspace changed
+		if m == nil {
+			applyChangeReflect(&merged, w)
+			continue
+		}
+		// 3. Potential conflict: Both changed
+		if reflect.DeepEqual(m.To, w.To) {
+			applyChangeReflect(&merged, m) // Both made the same change
+		} else {
+			// Actual conflict: Populate the nested map
+			buildConflictTree(conflicts, m.Path, m.From, m.To, w.To)
 		}
 	}
 
 	return merged, conflicts
 }
 
-func mergeAllCameras(base, main, workspace messages_cameras.Cameras) (messages_cameras.Cameras, map[string]map[string]FieldConflict) {
-	result := make(messages_cameras.Cameras)
-	conflicts := map[string]map[string]FieldConflict{}
+func buildConflictTree(tree ConflictMap, path []string, b, m, w any) {
+	curr := tree
+	for i, step := range path {
+		key := CamProperty(step)
+		if i == len(path)-1 {
+			curr[key] = FieldConflict{Base: b, Main: m, Workspace: w}
+			return
+		}
+		if _, ok := curr[key]; !ok {
+			curr[key] = make(ConflictMap)
+		}
+		curr = curr[key].(ConflictMap)
+	}
+}
 
-	keys := map[string]struct{}{}
+func mergeAllCameras(base, main, workspace messages_cameras.Cameras) (messages_cameras.Cameras, map[messages_cameras.CamId]map[CamProperty]interface{}) {
+	result := make(messages_cameras.Cameras)
+	conflicts := make(map[messages_cameras.CamId]map[CamProperty]interface{})
+
+	keys := map[messages_cameras.CamId]struct{}{}
 	for k := range base {
 		keys[k] = struct{}{}
 	}
@@ -161,67 +187,188 @@ func mergeAllCameras(base, main, workspace messages_cameras.Cameras) (messages_c
 			w = messages_cameras.CameraStruct{}
 		}
 
-		merged, camsConflicts := threeWayMerge(id, b, m, w)
+		merged, conflictOfId := threeWayMerge(b, m, w)
+		if len(conflictOfId) != 0 {
+			conflicts[messages_cameras.CamId(id)] = conflictOfId
+		}
 		result[id] = merged
-		conflicts[id] = camsConflicts
 	}
 
 	return result, conflicts
 }
 
 type ResolveRequest struct {
+	Merged map[messages_cameras.CamId]map[CamProperty]any `json:"merged"`
 }
 
-// func (t *WorkspaceRoute) postResolveWorkspaceMe(c *gin.Context) {
-// 	strProjectId := c.Param("modelId")
-// 	userId := uuid.Nil
+func validateCamera(actualConflicts, merged map[CamProperty]any, depth uint8) error {
+	if depth >= MaxMergeDepth {
+		return fmt.Errorf("Invalid depth")
+	}
+	for key, conflict := range actualConflicts {
+		requestConflict, ok := merged[key]
+		if !ok {
+			return fmt.Errorf("Missing field %s", key)
+		}
+		castedRequest, ok := requestConflict.(map[CamProperty]any)
+		// If is leaf
+		if !ok {
+			if _, ok := conflict.(FieldConflict); !ok {
+				return fmt.Errorf("Not expecting leaf on %s", key)
+			}
+		} else {
+			castedActual, ok := conflict.(map[CamProperty]any)
+			if !ok {
+				return fmt.Errorf("Expecting leaf on %s", key)
+			}
+			if err := validateCamera(castedActual, castedRequest, depth+1); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
 
-// 	decodedBytes, err := base64.RawURLEncoding.DecodeString(strProjectId)
-// 	if err != nil {
-// 		t.Logger.Error("error decoding Base64", zap.Error(err))
-// 		return
-// 	}
-// 	modelId, err := uuid.ParseBytes(decodedBytes)
-// 	if err != nil {
-// 		t.Logger.Error("error while converting str id to uuid", zap.Error(err))
-// 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid model ID"})
-// 		return
-// 	}
+func validateResolve(actualConflicts, merged map[messages_cameras.CamId]map[CamProperty]any) error {
+	for key, actualConflict := range actualConflicts {
+		requestConflict, ok := merged[key]
+		if !ok {
+			return fmt.Errorf("Missing field %s", key)
+		}
+		if err := validateCamera(actualConflict, requestConflict, 0); err != nil {
+			return err
+		}
+	}
+	return nil
+}
 
-// 	workspaceData, err := t.DB.GetWorkspaceByID(c, db_sqlc_gen.GetWorkspaceByIDParams{
-// 		Fields:  []string{"cameras"},
-// 		UserID:  userId,
-// 		ModelID: modelId,
-// 	})
-// 	if err != nil {
-// 		t.Logger.Error("model not found", zap.Error(err))
-// 		c.JSON(http.StatusNotFound, gin.H{})
-// 		return
-// 	}
+func (t *WorkspaceRoute) postResolveWorkspaceMe(c *gin.Context) {
+	strModelId := c.Param("modelId")
+	modelId, err := utils.ParseUuidBase64(strModelId)
+	if err != nil {
+		t.Logger.Error("error while converting str id to uuid", zap.Error(err), zap.String("modelId", strModelId))
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid model ID"})
+		return
+	}
 
-// 	if workspaceData.Version == workspaceData.BaseVersion {
-// 		t.Logger.Error("model not found", zap.Error(err))
-// 		c.JSON(http.StatusNotFound, gin.H{"noChanges": true})
-// 		return
-// 	}
+	userId, err := utils.GetUuidFromCtx(c, "userId")
+	if err != nil {
+		t.Logger.Error("error while getting userId form", zap.Error(err))
+		c.JSON(http.StatusInternalServerError, gin.H{})
+		return
+	}
 
-// 	modelData, err := t.DB.GetModelByID(c, db_sqlc_gen.GetModelByIDParams{
-// 		Fields: []string{"cameras"},
-// 		ID:     uuid.Nil,
-// 	})
-// 	if err != nil {
-// 		t.Logger.Error("model not found", zap.Error(err))
-// 		c.JSON(http.StatusNotFound, gin.H{})
-// 		return
-// 	}
+	// Get workspace cams
+	workspaceData, err := t.DB.Queries.GetWorkspaceByID(c, db_sqlc_gen.GetWorkspaceByIDParams{
+		Fields:  []string{"cameras"},
+		UserID:  userId,
+		ModelID: modelId,
+	})
+	if err != nil {
+		t.Logger.Error("model not found", zap.Error(err))
+		c.JSON(http.StatusNotFound, gin.H{})
+		return
+	}
 
-// 	var resolveRequest ResolveRequest
-// 	if err := c.ShouldBindJSON(&resolveRequest); err != nil {
-// 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-// 		return
-// 	}
+	if workspaceData.Version == workspaceData.BaseVersion {
+		c.Status(http.StatusOK)
+		return
+	}
 
-// }
+	var workspaceCameras messages_cameras.Cameras
+	if err := json.Unmarshal(workspaceData.Cameras, &workspaceCameras); err != nil {
+		t.Logger.Error("error while unmarshalling workspace cams", zap.Error(err))
+		c.JSON(http.StatusInternalServerError, gin.H{})
+		return
+	}
+
+	var baseCameras messages_cameras.Cameras
+	if len(workspaceData.BaseCameras) == 0 {
+		baseCameras = make(messages_cameras.Cameras)
+	} else {
+		err := json.Unmarshal(workspaceData.BaseCameras, &baseCameras)
+		if err != nil {
+			t.Logger.Error("error while unmarshalling workspace cams", zap.Error(err))
+			c.JSON(http.StatusInternalServerError, gin.H{})
+			return
+		}
+	}
+
+	// Get  model cams
+	modelData, err := t.DB.Queries.GetModelByID(c, db_sqlc_gen.GetModelByIDParams{
+		Fields: []string{"cameras"},
+		ID:     modelId,
+	})
+	if err != nil {
+		t.Logger.Error("model not found", zap.Error(err), zap.String("modelId", modelId.String()))
+		c.Status(http.StatusNotFound)
+		return
+	}
+
+	var modelCameras messages_cameras.Cameras
+	if err := json.Unmarshal(modelData.Cameras, &modelCameras); err != nil {
+		t.Logger.Error("error while unmarshalling workspace base cams", zap.Error(err))
+		c.Status(http.StatusInternalServerError)
+		return
+	}
+
+	// Validate request
+	var resolveRequest ResolveRequest
+	if err := c.ShouldBindJSON(&resolveRequest); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	merged, conflicts := mergeAllCameras(baseCameras, modelCameras, workspaceCameras)
+
+	if err := validateResolve(conflicts, resolveRequest.Merged); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	// Apply merge
+	for camId, mergedCam := range resolveRequest.Merged {
+		cam := merged[camId]
+
+		for key, value := range mergedCam {
+			// Use reflection here to set the field INSIDE the *Camera struct
+			val := reflect.ValueOf(value)
+			if val.Kind() == reflect.Map || val.Kind() == reflect.Slice || val.Kind() == reflect.Array {
+				// skip nested types for now
+				continue
+			}
+
+			// Also apply to workspace cam
+			if !utils.SetFieldByJSONTag(&cam, string(key), val) {
+				c.JSON(http.StatusBadRequest, gin.H{
+					"error": "Invalid field",
+				})
+				return
+			}
+		}
+		merged[camId] = cam
+	}
+
+	tx, err := t.DB.Pool.Begin(c)
+	if err != nil {
+		t.Logger.Error("error while creating transaction", zap.Error(err))
+		c.JSON(http.StatusInternalServerError, gin.H{})
+		return
+	}
+
+	queries := t.DB.Queries.WithTx(tx)
+	queries.UpdateModelCams(c, db_sqlc_gen.UpdateModelCamsParams{
+		Value:   workspaceData.Cameras,
+		ModelID: modelId,
+	})
+	queries.DeleteWorkspace(c, db_sqlc_gen.DeleteWorkspaceParams{
+		UserID:  userId,
+		ModelID: modelId,
+	})
+	tx.Commit(c)
+
+	c.Status(http.StatusOK)
+}
 
 func (t *WorkspaceRoute) postMergeWorkspace(c *gin.Context) {
 	userId, err := utils.GetUuidFromCtx(c, "userId")
@@ -251,7 +398,7 @@ func (t *WorkspaceRoute) postMergeWorkspace(c *gin.Context) {
 	}
 
 	if workspaceData.Version == workspaceData.BaseVersion {
-		c.JSON(http.StatusNotFound, gin.H{"noChanges": true})
+		c.JSON(http.StatusOK, gin.H{"noChanges": true})
 		return
 	}
 
@@ -272,7 +419,7 @@ func (t *WorkspaceRoute) postMergeWorkspace(c *gin.Context) {
 			Value:   workspaceData.Cameras,
 			ModelID: modelId,
 		})
-		c.JSON(http.StatusOK, gin.H{})
+		c.JSON(http.StatusOK, gin.H{"noChanges": false})
 		return
 	// model is grater than workspace
 	case 1:
@@ -506,6 +653,7 @@ func (t *WorkspaceRoute) InitRoute(router gin.IRouter) gin.IRouter {
 	router.POST("/projects/:projectId/models/:modelId/workspaces/me", t.postWorkspaceMe)
 	router.DELETE("/projects/:projectId/models/:modelId/workspaces/me", t.deleteWorkspaceMe)
 
-	router.POST("/projects/:projectId/models/:modelId/workspaces/merge", t.postMergeWorkspace)
+	router.POST("/projects/:projectId/models/:modelId/workspaces/me/resolve", t.postResolveWorkspaceMe)
+	router.POST("/projects/:projectId/models/:modelId/workspaces/me/merge", t.postMergeWorkspace)
 	return router
 }
