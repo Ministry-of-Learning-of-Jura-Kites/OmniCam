@@ -349,14 +349,24 @@ func (t *WorkspaceRoute) postResolveWorkspaceMe(c *gin.Context) {
 		merged[camId] = cam
 	}
 
-	t.DB.Queries.UpdateModelCams(c, db_sqlc_gen.UpdateModelCamsParams{
+	tx, err := t.DB.Pool.Begin(c)
+	if err != nil {
+		t.Logger.Error("error while creating transaction", zap.Error(err))
+		c.JSON(http.StatusInternalServerError, gin.H{})
+		return
+	}
+
+	queries := t.DB.Queries.WithTx(tx)
+	queries.UpdateModelCams(c, db_sqlc_gen.UpdateModelCamsParams{
 		Value:   workspaceData.Cameras,
 		ModelID: modelId,
 	})
-	t.DB.Queries.DeleteWorkspace(c, db_sqlc_gen.DeleteWorkspaceParams{
+	queries.DeleteWorkspace(c, db_sqlc_gen.DeleteWorkspaceParams{
 		UserID:  userId,
 		ModelID: modelId,
 	})
+	tx.Commit(c)
+
 	c.Status(http.StatusOK)
 }
 
