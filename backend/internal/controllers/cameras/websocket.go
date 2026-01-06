@@ -50,7 +50,7 @@ func (t *CameraAutosaveRoute) handleEventDelete(c *gin.Context, conn *websocket.
 
 	resp := &camera.CameraAutosaveResponse{
 		Payload: &camera.CameraAutosaveResponse_Ack{
-			Ack: &camera.CameraAutosaveResponse_ACK{
+			Ack: &camera.CameraAutosaveResponseAck{
 				LastUpdatedVersion: newVersion,
 			},
 		},
@@ -87,7 +87,7 @@ func (t *CameraAutosaveRoute) handleEventUpsert(c *gin.Context, userId uuid.UUID
 	}
 	resp := &camera.CameraAutosaveResponse{
 		Payload: &camera.CameraAutosaveResponse_Ack{
-			Ack: &camera.CameraAutosaveResponse_ACK{
+			Ack: &camera.CameraAutosaveResponseAck{
 				LastUpdatedVersion: newVersion,
 			},
 		},
@@ -135,7 +135,7 @@ func (t *CameraAutosaveRoute) get(c *gin.Context) {
 	go func() {
 		firstResponse := &camera.CameraAutosaveResponse{
 			Payload: &camera.CameraAutosaveResponse_Ack{
-				Ack: &camera.CameraAutosaveResponse_ACK{
+				Ack: &camera.CameraAutosaveResponseAck{
 					LastUpdatedVersion: workspace.Version,
 				},
 			},
@@ -161,6 +161,11 @@ func (t *CameraAutosaveRoute) get(c *gin.Context) {
 			events := &camera.CameraSaveEventSeries{}
 			err = proto.Unmarshal(msg, events)
 			if err != nil {
+				continue
+			}
+
+			if events.Version <= uint32(workspace.Version) {
+				// Repeated event sent (From Websocket reconnect)
 				continue
 			}
 

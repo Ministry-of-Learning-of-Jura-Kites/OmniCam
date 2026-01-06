@@ -8,7 +8,7 @@ import {
 } from "~/messages/protobufs/autosave_event";
 import type { ICamera } from "~/types/camera";
 import type { SceneStates } from "~/types/scene-states";
-import * as THREE from "three";
+import { Quaternion } from "three";
 
 function isEqual(a: Camera, b: Camera): boolean {
   return JSON.stringify(a) === JSON.stringify(b);
@@ -19,7 +19,7 @@ export type AutosaveEvent =
   | { type: "upsert"; data: ICamera };
 
 export function transformCameraToProtoEvent(cam: ICamera): Omit<Camera, "id"> {
-  const quaternion = new THREE.Quaternion();
+  const quaternion = new Quaternion();
   quaternion.setFromEuler(cam.rotation);
   return {
     name: cam.name,
@@ -58,8 +58,6 @@ export function useAutosave(
     return;
   }
 
-  // let lastUpdatedVersion = 0;
-
   const lastSynced: Map<string, Camera> = new Map(
     Object.entries(sceneStates.cameras!).map(([camId, cam]) => {
       return [camId, transformCameraToProtoEventWithId(camId, cam)];
@@ -73,6 +71,7 @@ export function useAutosave(
         const messageArrayBuf = await (messageBlob as Blob).arrayBuffer();
         const messageByteArr = new Uint8Array(messageArrayBuf);
         const resp = CameraAutosaveResponse.decode(messageByteArr);
+        sceneStates.lastSyncedVersion.value = resp.ack!.lastUpdatedVersion;
       }
     },
   );
@@ -115,8 +114,12 @@ export function useAutosave(
     }
 
     if (changed.length > 0 && sceneStates.websocket != undefined) {
+      sceneStates.localVersion.value += 1;
       sceneStates.websocket.send(
-        CameraSaveEventSeries.encode({ events: changed }).finish().buffer,
+        CameraSaveEventSeries.encode({
+          version: sceneStates.localVersion.value,
+          events: changed,
+        }).finish().buffer,
       );
     }
 
