@@ -2,7 +2,9 @@ package messages_cameras
 
 import camera "omnicam.com/backend/pkg/messages/protobufs"
 
-type Cameras = map[string]CameraStruct
+type CamId string
+
+type Cameras = map[CamId]CameraStruct
 
 type ColorRGBA struct {
 	R float64 `json:"r"`

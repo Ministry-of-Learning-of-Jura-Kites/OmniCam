@@ -57,10 +57,48 @@ const dialogContent = ref("");
 
 const lightDarkTheme = useLightDarkTheme();
 
+const openResolver = ref(false);
+const conflicts = ref({});
+
 async function saveModelToPublic() {
+  // Mocked data
+  // const respJson = {
+  //   noChanges: false,
+  //   conflicts: {
+  //     "c6a9ff22-0962-4d88-bbbd-2053d883f43b": {
+  //       angleX: {
+  //         base: 1,
+  //         main: 2,
+  //         workspace: 1,
+  //       },
+  //       angleY: {
+  //         base: 1,
+  //         main: 2,
+  //         workspace: 1,
+  //       },
+  //       angleZ: {
+  //         base: 1,
+  //         main: 2,
+  //         workspace: 1,
+  //       },
+  //       test: {
+  //         base: {
+  //           "123": 456,
+  //         },
+  //         main: {
+  //           "123": 456,
+  //         },
+  //         workspace: {
+  //           "123": 451,
+  //         },
+  //       },
+  //     },
+  //   },
+  // };
+
   const runtimeConfig = useRuntimeConfig();
   const resp = await fetch(
-    `http://${runtimeConfig.public.externalBackendHost}/api/v1/projects/${route.params.projectId}/models/${route.params.modelId}/workspaces/merge`,
+    `http://${runtimeConfig.public.externalBackendHost}/api/v1/projects/${route.params.projectId}/models/${route.params.modelId}/workspaces/me/merge`,
     { method: "POST", credentials: "include" },
   );
 
@@ -71,15 +109,22 @@ async function saveModelToPublic() {
 
   const respJson: {
     noChanges?: boolean;
+    conflicts: Record<string, Record<string, unknown>>;
   } = await resp.json();
 
-  openDialog.value = true;
   if (respJson.noChanges) {
     dialogTitle.value = "No changes";
     dialogContent.value = "There is no changes to be published";
+    openDialog.value = true;
+    return;
+  }
+  if (respJson.conflicts) {
+    conflicts.value = respJson.conflicts;
+    openResolver.value = true;
   } else {
-    dialogTitle.value = "Progress Saved";
+    dialogTitle.value = "Progress Saved!";
     dialogContent.value = "";
+    openDialog.value = true;
   }
 }
 
@@ -119,9 +164,7 @@ async function createWorkspace() {
       },
     );
     useState(MODEL_INFO_KEY, () => data);
-    navigateTo(
-      `/projects/${route.params.projectId}/models/${route.params.modelId}/workspaces/me`,
-    );
+    goToMyWorkspace();
   } catch (err) {
     console.error(err);
     showError({
@@ -143,9 +186,7 @@ async function deleteWorkspace() {
     );
 
     useState(MODEL_INFO_KEY, () => undefined);
-    navigateTo(
-      `/projects/${route.params.projectId}/models/${route.params.modelId}`,
-    );
+    goToModel();
   } catch (err) {
     console.error(err);
     showError({
@@ -153,9 +194,27 @@ async function deleteWorkspace() {
     });
   }
 }
+
+function goToModel() {
+  navigateTo(
+    `/projects/${route.params.projectId}/models/${route.params.modelId}`,
+  );
+}
+function goToMyWorkspace() {
+  navigateTo(
+    `/projects/${route.params.projectId}/models/${route.params.modelId}/workspaces/me`,
+  );
+}
 </script>
 
 <template>
+  <MergeConflictsResolver
+    :visible="openResolver"
+    :conflicts="conflicts"
+    @resolved="goToModel()"
+    @close="openResolver = false"
+  />
+
   <Dialog :open="openDialog" @update:open="openDialog = $event">
     <DialogContent class="sm:max-w-[425px]">
       <DialogHeader>
@@ -240,11 +299,7 @@ async function deleteWorkspace() {
           v-if="workspace != null"
           size="sm"
           variant="outline"
-          @click="
-            navigateTo(
-              `/projects/${route.params.projectId}/models/${route.params.modelId}`,
-            )
-          "
+          @click="goToModel()"
         >
           <LogOut class="button-icon" />
           <span class="button-span-text"> Exit Workspace </span>
@@ -255,11 +310,7 @@ async function deleteWorkspace() {
             v-if="sceneStates.modelInfo.data.workspaceExists"
             size="sm"
             variant="outline"
-            @click="
-              navigateTo(
-                `/projects/${route.params.projectId}/models/${route.params.modelId}/workspaces/me`,
-              )
-            "
+            @click="goToMyWorkspace()"
           >
             <PackageOpen class="button-icon" />
             <span class="ml-2 button-span-text"> Open Workspace </span>
