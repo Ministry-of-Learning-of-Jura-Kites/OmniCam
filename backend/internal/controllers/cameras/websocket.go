@@ -34,33 +34,47 @@ func (t *CameraAutosaveRoute) handleEventDelete(c *gin.Context, conn *websocket.
 
 	_, err = uuid.Parse(deleteId)
 	if err != nil {
-		conn.WriteMessage(websocket.TextMessage, []byte("error"))
+		// conn.WriteMessage(websocket.TextMessage, []byte("error"))
 		return
 	}
 
-	err = t.DB.Queries.UpdateWorkspaceCams(c, db_sqlc_gen.UpdateWorkspaceCamsParams{
+	newVersion, err := t.DB.Queries.UpdateWorkspaceCams(c, db_sqlc_gen.UpdateWorkspaceCamsParams{
 		Key:     []string{deleteId},
 		UserID:  userId,
 		ModelID: modelId,
 	})
 	if err != nil {
-		conn.WriteMessage(websocket.TextMessage, []byte("error"))
+		t.Logger.Error("Error while updating workspace", zap.Error(err))
 		return
 	}
 
-	conn.WriteMessage(websocket.TextMessage, []byte("ok"))
+	resp := &camera.CameraAutosaveResponse{
+		Payload: &camera.CameraAutosaveResponse_Ack{
+			Ack: &camera.CameraAutosaveResponseAck{
+				LastUpdatedVersion: newVersion,
+			},
+		},
+	}
+	respMarshalled, err := proto.Marshal(resp)
+	if err != nil {
+		t.Logger.Error("error while marshelling first response", zap.Error(err))
+		c.JSON(http.StatusInternalServerError, gin.H{})
+		return
+	}
+
+	conn.WriteMessage(websocket.BinaryMessage, respMarshalled)
 }
 
 func (t *CameraAutosaveRoute) handleEventUpsert(c *gin.Context, userId uuid.UUID, conn *websocket.Conn, modelId uuid.UUID, upsert *camera.Camera) {
-	camera := messages_cameras.ProtoCamToCam(upsert)
+	cam := messages_cameras.ProtoCamToCam(upsert)
 
-	marshalled, err := json.Marshal(camera)
+	marshalled, err := json.Marshal(cam)
 	if err != nil {
 		t.Logger.Error("Error while marshaling camera", zap.Error(err))
-		conn.WriteMessage(websocket.TextMessage, []byte("error"))
+		// conn.WriteMessage(websocket.TextMessage, []byte("error"))
 		return
 	}
-	err = t.DB.Queries.UpdateWorkspaceCams(c, db_sqlc_gen.UpdateWorkspaceCamsParams{
+	newVersion, err := t.DB.Queries.UpdateWorkspaceCams(c, db_sqlc_gen.UpdateWorkspaceCamsParams{
 		Key:     []string{upsert.Id},
 		Value:   marshalled,
 		UserID:  userId,
@@ -68,10 +82,23 @@ func (t *CameraAutosaveRoute) handleEventUpsert(c *gin.Context, userId uuid.UUID
 	})
 	if err != nil {
 		t.Logger.Error("Error while updating workspace cameras", zap.Error(err))
-		conn.WriteMessage(websocket.TextMessage, []byte("error"))
+		// conn.WriteMessage(websocket.TextMessage, []byte("error"))
 		return
 	}
-	conn.WriteMessage(websocket.TextMessage, []byte("ok"))
+	resp := &camera.CameraAutosaveResponse{
+		Payload: &camera.CameraAutosaveResponse_Ack{
+			Ack: &camera.CameraAutosaveResponseAck{
+				LastUpdatedVersion: newVersion,
+			},
+		},
+	}
+	firstRespMarshalled, err := proto.Marshal(resp)
+	if err != nil {
+		t.Logger.Error("error while marshelling first response", zap.Error(err))
+		c.JSON(http.StatusInternalServerError, gin.H{})
+		return
+	}
+	conn.WriteMessage(websocket.BinaryMessage, firstRespMarshalled)
 }
 
 func (t *CameraAutosaveRoute) get(c *gin.Context) {
@@ -90,7 +117,7 @@ func (t *CameraAutosaveRoute) get(c *gin.Context) {
 		return
 	}
 
-	_, err = t.DB.Queries.GetWorkspaceByID(c, db_sqlc_gen.GetWorkspaceByIDParams{
+	workspace, err := t.DB.Queries.GetWorkspaceByID(c, db_sqlc_gen.GetWorkspaceByIDParams{
 		UserID:  userId,
 		ModelID: modelId,
 	})
@@ -106,6 +133,21 @@ func (t *CameraAutosaveRoute) get(c *gin.Context) {
 	}
 
 	go func() {
+		firstResponse := &camera.CameraAutosaveResponse{
+			Payload: &camera.CameraAutosaveResponse_Ack{
+				Ack: &camera.CameraAutosaveResponseAck{
+					LastUpdatedVersion: workspace.Version,
+				},
+			},
+		}
+		firstRespMarshalled, err := proto.Marshal(firstResponse)
+		if err != nil {
+			t.Logger.Error("error while marshelling first response", zap.Error(err))
+			c.JSON(http.StatusInternalServerError, gin.H{})
+			return
+		}
+		conn.WriteMessage(websocket.BinaryMessage, firstRespMarshalled)
+
 		defer conn.Close()
 
 		for {
@@ -122,12 +164,17 @@ func (t *CameraAutosaveRoute) get(c *gin.Context) {
 				continue
 			}
 
+			if events.Version <= uint32(workspace.Version) {
+				// Repeated event sent (From Websocket reconnect)
+				continue
+			}
+
 			for _, event := range events.Events {
-				switch event.Type {
-				case camera.CameraEventType_CAMERA_EVENT_TYPE_DELETE:
-					t.handleEventDelete(c, conn, modelId, event.GetDeleteId())
-				case camera.CameraEventType_CAMERA_EVENT_TYPE_UPSERT:
-					t.handleEventUpsert(c, userId, conn, modelId, event.GetUpsert())
+				switch v := event.GetEvent().(type) {
+				case *camera.CameraSaveEvent_Delete:
+					t.handleEventDelete(c, conn, modelId, v.Delete.Id)
+				case *camera.CameraSaveEvent_Upsert:
+					t.handleEventUpsert(c, userId, conn, modelId, v.Upsert.Camera)
 				}
 			}
 		}

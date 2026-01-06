@@ -3,12 +3,12 @@ import type {
   CameraSaveEvent,
 } from "~/messages/protobufs/autosave_event";
 import {
-  CameraEventType,
+  CameraAutosaveResponse,
   CameraSaveEventSeries,
 } from "~/messages/protobufs/autosave_event";
 import type { ICamera } from "~/types/camera";
 import type { SceneStates } from "~/types/scene-states";
-import * as THREE from "three";
+import { Quaternion } from "three";
 
 function isEqual(a: Camera, b: Camera): boolean {
   return JSON.stringify(a) === JSON.stringify(b);
@@ -19,7 +19,7 @@ export type AutosaveEvent =
   | { type: "upsert"; data: ICamera };
 
 export function transformCameraToProtoEvent(cam: ICamera): Omit<Camera, "id"> {
-  const quaternion = new THREE.Quaternion();
+  const quaternion = new Quaternion();
   quaternion.setFromEuler(cam.rotation);
   return {
     name: cam.name,
@@ -64,6 +64,18 @@ export function useAutosave(
     }),
   );
 
+  watch(
+    () => sceneStates.websocket?.data.value,
+    async (messageBlob) => {
+      if (messageBlob) {
+        const messageArrayBuf = await (messageBlob as Blob).arrayBuffer();
+        const messageByteArr = new Uint8Array(messageArrayBuf);
+        const resp = CameraAutosaveResponse.decode(messageByteArr);
+        sceneStates.lastSyncedVersion.value = resp.ack!.lastUpdatedVersion;
+      }
+    },
+  );
+
   setInterval(() => {
     if (sceneStates.markedForCheck.size == 0) {
       return;
@@ -83,8 +95,9 @@ export function useAutosave(
       if (cam == undefined) {
         lastSynced.delete(camId);
         changed.push({
-          type: CameraEventType.CAMERA_EVENT_TYPE_DELETE,
-          deleteId: camId,
+          delete: {
+            id: camId,
+          },
         });
         continue;
       }
@@ -92,16 +105,21 @@ export function useAutosave(
       // If is newly added, or changed
       if (prev == undefined || !isEqual(prev, formattedCam)) {
         changed.push({
-          type: CameraEventType.CAMERA_EVENT_TYPE_UPSERT,
-          upsert: formattedCam,
+          upsert: {
+            camera: formattedCam,
+          },
         });
         lastSynced.set(camId, transformCameraToProtoEventWithId(camId, cam));
       }
     }
 
     if (changed.length > 0 && sceneStates.websocket != undefined) {
+      sceneStates.localVersion.value += 1;
       sceneStates.websocket.send(
-        CameraSaveEventSeries.encode({ events: changed }).finish().buffer,
+        CameraSaveEventSeries.encode({
+          version: sceneStates.localVersion.value,
+          events: changed,
+        }).finish().buffer,
       );
     }
 
