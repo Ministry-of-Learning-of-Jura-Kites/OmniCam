@@ -154,6 +154,7 @@ func main() {
 
 	// ---- Run tests one by one ----
 	env := append(os.Environ(), fmt.Sprintf("DATABASE_URL=%s", dsn))
+	env = append(env, "MODE=TEST")
 
 	cmd := exec.Command("go", testArgs...)
 	cmd.Env = env

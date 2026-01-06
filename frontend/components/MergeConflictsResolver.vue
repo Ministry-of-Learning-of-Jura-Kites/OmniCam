@@ -14,8 +14,7 @@ const props = defineProps<{
 }>();
 
 const emit = defineEmits<{
-  (e: "close"): void;
-  (e: "resolved", payload: { path: string; value: any }[]): void;
+  (e: "close" | "resolved"): void;
 }>();
 
 const visible = computed(() => props.visible);
@@ -77,8 +76,10 @@ function pretty(v: any) {
 
 function buttonClass(active: boolean) {
   return [
-    "px-3 py-1 rounded text-sm border",
-    active ? "bg-gray-100 border-gray-300" : "bg-white border-gray-200",
+    "px-3 py-1 rounded text-sm border text-black dark:text-white",
+    active
+      ? "bg-blue-600 text-white border-blue-700 dark:bg-blue-500 dark:border-blue-400"
+      : "bg-gray-50 text-gray-700 border-gray-300 hover:bg-gray-100 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-600 dark:hover:bg-slate-700",
   ].join(" ");
 }
 
@@ -146,13 +147,9 @@ async function applyAll() {
     return;
   }
 
-  // emit("resolved", results);
+  emit("resolved");
   emit("close");
 }
-
-watch(manualErrors, (errors) => {
-  console.log("gggg", errors);
-});
 </script>
 
 <template>
@@ -162,7 +159,7 @@ watch(manualErrors, (errors) => {
       class="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
     >
       <div
-        class="bg-white rounded-2xl shadow-xl w-full max-w-4xl mx-4 overflow-hidden"
+        class="bg-white dark:bg-slate-900 rounded-2xl shadow-xl w-full max-w-4xl mx-4 overflow-hidden"
       >
         <header class="flex items-center justify-between px-6 py-4 border-b">
           <h3 class="text-lg font-semibold flex flex-row gap-2">
@@ -172,20 +169,23 @@ watch(manualErrors, (errors) => {
               class="text-red-600"
             />
           </h3>
-          <button class="text-gray-500 hover:text-gray-700" @click="close">
+          <button
+            class="text-gray-500 dark:text-gray-100 hover:text-gray-700"
+            @click="close"
+          >
             ✕
           </button>
         </header>
 
         <main class="p-6 space-y-4 max-h-[70vh] overflow-auto">
-          <p class="text-sm text-gray-600">
+          <p class="text-sm text-gray-600 dark:text-gray-200">
             Choose how to resolve each conflicting field. You can pick
             <strong>Main</strong>, <strong>Workspace</strong>, or edit manually.
           </p>
 
           <div
             v-if="Object.keys(conflictKeys).length === 0"
-            class="text-center py-12 text-gray-500"
+            class="text-center py-12 text-gray-500 dark:text-gray-200"
           >
             No conflicts to resolve.
           </div>
@@ -203,8 +203,14 @@ watch(manualErrors, (errors) => {
             >
               <div class="flex items-start justify-between">
                 <div>
-                  <div class="text-sm text-gray-700 font-medium">{{ key }}</div>
-                  <div class="text-xs text-gray-500">Field path</div>
+                  <div
+                    class="text-sm text-gray-700 dark:text-gray-100 font-medium"
+                  >
+                    {{ key }}
+                  </div>
+                  <div class="text-xs text-gray-500 dark:text-gray-100">
+                    Field path
+                  </div>
                 </div>
                 <div class="flex items-center gap-2">
                   <button
@@ -255,7 +261,8 @@ watch(manualErrors, (errors) => {
               </div>
 
               <div v-if="selected[key] === 'manual'" class="mt-3">
-                <label class="block text-xs font-medium text-gray-600"
+                <label
+                  class="block text-xs font-medium text-gray-600 dark:text-gray-200"
                   >Manual value (JSON)</label
                 >
                 <textarea
@@ -273,7 +280,7 @@ watch(manualErrors, (errors) => {
                 </div>
               </div>
 
-              <div v-else class="mt-3 text-xs text-gray-600">
+              <div v-else class="mt-3 text-xs text-gray-600 dark:text-gray-200">
                 Selected: <strong>{{ selected[key] }}</strong>
               </div>
             </div>
@@ -284,7 +291,7 @@ watch(manualErrors, (errors) => {
           <p v-if="globalErr != null">
             {{ globalErr }}
           </p>
-          <button class="px-4 py-2 rounded bg-white border" @click="close">
+          <button class="px-4 py-2 rounded border" @click="close">
             Cancel
           </button>
           <button

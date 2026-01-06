@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"log"
 	"net/http"
 	"reflect"
 	"slices"
@@ -40,6 +39,8 @@ type FieldConflict struct {
 	Workspace any `json:"workspace"`
 }
 
+type CamProperty string
+
 func applyChangeReflect(cam *messages_cameras.CameraStruct, c *diff.Change) error {
 	if len(c.Path) == 0 {
 		return nil
@@ -70,10 +71,10 @@ func applyChangeReflect(cam *messages_cameras.CameraStruct, c *diff.Change) erro
 	return nil
 }
 
-func threeWayMerge(base, main, workspace messages_cameras.CameraStruct) (messages_cameras.CameraStruct, map[string]interface{}) {
+func threeWayMerge(base, main, workspace messages_cameras.CameraStruct) (messages_cameras.CameraStruct, map[CamProperty]interface{}) {
 	merged := base
 
-	conflicts := make(map[string]interface{})
+	conflicts := make(map[CamProperty]interface{})
 
 	changesMain, _ := diff.Diff(base, main)
 	changesWork, _ := diff.Diff(base, workspace)
@@ -124,19 +125,20 @@ func threeWayMerge(base, main, workspace messages_cameras.CameraStruct) (message
 
 			traverse := &conflicts
 			for i, pathEle := range path {
+				pathEleId := CamProperty(pathEle)
 				if i == len(path)-1 {
-					(*traverse)[pathEle] = FieldConflict{
+					(*traverse)[pathEleId] = FieldConflict{
 						Base:      base,
 						Main:      mainTo,
 						Workspace: workTo,
 					}
 					continue
 				}
-				if _, ok := (*traverse)[pathEle]; !ok {
-					(*traverse)[pathEle] = make(map[string]interface{})
+				if _, ok := (*traverse)[pathEleId]; !ok {
+					(*traverse)[pathEleId] = make(map[CamProperty]interface{})
 				}
-				leaf := (*traverse)[pathEle]
-				casted := leaf.(map[string]interface{})
+				leaf := (*traverse)[pathEleId]
+				casted := leaf.(map[CamProperty]interface{})
 				traverse = &casted
 			}
 		} else {
@@ -147,11 +149,11 @@ func threeWayMerge(base, main, workspace messages_cameras.CameraStruct) (message
 	return merged, conflicts
 }
 
-func mergeAllCameras(base, main, workspace messages_cameras.Cameras) (messages_cameras.Cameras, map[string]interface{}) {
+func mergeAllCameras(base, main, workspace messages_cameras.Cameras) (messages_cameras.Cameras, map[messages_cameras.CamId]map[CamProperty]interface{}) {
 	result := make(messages_cameras.Cameras)
-	conflicts := make(map[string]interface{})
+	conflicts := make(map[messages_cameras.CamId]map[CamProperty]interface{})
 
-	keys := map[string]struct{}{}
+	keys := map[messages_cameras.CamId]struct{}{}
 	for k := range base {
 		keys[k] = struct{}{}
 	}
@@ -195,7 +197,7 @@ func mergeAllCameras(base, main, workspace messages_cameras.Cameras) (messages_c
 
 		merged, conflictOfId := threeWayMerge(b, m, w)
 		if len(conflictOfId) != 0 {
-			conflicts[id] = conflictOfId
+			conflicts[messages_cameras.CamId(id)] = conflictOfId
 		}
 		result[id] = merged
 	}
@@ -203,12 +205,46 @@ func mergeAllCameras(base, main, workspace messages_cameras.Cameras) (messages_c
 	return result, conflicts
 }
 
-func getAllPathsFromConflicts(conflicts map[string]interface{}) []string {
-	
+type ResolveRequest struct {
+	Merged map[messages_cameras.CamId]map[CamProperty]any `json:"merged"`
 }
 
-type ResolveRequest struct {
-	Merged map[string]map[string]any `json:"merged"`
+func validateCamera(actualConflicts, merged map[CamProperty]any) error {
+	for key, conflict := range actualConflicts {
+		requestConflict, ok := merged[key]
+		if !ok {
+			return fmt.Errorf("Missing field %s", key)
+		}
+		castedRequest, ok := requestConflict.(map[CamProperty]any)
+		// If is leaf
+		if !ok {
+			if _, ok := conflict.(FieldConflict); !ok {
+				return fmt.Errorf("Not expecting leaf on %s", key)
+			}
+		} else {
+			castedActual, ok := conflict.(map[CamProperty]any)
+			if !ok {
+				return fmt.Errorf("Expecting leaf on %s", key)
+			}
+			if err := validateCamera(castedActual, castedRequest); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
+func validateResolve(actualConflicts, merged map[messages_cameras.CamId]map[CamProperty]any) error {
+	for key, actualConflict := range actualConflicts {
+		requestConflict, ok := merged[key]
+		if !ok {
+			return fmt.Errorf("Missing field %s", key)
+		}
+		if err := validateCamera(actualConflict, requestConflict); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func (t *WorkspaceRoute) postResolveWorkspaceMe(c *gin.Context) {
@@ -252,10 +288,15 @@ func (t *WorkspaceRoute) postResolveWorkspaceMe(c *gin.Context) {
 	}
 
 	var baseCameras messages_cameras.Cameras
-	if err := json.Unmarshal(workspaceData.BaseCameras, &workspaceCameras); err != nil {
-		t.Logger.Error("error while unmarshalling workspace cams", zap.Error(err))
-		c.JSON(http.StatusInternalServerError, gin.H{})
-		return
+	if len(workspaceData.BaseCameras) == 0 {
+		baseCameras = make(messages_cameras.Cameras)
+	} else {
+		err := json.Unmarshal(workspaceData.BaseCameras, &baseCameras)
+		if err != nil {
+			t.Logger.Error("error while unmarshalling workspace cams", zap.Error(err))
+			c.JSON(http.StatusInternalServerError, gin.H{})
+			return
+		}
 	}
 
 	// Get  model cams
@@ -283,13 +324,10 @@ func (t *WorkspaceRoute) postResolveWorkspaceMe(c *gin.Context) {
 		return
 	}
 
-	merged,conflicts := mergeAllCameras(baseCameras,modelCameras,workspaceCameras)
-	
-	actualConflictsPaths := getAllPathsFromConflicts(conflicts)
-	inputConflictsPaths := getAllPathsFromConflicts(resolvedRequest.Merged)
+	merged, conflicts := mergeAllCameras(baseCameras, modelCameras, workspaceCameras)
 
-	if !slices.Equal(actualConflictsPaths,inputConflictsPaths){
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Not all conflicts are resolved"})
+	if err := validateResolve(conflicts, resolveRequest.Merged); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
@@ -298,7 +336,6 @@ func (t *WorkspaceRoute) postResolveWorkspaceMe(c *gin.Context) {
 		cam := merged[camId]
 
 		for key, value := range mergedCam {
-			log.Println("ggg", key, value)
 			// Use reflection here to set the field INSIDE the *Camera struct
 			val := reflect.ValueOf(value)
 			if val.Kind() == reflect.Map || val.Kind() == reflect.Slice || val.Kind() == reflect.Array {
@@ -307,7 +344,7 @@ func (t *WorkspaceRoute) postResolveWorkspaceMe(c *gin.Context) {
 			}
 
 			// Also apply to workspace cam
-			if !utils.SetFieldByJSONTag(&cam, key, val) {
+			if !utils.SetFieldByJSONTag(&cam, string(key), val) {
 				c.JSON(http.StatusBadRequest, gin.H{
 					"error": "Invalid field",
 				})
@@ -317,20 +354,15 @@ func (t *WorkspaceRoute) postResolveWorkspaceMe(c *gin.Context) {
 		merged[camId] = cam
 	}
 
-	log.Println("ggg", modelCameras, workspaceCameras)
-	// Check if applied workspace and model are the same
-	if reflect.DeepEqual(workspaceCameras, modelCameras) {
-		t.DB.Queries.UpdateModelCams(c, db_sqlc_gen.UpdateModelCamsParams{
-			Value:   workspaceData.Cameras,
-			ModelID: modelId,
-		})
-		c.Status(http.StatusOK)
-		return
-	}
-
-	c.JSON(http.StatusBadRequest, gin.H{
-		"error": "Not all conflicts are resolved",
+	t.DB.Queries.UpdateModelCams(c, db_sqlc_gen.UpdateModelCamsParams{
+		Value:   workspaceData.Cameras,
+		ModelID: modelId,
 	})
+	t.DB.Queries.DeleteWorkspace(c, db_sqlc_gen.DeleteWorkspaceParams{
+		UserID:  userId,
+		ModelID: modelId,
+	})
+	c.Status(http.StatusOK)
 }
 
 func (t *WorkspaceRoute) postMergeWorkspace(c *gin.Context) {

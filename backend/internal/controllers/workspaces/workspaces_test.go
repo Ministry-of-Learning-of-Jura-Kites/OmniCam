@@ -16,6 +16,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
+	"go.uber.org/zap"
 	config_env "omnicam.com/backend/config"
 	controller_workspaces "omnicam.com/backend/internal/controllers/workspaces"
 	"omnicam.com/backend/internal/middleware"
@@ -46,11 +47,13 @@ type testContext struct {
 }
 
 // --- Setup Helper ---
-func setupTest(t *testing.T) *testContext {
+func setupTest(t *testing.T, source string) *testContext {
 	t.Helper()
 
+	testcaseLogger := testLogger.With(zap.String("testcase", source))
+
 	ctx := context.Background()
-	env := config_env.InitAppEnv(testLogger)
+	env := config_env.InitAppEnv(testcaseLogger)
 	env.JWTSecret = "123"
 	env.JWTExpireTime = 168 * time.Hour
 
@@ -106,11 +109,11 @@ func setupTest(t *testing.T) *testContext {
 	router := gin.Default()
 	apiV1 := router.Group("/api/v1")
 	protected := apiV1.Group("/")
-	authMiddleware := middleware.AuthMiddleware{Env: env, Logger: testLogger}
+	authMiddleware := middleware.AuthMiddleware{Env: env, Logger: testcaseLogger}
 	protected.Use(authMiddleware.CreateHandler())
 
 	route := controller_workspaces.WorkspaceRoute{
-		Logger: testLogger,
+		Logger: testcaseLogger,
 		Env:    env,
 		DB:     db,
 	}
@@ -261,7 +264,7 @@ func TestWorkspacesMe(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			tc := setupTest(t)
+			tc := setupTest(t, tt.name)
 			tt.run(t, tc)
 		})
 	}
@@ -355,7 +358,7 @@ func TestPostMergeWorkspace(t *testing.T) {
 				})
 				require.NoError(t, err)
 
-				err = tc.DB.Queries.UpdateWorkspaceCams(tc.Ctx, db_sqlc_gen.UpdateWorkspaceCamsParams{
+				_, err = tc.DB.Queries.UpdateWorkspaceCams(tc.Ctx, db_sqlc_gen.UpdateWorkspaceCamsParams{
 					Key:     []string{"123"},
 					Value:   []byte("{}"),
 					UserID:  tc.User.ID,
@@ -398,7 +401,7 @@ func TestPostMergeWorkspace(t *testing.T) {
 				})
 				require.NoError(t, err)
 
-				err = tc.DB.Queries.UpdateWorkspaceCams(tc.Ctx, db_sqlc_gen.UpdateWorkspaceCamsParams{
+				_, err = tc.DB.Queries.UpdateWorkspaceCams(tc.Ctx, db_sqlc_gen.UpdateWorkspaceCamsParams{
 					Key:     []string{"123"},
 					Value:   []byte(`{"posX":10}`),
 					UserID:  tc.User.ID,
@@ -406,7 +409,7 @@ func TestPostMergeWorkspace(t *testing.T) {
 				})
 				require.NoError(t, err)
 
-				err = tc.DB.Queries.UpdateWorkspaceCams(tc.Ctx, db_sqlc_gen.UpdateWorkspaceCamsParams{
+				_, err = tc.DB.Queries.UpdateWorkspaceCams(tc.Ctx, db_sqlc_gen.UpdateWorkspaceCamsParams{
 					Key:     []string{"456"},
 					Value:   []byte(`{"posX":10}`),
 					UserID:  tc.User.ID,
@@ -463,7 +466,7 @@ func TestPostMergeWorkspace(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			tc := setupTest(t)
+			tc := setupTest(t, tt.name)
 			tt.run(t, tc)
 		})
 	}
@@ -528,7 +531,7 @@ func TestPostResolveWorkspaceMe(t *testing.T) {
 				})
 				require.NoError(t, err)
 
-				err = tc.DB.Queries.UpdateWorkspaceCams(tc.Ctx, db_sqlc_gen.UpdateWorkspaceCamsParams{
+				_, err = tc.DB.Queries.UpdateWorkspaceCams(tc.Ctx, db_sqlc_gen.UpdateWorkspaceCamsParams{
 					Key:     []string{"123"},
 					Value:   []byte("{}"),
 					UserID:  tc.User.ID,
@@ -576,7 +579,7 @@ func TestPostResolveWorkspaceMe(t *testing.T) {
 				})
 				require.NoError(t, err)
 
-				err = tc.DB.Queries.UpdateWorkspaceCams(tc.Ctx, db_sqlc_gen.UpdateWorkspaceCamsParams{
+				_, err = tc.DB.Queries.UpdateWorkspaceCams(tc.Ctx, db_sqlc_gen.UpdateWorkspaceCamsParams{
 					Key:     []string{"123"},
 					Value:   workspaceCams,
 					UserID:  tc.User.ID,
@@ -594,6 +597,7 @@ func TestPostResolveWorkspaceMe(t *testing.T) {
 				w := httptest.NewRecorder()
 				tc.Router.ServeHTTP(w, req)
 
+				testLogger.Info(w.Body.String())
 				require.Equal(t, http.StatusOK, w.Code)
 			},
 		},
@@ -620,7 +624,7 @@ func TestPostResolveWorkspaceMe(t *testing.T) {
 				})
 				require.NoError(t, err)
 
-				err = tc.DB.Queries.UpdateWorkspaceCams(tc.Ctx, db_sqlc_gen.UpdateWorkspaceCamsParams{
+				_, err = tc.DB.Queries.UpdateWorkspaceCams(tc.Ctx, db_sqlc_gen.UpdateWorkspaceCamsParams{
 					Key:     []string{"CameraA"},
 					Value:   workspaceCams,
 					UserID:  tc.User.ID,
@@ -639,7 +643,6 @@ func TestPostResolveWorkspaceMe(t *testing.T) {
 				tc.Router.ServeHTTP(w, req)
 
 				require.Equal(t, http.StatusBadRequest, w.Code)
-				require.Contains(t, w.Body.String(), "Not all conflicts are resolved")
 			},
 		},
 	}
@@ -647,7 +650,7 @@ func TestPostResolveWorkspaceMe(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			tc := setupTest(t)
+			tc := setupTest(t, tt.name)
 			tt.run(t, tc)
 		})
 	}

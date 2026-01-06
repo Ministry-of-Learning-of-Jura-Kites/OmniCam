@@ -164,9 +164,7 @@ async function createWorkspace() {
       },
     );
     useState(MODEL_INFO_KEY, () => data);
-    navigateTo(
-      `/projects/${route.params.projectId}/models/${route.params.modelId}/workspaces/me`,
-    );
+    goToMyWorkspace();
   } catch (err) {
     console.error(err);
     showError({
@@ -188,9 +186,7 @@ async function deleteWorkspace() {
     );
 
     useState(MODEL_INFO_KEY, () => undefined);
-    navigateTo(
-      `/projects/${route.params.projectId}/models/${route.params.modelId}`,
-    );
+    goToModel();
   } catch (err) {
     console.error(err);
     showError({
@@ -198,12 +194,24 @@ async function deleteWorkspace() {
     });
   }
 }
+
+function goToModel() {
+  navigateTo(
+    `/projects/${route.params.projectId}/models/${route.params.modelId}`,
+  );
+}
+function goToMyWorkspace() {
+  navigateTo(
+    `/projects/${route.params.projectId}/models/${route.params.modelId}/workspaces/me`,
+  );
+}
 </script>
 
 <template>
   <MergeConflictsResolver
     :visible="openResolver"
     :conflicts="conflicts"
+    @resolved="goToModel()"
     @close="openResolver = false"
   />
 
@@ -291,11 +299,7 @@ async function deleteWorkspace() {
           v-if="workspace != null"
           size="sm"
           variant="outline"
-          @click="
-            navigateTo(
-              `/projects/${route.params.projectId}/models/${route.params.modelId}`,
-            )
-          "
+          @click="goToModel()"
         >
           <LogOut class="button-icon" />
           <span class="button-span-text"> Exit Workspace </span>
@@ -306,11 +310,7 @@ async function deleteWorkspace() {
             v-if="sceneStates.modelInfo.data.workspaceExists"
             size="sm"
             variant="outline"
-            @click="
-              navigateTo(
-                `/projects/${route.params.projectId}/models/${route.params.modelId}/workspaces/me`,
-              )
-            "
+            @click="goToMyWorkspace()"
           >
             <PackageOpen class="button-icon" />
             <span class="ml-2 button-span-text"> Open Workspace </span>
