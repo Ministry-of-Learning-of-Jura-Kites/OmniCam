@@ -4,8 +4,9 @@ import { Grid, Environment } from "@tresjs/cientos";
 import AdjustableInput from "../../adjustable-input/AdjustableInput.vue";
 import { SPECTATOR_ADJ_INPUT_SENTIVITY } from "~/constants";
 import CameraObject from "../camera-object/CameraObject.vue";
-import * as THREE from "three";
-import { SCENE_STATES_KEY } from "~/components/3d/scene-states-provider/create-scene-states";
+import { type PerspectiveCamera, Raycaster, Vector2, DoubleSide } from "three";
+import { SCENE_STATES_KEY } from "@/constants/state-keys";
+
 import { useCameraUpdate } from "./use-camera-update";
 import type { IUserData } from "~/types/obj-3d-user-data";
 import ModelLoader from "../model-loader/ModelLoader.vue";
@@ -30,7 +31,7 @@ const sceneStates = inject(SCENE_STATES_KEY)!;
 
 const { data: modelResp } = sceneStates.modelInfo;
 
-const camera: Ref<THREE.PerspectiveCamera | null> = ref(null);
+const camera: Ref<PerspectiveCamera | null> = ref(null);
 
 const canvas: Ref<InstanceType<typeof TresCanvas> | null> = ref(null);
 
@@ -55,8 +56,8 @@ onMounted(() => {
   sceneStates.spectatorPosition.refreshCameraState();
 });
 
-const raycaster = new THREE.Raycaster();
-const mouse = new THREE.Vector2();
+const raycaster = new Raycaster();
+const mouse = new Vector2();
 
 function onCanvasPointer(event: PointerEvent) {
   const ele = sceneStates.tresContext.value!.renderer.domElement;
@@ -332,7 +333,7 @@ onBeforeRouteLeave((to, from, next) => {
             :fade-distance="50"
             :fade-strength="1"
             :infinite-grid="true"
-            :side="THREE.DoubleSide"
+            :side="DoubleSide"
           />
           <!-- <Scene3dInner /> -->
         </TresCanvas>

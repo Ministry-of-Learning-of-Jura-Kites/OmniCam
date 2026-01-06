@@ -1,7 +1,7 @@
 import type { IUserData } from "~/types/obj-3d-user-data";
 import { MOVING_ARROW_CONFIG } from "~/constants";
 import type { TresContext } from "@tresjs/core";
-import { getAxisVector as createAxisVector } from "~/lib/utils";
+import { getAxisVector as createAxisVector } from "~/lib/three";
 import type { ICamera } from "~/types/camera";
 
 export const MOVING_TYPE = "moving";

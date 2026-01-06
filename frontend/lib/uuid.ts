@@ -1,21 +1,3 @@
-import type { ClassValue } from "clsx";
-import { clsx } from "clsx";
-import { twMerge } from "tailwind-merge";
-import * as THREE from "three";
-import "uuid";
-
-export function cn(...inputs: ClassValue[]) {
-  return twMerge(clsx(inputs));
-}
-
-export function getAxisVector(axis: "x" | "y" | "z") {
-  return new THREE.Vector3(
-    axis === "x" ? 1 : 0,
-    axis === "y" ? 1 : 0,
-    axis === "z" ? 1 : 0,
-  );
-}
-
 export function uuidToBase64Url(uuidString: string) {
   // Remove hyphens and convert to a continuous hex string
   const hex = uuidString.replace(/-/g, "");

@@ -1,7 +1,7 @@
-import type * as THREE from "three";
+import type { Object3D } from "three";
 import type { ICamera } from "./camera";
 
-export type Obj3DWithUserData = THREE.Object3D & { userData: IUserData };
+export type Obj3DWithUserData = Object3D & { userData: IUserData };
 
 export interface IUserData {
   type: string;

@@ -1,8 +1,8 @@
 import type { TresContext } from "@tresjs/core";
 import type { ICamera } from "~/types/camera";
 import type { IUserData } from "~/types/obj-3d-user-data";
-import * as THREE from "three";
-import { getAxisVector } from "~/lib/utils";
+import { Quaternion, Vector3 } from "three";
+import { getAxisVector } from "~/lib/three";
 
 export const ROTATING_TYPE = "rotation";
 
@@ -13,7 +13,7 @@ export class RotatingUserData implements IUserData {
 
   isDragging = false;
 
-  initialCamQuaternion = new THREE.Quaternion();
+  initialCamQuaternion = new Quaternion();
   downAngle = 0;
 
   constructor(type: string, obj: ICamera, context: TresContext) {
@@ -68,7 +68,7 @@ export class RotatingUserData implements IUserData {
 
     const delta = moveAngle - this.downAngle!;
 
-    const cameraDirection = new THREE.Vector3();
+    const cameraDirection = new Vector3();
 
     this.context.camera.value!.getWorldDirection(cameraDirection);
 
@@ -76,7 +76,7 @@ export class RotatingUserData implements IUserData {
     const direction = -Math.sign(cameraDirection[this.type]);
 
     const quaternion = this.initialCamQuaternion.clone();
-    const rotation = new THREE.Quaternion().setFromAxisAngle(
+    const rotation = new Quaternion().setFromAxisAngle(
       getAxisVector(this.type).multiplyScalar(direction),
       delta,
     );
