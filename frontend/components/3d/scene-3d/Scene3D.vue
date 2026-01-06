@@ -32,7 +32,7 @@ const config = useRuntimeConfig();
 const sceneStates = inject(SCENE_STATES_KEY)!;
 
 const { data: modelResp } = sceneStates.modelInfo;
-console.log("data", modelResp);
+
 const modelPath = `http://${config.public.externalBackendHost}/api/v1/assets/projects/${modelResp.projectId}/models/${modelResp.modelId}/file/${modelResp.fileExtension.slice(1, modelResp.fileExtension.length)}`;
 
 const camera: Ref<PerspectiveCamera | null> = ref(null);
