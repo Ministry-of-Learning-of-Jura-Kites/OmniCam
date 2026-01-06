@@ -9,7 +9,7 @@ import {
   DialogPortal,
   useForwardPropsEmits,
 } from "reka-ui";
-import { cn } from "@/lib/utils";
+import { cn } from "~/lib/ui";
 import DialogOverlay from "./DialogOverlay.vue";
 
 const props = defineProps<

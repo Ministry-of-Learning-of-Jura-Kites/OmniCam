@@ -9,7 +9,7 @@ import EditRoleDialog from "~/components/dialog/EditRoleDialog.vue";
 import { useAuth } from "~/composables/useAuth";
 import ContentCard from "~/components/card/ContentCard.vue";
 import CustomPagination from "~/components/pagination/CustomPagination.vue";
-import { uuidToBase64Url } from "~/lib/utils";
+import { uuidToBase64Url } from "~/lib/uuid";
 import { Plus } from "lucide-vue-next";
 import type { Project } from "~/types/project";
 

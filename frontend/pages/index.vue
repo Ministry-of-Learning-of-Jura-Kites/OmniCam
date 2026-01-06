@@ -5,7 +5,7 @@ import ConfirmDialog from "~/components/dialog/ConfirmDialog.vue";
 import SuccessDialog from "~/components/dialog/SuccessDialog.vue";
 import ContentCard from "~/components/card/ContentCard.vue";
 import CustomPagination from "~/components/pagination/CustomPagination.vue";
-import { uuidToBase64Url } from "~/lib/utils";
+import { uuidToBase64Url } from "~/lib/uuid";
 
 interface Project {
   id: string;

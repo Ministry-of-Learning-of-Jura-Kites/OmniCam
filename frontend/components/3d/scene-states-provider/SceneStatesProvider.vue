@@ -3,11 +3,10 @@ import type { SceneStates } from "~/types/scene-states";
 import {
   createBaseSceneStates,
   createSceneStatesWithHelper,
-  SCENE_STATES_KEY,
   type ModelWithCamsResp,
 } from "./create-scene-states";
 import { useWebSocket, type UseWebSocketReturn } from "@vueuse/core";
-import { MODEL_INFO_KEY } from "~/constants/state-keys";
+import { MODEL_INFO_KEY, SCENE_STATES_KEY } from "~/constants/state-keys";
 
 const props = defineProps({
   projectId: {
