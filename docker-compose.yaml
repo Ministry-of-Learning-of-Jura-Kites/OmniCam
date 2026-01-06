@@ -34,40 +34,40 @@ services:
       db:
         condition: service_healthy
 
-  # backend:
-  #   build:
-  #     context: .
-  #     dockerfile: ./backend/Dockerfile
-  #   container_name: omnicam_backend
-  #   env_file:
-  #     - ./backend/.env.prod
-  #   ports:
-  #     - "8080:8080"
-  #   volumes:
-  #     - ./uploads:/app/uploads
-  #   depends_on:
-  #     migrate:
-  #       condition: service_completed_successfully
-  #     db:
-  #       condition: service_healthy
-  #   networks:
-  #     - net
+  backend:
+    build:
+      context: .
+      dockerfile: ./backend/Dockerfile
+    container_name: omnicam_backend
+    env_file:
+      - ./backend/.env.prod
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./uploads:/app/uploads
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      db:
+        condition: service_healthy
+    networks:
+      - net
 
-  # frontend:
-  #   build:
-  #     context: .
-  #     dockerfile: ./frontend/Dockerfile
-  #   container_name: omnicam_frontend
-  #   env_file:
-  #     - ./frontend/.env.prod
-  #   ports:
-  #     - "3000:3000"
-  #   volumes:
-  #     - ./uploads:/app/uploads
-  #   depends_on:
-  #     - backend
-  #   networks:
-  #     - net
+  frontend:
+    build:
+      context: .
+      dockerfile: ./frontend/Dockerfile
+    container_name: omnicam_frontend
+    env_file:
+      - ./frontend/.env.prod
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./uploads:/app/uploads
+    depends_on:
+      - backend
+    networks:
+      - net
 
   # redis:
   #   image: redis:8

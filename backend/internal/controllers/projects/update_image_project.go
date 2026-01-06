@@ -97,9 +97,9 @@ func (t *PutImageProjectRoute) updateImage(c *gin.Context) {
 	webImagePath := "/uploads/images/" + projectId.String()
 
 	_, err = t.DB.Queries.UpdateProjectImage(c, db_sqlc_gen.UpdateProjectImageParams{
-		ID:            projectId,
-		ImagePath:     webImagePath,
-		FileExtension: imageExt,
+		ID:             projectId,
+		ImagePath:      webImagePath,
+		ImageExtension: imageExt,
 	})
 	if err != nil {
 		t.Logger.Error("Error while updating project image", zap.Error(err))

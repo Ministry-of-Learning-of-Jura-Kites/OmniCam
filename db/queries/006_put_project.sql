@@ -11,6 +11,6 @@ RETURNING
   name,
   description,
   image_path,
-  file_extension,
+  image_extension,
   created_at,
   updated_at;

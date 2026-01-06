@@ -16,7 +16,7 @@ CREATE TABLE "project" (
   name VARCHAR(255) NOT NULL UNIQUE,
   description TEXT NOT NULL DEFAULT '',
   image_path TEXT NOT NULL,
-  file_extension TEXT NOT NULL,
+  image_extension TEXT NOT NULL,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
