@@ -99,14 +99,17 @@ func (t *PutModelRoute) put(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{"data": messages_model_workspace.ModelWorkspace{
-		ModelId:     modelId,
-		ProjectId:   data.ProjectID,
-		Name:        data.Name,
-		Description: data.Description,
-		ImagePath:   data.ImagePath,
-		Version:     data.Version,
-		CreatedAt:   data.CreatedAt.Time.Format(time.RFC3339),
-		UpdatedAt:   data.UpdatedAt.Time.Format(time.RFC3339),
+		ModelId:        modelId,
+		ProjectId:      data.ProjectID,
+		Name:           data.Name,
+		Description:    data.Description,
+		ImagePath:      data.ImagePath,
+		ImageExtension: data.ImageExtension,
+		FilePath:       data.FilePath,
+		ModelExtension: data.ModelExtension,
+		Version:        data.Version,
+		CreatedAt:      data.CreatedAt.Time.Format(time.RFC3339),
+		UpdatedAt:      data.UpdatedAt.Time.Format(time.RFC3339),
 	}})
 
 }

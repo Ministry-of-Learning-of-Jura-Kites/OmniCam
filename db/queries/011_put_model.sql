@@ -13,6 +13,8 @@ RETURNING
   name,
   image_path,
   file_path,
+  image_extension,
+  model_extension,
   description,
   version,
   created_at,

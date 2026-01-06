@@ -4,6 +4,7 @@ SELECT
   p.name,
   p.description,
   p.image_path,
+  p.image_extension,
   p.created_at,
   p.updated_at
 FROM

@@ -6,7 +6,9 @@ INSERT INTO
     name,
     description,
     file_path,
-    image_path
+    image_path,
+    image_extension,
+    model_extension
   )
 VALUES
   (
@@ -15,7 +17,9 @@ VALUES
     SQLC.ARG(name),
     SQLC.ARG(description),
     SQLC.ARG(file_path),
-    SQLC.ARG(image_path)
+    SQLC.ARG(image_path),
+    SQLC.ARG(image_extension),
+    SQLC.ARG(model_extension)
   )
 RETURNING
   id,
@@ -23,6 +27,8 @@ RETURNING
   name,
   image_path,
   file_path,
+  image_extension,
+  model_extension,
   description,
   version,
   created_at,
