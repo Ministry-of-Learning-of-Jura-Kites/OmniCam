@@ -181,13 +181,13 @@ async function fetchModel() {
         credentials: "include",
       },
     );
-    console.log(response.data);
+
     const now = Date.now();
     if (response.data != null) {
       models.value = response.data.reduce<Record<string, ModelWithoutId>>(
         (acc, model) => {
           const { modelId, imagePath, ...rest } = model;
-          console.log(model);
+
           const ext = model.imageExtension?.slice(
             1,
             model.imageExtension?.length,
