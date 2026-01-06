@@ -3,6 +3,7 @@ SELECT
   id,
   name,
   description,
+  image_extension,
   image_path,
   created_at,
   updated_at

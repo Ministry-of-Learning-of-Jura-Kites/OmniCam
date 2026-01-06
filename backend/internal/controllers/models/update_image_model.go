@@ -81,7 +81,7 @@ func (t *PutImageModelRoute) updateImage(c *gin.Context) {
 	)
 
 	// Where to save on disk -> <project-root>/uploads/model/{projectId}/{modelId}
-	imageDir := filepath.Join(internal.Root, "uploads", "model", projectId.String(), modelId.String())
+	imageDir := filepath.Join(internal.Root, "uploads", "images", projectId.String())
 	if err := os.MkdirAll(imageDir, os.ModePerm); err != nil {
 		t.Logger.Error("Failed to create image directory", zap.Error(err))
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to create folder for model image"})
@@ -97,7 +97,7 @@ func (t *PutImageModelRoute) updateImage(c *gin.Context) {
 	}
 
 	// Save the new image
-	fsImagePath := filepath.Join(imageDir, "image"+imageExt)
+	fsImagePath := filepath.Join(imageDir, modelId.String()+imageExt)
 	if err := c.SaveUploadedFile(imageFile, fsImagePath); err != nil {
 		t.Logger.Error("Failed to save image file", zap.Error(err))
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to save image"})
@@ -105,10 +105,11 @@ func (t *PutImageModelRoute) updateImage(c *gin.Context) {
 	}
 
 	// Web path for DB/frontend
-	webImagePath := "/uploads/model/" + projectId.String() + "/" + modelId.String() + "/image" + imageExt
+	webImagePath := "/uploads/images/" + projectId.String() + modelId.String()
 	_, err = t.DB.Queries.UpdateModelImage(c, db_sqlc_gen.UpdateModelImageParams{
-		ID:        modelId,
-		ImagePath: webImagePath,
+		ID:             modelId,
+		ImagePath:      webImagePath,
+		ImageExtension: imageExt,
 	})
 	if err != nil {
 		t.Logger.Error("Error while updating model image", zap.Error(err))
@@ -119,8 +120,9 @@ func (t *PutImageModelRoute) updateImage(c *gin.Context) {
 	t.Logger.Info("Model image updated", zap.String("path", fsImagePath))
 
 	c.JSON(http.StatusOK, gin.H{
-		"message":   "image updated successfully",
-		"imagePath": webImagePath,
+		"message":        "image updated successfully",
+		"imagePath":      webImagePath,
+		"imageExtension": imageExt,
 	})
 }
 

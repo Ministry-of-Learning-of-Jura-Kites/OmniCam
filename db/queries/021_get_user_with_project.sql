@@ -12,6 +12,7 @@ SELECT
   p.name AS project_name,
   p.description AS project_description,
   p.image_path AS project_image_path,
+  p.image_extension AS project_image_extension,
   utp.role AS role
 FROM
   "user" u

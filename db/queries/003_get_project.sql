@@ -4,6 +4,7 @@ SELECT
   description,
   created_at,
   image_path,
+  image_extension,
   updated_at
 FROM
   "project"
