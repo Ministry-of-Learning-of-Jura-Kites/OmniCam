@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref } from "vue";
-import * as THREE from "three";
+import { Euler, Vector3 } from "three";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 import Button from "./ui/button/Button.vue";
 import Input from "./ui/input/Input.vue";
@@ -18,8 +18,8 @@ import {
   Pyramid,
   Dices,
 } from "lucide-vue-next";
-import { SCENE_STATES_KEY } from "./3d/scene-states-provider/create-scene-states";
 import { randomVividColor } from "~/utils/randomVividColor";
+import { SCENE_STATES_KEY } from "@/constants/state-keys";
 
 const props = defineProps({
   workspace: {
@@ -54,10 +54,10 @@ const spawnCamera = () => {
 };
 
 const moveCameraHere = (id: string) => {
-  sceneStates.cameras[id]!.position = new THREE.Vector3().copy(
+  sceneStates.cameras[id]!.position = new Vector3().copy(
     sceneStates.spectatorCameraPosition,
   );
-  sceneStates.cameras[id]!.rotation = new THREE.Euler().copy(
+  sceneStates.cameras[id]!.rotation = new Euler().copy(
     sceneStates.spectatorCameraRotation,
   );
 };
@@ -558,7 +558,7 @@ const isLockingPosition = computed(() => {
   </div>
 </template>
 
-<style lang="css" scoped>
+<style lang="scss" scoped>
 input {
   field-sizing: content;
 }
@@ -591,6 +591,9 @@ input {
 }
 
 Button {
-  @apply transition-colors;
+  transition-property:
+    color, background-color, border-color, text-decoration-color, fill, stroke;
+  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+  transition-duration: 150ms;
 }
 </style>

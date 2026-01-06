@@ -1,6 +1,6 @@
 <script setup>
-import TopBar from "@/components/TopBar.vue";
-import CameraPanel from "@/components/CameraPanel.vue";
+import LazyTopBar from "@/components/TopBar.vue";
+import LazyCameraPanel from "@/components/CameraPanel.vue";
 import SceneStatesProvider from "~/components/3d/scene-states-provider/SceneStatesProvider.vue";
 import { IS_PANEL_OPEN_KEY, TOGGLE_PANEL_KEY } from "~/constants/state-keys";
 
@@ -39,7 +39,7 @@ const workspace = computed(() => route.meta.routeInfo?.workspace);
       :model-id="route.params.modelId"
       :workspace="workspace"
     >
-      <TopBar :workspace="workspace" />
+      <LazyTopBar :workspace="workspace" />
       <div class="flex-1 flex overflow-hidden">
         <div
           class="h-full transition-all duration-300"
@@ -52,7 +52,7 @@ const workspace = computed(() => route.meta.routeInfo?.workspace);
           class="h-full transition-all duration-300 overflow-hidden"
           :style="{ width: isPanelOpen ? '20rem' : '0' }"
         >
-          <CameraPanel :workspace="workspace" />
+          <LazyCameraPanel :workspace="workspace" />
         </div>
       </div>
 

@@ -52,7 +52,7 @@ Create a file frontend/.env and backend/.env, you can see meaning of each env in
 
 ### Run on Save (pucelle.run-on-save)
 
-### Proto Formatter (zxh404.vscode-proto3)
+### Proto Formatter (DrBlury.protobuf-vsc)
 
 # Running
 

@@ -10,7 +10,7 @@ import {
   DialogPortal,
   useForwardPropsEmits,
 } from "reka-ui";
-import { cn } from "@/lib/utils";
+import { cn } from "~/lib/ui";
 
 const props = defineProps<
   DialogContentProps & { class?: HTMLAttributes["class"] }

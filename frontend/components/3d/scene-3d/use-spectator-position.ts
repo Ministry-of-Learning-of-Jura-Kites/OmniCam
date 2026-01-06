@@ -1,5 +1,5 @@
 import { SPECTATOR_MOVING_SENTIVITY } from "~/constants";
-import * as THREE from "three";
+import { Vector3 } from "three";
 import type { SceneStates } from "~/types/scene-states";
 
 const functionalityKeys = [
@@ -68,13 +68,13 @@ export function useSpectatorPosition(sceneStates: SceneStates) {
       if (!isDown || isLock) {
         continue;
       }
-      const forward = new THREE.Vector3();
+      const forward = new Vector3();
       spectatorCamera.getWorldDirection(forward);
-      const up = new THREE.Vector3();
+      const up = new Vector3();
       up.copy(spectatorCamera.up).applyQuaternion(spectatorCamera.quaternion);
-      const right = new THREE.Vector3();
+      const right = new Vector3();
       right.crossVectors(forward, up).normalize();
-      let deltaVec = new THREE.Vector3();
+      let deltaVec = new Vector3();
 
       switch (key) {
         case "KeyW":

@@ -1,11 +1,16 @@
-import * as THREE from "three";
+import {
+  BufferGeometry,
+  MathUtils,
+  Vector3,
+  Float32BufferAttribute,
+} from "three";
 
 export function createFrustumGeometry(
   fov: number,
   aspect: number,
   length = 10000,
-): { mesh: THREE.BufferGeometry; lines: THREE.BufferGeometry } {
-  const fovRad = THREE.MathUtils.degToRad(fov);
+): { mesh: BufferGeometry; lines: BufferGeometry } {
+  const fovRad = MathUtils.degToRad(fov);
   const halfFovV = Math.tan(fovRad / 2);
 
   // length plane dimensions
@@ -16,19 +21,19 @@ export function createFrustumGeometry(
 
   // Define the 8 corner vertices (in Camera Space: +Z is forward)
   // Note: We're setting up the geometry so the camera is at (0,0,0) looking down the +Z axis.
-  const vertices: THREE.Vector3[] = [
+  const vertices: Vector3[] = [
     // Near Plane Corners (+Z)
-    new THREE.Vector3(0, 0, 0),
+    new Vector3(0, 0, 0),
 
     // length Plane Corners (+Z)
-    new THREE.Vector3(farHalfW, farHalfH, -length), // 4: Top-Right
-    new THREE.Vector3(-farHalfW, farHalfH, -length), // 5: Top-Left
-    new THREE.Vector3(-farHalfW, -farHalfH, -length), // 6: Bottom-Left
-    new THREE.Vector3(farHalfW, -farHalfH, -length), // 7: Bottom-Right
+    new Vector3(farHalfW, farHalfH, -length), // 4: Top-Right
+    new Vector3(-farHalfW, farHalfH, -length), // 5: Top-Left
+    new Vector3(-farHalfW, -farHalfH, -length), // 6: Bottom-Left
+    new Vector3(farHalfW, -farHalfH, -length), // 7: Bottom-Right
   ];
 
   // Line Highlight (Wireframe Edges)
-  const lineGeometry = new THREE.BufferGeometry().setFromPoints(vertices);
+  const lineGeometry = new BufferGeometry().setFromPoints(vertices);
 
   // Indices for LineSegments (4 edges connecting to apex, 4 edges on the far plane)
   const lineIndices = [
@@ -38,7 +43,7 @@ export function createFrustumGeometry(
     0, 1, 0, 2, 0, 3, 0, 4,
   ];
 
-  const positionAttribute = new THREE.Float32BufferAttribute(
+  const positionAttribute = new Float32BufferAttribute(
     new Float32Array(vertices.flatMap((v) => v.toArray())),
     3,
   );
@@ -47,7 +52,7 @@ export function createFrustumGeometry(
 
   // Color Filled Sides (Translucent Mesh)
 
-  const meshGeometry = new THREE.BufferGeometry().setFromPoints(vertices);
+  const meshGeometry = new BufferGeometry().setFromPoints(vertices);
 
   const meshIndices = [
     // Far face (1, 2, 3, 4) - Winding order reversed for visibility from the outside

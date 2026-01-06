@@ -1,10 +1,11 @@
 <script setup lang="ts">
-import * as THREE from "three";
+import { Mesh, CylinderGeometry, MeshBasicMaterial, Group } from "three";
 import { MOVING_TYPE, MovingUserData } from "./moving-event-handle";
 import { MOVING_ARROW_CONFIG } from "~/constants";
 import { useTresContext } from "@tresjs/core";
 import type { Obj3DWithUserData } from "~/types/obj-3d-user-data";
-import { SCENE_STATES_KEY } from "~/components/3d/scene-states-provider/create-scene-states";
+import { SCENE_STATES_KEY } from "@/constants/state-keys";
+
 import type { ICamera } from "~/types/camera";
 
 const cam = defineModel<ICamera>({ required: true });
@@ -32,7 +33,7 @@ const context = useTresContext();
 
 const sceneStates = inject(SCENE_STATES_KEY)!;
 
-const arrow = new THREE.Group();
+const arrow = new Group();
 
 const cameraUserData = new MovingUserData(
   props.direction,
@@ -43,35 +44,35 @@ const cameraUserData = new MovingUserData(
   },
 );
 
-const material = new THREE.MeshBasicMaterial({ color: props.color });
+const material = new MeshBasicMaterial({ color: props.color });
 
-const upHead = new THREE.CylinderGeometry(
+const upHead = new CylinderGeometry(
   0,
   MOVING_ARROW_CONFIG.HEAD_RADIUS,
   MOVING_ARROW_CONFIG.HEAD_LENGTH,
   8,
 );
-const upHeadMesh = new THREE.Mesh(upHead, material);
+const upHeadMesh = new Mesh(upHead, material);
 upHeadMesh.position.y =
   (MOVING_ARROW_CONFIG.CYLINDER_LENGTH + MOVING_ARROW_CONFIG.HEAD_LENGTH) / 2;
 
-const downHead = new THREE.CylinderGeometry(
+const downHead = new CylinderGeometry(
   MOVING_ARROW_CONFIG.HEAD_RADIUS,
   0,
   MOVING_ARROW_CONFIG.HEAD_LENGTH,
   8,
 );
-const downHeadMesh = new THREE.Mesh(downHead, material);
+const downHeadMesh = new Mesh(downHead, material);
 downHeadMesh.position.y =
   -(MOVING_ARROW_CONFIG.CYLINDER_LENGTH + MOVING_ARROW_CONFIG.HEAD_LENGTH) / 2;
 
-const cylinder = new THREE.CylinderGeometry(
+const cylinder = new CylinderGeometry(
   MOVING_ARROW_CONFIG.CYLINDER_RADIUS,
   MOVING_ARROW_CONFIG.CYLINDER_RADIUS,
   MOVING_ARROW_CONFIG.CYLINDER_LENGTH,
   8,
 );
-const cylinderMesh = new THREE.Mesh(cylinder, material);
+const cylinderMesh = new Mesh(cylinder, material);
 
 arrow.add(downHeadMesh);
 arrow.add(upHeadMesh);
