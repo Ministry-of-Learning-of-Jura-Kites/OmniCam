@@ -5,7 +5,7 @@ import type {
   SceneStates as BaseSceneStates,
   SceneStatesWithHelper,
 } from "~/types/scene-states";
-import * as THREE from "three";
+import { Quaternion, Euler, Vector3 } from "three";
 import { cameraDefault, type ICamera } from "~/types/camera";
 import { useCameraManagement } from "../scene-3d/use-camera-management";
 import { useSpectatorRotation } from "../scene-3d/use-spectator-rotation";
@@ -14,6 +14,9 @@ import type { UseWebSocketReturn } from "@vueuse/core";
 import type { Camera } from "~/messages/protobufs/autosave_event";
 import { useAspectRatio as useAspectRatioManagement } from "../scene-3d/use-aspect-ratio";
 import { useAutosave } from "../scene-3d/use-autosave";
+
+export const SCENE_STATES_KEY: InjectionKey<SceneStatesWithHelper> =
+  Symbol("3d-scene-states");
 
 export interface ModelWithCamsResp {
   data: {
@@ -31,15 +34,12 @@ export interface ModelWithCamsResp {
   };
 }
 
-export const SCENE_STATES_KEY: InjectionKey<SceneStatesWithHelper> =
-  Symbol("3d-scene-states");
-
 export function transformProtoEventToCamera(rawCam: Camera): ICamera {
   return {
     name: rawCam.name,
-    position: new THREE.Vector3(rawCam.posX, rawCam.posY, rawCam.posZ),
-    rotation: new THREE.Euler().setFromQuaternion(
-      new THREE.Quaternion(
+    position: new Vector3(rawCam.posX, rawCam.posY, rawCam.posZ),
+    rotation: new Euler().setFromQuaternion(
+      new Quaternion(
         rawCam.angleX,
         rawCam.angleY,
         rawCam.angleZ,
@@ -84,8 +84,8 @@ export function createBaseSceneStates(
 
   const transformingInfo: Ref<
     | {
-        position: THREE.Vector3;
-        rotation: THREE.Euler;
+        position: Vector3;
+        rotation: Euler;
         fov: number;
       }
     | undefined
@@ -93,12 +93,12 @@ export function createBaseSceneStates(
 
   const currentCamId: Ref<string | null> = ref(null);
 
-  const spectatorCameraPosition: Reactive<THREE.Vector3> = reactive(
-    new THREE.Vector3(0, 1, 0),
+  const spectatorCameraPosition: Reactive<Vector3> = reactive(
+    new Vector3(0, 1, 0),
   );
 
-  const spectatorCameraRotation: Reactive<THREE.Euler> = reactive(
-    new THREE.Euler(0, 0, 0, "YXZ"),
+  const spectatorCameraRotation: Reactive<Euler> = reactive(
+    new Euler(0, 0, 0, "YXZ"),
   );
 
   const spectatorCameraFov: Ref<number> = ref(75);
@@ -142,6 +142,9 @@ export function createBaseSceneStates(
     height: "0",
   });
 
+  const localVersion = ref(modelInfo.data.version);
+  const lastSyncedVersion = ref(modelInfo.data.version);
+
   const sceneStates = {
     tresContext,
     draggableObjects,
@@ -161,6 +164,8 @@ export function createBaseSceneStates(
     screenSize,
     aspectMargin,
     aspectMarginType,
+    localVersion,
+    lastSyncedVersion,
   } as const;
 
   // websocket.ws.value!.onclose = (_closeEvent: CloseEvent) => {
