@@ -40,6 +40,7 @@
   "code-runner.executorMapByGlob": {
     "*_test.go": "go run tools/backend_test/main.go -- $fullFileName --args -tags=unit_test"
   },
+  "protobuf.formatOnSave": true,
   "go.buildTags": "unit_test",
   "css.customData": [".vscode/tailwind.json"]
 }

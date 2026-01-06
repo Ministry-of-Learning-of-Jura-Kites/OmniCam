@@ -20,34 +20,51 @@ message ColorRGBA {
 
 // Camera message
 message Camera {
-  string id = 1;
-  string name = 2;
-  double angle_x = 3;
-  double angle_y = 4;
-  double angle_z = 5;
-  double angle_w = 6;
-  double pos_x = 7;
-  double pos_y = 8;
-  double pos_z = 9;
-  double fov = 10;
-  ColorRGBA frustum_color = 11;
-  double frustum_length = 12;
-  bool is_hiding_arrows = 13;
-  bool is_hiding_wheels = 14;
-  bool is_locking_position = 15;
-  bool is_locking_rotation = 16;
-  bool is_hiding_frustum = 17;
-  double aspect_width = 18;
-  double aspect_height = 19;
+  string    id                  = 1;
+  string    name                = 2;
+  double    angle_x             = 3;
+  double    angle_y             = 4;
+  double    angle_z             = 5;
+  double    angle_w             = 6;
+  double    pos_x               = 7;
+  double    pos_y               = 8;
+  double    pos_z               = 9;
+  double    fov                 = 10;
+  ColorRGBA frustum_color       = 11;
+  double    frustum_length      = 12;
+  bool      is_hiding_arrows    = 13;
+  bool      is_hiding_wheels    = 14;
+  bool      is_locking_position = 15;
+  bool      is_locking_rotation = 16;
+  bool      is_hiding_frustum   = 17;
+  double    aspect_width        = 18;
+  double    aspect_height       = 19;
 }
 
-message CameraSaveEvent {
-  CameraEventType type = 1;
+message CameraDeleteEvent { string id = 1;  }
 
-  oneof payload {
-    string delete_id = 2; // for delete
-    Camera upsert = 3;    // for upsert
+message CameraUpsertEvent { Camera camera = 1; }
+
+message CameraSaveEvent {
+  oneof event {
+    CameraDeleteEvent delete = 1;
+    CameraUpsertEvent upsert = 2;
   }
 }
 
-message CameraSaveEventSeries { repeated CameraSaveEvent events = 1; }
+message CameraSaveEventSeries {
+  repeated CameraSaveEvent events  = 1;
+  uint32                   version = 2;
+}
+
+enum CameraAutosaveResponseType {
+  ACK = 0;
+}
+
+message CameraAutosaveResponse {
+  oneof payload { CameraAutosaveResponseAck ack = 1; }
+}
+
+message CameraAutosaveResponseAck {
+  int32 last_updated_version = 1; // for ACK
+}
