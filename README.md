@@ -1,145 +1,168 @@
-# Setup
+# OmniCam
 
-## Core Tools Version
+This guide provides instructions for both developers and DevOps engineers working on the OmniCam project.
 
-Nodejs -> v22.18.0
+## 📋 Table of Contents
 
-Golang -> v1.24.5
+**<a id="development-guide">1. 🛠 Development Guide</a>**
 
-## CLI
+- **1.1** <a href="#core-tools">Core Tools</a>
+- **1.2** <a href="#frontend-development">Frontend Development</a>
+  - **1.2.1** Setup & Installation
+  - **1.2.2** Local Configuration
+  - **1.2.3** Code Generation
 
-### sqlc
+- **1.3** <a href="#backend-development">Backend Development</a>
+  - **1.3.1** <a href="#cli-utilities">CLI Utilities</a>
+  - **1.3.2** <a href="#local-workflow">Local Workflow</a>
+  - **1.3.3** <a href="#database--schema-management">Database & Schema Management</a>
+    - **1.3.3.1** <a href="#migrations">Migrations</a>
+    - **1.3.3.2** <a href="#queries">Queries</a>
 
-To generate golang type interfaces and queries handler from sql
+- **1.4** <a href="#file-system-structure">File System Structure</a>
+- **1.5** <a href="#linting-and-code-style">Linting and Code Style</a>
+- **1.6** <a href="#recommended-extensions-vs-code">Recommended Extensions (VS Code)</a>
 
-```bash
-go install github.com/sqlc-dev/sqlc/cmd/sqlc@latest
-```
+**2. <a href="#devops-deployment">🚢 DevOps & Deployment</a>**
 
-### golang-migrate
+- **2.1** <a href="#production-environment-setup">Production Environment Setup</a>
 
-To migrate database to newer version
+---
 
-```bash
-go install -tags 'postgres' github.com/golang-migrate/migrate/v4/cmd/migrate@latest
-```
+# [🛠 Development Guide]
 
-### Protoc
+## Core Tools
 
-To compile proto files to code
+Ensure your local environment matches these global versions before proceeding:
 
-https://protobuf.dev/installation/
+- **Node.js**: v22.18.0
+- **Golang**: v1.24.5
+- **Docker**: For running PostgreSQL 17
 
-- Protoc Golang Plugin
+## 🖥 Frontend Development
 
-```bash
-go install google.golang.org/protobuf/cmd/protoc-gen-go@latest
-```
+> **Note:** Add Go binaries to your path by adding `export PATH="$PATH:$(go env GOBIN)"` to your `~/.bashrc` or `~/.zshrc`.
 
-\*\* Make sure installed binaries from go is in PATH env
-
-To do this, add `export PATH="$PATH:$(go env GOBIN)"` to ~/.bashrc
-
-## Env
-
-Create a file frontend/.env and backend/.env, you can see meaning of each env in .env.example
-
-\*\* When adding env, make sure to add to schema and not use os.GetEnv or process.env
-
-## Extension
-
-### Prettier (esbenp.prettier-vscode)
-
-### Run on Save (pucelle.run-on-save)
-
-### Proto Formatter (DrBlury.protobuf-vsc)
-
-# Running
-
-Frontend Dev -> `npm run dev`
-
-Swagger -> `npm run swagger`
-
-Backend -> `go ./backend/main.go`
-
-## After pulling
-
-- npm install
-
-- npm run sqlc && npm run proto
-
-# Database
-
-We use PostgreSQL as a database, to spin up postgres open a new terminal, and use command
-
-`docker run --rm -it --name omnicam-postgres -e POSTGRES_PASSWORD=password -p 5433:5432 postgres:17`
-
-To migrate, do
-
-`migrate -path db/migrations/ -database "postgresql://postgres:password@localhost:5432/omnicam?sslmode=disable" up`
-
-## Schema
-
-When adding a schema, make sure to add both .up.sql and .down.sql, up is for applying migration, and down is for rollbacking migration
-
-\*\*\* Order of commands must be reversed for down!
-
-## Query
-
-Follow query format of sqlc
-
-\* When saving a schema or query file sqlc generate should be run automatically with extension Run on Save
-
-# Lint and Style
-
-Please run style check and lint before commit if possible
-
-To check style
+**1. Setup & Installation**
 
 ```bash
-npm run style-check
+cd frontend
+npm install
 ```
 
-To format
+**2. Local Configuration**
+Create a `frontend/.env` file based on `.env.example`.
+
+> **Note:** Never use `process.env` directly in components. Map values through the configuration schema.
+
+**3. Code Generation**
+Run these after any changes to SQL queries or Protobuf definitions:
 
 ```bash
-npm run format
+npm run sqlc && npm run proto
 ```
 
-To check lint
+## ⚙️ Backend Development
 
-```bash
-npm run lint
-```
+### CLI Utilities
 
-To fix lint
+Install these Go binaries for database management and Protobuf compilation.
 
-```bash
-npm run lint:fix
-```
+1. **sqlc**: Generates type-safe Go code from SQL.
 
-File system
+   ```bash
+   go install github.com/sqlc-dev/sqlc/cmd/sqlc@latest
+   ```
 
-3D model -> uploads/{projectId}/{id}/modelName
+2. **golang-migrate**: Handles database versioning.
 
-Model image -> uploads/model/{projectId}/{id}/image.jpg
+   ```bash
+   go install -tags 'postgres' github.com/golang-migrate/migrate/v4/cmd/migrate@latest
+   ```
 
-Project image -> uploads/project/{projectId}
+3. **Protoc & Plugins**:
+   - [Install Protoc Compiler](https://protobuf.dev/installation/)
+   - **Golang Plugin**:
+     ```bash
+     go install google.golang.org/protobuf/cmd/protoc-gen-go@latest
+     ```
 
-# Deploy
+### Local Workflow
 
-Copy .env.example from
+1. **Database Setup**: Start a PostgreSQL 17 instance via Docker:
 
-- db/.env.example
+   ```bash
+   docker run --rm -it --name omnicam-postgres -e POSTGRES_PASSWORD=password -p 5433:5432 postgres:17
+   ```
 
-- frontend/.env.example
+2. **Frontend Post-install**:
 
-- backend/.env.example
+   ```bash
+   npm install
+   npm run sqlc && npm run proto
+   ```
 
-Then populate with your own env into
+3. **Execution Commands**:
 
-- db/.env.prod
+   | Task         | Command                    |
+   | ------------ | -------------------------- |
+   | **Frontend** | `npm run dev`              |
+   | **Backend**  | `go run ./backend/main.go` |
+   | **Swagger**  | `npm run swagger`          |
 
-- frontend/.env.prod
+---
 
-- backend/.env.prod
+### Database & Schema Management
+
+#### Migrations
+
+Every schema change requires a .up.sql (apply) and a .down.sql (rollback) file.
+
+- **Apply**:
+  ```bash
+  migrate -path db/migrations/ -database 'postgresql://postgres:password@localhost:5432/omnicam?sslmode=disable' up
+  ```
+- **Rollback**: Commands in the down file must be the exact reverse order of the up file.
+
+#### Queries
+
+We use **sqlc**. If you use the **Run on Save** VS Code extension, code generation will trigger automatically upon saving .sql files.
+
+---
+
+### File System Structure
+
+The application expects the following directory structure for persistent storage:
+
+- **3D Models**: `uploads/{projectId}/{id}/modelName`
+- **Model Images**: `uploads/model/{projectId}/{id}/image.jpg`
+- **Project Images**: `uploads/project/{projectId}`
+
+### Linting and Code Style
+
+Run these checks before committing your changes:
+
+| Task                | Command               |
+| ------------------- | --------------------- |
+| **Check Style**     | `npm run style-check` |
+| **Format Code**     | `npm run format`      |
+| **Check Lint**      | `npm run lint`        |
+| **Fix Lint Issues** | `npm run lint:fix`    |
+
+### Recommended Extensions (VS Code)
+
+- **Prettier** (`esbenp.prettier-vscode`)
+- **Run on Save** (`pucelle.run-on-save`)
+- **Proto Formatter** (`DrBlury.protobuf-vsc`)
+
+---
+
+## 🚢 DevOps & Deployment
+
+### Production Environment Setup
+
+To prepare for a production release, copy the example files and populate them with the target server credentials:
+
+1. `db/.env.example` ➡️ `db/.env.prod`
+2. `frontend/.env.example` ➡️ `frontend/.env.prod`
+3. `backend/.env.example` ➡️ `backend/.env.prod`
