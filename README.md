@@ -4,20 +4,20 @@ This guide provides instructions for both developers and DevOps engineers workin
 
 ## 📋 Table of Contents
 
-**<a id="development-guide">1. 🛠 Development Guide</a>**
+**1. <a href="#development-guide">🛠 Development Guide</a>**
 
 - **1.1** <a href="#core-tools">Core Tools</a>
 - **1.2** <a href="#frontend-development">Frontend Development</a>
-  - **1.2.1** Setup & Installation
-  - **1.2.2** Local Configuration
-  - **1.2.3** Code Generation
+  - **1** <a href="#frontend-setup-installation">Setup & Installation</a>
+  - **2** <a href="#frontend-local-configuration">Local Configuration</a>
+  - **3** <a href="#frontend-code-generation">Code Generation</a>
 
 - **1.3** <a href="#backend-development">Backend Development</a>
   - **1.3.1** <a href="#cli-utilities">CLI Utilities</a>
   - **1.3.2** <a href="#local-workflow">Local Workflow</a>
   - **1.3.3** <a href="#database--schema-management">Database & Schema Management</a>
-    - **1.3.3.1** <a href="#migrations">Migrations</a>
-    - **1.3.3.2** <a href="#queries">Queries</a>
+    - **1** <a href="#migrations">Migrations</a>
+    - **2** <a href="#queries">Queries</a>
 
 - **1.4** <a href="#file-system-structure">File System Structure</a>
 - **1.5** <a href="#linting-and-code-style">Linting and Code Style</a>
@@ -29,9 +29,13 @@ This guide provides instructions for both developers and DevOps engineers workin
 
 ---
 
-# [🛠 Development Guide]
+<a id="development-guide"></a>
 
-## Core Tools
+# 1. 🛠 Development Guide
+
+<a id="core-tools"></a>
+
+## 1.1. Core Tools
 
 Ensure your local environment matches these global versions before proceeding:
 
@@ -39,34 +43,49 @@ Ensure your local environment matches these global versions before proceeding:
 - **Golang**: v1.24.5
 - **Docker**: For running PostgreSQL 17
 
-## 🖥 Frontend Development
+---
 
-> **Note:** Add Go binaries to your path by adding `export PATH="$PATH:$(go env GOBIN)"` to your `~/.bashrc` or `~/.zshrc`.
+<a id="frontend-development"></a>
 
-**1. Setup & Installation**
+## 1.2. 🖥 Frontend Development
 
-```bash
-cd frontend
-npm install
-```
+<a id="frontend-setup-installation"></a>
 
-**2. Local Configuration**
-Create a `frontend/.env` file based on `.env.example`.
+1. **Setup & Installation**
 
-> **Note:** Never use `process.env` directly in components. Map values through the configuration schema.
+   ```bash
+   cd frontend
+   npm install
+   ```
 
-**3. Code Generation**
-Run these after any changes to SQL queries or Protobuf definitions:
+<a id="frontend-local-configuration"></a>
 
-```bash
-npm run sqlc && npm run proto
-```
+2. **Local Configuration**
+   Create a `frontend/.env` file based on `.env.example`.
 
-## ⚙️ Backend Development
+   > **Note:** Never use `process.env` directly in components. Map values through the configuration schema.
 
-### CLI Utilities
+<a id="frontend-code-generation"></a>
+
+3. **Code Generation**
+
+   Run these after any changes to SQL queries or Protobuf definitions:
+
+   ```bash
+   npm run sqlc && npm run proto
+   ```
+
+<a id="backend-development"></a>
+
+## 1.3. ⚙️ Backend Development
+
+<a id="cli-utilities"></a>
+
+### 1.3.1. CLI Utilities
 
 Install these Go binaries for database management and Protobuf compilation.
+
+> **Note:** Add Go binaries to your path by adding `export PATH="$PATH:$(go env GOBIN)"` to your `~/.bashrc` or `~/.zshrc`.
 
 1. **sqlc**: Generates type-safe Go code from SQL.
 
@@ -83,11 +102,12 @@ Install these Go binaries for database management and Protobuf compilation.
 3. **Protoc & Plugins**:
    - [Install Protoc Compiler](https://protobuf.dev/installation/)
    - **Golang Plugin**:
-     ```bash
-     go install google.golang.org/protobuf/cmd/protoc-gen-go@latest
-     ```
+     `bash
+go install google.golang.org/protobuf/cmd/protoc-gen-go@latest
+`
+     <a id="local-workflow"></a>
 
-### Local Workflow
+### 1.3.2. Local Workflow
 
 1. **Database Setup**: Start a PostgreSQL 17 instance via Docker:
 
@@ -112,33 +132,41 @@ Install these Go binaries for database management and Protobuf compilation.
 
 ---
 
-### Database & Schema Management
+<a id="database-schema-management"></a>
 
-#### Migrations
+### 1.3.3. Database & Schema Management
 
-Every schema change requires a .up.sql (apply) and a .down.sql (rollback) file.
+<a id="migrations"></a>
 
-- **Apply**:
-  ```bash
-  migrate -path db/migrations/ -database 'postgresql://postgres:password@localhost:5432/omnicam?sslmode=disable' up
-  ```
-- **Rollback**: Commands in the down file must be the exact reverse order of the up file.
+1. **Migrations**
 
-#### Queries
+   Every schema change requires a .up.sql (apply) and a .down.sql (rollback) file.
+   - **Apply**:
+     ```bash
+     migrate -path db/migrations/ -database 'postgresql://postgres:password@localhost:5432/omnicam?sslmode=disable' up
+     ```
+   - **Rollback**: Commands in the down file must be the exact reverse order of the up file.
 
-We use **sqlc**. If you use the **Run on Save** VS Code extension, code generation will trigger automatically upon saving .sql files.
+<a id="queries"></a>
+
+2. **Queries**
+
+   We use **sqlc**. If you use the **Run on Save** VS Code extension, code generation will trigger automatically upon saving .sql files.
 
 ---
 
-### File System Structure
+<a id="file-system-structure"></a>
+
+### 1.3.4. File System Structure
 
 The application expects the following directory structure for persistent storage:
 
 - **3D Models**: `uploads/{projectId}/{id}/modelName`
 - **Model Images**: `uploads/model/{projectId}/{id}/image.jpg`
 - **Project Images**: `uploads/project/{projectId}`
+  <a id="linting-and-code-style"></a>
 
-### Linting and Code Style
+### 1.4. Linting and Code Style
 
 Run these checks before committing your changes:
 
@@ -149,7 +177,9 @@ Run these checks before committing your changes:
 | **Check Lint**      | `npm run lint`        |
 | **Fix Lint Issues** | `npm run lint:fix`    |
 
-### Recommended Extensions (VS Code)
+<a id="recommended-extensions-vs-code"></a>
+
+### 1.5. Recommended Extensions (VS Code)
 
 - **Prettier** (`esbenp.prettier-vscode`)
 - **Run on Save** (`pucelle.run-on-save`)
@@ -157,7 +187,11 @@ Run these checks before committing your changes:
 
 ---
 
+<a id="devops-deployment"></a>
+
 ## 🚢 DevOps & Deployment
+
+<a id="production-environment-setup"></a>
 
 ### Production Environment Setup
 
@@ -166,3 +200,11 @@ To prepare for a production release, copy the example files and populate them wi
 1. `db/.env.example` ➡️ `db/.env.prod`
 2. `frontend/.env.example` ➡️ `frontend/.env.prod`
 3. `backend/.env.example` ➡️ `backend/.env.prod`
+
+### Build and Run Container
+
+After setting up the environment variables, do this to build and run container
+
+```bash
+docker compose up
+```
