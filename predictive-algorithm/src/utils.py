@@ -30,6 +30,7 @@ def center_of_face(face: Array4x3) -> Array3:
     return np.mean(face, axis=0)
 
 
+# TODO: Correct horizontal angle
 def angle_from_face_normal(
     face: Array4x3,
     pos: Array3,
