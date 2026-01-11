@@ -28,6 +28,7 @@ def state_vector_dim():
                 )
             ],
             scale=1,
+            gltf=None,
         )
     )
 
@@ -59,4 +60,6 @@ def vector_to_state(vec, template_state: State):
         new_cameras.append(cam)
         idx += 7
 
-    return State(cameras=new_cameras, scale=template_state.scale)
+    return State(
+        cameras=new_cameras, scale=template_state.scale, gltf=template_state.gltf
+    )

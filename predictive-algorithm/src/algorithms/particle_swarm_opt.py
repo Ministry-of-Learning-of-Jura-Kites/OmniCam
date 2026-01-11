@@ -6,7 +6,7 @@ from state import InteractiveOptimizerPlotter, State
 from cost_functions import total_cost
 
 
-def optimize_camera_pso(
+def optimize_pso(
     initial_state: State,
     pl: Union[BackgroundPlotter, None],
     iterations=100,

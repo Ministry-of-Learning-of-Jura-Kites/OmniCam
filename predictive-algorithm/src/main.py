@@ -1,12 +1,15 @@
 import math
 import os
 from cost_functions import angle_cost
-from algorithms.particle_swarm_opt import optimize_camera_pso
+from algorithms.particle_swarm_opt import optimize_pso
+from algorithms.differential_evolution import optimize_de
 import numpy as np
 from state import CameraState, State, render_from_state
 import pyvista as pv
 from pyvistaqt import BackgroundPlotter
 import quaternion
+
+# from pygltflib import GLTF2
 
 pl = BackgroundPlotter()
 face = np.array(
@@ -28,6 +31,10 @@ state = State(
         )
     ],
     scale=1,
+    gltf=pv.read("~/Downloads/omnicam/lidar-cpn.glb")
+    .combine()
+    .extract_surface()
+    .triangulate(),
 )
 
 
@@ -36,17 +43,21 @@ def main():
     pl.show()
 
     # from cost_functions import total_cost
-
     # print(total_cost(state))
-
     # breakpoint()
 
-    optimize_camera_pso(
+    final_state = optimize_pso(
         state,
         pl,
+        # None,
     )
+    # final_state = optimize_de(
+    #     state,
+    #     gltf
+    # )
 
-    # embed()
+    render_from_state(pl, final_state)
+    breakpoint()
 
 
 if __name__ == "__main__":
