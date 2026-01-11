@@ -1,68 +1,51 @@
 import math
 import os
 from cost_functions import angle_cost
+from algorithms.particle_swarm_opt import optimize_camera_pso
 import numpy as np
-from state import CameraState, State
+from state import CameraState, State, render_from_state
 import pyvista as pv
 from pyvistaqt import BackgroundPlotter
 import quaternion
-from utils import get_seeded_color_rgb
-
-
-def render_from_state(pl: pv.Plotter, state: State):
-    pl.clear()
-    for i, camera in enumerate(state.cameras):
-        color = get_seeded_color_rgb(i)
-
-        local_front_vector = np.array([0.0, 0.0, 1.0])
-
-        # Rotate the local vector to get the world-space front vector
-        world_front_vector = quaternion.rotate_vectors(camera.angle, local_front_vector)
-        arrow = pv.Arrow(start=camera.pos, direction=world_front_vector)
-        silhouette = dict(
-            color="white",
-            line_width=8.0,
-        )
-        pl.add_mesh(arrow, color=color, silhouette=silhouette)
-
-        faces = np.hstack([[4, 0, 1, 2, 3]])
-        pl.add_mesh(pv.PolyData(camera.face, faces=faces), color=color)
-
 
 pl = BackgroundPlotter()
 face = np.array(
     [
-        [-1.0, -1.0, -1.0],
-        [-1.0, -1.0, 1.0],
-        [-1.0, 1.0, 1.0],
-        [-1.0, 1.0, -1.0],
+        [5.0, -1.0, -1.0],
+        [5.0, -1.0, 1.0],
+        [5.0, 1.0, 1.0],
+        [5.0, 1.0, -1.0],
     ]
 )
 state = State(
     [
         CameraState(
-            face,
-            np.array([0, 0, 0]),
-            quaternion.from_float_array(
-                [
-                    0.022,
-                    0.708,
-                    0.443,
-                    -0.550,
-                ]
-            ),
+            face=face,
+            pos=np.array([19, 0, 0]),
+            angle=quaternion.from_rotation_vector([0, -np.pi / 4, 0]),
+            pixels=np.array([1920, 1080]),
+            vfov=70,
         )
-    ]
+    ],
+    scale=1,
 )
 
 
 def main():
-
     render_from_state(pl, state)
-    pl.show_axes()
-    pl.enable_trackball_style()
-
     pl.show()
+
+    # from cost_functions import total_cost
+
+    # print(total_cost(state))
+
+    # breakpoint()
+
+    optimize_camera_pso(
+        state,
+        pl,
+    )
+
     # embed()
 
 
