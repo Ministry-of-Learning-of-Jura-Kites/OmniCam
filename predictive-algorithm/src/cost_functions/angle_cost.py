@@ -1,6 +1,6 @@
 import math
 from state import State
-from utils import center_of_face, angle_from_point
+from utils import angle_from_face_normal, center_of_face
 from constant import BIG_M
 from astropy.units import Quantity
 import astropy.units as u
@@ -8,6 +8,9 @@ import astropy.units as u
 
 def horizontal_cost(hor_deg: Quantity[u.degree]) -> float:
     cost = 0
+
+    hor_deg = hor_deg.to_value(u.degree)
+    hor_deg = abs(hor_deg)
 
     hor_threshold_limit = 30.0
     hor_hard_limit = 45.0
@@ -26,30 +29,38 @@ def horizontal_cost(hor_deg: Quantity[u.degree]) -> float:
 
 
 def vertical_cost(ver_deg: Quantity[u.degree]) -> float:
-    cost = 0
+    val = ver_deg.to_value(u.deg)
 
     ver_min_limit = 30.0
     ver_max_limit = 45.0
+    midpoint = (ver_min_limit + ver_max_limit) / 2  # 37.5
 
-    if ver_deg < ver_min_limit:
-        dist_below = ver_min_limit - ver_deg
-        cost = BIG_M + (dist_below * 5000)
-    elif ver_deg <= ver_max_limit:
-        midpoint = (ver_min_limit + ver_max_limit) / 2  # 37.5
-        cost = (ver_deg - midpoint) ** 2
+    # Calculate the cost at the boundary to ensure continuity
+    # (30 - 37.5)^2 = 56.25
+    boundary_cost = (ver_min_limit - midpoint) ** 2
+
+    if val < ver_min_limit:
+        # Distance below the minimum
+        dist_below = ver_min_limit - val
+        return boundary_cost + BIG_M + (dist_below * 5000)
+
+    elif val <= ver_max_limit:
+        # Smooth parabolic cost for the "safe" zone
+        return (val - midpoint) ** 2
+
     else:
-        dist_above = ver_deg - ver_max_limit
-        cost = BIG_M + (dist_above * 5000)
-
-    return cost
+        # Distance above the maximum
+        dist_above = val - ver_max_limit
+        return boundary_cost + BIG_M + (dist_above * 5000)
 
 
 def cost(state: State):
     cost = 0
     for cam_state in state.cameras:
-        face_center = center_of_face(cam_state.face)
-        hor, ver = angle_from_point(face_center, cam_state.pos, cam_state.angle)
-        hor_deg, ver_deg = abs(math.degrees(hor)), abs(math.degrees(ver))
+        hor, ver = angle_from_face_normal(
+            cam_state.face, cam_state.pos, cam_state.angle
+        )
+        hor_deg, ver_deg = hor.to(u.degree), ver.to(u.degree)
 
         print(hor_deg, ver_deg)
 
