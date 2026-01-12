@@ -15,7 +15,7 @@ class CameraMesh:
     face_mesh: Optional[pv.PolyData] = None
     camera_actor: Optional[Any] = None
     camera_silhouette_actor: Optional[Any] = None
-    cone_actor: Optional[Any] = None
+    frustum_actor: Optional[Any] = None
 
 
 @dataclass
@@ -58,7 +58,7 @@ class InteractiveOptimizerPlotter:
 
     def update(self, state: State, iteration: int):
         render_from_state(self.plotter, state)
-        breakpoint()
+        # breakpoint()
 
     # def update(self, state: State, iteration: int):
     #     breakpoint()
@@ -79,6 +79,4 @@ def render_from_state(pl: pv.Plotter, state: State):
                 vtk_matrix.SetElement(row, col, transform[row, col])
         camera.meshes.camera_actor.SetUserMatrix(vtk_matrix)
         camera.meshes.camera_silhouette_actor.SetUserMatrix(vtk_matrix)
-        camera.meshes.cone_actor.SetUserMatrix(vtk_matrix)
-
-        # camera.camera_mesh.camera_actor.user_matrix = transform
+        camera.meshes.frustum_actor.SetUserMatrix(vtk_matrix)

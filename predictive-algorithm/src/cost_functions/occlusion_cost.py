@@ -7,32 +7,30 @@ from basic_types import Array3
 
 
 def is_in_view(point, cam_state: CameraState) -> Union[bool, Union[Array3]]:
-    # 1. Transform point to Camera Local Space (View Space)
-    # Translate
+    # Transform point to Camera Local Space (View Space)
     rel_point = point - cam_state.pos
     # Rotate (using the conjugate to move from world to local)
     local_point = quaternion.rotate_vectors(cam_state.angle.conj(), rel_point)
 
-    # In standard camera systems, the camera looks down -Z or +Z.
-    # Assuming standard GL convention: Camera looks down -Z
     x, y, z = local_point
-
-    if z <= 0:  # Point is behind the camera
+    if y <= 0:
         return (False, local_point)
 
-    # 2. Calculate Projection limits
-    # aspect_ratio = width / height
     aspect_ratio = cam_state.pixels[0] / cam_state.pixels[1]
     tan_half_vfov = np.tan(np.deg2rad(cam_state.vfov) / 2)
 
-    # 3. NDC Validation
-    # The maximum allowed Y at this distance (z) is: |z| * tan(vfov/2)
-    # The maximum allowed X at this distance (z) is: |z| * tan(vfov/2) * aspect_ratio
+    # depth is the distance along the forward axis (y)
+    depth = y
 
-    limit_y = abs(z) * tan_half_vfov
-    limit_x = limit_y * aspect_ratio
+    # limit_z is the max vertical distance from the center at this depth
+    limit_z = depth * tan_half_vfov
+    # limit_x is the max horizontal distance from the center at this depth
+    limit_x = limit_z * aspect_ratio
 
-    return ((-limit_x <= x <= limit_x) and (-limit_y <= y <= limit_y), local_point)
+    # NDC Validation
+    is_visible = (-limit_x <= x <= limit_x) and (-limit_z <= z <= limit_z)
+
+    return (is_visible, local_point)
 
 
 def cost(state: State):

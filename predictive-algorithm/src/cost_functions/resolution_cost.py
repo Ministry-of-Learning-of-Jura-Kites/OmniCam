@@ -58,6 +58,9 @@ def cost(state: State):
     cost = 0
     for cam_state in state.cameras:
         face_dist = get_distance_to_face(cam_state.pos, cam_state.face)
+        if face_dist / state.scale < 0.5:
+            cost += BIG_M + 10000 / (1 + face_dist)
+            continue
         x_pixel_per_dist, y_pixel_per_dist = get_pixel_per_meter(cam_state, face_dist)
         cost += ppm_to_cost(x_pixel_per_dist * state.scale)
         cost += ppm_to_cost(y_pixel_per_dist * state.scale)
