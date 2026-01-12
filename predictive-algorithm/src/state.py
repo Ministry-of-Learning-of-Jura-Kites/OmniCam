@@ -1,13 +1,21 @@
 from pyvistaqt import BackgroundPlotter
 from utils import get_seeded_color_rgb
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 import time
-from typing import List
-
+from typing import Any, List, Optional
+import vtk
 import numpy as np
 import pyvista as pv
 from basic_types import Array2x2, Array4x3, Array3
 import quaternion
+
+
+@dataclass
+class CameraMesh:
+    face_mesh: Optional[pv.PolyData] = None
+    camera_actor: Optional[Any] = None
+    camera_silhouette_actor: Optional[Any] = None
+    cone_actor: Optional[Any] = None
 
 
 @dataclass
@@ -17,6 +25,7 @@ class CameraState:
     angle: quaternion.quaternion
     pixels: Array2x2
     vfov: float
+    meshes: CameraMesh = field(default_factory=CameraMesh)
 
 
 @dataclass
@@ -30,27 +39,46 @@ class InteractiveOptimizerPlotter:
     def __init__(self, plotter: BackgroundPlotter, initial_state: State):
         self.plotter = plotter
 
+        self.state = initial_state
+        self.skip_iterations = 0
+        self.running = False
+
+        # UI Toggles
+        self.plotter.add_key_event("n", self.next_step)  # Press 'n' for next iteration
+        self.plotter.add_key_event("c", self.continue_run)  # Press 'c' to run freely
+
+        self.plotter.show()
+
+    def next_step(self):
+        self.skip_iterations = 0  # Stop at the very next iteration
+        self.running = False
+
+    def continue_run(self):
+        self.running = True
+
     def update(self, state: State, iteration: int):
-        breakpoint()
         render_from_state(self.plotter, state)
+        breakpoint()
+
+    # def update(self, state: State, iteration: int):
+    #     breakpoint()
+    #     render_from_state(self.plotter, state)
 
 
 def render_from_state(pl: pv.Plotter, state: State):
-    pl.clear()
-    pl.add_mesh(state.gltf)
+    # pl.clear()
     for i, camera in enumerate(state.cameras):
-        color = get_seeded_color_rgb(i)
+        rot_mat = quaternion.as_rotation_matrix(camera.angle)
 
-        local_front_vector = np.array([0.0, 0.0, 1.0])
+        transform = np.eye(4)
+        transform[:3, :3] = rot_mat
+        transform[:3, 3] = camera.pos
+        vtk_matrix = vtk.vtkMatrix4x4()
+        for row in range(4):
+            for col in range(4):
+                vtk_matrix.SetElement(row, col, transform[row, col])
+        camera.meshes.camera_actor.SetUserMatrix(vtk_matrix)
+        camera.meshes.camera_silhouette_actor.SetUserMatrix(vtk_matrix)
+        camera.meshes.cone_actor.SetUserMatrix(vtk_matrix)
 
-        # Rotate the local vector to get the world-space front vector
-        world_front_vector = quaternion.rotate_vectors(camera.angle, local_front_vector)
-        arrow = pv.Arrow(start=camera.pos, direction=world_front_vector)
-        silhouette = dict(
-            color="white",
-            line_width=8.0,
-        )
-        pl.add_mesh(arrow, color=color, silhouette=silhouette)
-
-        faces = np.hstack([[4, 0, 1, 2, 3]])
-        pl.add_mesh(pv.PolyData(camera.face, faces=faces), color=color)
+        # camera.camera_mesh.camera_actor.user_matrix = transform

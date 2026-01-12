@@ -42,7 +42,7 @@ def cost(state: State):
             valid_coord, ndc_coord = is_in_view(corner, cam_state)
             if not valid_coord:
                 cost += BIG_M + np.linalg.norm(ndc_coord) * 100
-                continue
+                break
 
             point, _ = state.gltf.ray_trace(
                 origin=cam_state.pos, end_point=corner, first_point=True
