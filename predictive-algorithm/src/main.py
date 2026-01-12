@@ -10,7 +10,7 @@ from state import CameraState, State, render_from_state
 import pyvista as pv
 from pyvistaqt import BackgroundPlotter
 import quaternion
-from utils import get_seeded_color_rgb
+from utils import center_of_face, get_seeded_color_rgb, look_at_quaternion
 
 pl = BackgroundPlotter()
 
@@ -46,7 +46,11 @@ def init_state(pl: pyvistaqt.BackgroundPlotter, state: State):
     for i, camera in enumerate(state.cameras):
         color = get_seeded_color_rgb(i)
 
-        arrow = pv.Arrow(start=(0, 0, 0), direction=(0.0, 1.0, 0.0))
+        face_center = center_of_face(camera.face)
+
+        camera.angle = look_at_quaternion(face_center - camera.pos)
+
+        arrow = pv.Arrow(start=(0, 0, 0), direction=(0.0, 0.0, 1.0))
         camera.meshes.camera_actor = pl.add_mesh(arrow, color=color)
         silhouette_actor = pl.add_silhouette(
             arrow,
@@ -58,8 +62,8 @@ def init_state(pl: pyvistaqt.BackgroundPlotter, state: State):
         temp_cam = pv.Camera()
         temp_cam.position = np.array([0, 0, 0])
         temp_cam.clipping_range = (0.1, 10.0)
-        temp_cam.focal_point = temp_cam.position + np.array([0, 1, 0])
-        temp_cam.up = (1, 0, 0)
+        temp_cam.focal_point = temp_cam.position + np.array([0, 0, 1])
+        temp_cam.up = (0, 1, 0)
         temp_cam.view_angle = camera.vfov
         aspect = camera.pixels[0] / camera.pixels[1]
         frustum = temp_cam.view_frustum(aspect)
