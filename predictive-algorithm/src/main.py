@@ -26,14 +26,14 @@ state = State(
     [
         CameraState(
             face=face,
-            pos=np.array([19, 0, 0]),
-            angle=quaternion.from_rotation_vector([0, -np.pi / 4, 0]),
+            pos=np.array([0, 0, 0]),
+            angle=quaternion.from_rotation_vector([0, 0, 0]),
             pixels=np.array([1920, 1080]),
             vfov=70,
         )
     ],
     scale=1,
-    gltf=pv.read("~/Downloads/oxygenai models/cpn-lidar.glb")
+    gltf=pv.read("~/Downloads/omnicam/cpn-lidar.glb")
     .combine()
     .extract_surface()
     .triangulate(),
@@ -41,11 +41,12 @@ state = State(
 
 
 def init_state(pl: pyvistaqt.BackgroundPlotter, state: State):
-    # pl.add_mesh(state.gltf)
+    pl.add_mesh(state.gltf)
+    pl.show_grid(color="gray", location="outer")
     for i, camera in enumerate(state.cameras):
         color = get_seeded_color_rgb(i)
 
-        arrow = pv.Arrow(start=(0, 0, 0), direction=(0.0, 0.0, 1.0))
+        arrow = pv.Arrow(start=(0, 0, 0), direction=(0.0, 1.0, 0.0))
         camera.meshes.camera_actor = pl.add_mesh(arrow, color=color)
         silhouette_actor = pl.add_silhouette(
             arrow,
@@ -54,21 +55,16 @@ def init_state(pl: pyvistaqt.BackgroundPlotter, state: State):
         )
         camera.meshes.camera_silhouette_actor = silhouette_actor
 
-        cone_length = 10.0
-        # Radius = length * tan(half_angle)
-        cone_radius = cone_length * np.tan(np.radians(camera.vfov / 2))
-
-        view_cone = pv.Cone(
-            center=(0, 0, 1 + cone_length / 2),  # Offset center so apex is at origin
-            direction=(0, 0, -1),  # Pointing along Z
-            height=cone_length,
-            radius=cone_radius,
-            resolution=32,
-        )
-
-        # Add the cone with transparency (opacity)
-        camera.meshes.cone_actor = pl.add_mesh(
-            view_cone, color=color, opacity=0.2, style="surface"
+        temp_cam = pv.Camera()
+        temp_cam.position = np.array([0, 0, 0])
+        temp_cam.clipping_range = (0.1, 10.0)
+        temp_cam.focal_point = temp_cam.position + np.array([0, 1, 0])
+        temp_cam.up = (0, 0, 1)
+        temp_cam.view_angle = camera.vfov
+        aspect = camera.pixels[0] / camera.pixels[1]
+        frustum = temp_cam.view_frustum(aspect)
+        camera.meshes.frustum_actor = pl.add_mesh(
+            frustum, color=color, style="wireframe", opacity=0.5, line_width=2
         )
 
         faces = np.hstack([[4, 0, 1, 2, 3]])
@@ -76,8 +72,11 @@ def init_state(pl: pyvistaqt.BackgroundPlotter, state: State):
         pl.add_mesh(face_mesh, color=color)
         camera.meshes.face_mesh = face_mesh
 
+    pl.camera.up = (0, 1, 0)
+    pl.camera_set = True
     pl.add_axes()
     pl.show_axes()
+    pl.reset_camera(render=True, bounds=state.cameras[0].meshes.face_mesh.bounds)
     pl.enable_trackball_style()
 
 

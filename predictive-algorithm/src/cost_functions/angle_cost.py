@@ -67,4 +67,6 @@ def cost(state: State):
         cost += horizontal_cost(hor_deg)
         cost += vertical_cost(ver_deg)
 
+    print("angle cost:", cost)
+
     return cost
