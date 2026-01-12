@@ -59,7 +59,7 @@ def init_state(pl: pyvistaqt.BackgroundPlotter, state: State):
         temp_cam.position = np.array([0, 0, 0])
         temp_cam.clipping_range = (0.1, 10.0)
         temp_cam.focal_point = temp_cam.position + np.array([0, 1, 0])
-        temp_cam.up = (0, 0, 1)
+        temp_cam.up = (1, 0, 0)
         temp_cam.view_angle = camera.vfov
         aspect = camera.pixels[0] / camera.pixels[1]
         frustum = temp_cam.view_frustum(aspect)
