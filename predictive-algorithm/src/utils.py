@@ -65,3 +65,53 @@ def angle_from_face_normal(
         horizontal_offset * u.radian,
         vertical_offset * u.radian,
     )
+
+
+def look_at_quaternion(
+    forward_vector, up_vector=np.array([0, 1, 0]), reference_forward=np.array([0, 0, 1])
+):
+    """
+    Generates a quaternion that rotates an object to look at a specific direction.
+
+    Args:
+        direction_vector (np.ndarray): The direction the object should face (e.g., target position - current position).
+        up_vector (np.ndarray): The world's "up" direction.
+
+    Returns:
+        np.ndarray: A quaternion in scalar-last format (x, y, z, w).
+    """
+    # Normalize vectors
+    target_forward = forward_vector / np.linalg.norm(forward_vector)
+    global_up = up_vector / np.linalg.norm(up_vector)
+
+    # Calculate the rotation axis (cross product)
+    # This might be tricky if the vectors are parallel/anti-parallel.
+    axis = np.cross(reference_forward, target_forward)
+
+    # Check for edge cases where vectors are parallel (cross product is zero)
+    if np.linalg.norm(axis) < 1e-6:
+        # If parallel, no rotation needed.
+        if np.dot(reference_forward, target_forward) > 0:
+            return np.quaternion(1, 0, 0, 0)  # No rotation
+        else:
+            # If anti-parallel, rotate 180 degrees around an arbitrary axis perpendicular to forward.
+            # Using the global up vector as a reference for a valid axis.
+            axis = np.cross(reference_forward, global_up)
+            if (
+                np.linalg.norm(axis) < 1e-6
+            ):  # global_up was parallel to reference_forward
+                axis = np.array([1, 0, 0])  # Use X axis as fallback
+            axis = axis / np.linalg.norm(axis)
+            angle = np.pi  # 180 degrees
+
+    else:
+        # Normalize the axis
+        axis = axis / np.linalg.norm(axis)
+        # Calculate the angle (dot product and arccos)
+        cos_angle = np.dot(reference_forward, target_forward)
+        cos_angle = np.clip(cos_angle, -1.0, 1.0)  # avoid numerical issues
+        angle = np.arccos(cos_angle)
+
+    # Create SciPy Rotation object and get quaternion
+    quat = quaternion.from_rotation_vector(axis * angle)
+    return quat
