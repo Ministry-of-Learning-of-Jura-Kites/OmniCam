@@ -38,14 +38,16 @@ def angle_from_face_normal(
 ) -> Tuple[Quantity[u.radian], Quantity[u.radian]]:
     """Returns vertical and horizontal angles in radian unit"""
 
-    face_center = np.mean(face, axis=0)
-    angle_vec = quaternion.rotate_vectors(angle, [0, 0, 1])
-    look_vec = face_center - pos
+    face_normal = np.cross(face[0] - face[1], face[0] - face[2])
 
-    horizontal_offset = math.atan2(look_vec[1], look_vec[0]) - math.atan2(
+    angle_vec = quaternion.rotate_vectors(angle, [0, 0, 1])
+    # look_vec = face_center - pos
+
+    horizontal_offset = math.atan2(face_normal[1], face_normal[0]) - math.atan2(
         angle_vec[1], angle_vec[0]
     )
 
+    face_center = np.mean(face, axis=0)
     highest_face_center = np.array([face_center[0], face_center[1], face[:, 2].max()])
     look_vec = highest_face_center - pos
     dist_xy_look = math.sqrt(look_vec[0] ** 2 + look_vec[1] ** 2)

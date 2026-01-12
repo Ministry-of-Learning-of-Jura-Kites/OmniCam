@@ -60,6 +60,7 @@ def optimize_pso(
                     g_best_cost = current_cost
         if pl != None:
             best_state_so_far = vector_to_state(g_best, initial_state)
+            print("Best state cost: ", total_cost(best_state_so_far))
             viz.update(best_state_so_far, iteration)
 
     return vector_to_state(g_best, initial_state)
