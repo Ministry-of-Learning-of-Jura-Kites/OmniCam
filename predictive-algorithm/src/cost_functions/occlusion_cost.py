@@ -7,28 +7,32 @@ from basic_types import Array3
 
 
 def is_in_view(point, cam_state: CameraState) -> Union[bool, Union[Array3]]:
-    # Transform point to Camera Local Space (View Space)
+    # 1. Transform point to Camera Local Space
     rel_point = point - cam_state.pos
-    # Rotate (using the conjugate to move from world to local)
     local_point = quaternion.rotate_vectors(cam_state.angle.conj(), rel_point)
 
+    # Map variables to axes: X=Forward, Y=Up, Z=Horizontal
     x, y, z = local_point
-    if y <= 0:
+
+    # 2. Depth Check (X is Forward)
+    if x <= 0:
         return (False, local_point)
 
+    # 3. Frustum Math
     aspect_ratio = cam_state.pixels[0] / cam_state.pixels[1]
     tan_half_vfov = np.tan(np.deg2rad(cam_state.vfov) / 2)
 
-    # depth is the distance along the forward axis (y)
-    depth = y
+    depth = x
 
-    # limit_z is the max vertical distance from the center at this depth
-    limit_z = depth * tan_half_vfov
-    # limit_x is the max horizontal distance from the center at this depth
-    limit_x = limit_z * aspect_ratio
+    # limit_y (Vertical) is determined by VFOV
+    limit_y = depth * tan_half_vfov
 
-    # NDC Validation
-    is_visible = (-limit_x <= x <= limit_x) and (-limit_z <= z <= limit_z)
+    # limit_z (Horizontal) is vertical limit scaled by aspect ratio
+    limit_z = limit_y * aspect_ratio
+
+    # 4. NDC Validation
+    # Vertical check (y-axis) and Horizontal check (z-axis)
+    is_visible = (-limit_y <= y <= limit_y) and (-limit_z <= z <= limit_z)
 
     return (is_visible, local_point)
 

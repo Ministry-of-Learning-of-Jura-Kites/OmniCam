@@ -36,28 +36,30 @@ def angle_from_face_normal(
     pos: Array3,
     angle: quaternion.quaternion,
 ) -> Tuple[Quantity[u.radian], Quantity[u.radian]]:
-    """Returns vertical and horizontal angles in radian unit"""
 
-    angle_vec = quaternion.rotate_vectors(angle, [0, 1, 0])
+    # 1. Rotate the X-axis forward vector
+    angle_vec = quaternion.rotate_vectors(angle, [1, 0, 0])
 
-    # Define Highest point of the face in Y as the target
+    # 2. Target vector
     face_center = np.mean(face, axis=0)
-    highest_face_center = np.array([face_center[0], face[:, 1].max(), face_center[2]])
+    # Assuming Z is Up for this example; adjust to face[:, 1].max() if Y is Up
+    highest_face_center = np.array([face_center[0], face_center[1], face[:, 2].max()])
     look_vec = highest_face_center - pos
 
-    # Horizontal Offset (XZ Plane)
-    horiz_look_angle = math.atan2(look_vec[2], look_vec[0])
-    horiz_cam_angle = math.atan2(angle_vec[2], angle_vec[0])
+    # 3. Horizontal Offset (XY Plane)
+    # atan2(y, x) gives angle from X-axis
+    horiz_look_angle = math.atan2(look_vec[1], look_vec[0])
+    horiz_cam_angle = math.atan2(angle_vec[1], angle_vec[0])
     horizontal_offset = horiz_look_angle - horiz_cam_angle
 
-    # Vertical Offset (Y is Up)
-    # Magnitude in the ground plane (XZ)
-    dist_xz_look = math.sqrt(look_vec[0] ** 2 + look_vec[2] ** 2)
-    dist_xz_cam = math.sqrt(angle_vec[0] ** 2 + angle_vec[2] ** 2)
+    # 4. Vertical Offset (Z is Up)
+    # Magnitude in the ground plane (XY)
+    dist_xy_look = math.sqrt(look_vec[0] ** 2 + look_vec[1] ** 2)
+    dist_xy_cam = math.sqrt(angle_vec[0] ** 2 + angle_vec[1] ** 2)
 
-    # Angle from the ground plane up toward the Y axis
-    vert_look_angle = math.atan2(look_vec[1], dist_xz_look)
-    vert_cam_angle = math.atan2(angle_vec[1], dist_xz_cam)
+    # Angle from the ground plane up toward the Z axis
+    vert_look_angle = math.atan2(look_vec[2], dist_xy_look)
+    vert_cam_angle = math.atan2(angle_vec[1], dist_xy_cam)  # Note: use Z index [2]
 
     vertical_offset = vert_look_angle - vert_cam_angle
 
@@ -68,7 +70,7 @@ def angle_from_face_normal(
 
 
 def look_at_quaternion(
-    forward_vector, up_vector=np.array([0, 1, 0]), reference_forward=np.array([0, 0, 1])
+    forward_vector, up_vector=np.array([0, 1, 0]), reference_forward=np.array([1, 0, 0])
 ):
     """
     Generates a quaternion that rotates an object to look at a specific direction.
