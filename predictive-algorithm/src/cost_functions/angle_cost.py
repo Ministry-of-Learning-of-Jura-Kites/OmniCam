@@ -1,4 +1,7 @@
 import math
+
+import numpy as np
+import quaternion
 from state import State
 from utils import angle_from_face_normal, center_of_face
 from constant import BIG_M
@@ -18,10 +21,10 @@ def horizontal_cost(hor_deg: Quantity[u.degree]) -> float:
     if hor_deg < hor_threshold_limit:
         cost = hor_deg
     elif hor_deg < hor_hard_limit:
-        cost = hor_threshold_limit + (hor_deg - hor_threshold_limit) ** 2
+        cost = hor_threshold_limit + (hor_deg - hor_threshold_limit) * 1000
     else:
         base_at_limit = (
-            hor_threshold_limit + (hor_hard_limit - hor_threshold_limit) ** 2
+            hor_threshold_limit + (hor_hard_limit - hor_threshold_limit) * 1000
         )
         cost = BIG_M + base_at_limit + (hor_deg - hor_hard_limit) * 5000
 

@@ -16,17 +16,17 @@ pl = BackgroundPlotter()
 
 face = np.array(
     [
-        [5.0, -1.0, -1.0],
-        [5.0, -1.0, 1.0],
-        [5.0, 1.0, 1.0],
-        [5.0, 1.0, -1.0],
+        [-1.0, -1.0, 20.0],
+        [-1.0, 1.0, 20.0],
+        [1.0, 1.0, 20.0],
+        [1.0, -1.0, 20.0],
     ]
 )
 state = State(
     [
         CameraState(
             face=face,
-            pos=np.array([0, 0, 0]),
+            pos=np.array([0, 0, 10]),
             angle=quaternion.from_rotation_vector([0, 0, 0]),
             pixels=np.array([1920, 1080]),
             vfov=70,

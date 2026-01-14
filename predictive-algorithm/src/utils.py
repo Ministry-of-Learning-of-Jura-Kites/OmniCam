@@ -42,26 +42,29 @@ def angle_from_face_normal(
 
     # 2. Target vector
     face_center = np.mean(face, axis=0)
-    # Assuming Z is Up for this example; adjust to face[:, 1].max() if Y is Up
-    highest_face_center = np.array([face_center[0], face_center[1], face[:, 2].max()])
+    # Using the highest point of the face for vertical targeting
+    highest_face_center = np.array([face_center[0], face[:, 1].max(), face_center[2]])
     look_vec = highest_face_center - pos
 
-    # 3. Horizontal Offset (XY Plane)
-    # atan2(y, x) gives angle from X-axis
-    horiz_look_angle = math.atan2(look_vec[1], look_vec[0])
-    horiz_cam_angle = math.atan2(angle_vec[1], angle_vec[0])
+    # 3. Horizontal Offset (XZ Plane is the ground)
+    # atan2(Z, X) gives the yaw: how far left/right from the forward X axis
+    horiz_look_angle = math.atan2(look_vec[2], look_vec[0])
+    horiz_cam_angle = math.atan2(angle_vec[2], angle_vec[0])
     horizontal_offset = horiz_look_angle - horiz_cam_angle
 
-    # 4. Vertical Offset (Z is Up)
-    # Magnitude in the ground plane (XY)
-    dist_xy_look = math.sqrt(look_vec[0] ** 2 + look_vec[1] ** 2)
-    dist_xy_cam = math.sqrt(angle_vec[0] ** 2 + angle_vec[1] ** 2)
+    # 4. Vertical Offset (Y is Up)
+    # Distance in the ground plane (XZ)
+    dist_xz_look = math.sqrt(look_vec[0] ** 2 + look_vec[2] ** 2)
+    dist_xz_cam = math.sqrt(angle_vec[0] ** 2 + angle_vec[2] ** 2)
 
-    # Angle from the ground plane up toward the Z axis
-    vert_look_angle = math.atan2(look_vec[2], dist_xy_look)
-    vert_cam_angle = math.atan2(angle_vec[1], dist_xy_cam)  # Note: use Z index [2]
+    # Angle from the ground plane (XZ) up toward the Y axis
+    vert_look_angle = math.atan2(look_vec[1], dist_xz_look)
+    vert_cam_angle = math.atan2(angle_vec[1], dist_xz_cam)
 
     vertical_offset = vert_look_angle - vert_cam_angle
+
+    # Normalize angles to -pi to pi range to prevent "jumping"
+    horizontal_offset = (horizontal_offset + math.pi) % (2 * math.pi) - math.pi
 
     return (
         horizontal_offset * u.radian,

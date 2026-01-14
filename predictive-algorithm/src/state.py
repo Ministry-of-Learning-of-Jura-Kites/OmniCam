@@ -58,7 +58,7 @@ class InteractiveOptimizerPlotter:
 
     def update(self, state: State, iteration: int):
         render_from_state(self.plotter, state)
-        breakpoint()
+        # breakpoint()
 
     # def update(self, state: State, iteration: int):
     #     breakpoint()
