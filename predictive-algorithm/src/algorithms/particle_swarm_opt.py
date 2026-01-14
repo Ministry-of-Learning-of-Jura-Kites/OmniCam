@@ -27,7 +27,7 @@ def optimize_pso(
     velocities = np.zeros_like(particles)
     p_best = particles.copy()
     p_best_cost = np.array(
-        [total_cost(vector_to_state(p, initial_state)) for p in particles]
+        [total_cost(vector_to_state(p, initial_state))[0] for p in particles]
     )
 
     g_best = p_best[np.argmin(p_best_cost)]
@@ -49,7 +49,7 @@ def optimize_pso(
 
             # Evaluate
             current_state = vector_to_state(particles[i], initial_state)
-            current_cost = total_cost(current_state)
+            current_cost, _ = total_cost(current_state)
 
             if current_cost < p_best_cost[i]:
                 p_best[i] = particles[i]

@@ -7,11 +7,10 @@ from utils import angle_from_face_normal, center_of_face
 from constant import BIG_M
 from astropy.units import Quantity
 import astropy.units as u
+import logging
 
 
 def horizontal_cost(hor_deg: Quantity[u.degree]) -> float:
-    cost = 0
-
     hor_deg = hor_deg.to_value(u.degree)
     hor_deg = abs(hor_deg)
 
@@ -25,8 +24,6 @@ def horizontal_cost(hor_deg: Quantity[u.degree]) -> float:
         # Smooth at the join (30), but gets very steep very fast.
         # This gives the optimizer a clear 'gravity' back toward 30.
         return threshold + 50 * (hor_deg - threshold) ** 2
-
-    return cost
 
 
 def vertical_cost(ver_deg: Quantity[u.degree]) -> float:
@@ -56,11 +53,9 @@ def cost(state: State):
         )
         hor_deg, ver_deg = hor.to(u.degree), ver.to(u.degree)
 
-        # print(hor_deg, ver_deg)
+        print(hor_deg, ver_deg)
 
         cost += horizontal_cost(hor_deg)
         cost += vertical_cost(ver_deg)
-
-    # print("angle cost:", cost)
 
     return cost

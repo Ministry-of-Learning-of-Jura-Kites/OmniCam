@@ -16,10 +16,11 @@ def optimize_de(initial_state: State):
         bounds.extend(
             [(-100 / initial_state.scale, 100 / initial_state.scale)] * 3
         )  # Pos
-        bounds.extend([(-1, 1)] * 4)  # Quaternion components
+        # bounds.extend([(-1, 1)] * 4)  # Quaternion components
 
     def objective(vec):
-        return total_cost(vector_to_state(vec, template))
+        cost, _ = total_cost(vector_to_state(vec, template))
+        return cost
 
     result = differential_evolution(objective, bounds, strategy="best1bin", maxiter=50)
     return vector_to_state(result.x, template)

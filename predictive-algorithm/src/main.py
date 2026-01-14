@@ -12,15 +12,19 @@ import pyvista as pv
 from pyvistaqt import BackgroundPlotter
 import quaternion
 from utils import center_of_face, get_seeded_color_rgb, look_at_quaternion
+import logging
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 pl = BackgroundPlotter()
 
 face = np.array(
     [
-        [-1.0, -1.0, 24.0],
-        [-1.0, 1.0, 24.0],
-        [1.0, 1.0, 24.0],
-        [1.0, -1.0, 24.0],
+        [-2.0, -2.0, 24.0],
+        [-2.0, 2.0, 24.0],
+        [2.0, 2.0, 24.0],
+        [2.0, -2.0, 24.0],
     ]
 )
 state = State(
@@ -109,7 +113,10 @@ def main():
     print(f"Elapsed time: {elapsed_time:.4f} seconds")
 
     render_from_state(pl, final_state)
-    print("total cost: ", total_cost(state, True))
+
+    total, result = total_cost(final_state)
+    print("cost distribution: ", result)
+    print("total cost: ", total)
     breakpoint()
 
 
