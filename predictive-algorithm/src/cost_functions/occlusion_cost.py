@@ -38,28 +38,39 @@ def is_in_view(point, cam_state: CameraState) -> Union[bool, Union[Array3]]:
 
 
 def cost(state: State):
-    cost = 0
+    total_occlusion_cost = 0
+
     for cam_state in state.cameras:
         for corner in cam_state.face:
+            # 1. Soften the 'Out of View' penalty
             valid_coord, ndc_coord = is_in_view(corner, cam_state)
             if not valid_coord:
-                cost += BIG_M + np.linalg.norm(ndc_coord) * 100
-                break
+                # Instead of BIG_M, use the distance to the screen edge.
+                # ndc_coord usually ranges from -1 to 1.
+                # If it's 1.5, we want to guide it back to 1.0.
+                dist_outside = np.max(np.abs(ndc_coord) - 1.0, initial=0)
+                total_occlusion_cost += 500 + (dist_outside * 100)
+                continue  # If not in view, occlusion check is secondary
 
+            # 2. Ray-trace check
             point, _ = state.gltf.ray_trace(
                 origin=cam_state.pos, end_point=corner, first_point=True
             )
 
             if len(point) == 0:
                 continue
-            to_corner_distance = np.linalg.norm(corner - cam_state.pos)
-            to_intersected_distance = np.linalg.norm(point - cam_state.pos)
-            distance = to_corner_distance - to_intersected_distance
-            if to_corner_distance <= to_intersected_distance:
-                continue
-            elif distance < 0.2:
-                cost += distance * 10
-            else:
-                cost += distance**4 * 10 + 0.2 * 10 - 0.2**4 * 10
-    print("occlusion cost: ", cost)
-    return cost
+
+            to_corner_dist = np.linalg.norm(corner - cam_state.pos)
+            to_hit_dist = np.linalg.norm(point - cam_state.pos)
+
+            # distance is how much of the ray is 'blocked'
+            # We only care if hit_dist < corner_dist
+            if to_hit_dist < to_corner_dist:
+                blocked_depth = to_corner_dist - to_hit_dist
+
+                # Use a Quadratic Penalty instead of d**4
+                # It's steep enough to be a 'hard' constraint,
+                # but numerically more stable.
+                total_occlusion_cost += 1000 * (blocked_depth**2)
+
+    return total_occlusion_cost

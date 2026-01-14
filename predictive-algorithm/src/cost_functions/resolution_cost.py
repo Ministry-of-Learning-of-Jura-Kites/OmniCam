@@ -1,5 +1,7 @@
 import math
 import numpy as np
+import quaternion
+from utils import center_of_face
 from state import CameraState, State
 from basic_types import Array4x3, Array3
 from constant import BIG_M
@@ -20,51 +22,44 @@ def get_pixel_per_meter(cam_state: CameraState, distance_to_plane: float):
     x_pixel_per_dist = cam_state.pixels[0] / total_width
     y_pixel_per_dist = cam_state.pixels[1] / total_height
 
-    print("x_pixel_per_dist", x_pixel_per_dist, "y_pixel_per_dist: ", y_pixel_per_dist)
+    # print("x_pixel_per_dist", x_pixel_per_dist, "y_pixel_per_dist: ", y_pixel_per_dist)
 
     return x_pixel_per_dist, y_pixel_per_dist
 
 
-def get_distance_to_face(cam_pos: Array3, face: Array4x3):
-    # face is Array4x3 -> take first 3 vertices
-    v0, v1, v2 = face[0], face[1], face[2]
+def get_distance_to_face(face: Array4x3, cam_pos: Array3):
+    face_center = center_of_face(face)
 
-    # Calculate the normal vector of the face
-    vec_a = v1 - v0
-    vec_b = v2 - v0
-    normal = np.cross(vec_a, vec_b)
-
-    # Calculate the distance from camera pos to the plane
-    # Dot product of (pos - v0) and the normal
-    numerator = np.abs(np.dot(normal, (cam_pos - v0)))
-    denominator = np.linalg.norm(normal)
-
-    return numerator / denominator
+    return np.linalg.norm(face_center - cam_pos)
 
 
 def ppm_to_cost(ppd: float):
-    base = 3
-    cost_at_20 = 200
-    if ppd < 20:
-        return BIG_M - ppd * BIG_M / 20 + cost_at_20
-    elif ppd < 200:
-        base = (cost_at_20 + 1) ** (1 / (200 - 20))
-        return base ** (-(ppd - 200)) - 1
-    else:
-        return 0
+    target_ppd = 120  # The "ideal" resolution
+    min_acceptable = 80
+    if ppd < min_acceptable:
+        return 1000 + (min_acceptable - ppd) ** 2
+    cost = 500 * np.exp(-0.03 * ppd)
+
+    return max(cost, 0.0001)
 
 
 def cost(state: State):
     cost = 0
+    min_dist_threshold = 0.5 * state.scale
     for cam_state in state.cameras:
         face_dist = get_distance_to_face(cam_state.pos, cam_state.face)
-        if face_dist / state.scale < 0.5:
-            cost += BIG_M + 10000 / (1 + face_dist)
-            continue
+
+        if face_dist < min_dist_threshold:
+            # Quadratic penalty: The closer it gets to 0, the higher the cost explodes
+            # At face_dist = min_dist_threshold, this is 0.
+            # At face_dist = 0, this is 10,000.
+            dist_error = min_dist_threshold - face_dist
+            total_score += 10000 * (dist_error / min_dist_threshold) ** 2
+
         x_pixel_per_dist, y_pixel_per_dist = get_pixel_per_meter(cam_state, face_dist)
         cost += ppm_to_cost(x_pixel_per_dist * state.scale)
         cost += ppm_to_cost(y_pixel_per_dist * state.scale)
 
-    print("resolution cost: ", cost)
+    # print("resolution cost: ", cost)
 
     return cost

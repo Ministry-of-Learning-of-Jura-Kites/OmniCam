@@ -2,7 +2,7 @@ import functools
 from state import CameraState, State
 import numpy as np
 from dataclasses import replace
-
+from utils import center_of_face, look_at_quaternion
 import quaternion
 
 
@@ -39,8 +39,7 @@ def state_to_vector(state: State):
     """Flattens State into a 1D numpy array."""
     vec = []
     for cam in state.cameras:
-        vec.extend(cam.pos)  # 3 params
-        vec.extend([cam.angle.w, cam.angle.x, cam.angle.y, cam.angle.z])  # 4 params
+        vec.extend(cam.pos)  # Just 3 params: x, y, z
     return np.array(vec)
 
 
@@ -50,15 +49,16 @@ def vector_to_state(vec, template_state: State):
     idx = 0
     for i in range(len(template_state.cameras)):
         pos = vec[idx : idx + 3]
-        q_vec = vec[idx + 3 : idx + 7]
-        # Normalize quaternion to ensure valid rotation
-        q_norm = q_vec / (np.linalg.norm(q_vec) + 1e-8)
-        angle = quaternion.quaternion(*q_norm)
 
-        # Keep fixed properties from template (face, pixels)
+        # Calculate Look-At rotation automatically
+        face_center = center_of_face(template_state.cameras[i].face)
+        direction = face_center - pos
+        # Use your existing utility to keep the camera pointed at the target
+        angle = look_at_quaternion(direction)
+
         cam = replace(template_state.cameras[i], pos=pos, angle=angle)
         new_cameras.append(cam)
-        idx += 7
+        idx += 3
 
     return State(
         cameras=new_cameras, scale=template_state.scale, gltf=template_state.gltf

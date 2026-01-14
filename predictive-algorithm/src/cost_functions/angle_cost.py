@@ -15,18 +15,16 @@ def horizontal_cost(hor_deg: Quantity[u.degree]) -> float:
     hor_deg = hor_deg.to_value(u.degree)
     hor_deg = abs(hor_deg)
 
-    hor_threshold_limit = 30.0
-    hor_hard_limit = 45.0
+    threshold = 30.0
 
-    if hor_deg < hor_threshold_limit:
-        cost = hor_deg
-    elif hor_deg < hor_hard_limit:
-        cost = hor_threshold_limit + (hor_deg - hor_threshold_limit) * 1000
+    if hor_deg <= threshold:
+        # Linear cost in the "good" zone
+        return hor_deg
     else:
-        base_at_limit = (
-            hor_threshold_limit + (hor_hard_limit - hor_threshold_limit) * 1000
-        )
-        cost = BIG_M + base_at_limit + (hor_deg - hor_hard_limit) * 5000
+        # Quadratic penalty for going over.
+        # Smooth at the join (30), but gets very steep very fast.
+        # This gives the optimizer a clear 'gravity' back toward 30.
+        return threshold + 50 * (hor_deg - threshold) ** 2
 
     return cost
 
@@ -34,27 +32,20 @@ def horizontal_cost(hor_deg: Quantity[u.degree]) -> float:
 def vertical_cost(ver_deg: Quantity[u.degree]) -> float:
     val = ver_deg.to_value(u.deg)
 
-    ver_min_limit = 30.0
-    ver_max_limit = 45.0
-    midpoint = (ver_min_limit + ver_max_limit) / 2  # 37.5
+    ver_min = 30.0
+    ver_max = 45.0
+    midpoint = (ver_min + ver_max) / 2  # 37.5
 
-    # Calculate the cost at the boundary to ensure continuity
-    # (30 - 37.5)^2 = 56.25
-    boundary_cost = (ver_min_limit - midpoint) ** 2
-
-    if val < ver_min_limit:
-        # Distance below the minimum
-        dist_below = ver_min_limit - val
-        return boundary_cost + BIG_M + (dist_below * 5000)
-
-    elif val <= ver_max_limit:
-        # Smooth parabolic cost for the "safe" zone
+    if ver_min <= val <= ver_max:
         return (val - midpoint) ** 2
 
+    # Outside the limits:
+    # We take the cost at the boundary and add a steep penalty.
+    # This stays continuous but becomes much more expensive.
+    if val < ver_min:
+        return (ver_min - midpoint) ** 2 + 100 * (ver_min - val) ** 2
     else:
-        # Distance above the maximum
-        dist_above = val - ver_max_limit
-        return boundary_cost + BIG_M + (dist_above * 5000)
+        return (ver_max - midpoint) ** 2 + 100 * (val - ver_max) ** 2
 
 
 def cost(state: State):
@@ -65,11 +56,11 @@ def cost(state: State):
         )
         hor_deg, ver_deg = hor.to(u.degree), ver.to(u.degree)
 
-        print(hor_deg, ver_deg)
+        # print(hor_deg, ver_deg)
 
         cost += horizontal_cost(hor_deg)
         cost += vertical_cost(ver_deg)
 
-    print("angle cost:", cost)
+    # print("angle cost:", cost)
 
     return cost
