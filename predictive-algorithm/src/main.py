@@ -48,9 +48,9 @@ def init_state(pl: pyvistaqt.BackgroundPlotter, state: State):
 
         face_center = center_of_face(camera.face)
 
-        camera.angle = look_at_quaternion(face_center - camera.pos)
+        # camera.angle = look_at_quaternion(face_center - camera.pos)
 
-        arrow = pv.Arrow(start=(0, 0, 0), direction=(0.0, 0.0, 1.0))
+        arrow = pv.Arrow(start=(0, 0, 0), direction=(1.0, 0.0, 0.0))
         camera.meshes.camera_actor = pl.add_mesh(arrow, color=color)
         silhouette_actor = pl.add_silhouette(
             arrow,
@@ -62,7 +62,7 @@ def init_state(pl: pyvistaqt.BackgroundPlotter, state: State):
         temp_cam = pv.Camera()
         temp_cam.position = np.array([0, 0, 0])
         temp_cam.clipping_range = (0.1, 10.0)
-        temp_cam.focal_point = temp_cam.position + np.array([0, 0, 1])
+        temp_cam.focal_point = temp_cam.position + np.array([1, 0, 0])
         temp_cam.up = (0, 1, 0)
         temp_cam.view_angle = camera.vfov
         aspect = camera.pixels[0] / camera.pixels[1]
