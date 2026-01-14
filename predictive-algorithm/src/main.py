@@ -1,8 +1,9 @@
 import math
 import os
+import time
 
 import pyvistaqt
-from cost_functions import angle_cost
+from cost_functions import angle_cost, total_cost
 from algorithms.particle_swarm_opt import optimize_pso
 from algorithms.differential_evolution import optimize_de
 import numpy as np
@@ -16,10 +17,10 @@ pl = BackgroundPlotter()
 
 face = np.array(
     [
-        [-1.0, -1.0, 20.0],
-        [-1.0, 1.0, 20.0],
-        [1.0, 1.0, 20.0],
-        [1.0, -1.0, 20.0],
+        [-1.0, -1.0, 24.0],
+        [-1.0, 1.0, 24.0],
+        [1.0, 1.0, 24.0],
+        [1.0, -1.0, 24.0],
     ]
 )
 state = State(
@@ -48,7 +49,7 @@ def init_state(pl: pyvistaqt.BackgroundPlotter, state: State):
 
         face_center = center_of_face(camera.face)
 
-        # camera.angle = look_at_quaternion(face_center - camera.pos)
+        camera.angle = look_at_quaternion(face_center - camera.pos)
 
         arrow = pv.Arrow(start=(0, 0, 0), direction=(1.0, 0.0, 0.0))
         camera.meshes.camera_actor = pl.add_mesh(arrow, color=color)
@@ -85,6 +86,7 @@ def init_state(pl: pyvistaqt.BackgroundPlotter, state: State):
 
 
 def main():
+    start_time = time.perf_counter()
     init_state(pl, state)
     render_from_state(pl, state)
     pl.show()
@@ -95,17 +97,19 @@ def main():
     # print(total_cost(state))
     # breakpoint()
 
-    final_state = optimize_pso(
-        state,
-        pl,
-        # None,
-    )
-    # final_state = optimize_de(
+    # final_state = optimize_pso(
     #     state,
-    #     gltf
+    #     # pl,
+    #     None,
     # )
+    final_state = optimize_de(state)
+
+    end_time = time.perf_counter()
+    elapsed_time = end_time - start_time
+    print(f"Elapsed time: {elapsed_time:.4f} seconds")
 
     render_from_state(pl, final_state)
+    print("total cost: ", total_cost(state, True))
     breakpoint()
 
 
