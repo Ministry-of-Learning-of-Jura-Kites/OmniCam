@@ -38,23 +38,25 @@ def ppm_to_cost(ppd: float):
     min_acceptable = 80
     if ppd < min_acceptable:
         return 1000 + (min_acceptable - ppd) ** 2
-    cost = 500 * np.exp(-0.03 * ppd)
+
+    diff = max(0, target_ppd - ppd)
+    cost = 500 * (1 - np.exp(-0.03 * diff))
 
     return max(cost, 0.0001)
 
 
 def cost(state: State):
     cost = 0
-    min_dist_threshold = 0.5 * state.scale
+    min_dist_threshold = 1 * state.scale
     for cam_state in state.cameras:
-        face_dist = get_distance_to_face(cam_state.pos, cam_state.face)
+        face_dist = get_distance_to_face(cam_state.face, cam_state.pos)
 
         if face_dist < min_dist_threshold:
             # Quadratic penalty: The closer it gets to 0, the higher the cost explodes
             # At face_dist = min_dist_threshold, this is 0.
             # At face_dist = 0, this is 10,000.
             dist_error = min_dist_threshold - face_dist
-            total_score += 10000 * (dist_error / min_dist_threshold) ** 2
+            cost += 1000 * (dist_error / min_dist_threshold) ** 2
 
         x_pixel_per_dist, y_pixel_per_dist = get_pixel_per_meter(cam_state, face_dist)
         cost += ppm_to_cost(x_pixel_per_dist * state.scale)

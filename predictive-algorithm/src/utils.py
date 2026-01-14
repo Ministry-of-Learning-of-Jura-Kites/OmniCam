@@ -30,6 +30,25 @@ def center_of_face(face: Array4x3) -> Array3:
     return np.mean(face, axis=0)
 
 
+def normal_vec_of_face(face: Array4x3) -> Array3:
+    A = face[0]
+    B = face[1]
+    C = face[2]
+
+    v1 = B - A
+    v2 = C - A
+
+    normal = np.cross(v1, v2)
+
+    norm = np.linalg.norm(normal)
+
+    if norm < 1e-12:
+        # Handle degenerate faces (where points are collinear)
+        return np.zeros(3)
+
+    return normal / norm
+
+
 # TODO: Correct horizontal angle
 def angle_from_face_normal(
     face: Array4x3,
@@ -43,22 +62,25 @@ def angle_from_face_normal(
     # 2. Target vector
     face_center = np.mean(face, axis=0)
     # Using the highest point of the face for vertical targeting
-    highest_face_center = np.array([face_center[0], face[:, 1].max(), face_center[2]])
+    # highest_face_center = np.array([face_center[0], face[:, 1].max(), face_center[2]])
+    highest_face_center = face_center
     look_vec = highest_face_center - pos
+
+    face_normal = normal_vec_of_face(face)
 
     # 3. Horizontal Offset (XZ Plane is the ground)
     # atan2(Z, X) gives the yaw: how far left/right from the forward X axis
-    horiz_look_angle = math.atan2(look_vec[2], look_vec[0])
+    horiz_look_angle = math.atan2(-face_normal[2], -face_normal[0])
     horiz_cam_angle = math.atan2(angle_vec[2], angle_vec[0])
     horizontal_offset = horiz_look_angle - horiz_cam_angle
 
     # 4. Vertical Offset (Y is Up)
     # Distance in the ground plane (XZ)
-    dist_xz_look = math.sqrt(look_vec[0] ** 2 + look_vec[2] ** 2)
+    dist_xz_look = math.sqrt(face_normal[0] ** 2 + face_normal[2] ** 2)
     dist_xz_cam = math.sqrt(angle_vec[0] ** 2 + angle_vec[2] ** 2)
 
     # Angle from the ground plane (XZ) up toward the Y axis
-    vert_look_angle = math.atan2(look_vec[1], dist_xz_look)
+    vert_look_angle = math.atan2(-face_normal[1], dist_xz_look)
     vert_cam_angle = math.atan2(angle_vec[1], dist_xz_cam)
 
     vertical_offset = vert_look_angle - vert_cam_angle

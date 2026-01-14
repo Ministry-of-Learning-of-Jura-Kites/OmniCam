@@ -4,6 +4,7 @@ import quaternion
 from state import CameraState, State
 from constant import BIG_M
 from basic_types import Array3
+from utils import center_of_face
 
 
 def is_in_view(point, cam_state: CameraState) -> Union[bool, Union[Array3]]:
@@ -41,7 +42,9 @@ def cost(state: State):
     total_occlusion_cost = 0
 
     for cam_state in state.cameras:
+        face_center = center_of_face(cam_state.face)
         for corner in cam_state.face:
+            corner = (corner + face_center) / 2
             # 1. Soften the 'Out of View' penalty
             valid_coord, ndc_coord = is_in_view(corner, cam_state)
             if not valid_coord:
