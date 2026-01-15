@@ -18,7 +18,7 @@ def horizontal_cost(hor_deg: Quantity[u.degree]) -> float:
 
     if hor_deg <= threshold:
         # Linear cost in the "good" zone
-        return hor_deg
+        return hor_deg * 50
     else:
         # Quadratic penalty for going over.
         # Smooth at the join (30), but gets very steep very fast.

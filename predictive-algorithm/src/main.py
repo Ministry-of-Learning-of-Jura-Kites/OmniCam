@@ -31,7 +31,7 @@ state = State(
     [
         CameraState(
             face=face,
-            pos=np.array([0, 0, 10]),
+            pos=np.array([0, 5, 20]),
             angle=quaternion.from_rotation_vector([0, 0, 0]),
             pixels=np.array([1920, 1080]),
             vfov=70,
