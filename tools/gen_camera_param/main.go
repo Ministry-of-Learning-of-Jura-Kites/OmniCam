@@ -2,18 +2,16 @@ package main
 
 import (
 	"encoding/csv"
-	"encoding/json"
+	// "encoding/json"
 	"fmt"
 	"log"
 	"math"
 	"net/http"
 	"os"
 	"path/filepath"
-	"runtime"
 	"strconv"
 	"strings"
-
-	"gopkg.in/yaml.v3"
+	// "gopkg.in/yaml.v3"
 )
 
 type CameraParams struct {
@@ -53,20 +51,26 @@ func parseInt(s string, def int) int {
 }
 
 func main() {
-	if len(os.Args) < 2 {
-		log.Fatalln("No file format specified")
+
+	fileFormat := "csv"
+	if len(os.Args) >= 2 {
+		fileFormat = strings.ToLower(os.Args[1])
 	}
 
-	_, filename, _, ok := runtime.Caller(0)
-	if !ok {
-		log.Fatalln("No caller information")
+	cwd, err := os.Getwd()
+	if err != nil {
+		log.Fatalln(err)
 	}
-	rootpath := filepath.Dir(filepath.Dir(filepath.Dir(filename)))
 
-	fileFormat := strings.ToLower(os.Args[1])
+	outputDir := filepath.Join(cwd, "frontend", "public", "data")
+
+	if err := os.MkdirAll(outputDir, os.ModePerm); err != nil {
+		log.Fatalf("Cannot create directory: %v", err)
+	}
+
+	outPath := filepath.Join(outputDir, fmt.Sprintf("camera_parameter.%s", fileFormat))
 
 	url := "https://raw.githubusercontent.com/EmberLightVFX/Camera-Sensor-Database/main/data/sensors.csv"
-
 	resp, err := http.Get(url)
 	if err != nil {
 		log.Fatalln(err)
@@ -83,25 +87,20 @@ func main() {
 	var results []CameraParams
 
 	for i, row := range records {
-		// ข้าม header แถวแรก
 		if i == 0 {
 			continue
 		}
-
 		vendor := row[0]
 		camera := row[1]
 		sensorName := row[2]
-
 		focalLength := parseFloat(row[3], 35.0)
 		resW := parseInt(row[4], 0)
 		resH := parseInt(row[5], 0)
 		sensorWmm := parseFloat(row[6], 0)
 		sensorHmm := parseFloat(row[7], 0)
-
 		if resW == 0 || resH == 0 || sensorWmm == 0 || sensorHmm == 0 {
 			continue
 		}
-
 		aspect := float64(resW) / float64(resH)
 		fov := 2 * math.Atan((sensorHmm/2.0)/focalLength) * (180.0 / math.Pi)
 		pixelPitch := sensorWmm / float64(resW)
@@ -120,55 +119,42 @@ func main() {
 			FocalLength: focalLength,
 		})
 	}
-
-	outPath := filepath.Join(rootpath, fmt.Sprintf("/data/camera_parameter.%s", fileFormat))
-
 	outFile, err := os.Create(outPath)
 	if err != nil {
 		log.Fatalf("Error while creating file %v", err)
 	}
-
 	defer outFile.Close()
 
 	switch fileFormat {
-	case "json":
-		{
-			jEnc := json.NewEncoder(outFile)
-			jEnc.SetIndent("", "  ")
-			jEnc.Encode(results)
-		}
-	case "yaml":
-		{
-			yEnc := yaml.NewEncoder(outFile)
-			yEnc.Encode(results)
-		}
+	// case "json":
+	// 	jEnc := json.NewEncoder(outFile)
+	// 	jEnc.SetIndent("", "  ")
+	// 	jEnc.Encode(results)
+	// case "yaml":
+	// 	yEnc := yaml.NewEncoder(outFile)
+	// 	yEnc.Encode(results)
 	case "csv":
-		{
-			writer := csv.NewWriter(outFile)
-			defer writer.Flush()
-
-			writer.Write([]string{"vendor", "camera", "sensor_name", "aspect", "fov", "pixel_pitch", "res_w", "res_h", "sensor_w_mm", "sensor_h_mm", "focal_length"})
-			for _, r := range results {
-				writer.Write([]string{
-					r.Vendor,
-					r.Camera,
-					r.SensorName,
-					fmt.Sprintf("%.4f", r.Aspect),
-					fmt.Sprintf("%.2f", r.FOV),
-					fmt.Sprintf("%.6f", r.PixelPitch),
-					fmt.Sprintf("%d", r.ResolutionW),
-					fmt.Sprintf("%d", r.ResolutionH),
-					fmt.Sprintf("%.2f", r.SensorWmm),
-					fmt.Sprintf("%.2f", r.SensorHmm),
-					fmt.Sprintf("%.2f", r.FocalLength),
-				})
-			}
+		writer := csv.NewWriter(outFile)
+		defer writer.Flush()
+		writer.Write([]string{"vendor", "camera", "sensor_name", "aspect", "fov", "pixel_pitch", "res_w", "res_h", "sensor_w_mm", "sensor_h_mm", "focal_length"})
+		for _, r := range results {
+			writer.Write([]string{
+				r.Vendor,
+				r.Camera,
+				r.SensorName,
+				fmt.Sprintf("%.4f", r.Aspect),
+				fmt.Sprintf("%.2f", r.FOV),
+				fmt.Sprintf("%.6f", r.PixelPitch),
+				strconv.Itoa(r.ResolutionW),
+				strconv.Itoa(r.ResolutionH),
+				fmt.Sprintf("%.2f", r.SensorWmm),
+				fmt.Sprintf("%.2f", r.SensorHmm),
+				fmt.Sprintf("%.2f", r.FocalLength),
+			})
 		}
 	default:
-		{
-			log.Fatalln("Invalid file format")
-		}
+		log.Fatalln("Invalid file format")
 	}
 
-	fmt.Printf("Exported: %s\n", outPath)
+	fmt.Printf("Successfully Exported to: %s\n", outPath)
 }

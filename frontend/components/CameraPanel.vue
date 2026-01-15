@@ -20,6 +20,22 @@ import {
 } from "lucide-vue-next";
 import { randomVividColor } from "~/utils/randomVividColor";
 import { SCENE_STATES_KEY } from "@/constants/state-keys";
+import CameraSpawnDialog from "~/components/dialog/CameraSpawnDialog.vue";
+
+type Camerapreset = {
+  vendor: string;
+  camera: string;
+  sensor_name: string;
+  aspect: string;
+  fov: string;
+  pixel_pitch: string;
+  res_w: string;
+  res_h: string;
+  sensor_w_mm: string;
+  sensor_h_mm: string;
+  focal_length: string;
+  _id?: string;
+};
 
 const props = defineProps({
   workspace: {
@@ -34,6 +50,7 @@ const selectedCamId = ref<string | null>(null);
 
 const isCameraPropertiesOpen = ref(true);
 const isFrustumPropertiesOpen = ref(true);
+const isCameraSpawnDialogOpen = ref(false);
 
 const selectedCam = computed(() =>
   selectedCamId.value ? sceneStates.cameras[selectedCamId.value] : null,
@@ -46,12 +63,12 @@ watch(
   },
 );
 
-const spawnCamera = () => {
-  const newCamId = sceneStates.cameraManagement.spawnCameraHere();
-  if (newCamId) {
-    selectedCamId.value = newCamId;
-  }
-};
+// const spawnCamera = () => {
+//   const newCamId = sceneStates.cameraManagement.spawnCameraHere();
+//   if (newCamId) {
+//     selectedCamId.value = newCamId;
+//   }
+// };
 
 const moveCameraHere = (id: string) => {
   sceneStates.cameras[id]!.position = new Vector3().copy(
@@ -97,6 +114,18 @@ function onToggleLockRotation() {
   }
 }
 
+function getUniqueCameraName(baseName: string) {
+  const names = Object.values(sceneStates.cameras).map((c) => c.name);
+
+  if (!names.includes(baseName)) return baseName;
+
+  let i = 2;
+  while (names.includes(`${baseName} (${i})`)) {
+    i++;
+  }
+  return `${baseName} (${i})`;
+}
+
 const isLockingRotation = computed(() => {
   return (
     sceneStates.currentCam.value.isLockingRotation || props.workspace == null
@@ -107,6 +136,44 @@ const isLockingPosition = computed(() => {
     sceneStates.currentCam.value.isLockingPosition || props.workspace == null
   );
 });
+
+const gcd = (a: number, b: number): number => {
+  return b === 0 ? a : gcd(b, a % b);
+};
+
+const handleSpawnCamera = (preset: Camerapreset) => {
+  const camId = sceneStates.cameraManagement.spawnCameraHere();
+  const cam = sceneStates.cameras[camId];
+
+  if (cam) {
+    cam.name = getUniqueCameraName(`${preset.vendor} ${preset.camera}`);
+    cam.fov = Number(preset.fov);
+
+    const w = Number(preset.res_w);
+    const h = Number(preset.res_h);
+
+    const ratioMatch = preset.sensor_name.match(
+      /(\d+(?:\.\d+)?):(\d+(?:\.\d+)?)/,
+    );
+
+    if (ratioMatch) {
+      cam.aspectWidth = Number(ratioMatch[1]);
+      cam.aspectHeight = Number(ratioMatch[2]);
+    } else {
+      const divisor = gcd(w, h);
+      cam.aspectWidth = w / divisor;
+      cam.aspectHeight = h / divisor;
+    }
+
+    cam.frustumLength = Number(preset.focal_length) * 50;
+
+    sceneStates.markedForCheck.add(camId);
+
+    if (selectedCamId.value !== undefined) {
+      selectedCamId.value = camId;
+    }
+  }
+};
 </script>
 
 <template>
@@ -122,11 +189,21 @@ const isLockingPosition = computed(() => {
       >
         <RotateCcw class="h-4 w-4" />
       </Button> -->
-      <Button
+      <!-- <Button
         size="sm"
         :disabled="props.workspace == null"
         @click="
           spawnCamera();
+          $event.currentTarget.blur();
+        "
+      >
+        <MapPinPlusInside class="h-4 w-4" />
+      </Button> -->
+      <Button
+        size="sm"
+        :disabled="props.workspace == null"
+        @click="
+          isCameraSpawnDialogOpen = true;
           $event.currentTarget.blur();
         "
       >
@@ -555,6 +632,10 @@ const isLockingPosition = computed(() => {
         </CardContent>
       </Card>
     </div>
+    <CameraSpawnDialog
+      v-model="isCameraSpawnDialogOpen"
+      :on-confirm="handleSpawnCamera"
+    />
   </div>
 </template>
 
