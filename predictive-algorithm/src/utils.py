@@ -56,37 +56,40 @@ def angle_from_face_normal(
     angle: quaternion.quaternion,
 ) -> Tuple[Quantity[u.radian], Quantity[u.radian]]:
 
-    # 1. Rotate the X-axis forward vector
+    # 1. Standard vectors
     angle_vec = quaternion.rotate_vectors(angle, [1, 0, 0])
-
-    # 2. Target vector
     face_center = np.mean(face, axis=0)
-    # Using the highest point of the face for vertical targeting
-    # highest_face_center = np.array([face_center[0], face[:, 1].max(), face_center[2]])
-    highest_face_center = face_center
-    look_vec = highest_face_center - pos
-
     face_normal = normal_vec_of_face(face)
 
-    # 3. Horizontal Offset (XZ Plane is the ground)
-    # atan2(Z, X) gives the yaw: how far left/right from the forward X axis
-    horiz_look_angle = math.atan2(-face_normal[2], -face_normal[0])
+    # 2. DECIDE: Front or Back?
+    # Vector from face to camera
+    face_to_cam = pos - face_center
+
+    # Dot product: > 0 means camera is in front, < 0 means behind
+    is_behind = np.dot(face_to_cam, face_normal) < 0
+
+    # If behind, we want to treat the "back" as the target normal
+    target_normal = -face_normal if is_behind else face_normal
+
+    # 3. Horizontal Offset (XZ Plane)
+    # Use target_normal instead of face_normal
+    horiz_look_angle = math.atan2(-target_normal[2], -target_normal[0])
     horiz_cam_angle = math.atan2(angle_vec[2], angle_vec[0])
     horizontal_offset = horiz_look_angle - horiz_cam_angle
 
-    # 4. Vertical Offset (Y is Up)
-    # Distance in the ground plane (XZ)
-    dist_xz_look = math.sqrt(face_normal[0] ** 2 + face_normal[2] ** 2)
+    # 4. Vertical Offset
+    dist_xz_look = math.sqrt(target_normal[0] ** 2 + target_normal[2] ** 2)
     dist_xz_cam = math.sqrt(angle_vec[0] ** 2 + angle_vec[2] ** 2)
 
-    # Angle from the ground plane (XZ) up toward the Y axis
-    vert_look_angle = math.atan2(-face_normal[1], dist_xz_look)
+    vert_look_angle = math.atan2(-target_normal[1], dist_xz_look)
     vert_cam_angle = math.atan2(angle_vec[1], dist_xz_cam)
-
     vertical_offset = vert_look_angle - vert_cam_angle
 
-    # Normalize angles to -pi to pi range to prevent "jumping"
+    # 5. Normalize
     horizontal_offset = (horizontal_offset + math.pi) % (2 * math.pi) - math.pi
+
+    # 6. Add a "Side Penalty" (Optional)
+    # If you prefer the front over the back, add a small flat cost if is_behind == True
 
     return (
         horizontal_offset * u.radian,
@@ -94,51 +97,29 @@ def angle_from_face_normal(
     )
 
 
-def look_at_quaternion(
-    forward_vector, up_vector=np.array([0, 1, 0]), reference_forward=np.array([1, 0, 0])
-):
-    """
-    Generates a quaternion that rotates an object to look at a specific direction.
+def look_at_quaternion(forward_vector, up_vector=np.array([0, 1, 0])):
+    # 1. Normalize the forward vector (Z-axis in many systems, but we'll use your X-forward)
+    # We want to map our local Forward (1,0,0) to target_forward
+    f = forward_vector / (np.linalg.norm(forward_vector) + 1e-8)
 
-    Args:
-        direction_vector (np.ndarray): The direction the object should face (e.g., target position - current position).
-        up_vector (np.ndarray): The world's "up" direction.
+    # 2. Calculate the Right vector
+    # World Up cross Forward = Right
+    r = np.cross(f, up_vector)
+    if np.linalg.norm(r) < 1e-6:
+        # Fallback if looking straight up or down
+        r = np.array([0, 0, 1])
+    r /= np.linalg.norm(r)
 
-    Returns:
-        np.ndarray: A quaternion in scalar-last format (x, y, z, w).
-    """
-    # Normalize vectors
-    target_forward = forward_vector / np.linalg.norm(forward_vector)
-    global_up = up_vector / np.linalg.norm(up_vector)
+    # 3. Calculate the true local Up vector
+    # Forward cross Right = Up
+    u = np.cross(r, f)
 
-    # Calculate the rotation axis (cross product)
-    # This might be tricky if the vectors are parallel/anti-parallel.
-    axis = np.cross(reference_forward, target_forward)
+    # 4. Construct Rotation Matrix
+    # If your camera's local forward is +X and up is +Y:
+    # Column 0: Forward (X)
+    # Column 1: Up (Y)
+    # Column 2: Right (Z)
+    rot_matrix = np.stack([f, u, r], axis=1)
 
-    # Check for edge cases where vectors are parallel (cross product is zero)
-    if np.linalg.norm(axis) < 1e-6:
-        # If parallel, no rotation needed.
-        if np.dot(reference_forward, target_forward) > 0:
-            return np.quaternion(1, 0, 0, 0)  # No rotation
-        else:
-            # If anti-parallel, rotate 180 degrees around an arbitrary axis perpendicular to forward.
-            # Using the global up vector as a reference for a valid axis.
-            axis = np.cross(reference_forward, global_up)
-            if (
-                np.linalg.norm(axis) < 1e-6
-            ):  # global_up was parallel to reference_forward
-                axis = np.array([1, 0, 0])  # Use X axis as fallback
-            axis = axis / np.linalg.norm(axis)
-            angle = np.pi  # 180 degrees
-
-    else:
-        # Normalize the axis
-        axis = axis / np.linalg.norm(axis)
-        # Calculate the angle (dot product and arccos)
-        cos_angle = np.dot(reference_forward, target_forward)
-        cos_angle = np.clip(cos_angle, -1.0, 1.0)  # avoid numerical issues
-        angle = np.arccos(cos_angle)
-
-    # Create SciPy Rotation object and get quaternion
-    quat = quaternion.from_rotation_vector(axis * angle)
-    return quat
+    # 5. Convert Matrix to Quaternion
+    return quaternion.from_rotation_matrix(rot_matrix)
