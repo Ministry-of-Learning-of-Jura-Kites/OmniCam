@@ -1,12 +1,13 @@
-import { SPECTATOR_ROTAING_SENTIVITY } from "~/constants";
+import { BASE_SENSITIVITY, SPECTATOR_ROTAING_SENTIVITY } from "~/constants";
 import type { SceneStates } from "~/types/scene-states";
+import { useSensitivity } from "#imports";
 
 const maxPitch = Math.PI / 2 - 0.01;
 const minPitch = -Math.PI / 2 + 0.01;
 
 export function useSpectatorRotation(sceneStates: SceneStates) {
   const isDragging = ref(false);
-
+  const userSensitivity = useSensitivity();
   async function onPointerDown(_e: PointerEvent) {
     isDragging.value = true;
 
@@ -44,14 +45,20 @@ export function useSpectatorRotation(sceneStates: SceneStates) {
     const deltaX = e.movementX;
     let yaw =
       sceneStates.currentCam.value.rotation.y -
-      deltaX * SPECTATOR_ROTAING_SENTIVITY;
+      deltaX *
+        SPECTATOR_ROTAING_SENTIVITY *
+        userSensitivity.sensitivity.value.mouse *
+        BASE_SENSITIVITY;
     yaw = normalizeAngle(yaw);
     sceneStates.currentCam.value.rotation.y = yaw;
 
     const deltaY = e.movementY;
     let pitch =
       sceneStates.currentCam.value.rotation.x -
-      deltaY * SPECTATOR_ROTAING_SENTIVITY;
+      deltaY *
+        SPECTATOR_ROTAING_SENTIVITY *
+        userSensitivity.sensitivity.value.mouse *
+        BASE_SENSITIVITY;
     pitch = Math.max(minPitch, Math.min(maxPitch, pitch));
     sceneStates.currentCam.value.rotation.x = pitch;
   }
