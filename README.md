@@ -42,6 +42,7 @@ Ensure your local environment matches these global versions before proceeding:
 - **Node.js**: v22.18.0
 - **Golang**: v1.24.5
 - **Docker**: For running PostgreSQL 17
+- **Python**: v3.12.3 For running predictive algorithm
 
 ---
 
@@ -184,6 +185,53 @@ Run these checks before committing your changes:
 - **Prettier** (`esbenp.prettier-vscode`)
 - **Run on Save** (`pucelle.run-on-save`)
 - **Proto Formatter** (`DrBlury.protobuf-vsc`)
+
+---
+
+<a id="predictive-algorithm"></a>
+
+## 1.4 Predictive Algorithm
+
+### 1.4.1. CLI Utilities
+
+For package management, we use "<a href='https://docs.astral.sh/uv/getting-started/installation/'>uv</a>"
+
+### 1.4.2. Local Workflow
+
+1. **Venv preparation**:
+
+   1.1 **Setup venv**
+
+   ```bash
+   uv venv .venv
+   ```
+
+   1.2 **Activate venv**
+   - On Unix-based
+
+     ```bash
+     source .venv/bin/activate
+     ```
+
+   - On Windows
+
+     ```cmd
+     .venv\Scripts\activate.bat
+     ```
+
+   - Or
+
+     ```powershell
+     .venv\Scripts\Activate.ps1
+     ```
+
+2. **Execution Commands**:
+
+   To run, execute
+
+   ```bash
+   python predictive-algorithm/src/main.py
+   ```
 
 ---
 
