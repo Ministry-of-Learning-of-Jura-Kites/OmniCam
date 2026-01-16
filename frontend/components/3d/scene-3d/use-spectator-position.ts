@@ -1,7 +1,7 @@
 import { SPECTATOR_MOVING_SENTIVITY } from "~/constants";
 import { Vector3 } from "three";
 import type { SceneStates } from "~/types/scene-states";
-
+import { useSensitivity } from "#imports";
 const functionalityKeys = [
   "KeyA",
   "KeyW",
@@ -53,6 +53,7 @@ export function useSpectatorPosition(sceneStates: SceneStates) {
 
   function refreshCameraState() {
     const duration = Date.now() - lastKeyDown;
+    const userSensitivity = useSensitivity();
     lastKeyDown = Date.now();
     if (sceneStates.tresContext.value?.camera == undefined) {
       setTimeout(() => requestAnimationFrame(refreshCameraState), 10);
@@ -79,29 +80,43 @@ export function useSpectatorPosition(sceneStates: SceneStates) {
       switch (key) {
         case "KeyW":
           deltaVec = forward.multiplyScalar(
-            SPECTATOR_MOVING_SENTIVITY * duration,
+            SPECTATOR_MOVING_SENTIVITY *
+              duration *
+              userSensitivity.normalizedSensitivity.value.movement,
           );
           break;
         case "KeyS":
           deltaVec = forward.multiplyScalar(
-            -SPECTATOR_MOVING_SENTIVITY * duration,
+            -SPECTATOR_MOVING_SENTIVITY *
+              duration *
+              userSensitivity.normalizedSensitivity.value.movement,
           );
           break;
         case "KeyA":
           deltaVec = right.multiplyScalar(
-            -SPECTATOR_MOVING_SENTIVITY * duration,
+            -SPECTATOR_MOVING_SENTIVITY *
+              duration *
+              userSensitivity.normalizedSensitivity.value.movement,
           );
           break;
         case "KeyD":
           deltaVec = right.multiplyScalar(
-            SPECTATOR_MOVING_SENTIVITY * duration,
+            SPECTATOR_MOVING_SENTIVITY *
+              duration *
+              userSensitivity.normalizedSensitivity.value.movement,
           );
           break;
         case "Space":
-          deltaVec.y = SPECTATOR_MOVING_SENTIVITY * duration;
+          deltaVec.y =
+            SPECTATOR_MOVING_SENTIVITY *
+            duration *
+            userSensitivity.normalizedSensitivity.value.movement;
           break;
         case "Shift":
-          deltaVec.y = -SPECTATOR_MOVING_SENTIVITY * duration;
+          deltaVec.y =
+            -SPECTATOR_MOVING_SENTIVITY *
+            duration *
+            userSensitivity.normalizedSensitivity.value.movement;
           break;
         default:
           break;

@@ -20,6 +20,7 @@ import {
   Trash2,
   Moon,
   Sun,
+  Settings2,
 } from "lucide-vue-next";
 
 import { exportCamerasToJson } from "@/utils/exportScene";
@@ -35,7 +36,7 @@ import {
   MODEL_INFO_KEY,
   TOGGLE_PANEL_KEY,
 } from "~/constants/state-keys";
-
+import Setting3dDialog from "./dialog/Setting3dDialog.vue";
 const props = defineProps({
   workspace: {
     type: String,
@@ -59,6 +60,8 @@ const lightDarkTheme = useLightDarkTheme();
 
 const openResolver = ref(false);
 const conflicts = ref({});
+
+const isSettingDialogOpen = ref<boolean>(false);
 
 async function saveModelToPublic() {
   // Mocked data
@@ -150,6 +153,11 @@ function openFileDialog() {
   document.body.appendChild(input);
   input.click();
   input.remove();
+}
+
+function toggleSettingDialog() {
+  isSettingDialogOpen.value = true;
+  console.log(isSettingDialogOpen);
 }
 
 async function createWorkspace() {
@@ -351,6 +359,10 @@ function goToMyWorkspace() {
                 <Upload class="button-icon" />
                 Export
               </DropdownMenuItem>
+              <DropdownMenuItem @click="toggleSettingDialog">
+                <Settings2 class="button-icon" />
+                Setting
+              </DropdownMenuItem>
             </DropdownMenuGroup>
             <!-- <DropdownMenuSeparator /> -->
             <DropdownMenuGroup>
@@ -364,6 +376,12 @@ function goToMyWorkspace() {
             </DropdownMenuGroup>
           </DropdownMenuContent>
         </DropdownMenu>
+
+        <Setting3dDialog
+          :open="isSettingDialogOpen"
+          message="Update Sensitivity"
+          @update:open="isSettingDialogOpen = $event"
+        />
 
         <Button size="sm" variant="outline" @click="lightDarkTheme.toggleTheme">
           <Moon
