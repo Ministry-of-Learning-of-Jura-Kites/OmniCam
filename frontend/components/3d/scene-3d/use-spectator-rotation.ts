@@ -1,4 +1,4 @@
-import { BASE_SENSITIVITY, SPECTATOR_ROTAING_SENTIVITY } from "~/constants";
+import { SPECTATOR_ROTAING_SENTIVITY } from "~/constants";
 import type { SceneStates } from "~/types/scene-states";
 import { useSensitivity } from "#imports";
 
@@ -47,8 +47,7 @@ export function useSpectatorRotation(sceneStates: SceneStates) {
       sceneStates.currentCam.value.rotation.y -
       deltaX *
         SPECTATOR_ROTAING_SENTIVITY *
-        userSensitivity.sensitivity.value.mouse *
-        BASE_SENSITIVITY;
+        userSensitivity.normalizedSensitivity.value.mouse;
     yaw = normalizeAngle(yaw);
     sceneStates.currentCam.value.rotation.y = yaw;
 
@@ -57,8 +56,7 @@ export function useSpectatorRotation(sceneStates: SceneStates) {
       sceneStates.currentCam.value.rotation.x -
       deltaY *
         SPECTATOR_ROTAING_SENTIVITY *
-        userSensitivity.sensitivity.value.mouse *
-        BASE_SENSITIVITY;
+        userSensitivity.normalizedSensitivity.value.mouse;
     pitch = Math.max(minPitch, Math.min(maxPitch, pitch));
     sceneStates.currentCam.value.rotation.x = pitch;
   }
