@@ -4,8 +4,6 @@ export const SPECTATOR_ROTAING_SENTIVITY = 0.01;
 
 export const SPECTATOR_ADJ_INPUT_SENTIVITY = 0.01;
 
-export const BASE_SENSITIVITY = 0.02;
-
 export const MOVING_ARROW_CONFIG = {
   HEAD_RADIUS: 0.05,
   HEAD_LENGTH: 0.1,
