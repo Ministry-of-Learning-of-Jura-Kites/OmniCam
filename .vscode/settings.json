@@ -37,6 +37,9 @@
   "[proto3]": {
     "editor.defaultFormatter": "pbkit.vscode-pbkit"
   },
+  "[python]": {
+    "editor.defaultFormatter": "ms-python.black-formatter"
+  },
   "code-runner.executorMapByGlob": {
     "*_test.go": "go run tools/backend_test/main.go -- $fullFileName -tags=unit_test"
   },
