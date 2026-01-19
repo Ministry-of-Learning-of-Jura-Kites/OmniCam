@@ -126,4 +126,9 @@ def spherical_vector_to_state(vec, template: State):
         cam = replace(template.cameras[i], pos=pos, angle=angle)
         new_cameras.append(cam)
 
-    return State(cameras=new_cameras, scale=template.scale, gltf=template.gltf)
+    return State(
+        cameras=new_cameras,
+        scale=template.scale,
+        gltf=template.gltf,
+        gltf_locator=template.gltf_locator,
+    )

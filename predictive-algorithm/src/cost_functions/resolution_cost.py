@@ -40,7 +40,7 @@ def ppm_to_cost(ppd: float):
         return 1000 + (min_acceptable - ppd) ** 2
 
     diff = max(0, target_ppd - ppd)
-    cost = 500 * (1 - np.exp(-0.03 * diff))
+    cost = 200 * (1 - np.exp(-0.03 * diff))
 
     return max(cost, 0.0001)
 

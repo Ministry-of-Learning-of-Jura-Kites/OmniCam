@@ -13,6 +13,7 @@ from pyvistaqt import BackgroundPlotter
 import quaternion
 from utils import center_of_face, get_seeded_color_rgb, look_at_quaternion
 import logging
+import vtk
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -21,12 +22,25 @@ pl = BackgroundPlotter()
 
 face = np.array(
     [
-        [-2.0, -2.0, 24.0],
-        [-2.0, 2.0, 24.0],
-        [2.0, 2.0, 24.0],
-        [2.0, -2.0, 24.0],
+        [24.0, -5.0, -2.0],
+        [24.0, -5.0, 2.0],
+        [24.0, 5.0, 2.0],
+        # [24.0, 3.0, 3.0],
+        [24.0, 5.0, -2.0],
     ]
 )
+
+gltf = (
+    pv.read("~/Downloads/omnicam/cpn-lidar.glb")
+    .combine()
+    .extract_surface()
+    .triangulate()
+)
+
+gltf_locator = vtk.vtkStaticCellLocator()
+gltf_locator.SetDataSet(gltf)
+gltf_locator.BuildLocator()
+
 state = State(
     [
         CameraState(
@@ -38,10 +52,8 @@ state = State(
         )
     ],
     scale=1,
-    gltf=pv.read("~/Downloads/omnicam/cpn-lidar.glb")
-    .combine()
-    .extract_surface()
-    .triangulate(),
+    gltf=gltf,
+    gltf_locator=gltf_locator,
 )
 
 
@@ -90,13 +102,13 @@ def init_state(pl: pyvistaqt.BackgroundPlotter, state: State):
 
 
 def main():
-    start_time = time.perf_counter()
     init_state(pl, state)
     render_from_state(pl, state)
     pl.show()
 
     breakpoint()
 
+    start_time = time.perf_counter()
     # from cost_functions import total_cost
     # print(total_cost(state))
     # breakpoint()
