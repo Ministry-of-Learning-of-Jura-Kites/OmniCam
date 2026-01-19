@@ -43,8 +43,12 @@ def cost(state: State):
 
     for cam_state in state.cameras:
         face_center = center_of_face(cam_state.face)
-        for corner in cam_state.face:
-            corner = (corner + face_center) / 2
+        check_corners = [
+            (corner * (100 - i * 10) / 100 + face_center * i * 10 / 100, i)
+            for corner in cam_state.face
+            for i in range(0, 3)
+        ]
+        for corner, weight in check_corners:
             # 1. Soften the 'Out of View' penalty
             valid_coord, ndc_coord = is_in_view(corner, cam_state)
             if not valid_coord:
@@ -52,7 +56,7 @@ def cost(state: State):
                 # ndc_coord usually ranges from -1 to 1.
                 # If it's 1.5, we want to guide it back to 1.0.
                 dist_outside = np.max(np.abs(ndc_coord) - 1.0, initial=0)
-                total_occlusion_cost += 500 + (dist_outside * 100)
+                total_occlusion_cost += 500 * (weight + 1) + (dist_outside * 100)
                 continue  # If not in view, occlusion check is secondary
 
             # 2. Ray-trace check
