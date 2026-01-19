@@ -42,7 +42,7 @@ Ensure your local environment matches these global versions before proceeding:
 - **Node.js**: v22.18.0
 - **Golang**: v1.24.5
 - **Docker**: For running PostgreSQL 17
-- **Python**: v3.12.3 For running predictive algorithm
+- **Python**: v3.12 For running predictive algorithm
 
 ---
 
