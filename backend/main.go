@@ -27,7 +27,7 @@ func main() {
 	var allowOrigins []string = []string{env.FrontendHost}
 
 	if env.Mode == "DEV" {
-		allowOrigins = append(allowOrigins, "http://localhost:8000")
+		allowOrigins = append(allowOrigins, "http://localhost:3000")
 		logger.Info("Enabled cors for swagger")
 	}
 

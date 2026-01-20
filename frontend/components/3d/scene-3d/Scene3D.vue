@@ -313,6 +313,8 @@ onBeforeRouteLeave((to, from, next) => {
             :workspace="props.workspace"
           />
 
+          <FrustumOverlay />
+
           <!-- Environment and lighting, from the tresjs/cientos library -->
           <Suspense>
             <Environment preset="city" />
