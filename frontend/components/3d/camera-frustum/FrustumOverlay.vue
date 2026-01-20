@@ -1,10 +1,16 @@
 <script setup lang="ts">
 import { watchEffect } from "vue";
 import { CSG } from "three-csg-ts";
-import * as THREE from "three";
-import { SCENE_STATES_KEY } from "~/components/3d/scene-states-provider/create-scene-states";
+import {
+  Mesh,
+  Quaternion,
+  MeshStandardMaterial,
+  MeshBasicMaterial,
+  Group,
+} from "three";
+import { SCENE_STATES_KEY } from "@/constants/state-keys";
 import { useFrustumGeometries } from "~/composables/useFrustumGeometries";
-import { type ICamera } from "~/types/camera";
+import type { ICamera } from "~/types/camera";
 
 const sceneStates = inject(SCENE_STATES_KEY)!;
 
@@ -16,11 +22,11 @@ const visibleFrustum = computed(() =>
 
 const { getFrustumGeometry } = useFrustumGeometries();
 
-const overlayGroup = new THREE.Group();
+const overlayGroup = new Group();
 
 watchEffect(() => {
   overlayGroup.children.forEach((obj) => {
-    if (obj instanceof THREE.Mesh) {
+    if (obj instanceof Mesh) {
       obj.geometry.dispose();
       if (Array.isArray(obj.material)) {
         obj.material.forEach((m) => m.dispose());
@@ -40,8 +46,8 @@ watchEffect(() => {
 
       if (!geometryA || !geometryB) continue;
 
-      const meshA = new THREE.Mesh(geometryA, new THREE.MeshStandardMaterial());
-      const meshB = new THREE.Mesh(geometryB, new THREE.MeshStandardMaterial());
+      const meshA = new Mesh(geometryA, new MeshStandardMaterial());
+      const meshB = new Mesh(geometryB, new MeshStandardMaterial());
 
       const camA = visibleFrustum.value.find(
         ([key]) => key === cameraIds[i],
@@ -50,22 +56,22 @@ watchEffect(() => {
         ([key]) => key === cameraIds[j],
       )?.[1];
 
-      meshA.position.copy(camA?.position!);
-      meshA.quaternion.copy(
-        new THREE.Quaternion().setFromEuler(camA!.rotation),
-      );
+      if (camA) {
+        meshA.position.copy(camA.position);
+      }
+      meshA.quaternion.copy(new Quaternion().setFromEuler(camA!.rotation));
       meshA.updateMatrixWorld(true);
 
-      meshB.position.copy(camB?.position!);
-      meshB.quaternion.copy(
-        new THREE.Quaternion().setFromEuler(camB!.rotation),
-      );
+      if (camB) {
+        meshB.position.copy(camB.position);
+      }
+      meshB.quaternion.copy(new Quaternion().setFromEuler(camB!.rotation));
       meshB.updateMatrixWorld(true);
 
       const intersectMesh = CSG.intersect(meshA, meshB);
 
       if (intersectMesh.geometry.attributes.position!.count > 0) {
-        intersectMesh.material = new THREE.MeshBasicMaterial({
+        intersectMesh.material = new MeshBasicMaterial({
           color: 0xff0000,
           transparent: true,
           opacity: 0.5,

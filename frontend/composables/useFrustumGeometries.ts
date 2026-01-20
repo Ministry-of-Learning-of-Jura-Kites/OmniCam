@@ -1,9 +1,9 @@
-import { ref, onUnmounted } from "vue";
-import * as THREE from "three";
+import { ref } from "vue";
+import type { BufferGeometry } from "three";
 import { createFrustumGeometry } from "~/components/3d/camera-frustum/create-frustum";
 
 const frustumRegistry = ref<
-  Record<string, { mesh: THREE.BufferGeometry; lines: THREE.BufferGeometry }>
+  Record<string, { mesh: BufferGeometry; lines: BufferGeometry }>
 >({});
 
 export function useFrustumGeometries() {

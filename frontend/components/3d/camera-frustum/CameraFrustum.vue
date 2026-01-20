@@ -1,12 +1,10 @@
 <script setup lang="ts">
 import { LineBasicMaterial, MeshBasicMaterial, Color, DoubleSide } from "three";
 import { useFrustumGeometries } from "~/composables/useFrustumGeometries";
-import { createFrustumGeometry } from "./create-frustum";
 import type { ColorRGBA } from "~/messages/protobufs/autosave_event";
 
 const props = withDefaults(
   defineProps<{
-    id: string;
     id: string;
     fov?: number;
     aspect?: number; //(width / height)
@@ -25,9 +23,9 @@ const props = withDefaults(
 
 const { setFrustumGeometry, removeFrustumGeometry } = useFrustumGeometries();
 
-const lineMaterial = new THREE.LineBasicMaterial({ color: 0x000000 });
-const meshMaterial = new THREE.MeshBasicMaterial({
-  color: new THREE.Color(
+const lineMaterial = new LineBasicMaterial({ color: 0x000000 });
+const meshMaterial = new MeshBasicMaterial({
+  color: new Color(
     props.color?.r ?? 0.8,
     props.color?.g ?? 0.8,
     props.color?.b ?? 0.8,
