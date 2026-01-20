@@ -7,6 +7,7 @@ import type { ColorRGBA } from "~/messages/protobufs/autosave_event";
 const props = withDefaults(
   defineProps<{
     id: string;
+    id: string;
     fov?: number;
     aspect?: number; //(width / height)
     length?: number; //Far Plane
