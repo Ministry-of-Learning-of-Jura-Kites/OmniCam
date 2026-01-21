@@ -5,6 +5,7 @@ from state import CameraState, State
 from constant import BIG_M
 from basic_types import Array3
 from utils import center_of_face
+import vtk
 
 
 def is_in_view(point, cam_state: CameraState) -> Union[bool, Union[Array3]]:
@@ -59,16 +60,18 @@ def cost(state: State):
                 total_occlusion_cost += 500 * (weight + 1) + (dist_outside * 100)
                 continue  # If not in view, occlusion check is secondary
 
-            # 2. Ray-trace check
-            point, _ = state.gltf.ray_trace(
-                origin=cam_state.pos, end_point=corner, first_point=True
+            points = vtk.vtkPoints()  # Stores the intersection coordinates
+            cellIds = vtk.vtkIdList()
+            tolerance = 0.1
+            code = state.gltf_locator.IntersectWithLine(
+                cam_state.pos, corner, tolerance, points, cellIds
             )
 
-            if len(point) == 0:
+            if code == 0:
                 continue
 
             to_corner_dist = np.linalg.norm(corner - cam_state.pos)
-            to_hit_dist = np.linalg.norm(point - cam_state.pos)
+            to_hit_dist = np.linalg.norm(points.GetPoint(0) - cam_state.pos)
 
             # distance is how much of the ray is 'blocked'
             # We only care if hit_dist < corner_dist
