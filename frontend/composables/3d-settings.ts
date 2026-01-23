@@ -7,28 +7,29 @@ export interface SensitivitySetting {
 
 const DEFAULT_VALUE = 50;
 
-function getStoredNumber(key: string, fallback = DEFAULT_VALUE): number {
-  if (import.meta.client) {
-    const value = localStorage.getItem(key);
-    const parsed = Number(value);
-    return Number.isFinite(parsed) ? parsed : fallback;
-  }
-  return fallback;
-}
-
 export function useSensitivity() {
   const sensitivity = useState<SensitivitySetting>("user_sensitivity", () => ({
-    mouse: getStoredNumber("mouse_setting"),
-    movement: getStoredNumber("movement_setting"),
+    mouse: DEFAULT_VALUE,
+    movement: DEFAULT_VALUE,
   }));
 
-  onMounted(() => {
-    const mouse = Number(localStorage.getItem("mouse_setting"));
-    const movement = Number(localStorage.getItem("movement_setting"));
+  if (import.meta.client) {
+    const mouse =
+      Number(localStorage.getItem("mouse_setting")) === 0
+        ? DEFAULT_VALUE
+        : Number(localStorage.getItem("mouse_setting"));
+    const movement =
+      Number(localStorage.getItem("movement_setting")) === 0
+        ? DEFAULT_VALUE
+        : Number(localStorage.getItem("movement_setting"));
 
     if (Number.isFinite(mouse)) sensitivity.value.mouse = mouse;
     if (Number.isFinite(movement)) sensitivity.value.movement = movement;
-  });
+  }
+
+  function clamp(v: number) {
+    return Math.min(100, Math.max(1, v));
+  }
 
   function setMouse(value: number) {
     const v = clamp(value);
@@ -40,10 +41,6 @@ export function useSensitivity() {
     const v = clamp(value);
     sensitivity.value.movement = v;
     localStorage.setItem("movement_setting", String(v));
-  }
-
-  function clamp(v: number) {
-    return Math.min(100, Math.max(1, v));
   }
 
   const normalizedSensitivity = computed(() => ({
