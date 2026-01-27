@@ -13,6 +13,15 @@ import { useFrustumGeometries } from "~/composables/useFrustumGeometries";
 import type { ICamera } from "~/types/camera";
 
 const sceneStates = inject(SCENE_STATES_KEY)!;
+const intersectMaterial = new MeshBasicMaterial({
+  color: 0xff0000,
+  transparent: true,
+  opacity: 0.5,
+  polygonOffset: true,
+  polygonOffsetFactor: -1,
+  polygonOffsetUnits: -1,
+  depthTest: true,
+});
 
 const visibleFrustum = computed(() =>
   Object.entries(sceneStates.cameras).filter(
@@ -68,15 +77,27 @@ watchEffect(() => {
       meshB.quaternion.copy(new Quaternion().setFromEuler(camB!.rotation));
       meshB.updateMatrixWorld(true);
 
-      const intersectMesh = CSG.intersect(meshA, meshB);
+      meshA.geometry.computeBoundingBox();
+      meshB.geometry.computeBoundingBox();
 
-      if (intersectMesh.geometry.attributes.position!.count > 0) {
-        intersectMesh.material = new MeshBasicMaterial({
-          color: 0xff0000,
-          transparent: true,
-          opacity: 0.5,
-        });
-        overlayGroup.add(intersectMesh);
+      if (meshA.geometry.boundingBox && meshB.geometry.boundingBox) {
+        const boxA = meshA.geometry.boundingBox
+          .clone()
+          .applyMatrix4(meshA.matrixWorld);
+        const boxB = meshB.geometry.boundingBox
+          .clone()
+          .applyMatrix4(meshB.matrixWorld);
+
+        if (!boxA.intersectsBox(boxB)) {
+          continue;
+        }
+
+        const intersectMesh = CSG.intersect(meshA, meshB);
+
+        if (intersectMesh.geometry.attributes.position!.count > 0) {
+          intersectMesh.material = intersectMaterial;
+          overlayGroup.add(intersectMesh);
+        }
       }
     }
   }
