@@ -58,6 +58,7 @@ const camQuat = computed(() => {
         <TresMeshBasicMaterial color="white" />
       </TresMesh>
       <CameraFrustum
+        :id="camId"
         :fov="cam!.fov"
         :aspect="safeGetAspectRatio(cam.aspectWidth, cam.aspectHeight)"
         :length="cam!.frustumLength"
