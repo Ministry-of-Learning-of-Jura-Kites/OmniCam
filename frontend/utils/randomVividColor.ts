@@ -19,6 +19,6 @@ export function randomVividColor() {
     r: shuffled[0],
     g: shuffled[1],
     b: shuffled[2],
-    a: 0.5,
+    a: 0.3,
   };
 }

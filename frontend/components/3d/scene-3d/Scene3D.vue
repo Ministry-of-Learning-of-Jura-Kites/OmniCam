@@ -4,9 +4,9 @@ import { Grid, Environment } from "@tresjs/cientos";
 import AdjustableInput from "../../adjustable-input/AdjustableInput.vue";
 import { SPECTATOR_ADJ_INPUT_SENTIVITY } from "~/constants";
 import CameraObject from "../camera-object/CameraObject.vue";
+import FrustumOverlay from "../camera-frustum/FrustumOverlay.vue";
 import { type PerspectiveCamera, Raycaster, Vector2, DoubleSide } from "three";
 import { SCENE_STATES_KEY } from "@/constants/state-keys";
-
 import { useCameraUpdate } from "./use-camera-update";
 import type { IUserData } from "~/types/obj-3d-user-data";
 import ModelLoader from "../model-loader/ModelLoader.vue";
@@ -312,6 +312,8 @@ onBeforeRouteLeave((to, from, next) => {
             :name="cam.name"
             :workspace="props.workspace"
           />
+
+          <FrustumOverlay />
 
           <!-- Environment and lighting, from the tresjs/cientos library -->
           <Suspense>

@@ -1,10 +1,11 @@
 <script setup lang="ts">
 import { LineBasicMaterial, MeshBasicMaterial, Color, DoubleSide } from "three";
-import { createFrustumGeometry } from "./create-frustum";
+import { useFrustumGeometries } from "~/composables/useFrustumGeometries";
 import type { ColorRGBA } from "~/messages/protobufs/autosave_event";
 
 const props = withDefaults(
   defineProps<{
+    id: string;
     fov?: number;
     aspect?: number; //(width / height)
     length?: number; //Far Plane
@@ -15,10 +16,13 @@ const props = withDefaults(
     fov: 60,
     aspect: 16 / 9,
     length: 1e6,
-    color: () => ({ r: 1, g: 0.8, b: 0.2, a: 0.5 }),
+    color: () => ({ r: 1, g: 0.8, b: 0.2, a: 0.3 }),
     isHiding: false,
   },
 );
+
+const { setFrustumGeometry, removeFrustumGeometry } = useFrustumGeometries();
+
 const lineMaterial = new LineBasicMaterial({ color: 0x000000 });
 const meshMaterial = new MeshBasicMaterial({
   color: new Color(
@@ -27,8 +31,9 @@ const meshMaterial = new MeshBasicMaterial({
     props.color?.b ?? 0.8,
   ),
   transparent: true,
-  opacity: props.color?.a ?? 1,
+  opacity: props.color?.a ?? 0.3,
   side: DoubleSide,
+  depthWrite: false,
 });
 
 watch(
@@ -41,26 +46,12 @@ watch(
   { deep: true, immediate: true },
 );
 
-let oldGeometries: ReturnType<typeof createFrustumGeometry> | null = null;
-
 const frustumGeometries = computed(() => {
-  const pair = createFrustumGeometry(props.fov, props.aspect, props.length);
-
-  // Dispose of old geometry if it exists
-  if (oldGeometries) {
-    oldGeometries.mesh.dispose();
-    oldGeometries.lines.dispose();
-  }
-  oldGeometries = pair;
-
-  return pair;
+  return setFrustumGeometry(props.id, props.fov, props.aspect, props.length);
 });
 
 onUnmounted(() => {
-  if (oldGeometries) {
-    oldGeometries.mesh.dispose();
-    oldGeometries.lines.dispose();
-  }
+  removeFrustumGeometry(props.id);
   lineMaterial.dispose();
   meshMaterial.dispose();
 });
