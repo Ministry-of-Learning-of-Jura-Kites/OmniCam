@@ -7,6 +7,7 @@ import {
   MeshStandardMaterial,
   MeshBasicMaterial,
   Group,
+  DoubleSide,
 } from "three";
 import { SCENE_STATES_KEY } from "@/constants/state-keys";
 import { useFrustumGeometries } from "~/composables/useFrustumGeometries";
@@ -17,6 +18,7 @@ const intersectMaterial = new MeshBasicMaterial({
   color: 0xff0000,
   transparent: true,
   opacity: 0.5,
+  side: DoubleSide,
   polygonOffset: true,
   polygonOffsetFactor: -1,
   polygonOffsetUnits: -1,
@@ -35,18 +37,11 @@ const overlayGroup = new Group();
 
 watchEffect(() => {
   overlayGroup.children.forEach((obj) => {
-    if (obj instanceof Mesh) {
-      obj.geometry.dispose();
-      if (Array.isArray(obj.material)) {
-        obj.material.forEach((m) => m.dispose());
-      } else {
-        obj.material.dispose();
-      }
-    }
+    obj.visible = false;
   });
-  overlayGroup.clear();
 
   const cameraIds = visibleFrustum.value.map(([id]) => id);
+  let poolIndex = 0;
 
   for (let i = 0; i < cameraIds.length; i++) {
     for (let j = i + 1; j < cameraIds.length; j++) {
@@ -92,11 +87,32 @@ watchEffect(() => {
           continue;
         }
 
-        const intersectMesh = CSG.intersect(meshA, meshB);
+        const tempGeomA = meshA.geometry.clone();
+        const tempGeomB = meshB.geometry.clone();
+
+        tempGeomA.applyMatrix4(meshA.matrixWorld);
+        tempGeomB.applyMatrix4(meshB.matrixWorld);
+
+        const tempMeshA = new Mesh(tempGeomA, meshA.material);
+        const tempMeshB = new Mesh(tempGeomB, meshB.material);
+
+        const intersectMesh = CSG.intersect(tempMeshA, tempMeshB);
+
+        tempGeomA.dispose();
+        tempGeomB.dispose();
 
         if (intersectMesh.geometry.attributes.position!.count > 0) {
-          intersectMesh.material = intersectMaterial;
-          overlayGroup.add(intersectMesh);
+          if (poolIndex < overlayGroup.children.length) {
+            const displayMesh = overlayGroup.children[poolIndex] as Mesh;
+            displayMesh.geometry.dispose();
+            displayMesh.geometry = intersectMesh.geometry;
+            displayMesh.visible = true;
+            displayMesh.renderOrder = 0;
+          } else {
+            intersectMesh.material = intersectMaterial;
+            overlayGroup.add(intersectMesh);
+          }
+          poolIndex++;
         }
       }
     }
