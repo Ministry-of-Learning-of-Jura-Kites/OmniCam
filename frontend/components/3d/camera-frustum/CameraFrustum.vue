@@ -16,7 +16,7 @@ const props = withDefaults(
     fov: 60,
     aspect: 16 / 9,
     length: 1e6,
-    color: () => ({ r: 1, g: 0.8, b: 0.2, a: 0.5 }),
+    color: () => ({ r: 1, g: 0.8, b: 0.2, a: 0.3 }),
     isHiding: false,
   },
 );
@@ -31,8 +31,9 @@ const meshMaterial = new MeshBasicMaterial({
     props.color?.b ?? 0.8,
   ),
   transparent: true,
-  opacity: props.color?.a ?? 1,
+  opacity: props.color?.a ?? 0.3,
   side: DoubleSide,
+  depthWrite: false,
 });
 
 watch(
