@@ -28,6 +28,7 @@ class CameraConfiguration:
 @dataclass
 class CameraState:
     # face: Array4x3
+    faces: List[Array4x3] | None
     pos: Array3
     angle: quaternion.quaternion
     # pixels: Array2x2
@@ -36,8 +37,7 @@ class CameraState:
     camera_config: CameraConfiguration = field(default_factory=CameraConfiguration)
 
     def forward_vector(self) -> Array3:
-        r = R.from_quat(quaternion.as_float_array(self.angle))
-        return r.apply(np.array([1, 0, 0]))
+        return quaternion.rotate_vectors(self.angle, np.array([1, 0, 0]))
 
 
 @dataclass

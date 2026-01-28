@@ -20,15 +20,24 @@ logger = logging.getLogger(__name__)
 
 pl = BackgroundPlotter()
 
-face = np.array(
+face1 = np.array(
     [
-        [16.0, -1.8, 2 - 1.6],
-        [16.0, -1.8, 2 + 1.6],
-        [16.0, 0.5, 2 + 1.6],
-        # [24.0, 3.0, 3.0],
-        [16.0, 0.5, 2 - 1.6],
+        [22.0, -1.8, 2 - 1.6],
+        [22.0, -1.8, 2 + 1.6],
+        [22.0, 0.5, 2 + 1.6],
+        [22.0, 0.5, 2 - 1.6],
     ]
 )
+
+# face2 = np.array(
+#     [
+#         [25.0, -1.8, 4 - 1.6],
+#         [25.0, -1.8, 4 + 1.6],
+#         [25.0, 0.5, 4 + 1.6],
+#         # [24.0, 3.0, 3.0],
+#         [25.0, 0.5, 4 - 1.6],
+#     ]
+# )
 
 gltf = (
     pv.read("~/Downloads/omnicam/cpn-lidar.glb")
@@ -47,14 +56,15 @@ default_cam = CameraConfiguration(
 )
 
 state = State(
-    faces=[face],
-    face_centers=[center_of_face(face)],
+    faces=[face1],
+    face_centers=[center_of_face(face1)],
     cameras=[
         CameraState(
-            pos=np.array([0, 5, 20]),
+            pos=np.array([15, -1.8, 2 + 1.6]),
             angle=quaternion.from_rotation_vector([0, 0, 0]),
             # pixels=np.array([1920, 1080]),
             # vfov=70,
+            faces=None,
             camera_config=default_cam,
         )
     ],
@@ -133,7 +143,7 @@ def main():
 
     render_from_state(pl, final_state)
 
-    total = total_cost(final_state)
+    total = total_cost(final_state, True)
     print("total cost: ", total)
     breakpoint()
 
