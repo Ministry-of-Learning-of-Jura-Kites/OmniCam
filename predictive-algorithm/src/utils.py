@@ -1,6 +1,6 @@
 import math
 import random
-from typing import Tuple
+from typing import List, Tuple
 import numpy as np
 import quaternion
 from basic_types import Array4x3, Array3
@@ -30,6 +30,17 @@ def center_of_face(face: Array4x3) -> Array3:
     return np.mean(face, axis=0)
 
 
+def center_of_faces(faces: List[Array4x3]) -> Array3:
+    if not faces:
+        return np.array([0.0, 0.0, 0.0])
+
+    # Calculate the center of each individual face
+    individual_centers = [np.mean(face, axis=0) for face in faces]
+
+    # Average of all those centers
+    return np.mean(individual_centers, axis=0)
+
+
 def normal_vec_of_face(face: Array4x3) -> Array3:
     A = face[0]
     B = face[1]
@@ -49,7 +60,6 @@ def normal_vec_of_face(face: Array4x3) -> Array3:
     return normal / norm
 
 
-# TODO: Correct horizontal angle
 def angle_from_face_normal(
     face: Array4x3,
     pos: Array3,

@@ -2,8 +2,9 @@ import functools
 from state import CameraState, State
 import numpy as np
 from dataclasses import replace
-from utils import center_of_face, look_at_quaternion
+from utils import center_of_face, center_of_faces, look_at_quaternion
 import quaternion
+from cost_functions import total_cost
 
 
 @functools.cache
@@ -72,8 +73,7 @@ def state_to_spherical_vector(state: State):
     """
     vec = []
     for cam in state.cameras:
-        # TODO: Support face choosing
-        face_center = center_of_face(state.faces[0])
+        face_center = center_of_faces(cam.faces)
 
         # 1. Get relative position (Camera - Face)
         rel_pos = cam.pos - face_center
@@ -130,9 +130,8 @@ def spherical_vector_to_state(vec, template: State):
         direction = target_face_center - pos
         angle = look_at_quaternion(direction)
 
-        # Update the camera. Note: we might store 'None' in cam.face
-        # because the face-to-camera link is now calculated in total_cost()
-        cam = replace(template.cameras[i], pos=pos, angle=angle)
+        # Delete face selecting information for next time to prevent confusion
+        cam = replace(template.cameras[i], pos=pos, angle=angle, faces=None)
         new_cameras.append(cam)
 
     return replace(template, cameras=new_cameras)

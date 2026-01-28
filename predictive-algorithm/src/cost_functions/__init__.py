@@ -43,11 +43,16 @@ def prune_faces_by_distance(
     return np.where(mask)[0]
 
 
-def total_cost(state: State):
+def total_cost(state: State, verbose: bool = False):
     # We want to know how well every camera sees every face
     num_faces = len(state.faces)
     num_cams = len(state.cameras)
     score_matrix = np.full((num_faces, num_cams), BIG_M)
+
+    if verbose:
+        stats = {
+            i: {"angle": [], "res": [], "occ": [], "mount": 0} for i in range(num_cams)
+        }
 
     for c_idx, cam in enumerate(state.cameras):
         # OPTIMIZATION: Only check faces near this camera
@@ -60,6 +65,7 @@ def total_cost(state: State):
     # For each face, we only care about the MINIMUM cost across all cameras.
     # This naturally allows one camera to be the 'best' for 10 faces at once.
     best_costs_per_face = np.min(score_matrix, axis=1)
+    best_cam_indices = np.argmin(score_matrix, axis=1)
 
     # # 4. ACTIVE CAMERA PENALTY
     # # Identify which cameras are actually 'winners' for at least one face
@@ -68,6 +74,17 @@ def total_cost(state: State):
     # active_indices = winning_camera_indices[best_costs_per_face < BIG_M]
     # num_active_cams = len(np.unique(active_indices))
 
+    if verbose:
+        for f_idx, c_idx in enumerate(best_cam_indices):
+            if best_costs_per_face[f_idx] < BIG_M:
+                # Re-run or retrieve the specific breakdown for the winner
+                _, b = total_cost_pair(state, state.cameras[c_idx], state.faces[f_idx])
+                stats[c_idx]["angle"].append(b.get("angle", 0))
+                stats[c_idx]["res"].append(b.get("res", 0))
+                stats[c_idx]["occ"].append(b.get("occ", 0))
+
+        log_detailed_distribution(stats)
+
     return np.sum(best_costs_per_face)
 
 
@@ -75,10 +92,26 @@ def total_cost_pair(state: State, cam_state: CameraState, face: Array4x3):
     angle = angle_cost.cost_single_cam(state, cam_state, face)
     resolution = resolution_cost.cost_single_cam(state, cam_state, face)
     occlusion = occlusion_cost.cost_single_cam(state, cam_state, face)
-    mounting = mounting_cost.cost_single_cam(state, cam_state, face)
+    mounting = 0.5 * mounting_cost.cost_single_cam(state, cam_state, face)
     return angle + resolution + occlusion + mounting, {
         "angle": angle,
         "res": resolution,
         "occ": occlusion,
         "mount": mounting,
     }
+
+
+def log_detailed_distribution(stats):
+    print(
+        f"\n{'Cam':<5} | {'Faces':<5} | {'Mounting':<10} | {'Avg Angle':<10} | {'Avg Res':<10} | {'Occl.':<8}"
+    )
+    print("-" * 70)
+    for c_idx, data in stats.items():
+        num_f = len(data["angle"])
+        avg_ang = np.mean(data["angle"]) if num_f > 0 else 0
+        avg_res = np.mean(data["res"]) if num_f > 0 else 0
+        avg_occ = np.mean(data["occ"]) if num_f > 0 else 0
+
+        print(
+            f"{c_idx:<5} | {num_f:<5} | {data['mount']:<10.1f} | {avg_ang:<10.1f} | {avg_res:<10.1f} | {avg_occ:<8.1f}"
+        )
