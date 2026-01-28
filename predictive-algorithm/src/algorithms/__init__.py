@@ -72,7 +72,8 @@ def state_to_spherical_vector(state: State):
     """
     vec = []
     for cam in state.cameras:
-        face_center = center_of_face(cam.face)
+        # TODO: Support face choosing
+        face_center = center_of_face(state.faces[0])
 
         # 1. Get relative position (Camera - Face)
         rel_pos = cam.pos - face_center
@@ -103,32 +104,35 @@ def spherical_vector_to_state(vec, template: State):
     for i in range(len(template.cameras)):
         r, theta, phi = vec[i * 3 : i * 3 + 3]
 
-        # 1. Get face orientation
-        face_center = center_of_face(template.cameras[i].face)
-        # Assuming your face normal logic is available:
-        # We calculate the position relative to the face center
+        # 1. Pivot point: Instead of a specific face, use the scene center
+        # or the initial position provided in the template.
+        pivot = np.array([0, 0, 0])  # Scene origin, or use a specific landmark
 
-        # Spherical to Cartesian (Standard math)
+        # 2. Convert Spherical to World Cartesian
         theta_rad = np.radians(theta)
         phi_rad = np.radians(phi)
 
-        local_x = r * np.cos(phi_rad) * np.cos(theta_rad)
-        local_y = r * np.sin(phi_rad)
-        local_z = r * np.cos(phi_rad) * np.sin(theta_rad)
+        x = r * np.cos(phi_rad) * np.cos(theta_rad)
+        y = r * np.sin(phi_rad)
+        z = r * np.cos(phi_rad) * np.sin(theta_rad)
+        pos = pivot + np.array([x, y, z])
 
-        # 2. Offset from face center
-        pos = face_center + np.array([local_x, local_y, local_z])
+        # 3. Dynamic Look-At:
+        # Since we don't know which face it's looking at yet,
+        # we look at the 'Closest Face' or the 'Average' of face cluster
+        # Or better: let the cost function determine the best angle.
 
-        # 3. Look-at logic (Automatically handles orientation)
-        direction = face_center - pos
+        # For now, let's look at the nearest face center to establish an orientation
+        face_centers = np.array([center_of_face(f) for f in template.faces])
+        dists = np.linalg.norm(face_centers - pos, axis=1)
+        target_face_center = face_centers[np.argmin(dists)]
+
+        direction = target_face_center - pos
         angle = look_at_quaternion(direction)
 
+        # Update the camera. Note: we might store 'None' in cam.face
+        # because the face-to-camera link is now calculated in total_cost()
         cam = replace(template.cameras[i], pos=pos, angle=angle)
         new_cameras.append(cam)
 
-    return State(
-        cameras=new_cameras,
-        scale=template.scale,
-        gltf=template.gltf,
-        gltf_locator=template.gltf_locator,
-    )
+    return replace(template, cameras=new_cameras)

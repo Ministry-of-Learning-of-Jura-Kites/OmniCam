@@ -3,26 +3,25 @@ import numpy as np
 import quaternion
 from state import CameraState, State
 from constant import BIG_M
-from basic_types import Array3
+from basic_types import Array3, Array4x3
 from utils import center_of_face
 import vtk
 
 
 def is_in_view(point, cam_state: CameraState) -> Union[bool, Union[Array3]]:
-    # 1. Transform point to Camera Local Space
+    # Transform point to Camera Local Space
     rel_point = point - cam_state.pos
     local_point = quaternion.rotate_vectors(cam_state.angle.conj(), rel_point)
 
     # Map variables to axes: X=Forward, Y=Up, Z=Horizontal
     x, y, z = local_point
 
-    # 2. Depth Check (X is Forward)
+    # Depth Check (X is Forward)
     if x <= 0:
         return (False, local_point)
 
-    # 3. Frustum Math
-    aspect_ratio = cam_state.pixels[0] / cam_state.pixels[1]
-    tan_half_vfov = np.tan(np.deg2rad(cam_state.vfov) / 2)
+    aspect_ratio = cam_state.camera_config.pixels[0] / cam_state.camera_config.pixels[1]
+    tan_half_vfov = np.tan(np.deg2rad(cam_state.camera_config.vfov) / 2)
 
     depth = x
 
@@ -32,55 +31,60 @@ def is_in_view(point, cam_state: CameraState) -> Union[bool, Union[Array3]]:
     # limit_z (Horizontal) is vertical limit scaled by aspect ratio
     limit_z = limit_y * aspect_ratio
 
-    # 4. NDC Validation
-    # Vertical check (y-axis) and Horizontal check (z-axis)
+    # NDC Validation
     is_visible = (-limit_y <= y <= limit_y) and (-limit_z <= z <= limit_z)
 
     return (is_visible, local_point)
+
+
+def cost_single_cam(state: State, cam_state: CameraState, face: Array4x3):
+    total_occlusion_cost = 0
+
+    face_center = center_of_face(face)
+    check_corners = [
+        (corner * (100 - i * 10) / 100 + face_center * i * 10 / 100, i)
+        for corner in face
+        for i in range(0, 3)
+    ]
+    for corner, weight in check_corners:
+        # 1. Soften the 'Out of View' penalty
+        valid_coord, ndc_coord = is_in_view(corner, cam_state)
+        if not valid_coord:
+            # Instead of BIG_M, use the distance to the screen edge.
+            # ndc_coord usually ranges from -1 to 1.
+            # If it's 1.5, we want to guide it back to 1.0.
+            dist_outside = np.max(np.abs(ndc_coord) - 1.0, initial=0)
+            total_occlusion_cost += 500 * (weight + 1) + (dist_outside * 100)
+            continue  # If not in view, occlusion check is secondary
+
+        points = vtk.vtkPoints()  # Stores the intersection coordinates
+        cellIds = vtk.vtkIdList()
+        tolerance = 0.1
+        code = state.gltf_locator.IntersectWithLine(
+            cam_state.pos, corner, tolerance, points, cellIds
+        )
+
+        if code == 0:
+            continue
+
+        to_corner_dist = np.linalg.norm(corner - cam_state.pos)
+        to_hit_dist = np.linalg.norm(points.GetPoint(0) - cam_state.pos)
+
+        # distance is how much of the ray is 'blocked'
+        # We only care if hit_dist < corner_dist
+        if to_hit_dist < to_corner_dist:
+            blocked_depth = to_corner_dist - to_hit_dist
+
+            # Use a Quadratic Penalty instead of d**4
+            # It's steep enough to be a 'hard' constraint,
+            # but numerically more stable.
+            total_occlusion_cost += 1000 * (blocked_depth**2)
+    return total_occlusion_cost
 
 
 def cost(state: State):
     total_occlusion_cost = 0
 
     for cam_state in state.cameras:
-        face_center = center_of_face(cam_state.face)
-        check_corners = [
-            (corner * (100 - i * 10) / 100 + face_center * i * 10 / 100, i)
-            for corner in cam_state.face
-            for i in range(0, 3)
-        ]
-        for corner, weight in check_corners:
-            # 1. Soften the 'Out of View' penalty
-            valid_coord, ndc_coord = is_in_view(corner, cam_state)
-            if not valid_coord:
-                # Instead of BIG_M, use the distance to the screen edge.
-                # ndc_coord usually ranges from -1 to 1.
-                # If it's 1.5, we want to guide it back to 1.0.
-                dist_outside = np.max(np.abs(ndc_coord) - 1.0, initial=0)
-                total_occlusion_cost += 500 * (weight + 1) + (dist_outside * 100)
-                continue  # If not in view, occlusion check is secondary
-
-            points = vtk.vtkPoints()  # Stores the intersection coordinates
-            cellIds = vtk.vtkIdList()
-            tolerance = 0.1
-            code = state.gltf_locator.IntersectWithLine(
-                cam_state.pos, corner, tolerance, points, cellIds
-            )
-
-            if code == 0:
-                continue
-
-            to_corner_dist = np.linalg.norm(corner - cam_state.pos)
-            to_hit_dist = np.linalg.norm(points.GetPoint(0) - cam_state.pos)
-
-            # distance is how much of the ray is 'blocked'
-            # We only care if hit_dist < corner_dist
-            if to_hit_dist < to_corner_dist:
-                blocked_depth = to_corner_dist - to_hit_dist
-
-                # Use a Quadratic Penalty instead of d**4
-                # It's steep enough to be a 'hard' constraint,
-                # but numerically more stable.
-                total_occlusion_cost += 1000 * (blocked_depth**2)
-
+        total_occlusion_cost += cost_single_cam(state, cam_state)
     return total_occlusion_cost

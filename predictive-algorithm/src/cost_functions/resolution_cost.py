@@ -9,18 +9,18 @@ from constant import BIG_M
 
 def get_pixel_per_meter(cam_state: CameraState, distance_to_plane: float):
     """Returns pixels/virtual metre unit"""
-    vfov_rad = math.radians(cam_state.vfov)
+    vfov_rad = math.radians(cam_state.camera_config.vfov)
 
     total_height = 2 * distance_to_plane * math.tan(vfov_rad / 2)
 
     # 3. Calculate width based on the aspect ratio (Width / Height)
     # Aspect Ratio = W_px / H_px
-    aspect_ratio = cam_state.pixels[0] / cam_state.pixels[1]
+    aspect_ratio = cam_state.camera_config.pixels[0] / cam_state.camera_config.pixels[1]
     total_width = total_height * aspect_ratio
 
     # Distance represented by a single pixel
-    x_pixel_per_dist = cam_state.pixels[0] / total_width
-    y_pixel_per_dist = cam_state.pixels[1] / total_height
+    x_pixel_per_dist = cam_state.camera_config.pixels[0] / total_width
+    y_pixel_per_dist = cam_state.camera_config.pixels[1] / total_height
 
     # print("x_pixel_per_dist", x_pixel_per_dist, "y_pixel_per_dist: ", y_pixel_per_dist)
 
@@ -45,22 +45,30 @@ def ppm_to_cost(ppd: float):
     return max(cost, 0.0001)
 
 
+def cost_single_cam(state: State, cam_state: CameraState, face: Array4x3):
+    cost = 0
+    min_dist_threshold = 1 * state.scale
+    face_dist = get_distance_to_face(face, cam_state.pos)
+
+    if face_dist < min_dist_threshold:
+        # Quadratic penalty: The closer it gets to 0, the higher the cost explodes
+        # At face_dist = min_dist_threshold, this is 0.
+        # At face_dist = 0, this is 10,000.
+        dist_error = min_dist_threshold - face_dist
+        cost += 1000 * (dist_error / min_dist_threshold) ** 2
+
+    x_pixel_per_dist, y_pixel_per_dist = get_pixel_per_meter(cam_state, face_dist)
+    cost += ppm_to_cost(x_pixel_per_dist * state.scale)
+    cost += ppm_to_cost(y_pixel_per_dist * state.scale)
+
+    return cost
+
+
 def cost(state: State):
     cost = 0
     min_dist_threshold = 1 * state.scale
     for cam_state in state.cameras:
-        face_dist = get_distance_to_face(cam_state.face, cam_state.pos)
-
-        if face_dist < min_dist_threshold:
-            # Quadratic penalty: The closer it gets to 0, the higher the cost explodes
-            # At face_dist = min_dist_threshold, this is 0.
-            # At face_dist = 0, this is 10,000.
-            dist_error = min_dist_threshold - face_dist
-            cost += 1000 * (dist_error / min_dist_threshold) ** 2
-
-        x_pixel_per_dist, y_pixel_per_dist = get_pixel_per_meter(cam_state, face_dist)
-        cost += ppm_to_cost(x_pixel_per_dist * state.scale)
-        cost += ppm_to_cost(y_pixel_per_dist * state.scale)
+        cost += cost_single_cam(state, cam_state, min_dist_threshold)
 
     # print("resolution cost: ", cost)
 
