@@ -1,5 +1,12 @@
 <script setup lang="ts">
-import { ref, watch, shallowRef } from "vue";
+import {
+  ref,
+  watch,
+  shallowRef,
+  computed,
+  nextTick,
+  onBeforeUnmount,
+} from "vue";
 import {
   Dialog,
   DialogContent,
@@ -47,11 +54,16 @@ const props = defineProps<{
 
 const emit = defineEmits(["update:modelValue"]);
 
-const presets = shallowRef<Camerapreset[]>([]);
+const allPresets = shallowRef<Camerapreset[]>([]);
 const selectedPreset = ref<Camerapreset | null>(null);
 const isLoading = ref(false);
 const isLoaded = ref(false);
 const openCombobox = ref(false);
+
+const searchQuery = ref("");
+const pageLimit = ref(50);
+const observerTarget = ref<HTMLElement | null>(null);
+let observer: IntersectionObserver | null = null;
 
 watch(
   () => props.modelValue,
@@ -61,6 +73,8 @@ watch(
     } else if (!open) {
       selectedPreset.value = null;
       openCombobox.value = false;
+      searchQuery.value = "";
+      pageLimit.value = 50;
     }
   },
 );
@@ -71,7 +85,7 @@ async function loadCsv() {
     const resp = await fetch("/data/camera_parameter.csv");
     const text = await resp.text();
     const { data } = Papa.parse<Camerapreset>(text, { header: true });
-    presets.value = data
+    allPresets.value = data
       .filter((row) => row.vendor && row.camera)
       .map((row, index) => ({
         ...row,
@@ -83,6 +97,53 @@ async function loadCsv() {
     isLoading.value = false;
   }
 }
+
+const filteredPresets = computed(() => {
+  if (!searchQuery.value) return allPresets.value;
+
+  const lowerSearch = searchQuery.value.toLowerCase();
+  return allPresets.value.filter((p) => {
+    const text = `${p.vendor} ${p.camera} ${p.sensor_name}`.toLowerCase();
+    return text.includes(lowerSearch);
+  });
+});
+
+const visiblePresets = computed(() => {
+  return filteredPresets.value.slice(0, pageLimit.value);
+});
+
+watch(searchQuery, () => {
+  pageLimit.value = 50;
+});
+
+const onIntersect = (entries: IntersectionObserverEntry[]) => {
+  const entry = entries[0];
+  if (entry.isIntersecting) {
+    if (visiblePresets.value.length < filteredPresets.value.length) {
+      pageLimit.value += 50;
+    }
+  }
+};
+
+watch(openCombobox, async (val) => {
+  if (val) {
+    await nextTick();
+    if (observerTarget.value) {
+      observer = new IntersectionObserver(onIntersect, {
+        root: null,
+        rootMargin: "100px",
+        threshold: 0.1,
+      });
+      observer.observe(observerTarget.value);
+    }
+  } else {
+    if (observer) observer.disconnect();
+  }
+});
+
+onBeforeUnmount(() => {
+  if (observer) observer.disconnect();
+});
 
 const gcd = (a: number, b: number): number => {
   return b === 0 ? a : gcd(b, a % b);
@@ -165,20 +226,20 @@ function close() {
               :style="{ width: 'var(--radix-popover-trigger-width)' }"
               align="start"
             >
-              <Command
-                :filter-function="
-                  (list: any[], search: string) =>
-                    list.filter((i) =>
-                      i.toLowerCase().includes(search.toLowerCase()),
-                    )
-                "
-              >
-                <CommandInput placeholder="Search camera model..." />
-                <CommandEmpty>No camera found.</CommandEmpty>
+              <Command :should-filter="false">
+                <CommandInput
+                  placeholder="Search camera model..."
+                  v-model="searchQuery"
+                />
+
+                <CommandEmpty v-if="filteredPresets.length === 0">
+                  No camera found.
+                </CommandEmpty>
+
                 <CommandList class="max-h-[300px] overflow-y-auto">
                   <CommandGroup>
                     <CommandItem
-                      v-for="preset in presets"
+                      v-for="preset in visiblePresets"
                       :key="preset._id"
                       :value="`${preset.vendor} ${preset.camera} ${preset.sensor_name}`"
                       @select="handleSelect(preset)"
@@ -201,6 +262,8 @@ function close() {
                         </span>
                       </div>
                     </CommandItem>
+
+                    <div ref="observerTarget" class="h-4 w-full"></div>
                   </CommandGroup>
                 </CommandList>
               </Command>
