@@ -2,12 +2,13 @@ import math
 
 import numpy as np
 import quaternion
-from state import State
+from state import CameraState, State
 from utils import angle_from_face_normal, center_of_face
 from constant import BIG_M
 from astropy.units import Quantity
 import astropy.units as u
 import logging
+from basic_types import Array4x3
 
 
 def horizontal_cost(hor_deg: Quantity[u.degree]) -> float:
@@ -45,17 +46,21 @@ def vertical_cost(ver_deg: Quantity[u.degree]) -> float:
         return (ver_max - midpoint) ** 2 + 100 * (val - ver_max) ** 2
 
 
+def cost_single_cam(state: State, cam_state: CameraState, face: Array4x3):
+    cost = 0
+    hor, ver = angle_from_face_normal(face, cam_state.pos, cam_state.angle)
+    hor_deg, ver_deg = hor.to(u.degree), ver.to(u.degree)
+
+    print(hor_deg, ver_deg)
+
+    cost += horizontal_cost(hor_deg)
+    cost += vertical_cost(ver_deg)
+
+    return cost
+
+
 def cost(state: State):
     cost = 0
     for cam_state in state.cameras:
-        hor, ver = angle_from_face_normal(
-            cam_state.face, cam_state.pos, cam_state.angle
-        )
-        hor_deg, ver_deg = hor.to(u.degree), ver.to(u.degree)
-
-        print(hor_deg, ver_deg)
-
-        cost += horizontal_cost(hor_deg)
-        cost += vertical_cost(ver_deg)
-
+        cost += cost_single_cam(cam_state, cam_state.face)
     return cost

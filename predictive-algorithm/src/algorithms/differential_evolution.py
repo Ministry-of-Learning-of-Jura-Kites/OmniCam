@@ -8,7 +8,7 @@ from . import (
     vector_to_state,
 )
 import numpy as np
-from state import State
+from state import State, render_from_state
 from cost_functions import total_cost
 
 
@@ -48,10 +48,8 @@ def optimize_de(initial_state: State):
         init_pop[i] = particle + np.random.uniform(-5, 5, dim)
 
     def objective(vec):
-        # cost, _ = total_cost(vector_to_state(vec, template))
-        # return cost
         state = spherical_vector_to_state(vec, template)
-        cost, _ = total_cost(state)
+        cost = total_cost(state)
         return cost
 
     result = differential_evolution(
@@ -63,5 +61,6 @@ def optimize_de(initial_state: State):
         mutation=(0.5, 1.0),
         popsize=20,
         recombination=0.7,
+        rng=200,
     )
     return spherical_vector_to_state(result.x, template)

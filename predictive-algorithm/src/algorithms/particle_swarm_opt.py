@@ -49,7 +49,7 @@ def optimize_pso(
 
             # Evaluate
             current_state = vector_to_state(particles[i], initial_state)
-            current_cost, _ = total_cost(current_state)
+            current_cost = total_cost(current_state)
 
             if current_cost < p_best_cost[i]:
                 p_best[i] = particles[i]

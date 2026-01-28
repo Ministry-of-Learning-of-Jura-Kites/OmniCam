@@ -8,6 +8,7 @@ import numpy as np
 import pyvista as pv
 from basic_types import Array2x2, Array4x3, Array3
 import quaternion
+from scipy.spatial.transform import Rotation as R
 
 
 @dataclass
@@ -19,17 +20,30 @@ class CameraMesh:
 
 
 @dataclass
-class CameraState:
-    face: Array4x3
-    pos: Array3
-    angle: quaternion.quaternion
+class CameraConfiguration:
     pixels: Array2x2
     vfov: float
+
+
+@dataclass
+class CameraState:
+    # face: Array4x3
+    pos: Array3
+    angle: quaternion.quaternion
+    # pixels: Array2x2
+    # vfov: float
     meshes: CameraMesh = field(default_factory=CameraMesh)
+    camera_config: CameraConfiguration = field(default_factory=CameraConfiguration)
+
+    def forward_vector(self) -> Array3:
+        r = R.from_quat(quaternion.as_float_array(self.angle))
+        return r.apply(np.array([1, 0, 0]))
 
 
 @dataclass
 class State:
+    faces: List[Array4x3]
+    face_centers: List[Array3]
     cameras: List[CameraState]
     gltf: pv.DataObject
     gltf_locator: vtk.vtkStaticCellLocator
