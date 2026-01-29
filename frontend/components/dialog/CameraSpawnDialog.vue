@@ -118,7 +118,7 @@ watch(searchQuery, () => {
 
 const onIntersect = (entries: IntersectionObserverEntry[]) => {
   const entry = entries[0];
-  if (entry.isIntersecting) {
+  if (entry?.isIntersecting) {
     if (visiblePresets.value.length < filteredPresets.value.length) {
       pageLimit.value += 50;
     }
