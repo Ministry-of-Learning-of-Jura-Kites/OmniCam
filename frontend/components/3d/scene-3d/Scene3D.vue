@@ -33,7 +33,7 @@ const { data: modelResp } = sceneStates.modelInfo;
 const modelPath = `http://${config.public.externalBackendHost}/api/v1/assets/projects/${modelResp.projectId}/models/${modelResp.modelId}/file/${modelResp.fileExtension.slice(1)}`;
 
 // UPDATED: Starting height for the "slicing" view
-const minimapHeight: Ref<number> = ref(100);
+const minimapHeight: Ref<number> = ref(5);
 
 const camera = ref<PerspectiveCamera | null>(null);
 const minimapCamera = ref<OrthographicCamera | null>(null);
@@ -104,7 +104,11 @@ onLoop(() => {
   );
 
   // Look straight down from that height
-  miniCam.lookAt(camera.value.position.x, 0, camera.value.position.z);
+  miniCam.lookAt(
+    camera.value.position.x,
+    minimapHeight.value - 1,
+    camera.value.position.z,
+  );
 
   const halfSize = minimapFrustumSize.value / 2;
   miniCam.left = -halfSize;
