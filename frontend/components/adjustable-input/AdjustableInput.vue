@@ -1,5 +1,5 @@
 <script setup lang="ts">
-const model = defineModel<Ref<number>>();
+const model = defineModel<number>();
 
 const emit = defineEmits(["change"]);
 
@@ -59,8 +59,8 @@ function onPointerUp(_e: PointerEvent) {
     return;
   }
   if (model.value) {
-    model.value.value = roundTo(model.value.value ?? 0, 5);
-    emit("change", model.value.value);
+    model.value = roundTo(model.value ?? 0, 5);
+    emit("change", model.value);
   }
   isDragging.value = false;
   isInputting.value = true;
@@ -89,7 +89,7 @@ function onPointerMove(e: MouseEvent) {
     return;
   }
   if (model?.value != null) {
-    const newVal = model.value.value + deltaX * props.slidingSensitivity;
+    const newVal = model.value + deltaX * props.slidingSensitivity;
     setClamp(newVal);
   }
 }
@@ -103,8 +103,8 @@ function setClamp(input: number) {
     newVal = Math.max(props.min, newVal);
   }
   if (model.value) {
-    model.value.value = newVal;
-    emit("change", model.value.value);
+    model.value = newVal;
+    emit("change", model.value);
   }
 }
 
@@ -129,14 +129,14 @@ function handleClickOutside(e: MouseEvent) {
       ref="textValue"
       class="text-right w-full select-none"
       @pointerdown="onPointerDown"
-      >{{ (model?.value ?? 0).toFixed(2) }}</span
+      >{{ (model ?? 0).toFixed(2) }}</span
     >
     <input
       v-if="isInputting"
       ref="inputEl"
-      v-model="model!.value"
+      v-model="model!"
       type="number"
-      :size="model?.value.toString().length"
+      :size="model?.toString().length"
       @focusout="unsetInputting"
       @keypress.enter="unsetInputting"
     />
