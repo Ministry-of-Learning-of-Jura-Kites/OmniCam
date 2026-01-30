@@ -1,24 +1,14 @@
 <script setup lang="ts">
-import {
-  Mesh,
-  CylinderGeometry,
-  MeshBasicMaterial,
-  Group,
-  type Vector3,
-} from "three";
+import { Mesh, CylinderGeometry, MeshBasicMaterial, Group } from "three";
 import { MOVING_TYPE, MovingUserData } from "./moving-event-handle";
 import { MOVING_ARROW_CONFIG } from "~/constants";
 import { useTresContext } from "@tresjs/core";
 import type { Obj3DWithUserData } from "~/types/obj-3d-user-data";
 import { SCENE_STATES_KEY } from "@/constants/state-keys";
 
-import type { ICamera } from "~/types/camera";
+import type { MovableObject } from "~/types/movable";
 
-interface Pos {
-  pos: Vector3;
-}
-
-const cam = defineModel<ICamera>({ required: true });
+const object = defineModel<MovableObject>({ required: true });
 
 const emit = defineEmits<{
   (event: "change"): void;
@@ -47,7 +37,7 @@ const arrow = new Group();
 
 const cameraUserData = new MovingUserData(
   props.direction,
-  cam.value!,
+  object.value,
   context!,
   () => {
     emit("change");
@@ -126,9 +116,9 @@ function setMeshDraggable() {
 const isActuallyHiding = computed(() => {
   const shouldHide =
     props.isHiding ||
-    (cam.value.controlling != null &&
-      (cam.value.controlling.type != MOVING_TYPE ||
-        cam.value.controlling.direction != props.direction));
+    (object.value.controlling != null &&
+      (object.value.controlling.type != MOVING_TYPE ||
+        object.value.controlling.direction != props.direction));
 
   return shouldHide;
 });

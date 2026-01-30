@@ -6,9 +6,9 @@ import { getAxisVector } from "~/lib/three";
 
 export const ROTATING_TYPE = "rotation";
 
-export class RotatingUserData implements IUserData {
+export class RotatingUserData implements IUserData<ICamera> {
   type: "x" | "y" | "z";
-  cam: ICamera;
+  target: ICamera;
   context: TresContext;
 
   isDragging = false;
@@ -18,7 +18,7 @@ export class RotatingUserData implements IUserData {
 
   constructor(type: string, obj: ICamera, context: TresContext) {
     this.type = type as "x" | "y" | "z";
-    this.cam = obj;
+    this.target = obj;
     this.context = context;
   }
 
@@ -34,28 +34,28 @@ export class RotatingUserData implements IUserData {
 
   handlePointerDownEvent = (event: PointerEvent) => {
     this.isDragging = true;
-    this.cam.controlling = {
+    this.target.controlling = {
       type: ROTATING_TYPE,
       direction: this.type,
     };
     document.addEventListener("pointermove", this.handlePointerMoveEvent);
     document.addEventListener("pointerup", this.handlePointerUpEvent);
 
-    this.initialCamQuaternion.setFromEuler(this.cam.rotation);
+    this.initialCamQuaternion.setFromEuler(this.target.rotation);
 
     const ele = this.context.renderer.value.domElement;
     const rect = ele.getBoundingClientRect();
 
     const scaledX = ((event.clientX - rect.left) / rect.width) * 2 - 1;
     const scaledY = -((event.clientY - rect.top) / rect.height) * 2 + 1;
-    const objNdc = this.cam.position
+    const objNdc = this.target.position
       .clone()
       .project(this.context.camera.value!);
     this.downAngle = Math.atan2(scaledY - objNdc.y, scaledX - objNdc.x);
   };
 
   handlePointerMoveEvent = (event: PointerEvent) => {
-    const objNdc = this.cam.position.clone();
+    const objNdc = this.target.position.clone();
     objNdc.project(this.context.camera.value!);
 
     const ele = this.context.renderer.value.domElement;
@@ -82,12 +82,12 @@ export class RotatingUserData implements IUserData {
     );
     quaternion.premultiply(rotation);
 
-    this.cam.rotation.setFromQuaternion(quaternion);
+    this.target.rotation.setFromQuaternion(quaternion);
   };
 
   handlePointerUpEvent = (_event: PointerEvent) => {
     this.isDragging = false;
-    this.cam.controlling = undefined;
+    this.target.controlling = undefined;
     document.removeEventListener("pointerup", this.handlePointerUpEvent);
     document.removeEventListener("pointermove", this.handlePointerMoveEvent);
   };

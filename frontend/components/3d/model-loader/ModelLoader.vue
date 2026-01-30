@@ -2,10 +2,17 @@
 import { useGLTF } from "@tresjs/cientos";
 import type { TresObject3D } from "@tresjs/core";
 
-const props = defineProps<{
-  path?: string;
-  position?: [number, number, number];
-}>();
+const props = withDefaults(
+  defineProps<{
+    path?: string;
+    position?: [number, number, number];
+    modelScale?: number;
+  }>(),
+  {
+    modelScale: 1,
+    position: () => [0, 0, 0],
+  },
+);
 
 let nodes: Record<string, TresObject3D>;
 console.log("path", props.path);
@@ -41,6 +48,7 @@ try {
       (props.position?.[1] ?? 0) + (node.position?.y ?? 0),
       (props.position?.[2] ?? 0) + (node.position?.z ?? 0),
     ]"
+    :scale="[props.modelScale, props.modelScale, props.modelScale]"
   />
 
   <!-- Block Placeholder  -->

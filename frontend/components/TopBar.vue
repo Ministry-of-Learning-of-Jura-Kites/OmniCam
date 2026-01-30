@@ -315,7 +315,7 @@ function goToMyWorkspace() {
           variant="outline"
           @click="
             goToModel();
-            toggleCalibration();
+            isCalibrating = false;
           "
         >
           <LogOut class="button-icon" />
