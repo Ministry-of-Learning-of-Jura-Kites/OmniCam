@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref } from "vue";
-import { Euler, Vector3 } from "three";
+import { Euler, Vector3, MathUtils } from "three";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 import Button from "./ui/button/Button.vue";
 import Input from "./ui/input/Input.vue";
@@ -174,6 +174,66 @@ const handleSpawnCamera = (preset: Camerapreset) => {
     }
   }
 };
+
+const createRotationRef = (axis: "x" | "y" | "z") => {
+  return computed({
+    get() {
+      if (!selectedCam.value) return 0;
+      return (
+        Math.round(MathUtils.radToDeg(selectedCam.value.rotation[axis]) * 100) /
+        100
+      );
+    },
+    set(value: number) {
+      if (!selectedCam.value) return;
+      selectedCam.value.rotation[axis] = MathUtils.degToRad(value);
+      sceneStates.markedForCheck.add(selectedCamId.value!);
+    },
+  });
+};
+
+const angleX = createRotationRef("x");
+const angleY = createRotationRef("y");
+const angleZ = createRotationRef("z");
+
+function signedAngle(a: Vector3, b: Vector3, normal: Vector3) {
+  const angle = a.angleTo(b);
+
+  const sign = Math.sign(a.clone().cross(b).dot(normal)) || -1;
+
+  return angle * sign;
+}
+
+const directionAngles = computed(() => {
+  if (!selectedCam.value) return { x: 0, y: 0, z: 0 };
+
+  const forward = new Vector3(0, 0, 1)
+    .applyEuler(selectedCam.value.rotation)
+    .normalize();
+
+  return {
+    x:
+      Math.round(
+        MathUtils.radToDeg(
+          signedAngle(forward, new Vector3(1, 0, 0), new Vector3(0, 1, 0)),
+        ) * 100,
+      ) / 100,
+
+    y:
+      Math.round(
+        MathUtils.radToDeg(
+          signedAngle(forward, new Vector3(0, 1, 0), new Vector3(0, 0, 1)),
+        ) * 100,
+      ) / 100,
+
+    z:
+      Math.round(
+        MathUtils.radToDeg(
+          signedAngle(forward, new Vector3(0, 0, 1), new Vector3(0, -1, 0)),
+        ) * 100,
+      ) / 100,
+  };
+});
 </script>
 
 <template>
@@ -315,47 +375,67 @@ const handleSpawnCamera = (preset: Camerapreset) => {
               >
               <Input
                 id="angle-x"
-                v-model.number="sceneStates.cameras[selectedCamId]!.rotation.x"
+                v-model.number="angleX"
                 :disabled="
-                  sceneStates.cameras[selectedCamId]!.isLockingRotation ||
-                  props.workspace == null
+                  selectedCam?.isLockingRotation || props.workspace == null
                 "
                 disabled-class="disabled-input"
                 type="number"
+                step="0.1"
                 @change="sceneStates.markedForCheck.add(selectedCamId)"
               />
             </div>
+
             <div>
               <Label for="angle-y"
                 ><p>θ<sub>y</sub></p></Label
               >
               <Input
                 id="angle-y"
-                v-model.number="sceneStates.cameras[selectedCamId]!.rotation.y"
+                v-model.number="angleY"
                 :disabled="
-                  sceneStates.cameras[selectedCamId]!.isLockingRotation ||
-                  props.workspace == null
+                  selectedCam?.isLockingRotation || props.workspace == null
                 "
                 disabled-class="disabled-input"
                 type="number"
+                step="0.1"
                 @change="sceneStates.markedForCheck.add(selectedCamId)"
               />
             </div>
+
             <div>
               <Label for="angle-z"
                 ><p>θ<sub>z</sub></p></Label
               >
               <Input
                 id="angle-z"
-                v-model.number="sceneStates.cameras[selectedCamId]!.rotation.z"
+                v-model.number="angleZ"
                 :disabled="
-                  sceneStates.cameras[selectedCamId]!.isLockingRotation ||
-                  props.workspace == null
+                  selectedCam?.isLockingRotation || props.workspace == null
                 "
                 disabled-class="disabled-input"
                 type="number"
+                step="0.1"
                 @change="sceneStates.markedForCheck.add(selectedCamId)"
               />
+            </div>
+          </div>
+
+          <div v-if="selectedCam" class="mt-2 p-2 rounded text-xs">
+            <Label for="angles-vector">Angles Vector</Label>
+            <div class="grid grid-cols-3 gap-1">
+              <div class="flex flex-col">
+                <span class="text-[10px] mt-1">X-Axis</span>
+                <span class="font-mono text-sm">{{ directionAngles.x }}°</span>
+              </div>
+              <div class="flex flex-col">
+                <span class="text-[10px] mt-1">Y-Axis</span>
+                <span class="font-mono text-sm">{{ directionAngles.y }}°</span>
+              </div>
+              <div class="flex flex-col">
+                <span class="text-[10px] mt-1">Z-Axis</span>
+                <span class="font-mono text-sm">{{ directionAngles.z }}°</span>
+              </div>
             </div>
           </div>
 
