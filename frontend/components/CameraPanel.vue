@@ -382,6 +382,7 @@ const directionAngles = computed(() => {
                 disabled-class="disabled-input"
                 type="number"
                 step="0.1"
+                @change="sceneStates.markedForCheck.add(selectedCamId)"
               />
             </div>
 
@@ -398,6 +399,7 @@ const directionAngles = computed(() => {
                 disabled-class="disabled-input"
                 type="number"
                 step="0.1"
+                @change="sceneStates.markedForCheck.add(selectedCamId)"
               />
             </div>
 
@@ -414,6 +416,7 @@ const directionAngles = computed(() => {
                 disabled-class="disabled-input"
                 type="number"
                 step="0.1"
+                @change="sceneStates.markedForCheck.add(selectedCamId)"
               />
             </div>
           </div>
