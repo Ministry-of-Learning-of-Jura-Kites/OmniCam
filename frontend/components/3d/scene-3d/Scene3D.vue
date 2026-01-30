@@ -70,7 +70,7 @@ function handleMinimapZoom(event: WheelEvent) {
 let miniCamUpdate = false;
 
 watch(
-  [minimapFrustumSize, minimapHeight],
+  [minimapFrustumSize, minimapHeight, sceneStates.spectatorCameraPosition],
   () => {
     miniCamUpdate = true;
   },
