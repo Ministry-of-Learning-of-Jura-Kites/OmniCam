@@ -2,7 +2,12 @@
 import LazyTopBar from "@/components/TopBar.vue";
 import LazyCameraPanel from "@/components/CameraPanel.vue";
 import SceneStatesProvider from "~/components/3d/scene-states-provider/SceneStatesProvider.vue";
-import { IS_PANEL_OPEN_KEY, TOGGLE_PANEL_KEY } from "~/constants/state-keys";
+import {
+  IS_PANEL_OPEN_KEY,
+  TOGGLE_PANEL_KEY,
+  IS_MAP_OPEN_KEY,
+  TOGGLE_MINIMAP_KEY,
+} from "~/constants/state-keys";
 
 import FailDialog from "~/components/dialog/FailDialog.vue";
 import { useFailDialog } from "~/composables/useFailDialog";
@@ -12,9 +17,7 @@ const route = useRoute();
 
 const isPanelOpen = ref(true);
 const slotWidth = ref("100%");
-
-provide("isPanelOpen", isPanelOpen);
-provide("togglePanel", togglePanel);
+const isMapOpen = ref(false);
 
 onMounted(() => {
   slotWidth.value = isPanelOpen.value ? "calc(100% - 20rem)" : "100%";
@@ -25,8 +28,14 @@ function togglePanel() {
   slotWidth.value = isPanelOpen.value ? "calc(100% - 20rem)" : "100%";
 }
 
+function toggleMiniMap() {
+  isMapOpen.value = !isMapOpen.value;
+}
+
 provide(IS_PANEL_OPEN_KEY, isPanelOpen);
 provide(TOGGLE_PANEL_KEY, togglePanel);
+provide(IS_MAP_OPEN_KEY, isMapOpen);
+provide(TOGGLE_MINIMAP_KEY, toggleMiniMap);
 
 const workspace = computed(() => route.meta.routeInfo?.workspace);
 </script>

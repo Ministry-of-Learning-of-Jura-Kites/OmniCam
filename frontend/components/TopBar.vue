@@ -20,6 +20,7 @@ import {
   Trash2,
   Moon,
   Sun,
+  Map,
   Settings2,
 } from "lucide-vue-next";
 
@@ -35,8 +36,10 @@ import {
   IS_PANEL_OPEN_KEY,
   MODEL_INFO_KEY,
   TOGGLE_PANEL_KEY,
+  TOGGLE_MINIMAP_KEY,
 } from "~/constants/state-keys";
 import Setting3dDialog from "./dialog/Setting3dDialog.vue";
+
 const props = defineProps({
   workspace: {
     type: String,
@@ -48,6 +51,7 @@ const sceneStates = inject(SCENE_STATES_KEY)!;
 
 const isPanelOpen = inject(IS_PANEL_OPEN_KEY);
 const togglePanel = inject(TOGGLE_PANEL_KEY)!;
+const toggleMinimap = inject(TOGGLE_MINIMAP_KEY)!;
 
 const route = useRoute();
 
@@ -158,6 +162,10 @@ function openFileDialog() {
 function toggleSettingDialog() {
   isSettingDialogOpen.value = true;
   console.log(isSettingDialogOpen);
+}
+
+function toggleMap() {
+  toggleMinimap();
 }
 
 async function createWorkspace() {
@@ -333,6 +341,10 @@ function goToMyWorkspace() {
           <IndentIncrease v-if="isPanelOpen" class="button-icon" />
           <IndentDecrease v-else class="button-icon" />
           <span class="ml-2 button-span-text"> Panel </span>
+        </Button>
+        <Button size="sm" variant="outline" @click="() => toggleMap()">
+          <Map class="h-4 w-4" />
+          Map
         </Button>
       </div>
 
