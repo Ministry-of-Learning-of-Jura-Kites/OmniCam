@@ -37,7 +37,6 @@ import {
   MODEL_INFO_KEY,
   TOGGLE_PANEL_KEY,
   TOGGLE_MINIMAP_KEY,
-  IS_MAP_OPEN_KEY,
 } from "~/constants/state-keys";
 import Setting3dDialog from "./dialog/Setting3dDialog.vue";
 
