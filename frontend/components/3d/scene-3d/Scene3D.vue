@@ -10,6 +10,7 @@ import { SCENE_STATES_KEY } from "@/constants/state-keys";
 import { useCameraUpdate } from "./use-camera-update";
 import type { IUserData } from "~/types/obj-3d-user-data";
 import ModelLoader from "../model-loader/ModelLoader.vue";
+import CalibrationGrid from "../calibration/CalibrationGrid.vue";
 import { onBeforeRouteLeave } from "vue-router";
 
 const props = defineProps({
@@ -322,12 +323,14 @@ onBeforeRouteLeave((to, from, next) => {
           <TresAmbientLight :intensity="0.4" />
           <TresDirectionalLight :position="[10, 10, 5]" :intensity="1" />
 
+          <CalibrationGrid :workspace="props.workspace" />
+
           <!-- 3D Objects -->
           <Suspense>
             <ModelLoader :path="modelPath" :position="[0, 0, 0]" />
           </Suspense>
 
-          <!-- Grid -->
+          <!-- Grid  1 unit = 1 virtual m -->
           <Grid
             :args="[20, 20]"
             :cell-size="1"

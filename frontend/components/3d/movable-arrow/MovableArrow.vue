@@ -1,5 +1,11 @@
 <script setup lang="ts">
-import { Mesh, CylinderGeometry, MeshBasicMaterial, Group } from "three";
+import {
+  Mesh,
+  CylinderGeometry,
+  MeshBasicMaterial,
+  Group,
+  type Vector3,
+} from "three";
 import { MOVING_TYPE, MovingUserData } from "./moving-event-handle";
 import { MOVING_ARROW_CONFIG } from "~/constants";
 import { useTresContext } from "@tresjs/core";
@@ -7,6 +13,10 @@ import type { Obj3DWithUserData } from "~/types/obj-3d-user-data";
 import { SCENE_STATES_KEY } from "@/constants/state-keys";
 
 import type { ICamera } from "~/types/camera";
+
+interface Pos {
+  pos: Vector3;
+}
 
 const cam = defineModel<ICamera>({ required: true });
 
