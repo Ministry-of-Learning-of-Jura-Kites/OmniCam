@@ -228,8 +228,8 @@ function close() {
             >
               <Command :should-filter="false">
                 <CommandInput
-                  placeholder="Search camera model..."
                   v-model="searchQuery"
+                  placeholder="Search camera model..."
                 />
 
                 <CommandEmpty v-if="filteredPresets.length === 0">
