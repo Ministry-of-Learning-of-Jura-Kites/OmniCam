@@ -13,7 +13,7 @@ import {
   WebGLRenderer,
   type Scene,
 } from "three";
-import { SCENE_STATES_KEY } from "@/constants/state-keys";
+import { IS_MAP_OPEN_KEY, SCENE_STATES_KEY } from "@/constants/state-keys";
 
 import { useCameraUpdate } from "./use-camera-update";
 import type { IUserData } from "~/types/obj-3d-user-data";
@@ -28,6 +28,7 @@ const props = defineProps({
 
 const config = useRuntimeConfig();
 const sceneStates = inject(SCENE_STATES_KEY)!;
+const isMapOpen = inject(IS_MAP_OPEN_KEY)!;
 const { data: modelResp } = sceneStates.modelInfo;
 
 const modelPath = `http://${config.public.externalBackendHost}/api/v1/assets/projects/${modelResp.projectId}/models/${modelResp.modelId}/file/${modelResp.fileExtension.slice(1)}`;
@@ -211,19 +212,21 @@ watch(
   { deep: true },
 );
 
+const handleBeforeUnload = (event: BeforeUnloadEvent) => {
+  if (sceneStates.markedForCheck.size > 0) {
+    const message =
+      "You have unsaved camera changes. Are you sure you want to leave?";
+    event.preventDefault();
+    event.returnValue = message;
+    return message;
+  }
+};
 onMounted(() => {
-  const handleBeforeUnload = (event: BeforeUnloadEvent) => {
-    if (sceneStates.markedForCheck.size > 0) {
-      const message =
-        "You have unsaved camera changes. Are you sure you want to leave?";
-      event.preventDefault();
-      event.returnValue = message;
-      return message;
-    }
-  };
   window.addEventListener("beforeunload", handleBeforeUnload);
 });
-
+onUnmounted(() => {
+  window.removeEventListener("beforeunload", handleBeforeUnload);
+});
 onBeforeRouteLeave((to, from, next) => {
   if (sceneStates.markedForCheck.size > 0) {
     const answer = window.confirm(
@@ -280,13 +283,14 @@ onBeforeRouteLeave((to, from, next) => {
       </div>
 
       <div
+        v-show="isMapOpen"
         class="minimap-container absolute bottom-4 right-4 z-20 pointer-events-auto select-none"
         @wheel.prevent="handleMinimapZoom"
       >
         <div class="flex flex-col gap-1 mb-2">
-          <label class="text-[10px] text-white opacity-70 uppercase"
-            >Cut Height: {{ minimapHeight }}m</label
-          >
+          <label class="text-[10px] text-white opacity-70 uppercase">
+            Cut Height: {{ minimapHeight }}m
+          </label>
           <input
             id="minimap-slider"
             v-model.number="minimapHeight"
