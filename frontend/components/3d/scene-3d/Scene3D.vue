@@ -60,12 +60,22 @@ function handleMinimapZoom(event: WheelEvent) {
   );
 }
 
-watch(minimapFrustumSize, async () => {
-  await nextTick();
-  if (minimapCamera.value) {
-    minimapCamera.value.updateProjectionMatrix();
-  }
-});
+// watch(minimapFrustumSize, async () => {
+//   await nextTick();
+//   if (minimapCamera.value) {
+//     minimapCamera.value.updateProjectionMatrix();
+//   }
+// });
+
+let miniCamUpdate = false;
+
+watch(
+  [minimapFrustumSize, minimapHeight],
+  () => {
+    miniCamUpdate = true;
+  },
+  { immediate: true },
+);
 
 let miniRenderer: WebGLRenderer | null = null;
 
@@ -96,33 +106,36 @@ onLoop(() => {
     miniRenderer.setClearColor(0x111122, 1);
   }
 
-  // CHANGE: Set the Y position to our slider value.
-  // This effectively makes the camera "hover" at the slider height.
-  miniCam.position.set(
-    camera.value.position.x,
-    minimapHeight.value,
-    camera.value.position.z,
-  );
+  if (miniCamUpdate) {
+    miniCamUpdate = false;
+    // CHANGE: Set the Y position to our slider value.
+    // This effectively makes the camera "hover" at the slider height.
+    miniCam.position.set(
+      camera.value.position.x,
+      minimapHeight.value,
+      camera.value.position.z,
+    );
 
-  // Look straight down from that height
-  miniCam.lookAt(
-    camera.value.position.x,
-    minimapHeight.value - 1,
-    camera.value.position.z,
-  );
+    // Look straight down from that height
+    miniCam.lookAt(
+      camera.value.position.x,
+      minimapHeight.value - 1,
+      camera.value.position.z,
+    );
 
-  const halfSize = minimapFrustumSize.value / 2;
-  miniCam.left = -halfSize;
-  miniCam.right = halfSize;
-  miniCam.top = halfSize;
-  miniCam.bottom = -halfSize;
+    const halfSize = minimapFrustumSize.value / 2;
+    miniCam.left = -halfSize;
+    miniCam.right = halfSize;
+    miniCam.top = halfSize;
+    miniCam.bottom = -halfSize;
 
-  // CHANGE: By setting near to 0.1, everything ABOVE the camera height is invisible.
-  // It effectively slices the building/model at the slider's Y level.
-  miniCam.near = 0.1;
-  miniCam.far = 1000;
+    // CHANGE: By setting near to 0.1, everything ABOVE the camera height is invisible.
+    // It effectively slices the building/model at the slider's Y level.
+    miniCam.near = 0.1;
+    miniCam.far = 1000;
 
-  miniCam.updateProjectionMatrix();
+    miniCam.updateProjectionMatrix();
+  }
 
   if (miniRenderer) {
     miniRenderer.render(mainScene, miniCam);
@@ -243,12 +256,15 @@ onBeforeRouteLeave((to, from, next) => {
 
 <template>
   <ClientOnly>
-    <div class="h-full relative flex flex-col justify-center items-center">
+    <div
+      class="h-full relative flex flex-col justify-center items-center overflow-hidden"
+    >
       <div
         class="w-full h-full absolute z-3 pointer-events-none flex justify-between"
         :class="
-          'flex-' +
-          (sceneStates.aspectMarginType.value == 'horizontal' ? 'col' : 'row')
+          sceneStates.aspectMarginType.value == 'horizontal'
+            ? 'flex-col'
+            : 'row'
         "
       >
         <div
@@ -269,15 +285,42 @@ onBeforeRouteLeave((to, from, next) => {
 
       <div
         id="camera-props"
-        class="absolute top-0 right-0 z-10 text-white flex flex-col p-2"
+        class="absolute top-0 right-0 z-10 text-white flex flex-col p-4 bg-black/20 backdrop-blur-sm rounded-bl-lg"
       >
-        <p class="text-center w-full h-full">Spectator</p>
-        <div v-for="axis in ['x', 'y', 'z']" :key="axis" class="flex">
-          <p>{{ axis }}:</p>
+        <p class="text-center w-full mb-2 font-bold border-b border-white/20">
+          Spectator
+        </p>
+
+        <div
+          v-for="axis in ['x', 'y', 'z'] as const"
+          :key="`pos-${axis}`"
+          class="flex items-center gap-2 mb-1"
+        >
+          <p class="w-4">{{ axis }}:</p>
           <AdjustableInput
-            v-model="spectatorRefs.position[axis as 'x' | 'y' | 'z'].value"
+            v-model="spectatorRefs.position[axis].value"
             class="right-adjustable-input"
             :sliding-sensitivity="SPECTATOR_ADJ_INPUT_SENTIVITY"
+          />
+        </div>
+
+        <hr class="my-2 border-white/10" />
+
+        <div
+          v-for="axis in ['x', 'y', 'z'] as const"
+          :key="`rot-${axis}`"
+          class="flex items-center gap-2 mb-1"
+        >
+          <p class="w-4">
+            θ<sub>{{ axis }}</sub
+            >:
+          </p>
+          <AdjustableInput
+            v-model="spectatorRefs.rotation[axis].value"
+            class="right-adjustable-input"
+            :sliding-sensitivity="SPECTATOR_ADJ_INPUT_SENTIVITY"
+            :max="axis === 'x' ? Math.PI / 2 - 0.01 : undefined"
+            :min="axis === 'x' ? -Math.PI / 2 + 0.01 : undefined"
           />
         </div>
       </div>
@@ -301,7 +344,6 @@ onBeforeRouteLeave((to, from, next) => {
             class="slider"
           />
         </div>
-
         <div
           class="minimap-label text-white text-[10px] text-center mb-1 opacity-80 uppercase tracking-widest"
         >
@@ -309,7 +351,7 @@ onBeforeRouteLeave((to, from, next) => {
         </div>
         <canvas
           ref="minimapCanvas"
-          class="rounded-lg shadow-2xl border border-gray-600/50 cursor-zoom-in"
+          class="rounded-lg shadow-2xl border border-gray-600/50 cursor-zoom-in bg-black"
         ></canvas>
       </div>
 
@@ -319,6 +361,7 @@ onBeforeRouteLeave((to, from, next) => {
           width: sceneStates.screenSize.width + 'px',
           height: sceneStates.screenSize.height + 'px',
         }"
+        class="relative"
       >
         <TresCanvas
           id="canvas"
@@ -344,7 +387,7 @@ onBeforeRouteLeave((to, from, next) => {
             :aspect="aspect"
           />
 
-          <TresOrthographicCamera ref="minimapCamera" />
+          <TresOrthographicCamera ref="minimapCamera" :manual="true" />
 
           <CameraObject
             v-for="[camId, cam] in Object.entries(sceneStates.cameras)"
@@ -357,9 +400,10 @@ onBeforeRouteLeave((to, from, next) => {
           <Suspense><Environment preset="city" /></Suspense>
           <TresAmbientLight :intensity="0.4" />
           <TresDirectionalLight :position="[10, 10, 5]" :intensity="1" />
-          <Suspense
-            ><ModelLoader :path="modelPath" :position="[0, 0, 0]"
-          /></Suspense>
+
+          <Suspense>
+            <ModelLoader :path="modelPath" :position="[0, 0, 0]" />
+          </Suspense>
 
           <Grid
             :args="[20, 20]"
