@@ -107,6 +107,48 @@ def angle_from_face_normal(
     )
 
 
+def angle_from_face_position(
+    face: Array4x3,
+    pos: Array3,
+    angle: quaternion.quaternion,
+) -> Tuple[Quantity[u.radian], Quantity[u.radian]]:
+
+    # 1. Camera's actual forward direction
+    # (Assuming [1, 0, 0] is forward based on your previous code)
+    cam_forward_vec = quaternion.rotate_vectors(angle, [1, 0, 0])
+
+    # 2. Vector from Camera to Face Center (The "Desired" vector)
+    face_center = np.mean(face, axis=0)
+    target_vec = face_center - pos
+
+    # Normalize the target vector
+    target_dist = np.linalg.norm(target_vec)
+    target_unit = target_vec / (target_dist + 1e-8)
+
+    # 3. Horizontal Offset (XZ Plane)
+    # Target azimuth vs Camera azimuth
+    horiz_target_angle = math.atan2(target_unit[2], target_unit[0])
+    horiz_cam_angle = math.atan2(cam_forward_vec[2], cam_forward_vec[0])
+    horizontal_offset = horiz_target_angle - horiz_cam_angle
+
+    # 4. Vertical Offset
+    # Target elevation vs Camera elevation
+    dist_xz_target = math.sqrt(target_unit[0] ** 2 + target_unit[2] ** 2)
+    dist_xz_cam = math.sqrt(cam_forward_vec[0] ** 2 + cam_forward_vec[2] ** 2)
+
+    vert_target_angle = math.atan2(target_unit[1], dist_xz_target)
+    vert_cam_angle = math.atan2(cam_forward_vec[1], dist_xz_cam)
+    vertical_offset = vert_target_angle - vert_cam_angle
+
+    # 5. Normalize Horizontal to [-pi, pi]
+    horizontal_offset = (horizontal_offset + math.pi) % (2 * math.pi) - math.pi
+
+    return (
+        horizontal_offset * u.radian,
+        vertical_offset * u.radian,
+    )
+
+
 def look_at_quaternion(forward_vector, up_vector=np.array([0, 1, 0])):
     # 1. Normalize the forward vector (Z-axis in many systems, but we'll use your X-forward)
     # We want to map our local Forward (1,0,0) to target_forward
