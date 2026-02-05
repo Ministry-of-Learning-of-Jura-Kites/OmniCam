@@ -14,33 +14,26 @@ def prune_faces_by_distance(
     all_faces: List[Array4x3],
     face_centers: List[Array3],
     max_dist=20.0,
+    k_min=5,  # Safety net: always return at least 5 faces
 ):
-    """
-    Returns indices of faces that are within range and generally
-    in front of the camera.
-    """
-    if not all_faces:
-        return []
-
-    # Calculates distance from camera to every face at once
     dists = np.linalg.norm(face_centers - cam_state.pos, axis=1)
-
-    # Even before a full 'is_in_view', we can check the dot product
-    # to see if the face is behind the camera's sensor plane.
-    cam_forward = cam_state.forward_vector()  # e.g., result of your look_at_quaternion
+    cam_forward = cam_state.forward_vector()
     vecs_to_faces = face_centers - cam_state.pos
-
-    # Normalize vectors to faces
-    norms = np.linalg.norm(vecs_to_faces, axis=1, keepdims=True)
-    unit_vecs_to_faces = vecs_to_faces / (norms + 1e-8)
-
-    # Dot product > 0 means the face is 'in front' of the camera
+    unit_vecs_to_faces = vecs_to_faces / (
+        np.linalg.norm(vecs_to_faces, axis=1, keepdims=True) + 1e-8
+    )
     dots = np.dot(unit_vecs_to_faces, cam_forward)
 
-    # Keep faces that are within max_dist AND at least slightly in front
-    mask = (dists < max_dist) & (dots > -0.2)  # -0.2 allows for wide-angle peripheral
+    # 1. Standard mask
+    mask = (dists < max_dist) & (dots > -0.2)
+    indices = np.where(mask)[0]
 
-    return np.where(mask)[0]
+    # 2. Safety Net: If the camera sees 'nothing', find the K closest faces anyway
+    if len(indices) < k_min:
+        # Argsort gets indices of faces sorted by distance
+        indices = np.argsort(dists)[:k_min]
+
+    return indices
 
 
 def total_cost(state: State, verbose: bool = False):
@@ -80,6 +73,7 @@ def total_cost(state: State, verbose: bool = False):
                 # Re-run or retrieve the specific breakdown for the winner
                 _, b = total_cost_pair(state, state.cameras[c_idx], state.faces[f_idx])
                 stats[c_idx]["angle"].append(b.get("angle", 0))
+                stats[c_idx]["mount"] = b.get("mount", 0)
                 stats[c_idx]["res"].append(b.get("res", 0))
                 stats[c_idx]["occ"].append(b.get("occ", 0))
 

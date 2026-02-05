@@ -1,6 +1,13 @@
 {
   "configurations": [
     {
+      "name": "Predictive Algorithm Debugger",
+      "type": "debugpy",
+      "request": "launch",
+      "program": "predictive-algorithm/src/main.py",
+      "console": "integratedTerminal"
+    },
+    {
       "name": "Nuxt: Debug Dev Server",
       "type": "node",
       "request": "launch",

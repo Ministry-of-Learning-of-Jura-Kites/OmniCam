@@ -66,72 +66,153 @@ def vector_to_state(vec, template_state: State):
     )
 
 
+# def state_to_spherical_vector(state: State):
+#     """
+#     Converts a State object back into a 1D array of [r, theta, phi] per camera.
+#     Inverse of spherical_vector_to_state.
+#     """
+#     vec = []
+#     for cam in state.cameras:
+#         face_center = center_of_faces(cam.faces)
+
+#         # 1. Get relative position (Camera - Face)
+#         rel_pos = cam.pos - face_center
+#         x, y, z = rel_pos
+
+#         # 2. Calculate Radius (r)
+#         r = np.linalg.norm(rel_pos)
+
+#         # 3. Calculate Elevation (phi)
+#         # phi is the angle from the XZ plane towards the Y axis
+#         # Using arcsin(y/r) matches your: local_y = r * sin(phi)
+#         phi_rad = np.arcsin(y / (r + 1e-8))
+#         phi_deg = np.degrees(phi_rad)
+
+#         # 4. Calculate Azimuth (theta)
+#         # Using atan2(z, x) matches your: local_x = r*cos(phi)*cos(theta)
+#         # and local_z = r*cos(phi)*sin(theta)
+#         theta_rad = np.arctan2(z, x)
+#         theta_deg = np.degrees(theta_rad)
+
+#         vec.extend([r, theta_deg, phi_deg])
+
+#     return np.array(vec)
+
+
 def state_to_spherical_vector(state: State):
     """
-    Converts a State object back into a 1D array of [r, theta, phi] per camera.
-    Inverse of spherical_vector_to_state.
+    Converts State back to [r, theta, phi, face_idx] per camera.
+    Uses the nearest face as the anchor point.
     """
     vec = []
-    for cam in state.cameras:
-        face_center = center_of_faces(cam.faces)
+    # Pre-calculate all face centers for efficiency
+    face_centers = np.array([center_of_face(f) for f in state.faces])
 
-        # 1. Get relative position (Camera - Face)
-        rel_pos = cam.pos - face_center
+    for cam in state.cameras:
+        # 1. Find the best anchor (nearest face)
+        dists = np.linalg.norm(face_centers - cam.pos, axis=1)
+        face_idx = np.argmin(dists)
+        pivot = face_centers[face_idx]
+
+        # 2. Get relative position
+        rel_pos = cam.pos - pivot
         x, y, z = rel_pos
 
-        # 2. Calculate Radius (r)
+        # 3. Calculate Radius (r)
         r = np.linalg.norm(rel_pos)
 
-        # 3. Calculate Elevation (phi)
-        # phi is the angle from the XZ plane towards the Y axis
-        # Using arcsin(y/r) matches your: local_y = r * sin(phi)
+        # 4. Calculate Elevation (phi)
+        # Angle from XZ plane to Y axis
         phi_rad = np.arcsin(y / (r + 1e-8))
         phi_deg = np.degrees(phi_rad)
 
-        # 4. Calculate Azimuth (theta)
-        # Using atan2(z, x) matches your: local_x = r*cos(phi)*cos(theta)
-        # and local_z = r*cos(phi)*sin(theta)
+        # 5. Calculate Azimuth (theta)
+        # Angle in the XZ plane
         theta_rad = np.arctan2(z, x)
         theta_deg = np.degrees(theta_rad)
 
-        vec.extend([r, theta_deg, phi_deg])
+        # 6. Append all 4 parameters
+        # face_idx is stored as a float so the whole array is homogeneous
+        vec.extend([r, theta_deg, phi_deg, float(face_idx)])
 
     return np.array(vec)
 
 
+# def spherical_vector_to_state(vec, template: State):
+#     new_cameras = []
+#     for i in range(len(template.cameras)):
+#         r, theta, phi = vec[i * 3 : i * 3 + 3]
+
+#         # 1. Pivot point: Instead of a specific face, use the scene center
+#         # or the initial position provided in the template.
+#         pivot = np.array([22.0, 1.6, 2])  # Scene origin, or use a specific landmark
+
+#         # 2. Convert Spherical to World Cartesian
+#         theta_rad = np.radians(theta)
+#         phi_rad = np.radians(phi)
+
+#         x = r * np.cos(phi_rad) * np.cos(theta_rad)
+#         y = r * np.sin(phi_rad)
+#         z = r * np.cos(phi_rad) * np.sin(theta_rad)
+#         pos = pivot + np.array([x, y, z])
+
+#         # 3. Dynamic Look-At:
+#         # Since we don't know which face it's looking at yet,
+#         # we look at the 'Closest Face' or the 'Average' of face cluster
+#         # Or better: let the cost function determine the best angle.
+
+#         # For now, let's look at the nearest face center to establish an orientation
+#         face_centers = np.array([center_of_face(f) for f in template.faces])
+#         dists = np.linalg.norm(face_centers - pos, axis=1)
+#         target_face_center = face_centers[np.argmin(dists)]
+
+#         direction = target_face_center - pos
+#         angle = look_at_quaternion(direction)
+
+#         # Delete face selecting information for next time to prevent confusion
+#         cam = replace(template.cameras[i], pos=pos, angle=angle, faces=None)
+#         new_cameras.append(cam)
+
+#     return replace(template, cameras=new_cameras)
+
+
 def spherical_vector_to_state(vec, template: State):
     new_cameras = []
+    num_faces = len(template.faces)
+    face_centers = np.array([center_of_face(f) for f in template.faces])
+
     for i in range(len(template.cameras)):
-        r, theta, phi = vec[i * 3 : i * 3 + 3]
+        # We now use 4 parameters per camera
+        r, theta, phi, face_idx_raw = vec[i * 4 : i * 4 + 4]
 
-        # 1. Pivot point: Instead of a specific face, use the scene center
-        # or the initial position provided in the template.
-        pivot = np.array([0, 0, 0])  # Scene origin, or use a specific landmark
+        # 1. Selection: Map the continuous DE variable to a valid face index
+        # We use clip and round to handle the DE's floating point nature
+        face_idx = int(np.clip(np.round(face_idx_raw), 0, num_faces - 1))
+        pivot = face_centers[face_idx]
 
-        # 2. Convert Spherical to World Cartesian
+        # 2. Local Spherical to World Cartesian
         theta_rad = np.radians(theta)
         phi_rad = np.radians(phi)
 
-        x = r * np.cos(phi_rad) * np.cos(theta_rad)
-        y = r * np.sin(phi_rad)
-        z = r * np.cos(phi_rad) * np.sin(theta_rad)
-        pos = pivot + np.array([x, y, z])
+        local_x = r * np.cos(phi_rad) * np.cos(theta_rad)
+        local_y = r * np.sin(phi_rad)
+        local_z = r * np.cos(phi_rad) * np.sin(theta_rad)
 
-        # 3. Dynamic Look-At:
-        # Since we don't know which face it's looking at yet,
-        # we look at the 'Closest Face' or the 'Average' of face cluster
-        # Or better: let the cost function determine the best angle.
+        pos = pivot + np.array([local_x, local_y, local_z])
 
-        # For now, let's look at the nearest face center to establish an orientation
-        face_centers = np.array([center_of_face(f) for f in template.faces])
-        dists = np.linalg.norm(face_centers - pos, axis=1)
-        target_face_center = face_centers[np.argmin(dists)]
-
-        direction = target_face_center - pos
+        # 3. Look-At Logic
+        # It's safest to look back at the pivot (the face) we are orbiting
+        direction = pivot - pos
         angle = look_at_quaternion(direction)
 
-        # Delete face selecting information for next time to prevent confusion
         cam = replace(template.cameras[i], pos=pos, angle=angle, faces=None)
         new_cameras.append(cam)
 
-    return replace(template, cameras=new_cameras)
+    return State(
+        cameras=new_cameras,
+        scale=template.scale,
+        gltf=template.gltf,
+        faces=template.faces,
+        face_centers=template.face_centers,
+        gltf_locator=template.gltf_locator,
+    )

@@ -22,34 +22,59 @@ def optimize_de(initial_state: State):
     #         [(-100 / initial_state.scale, 100 / initial_state.scale)] * 3
     #     )  # Pos
     #     # bounds.extend([(-1, 1)] * 4)  # Quaternion components
-
     initial_vec = state_to_spherical_vector(initial_state)
+    num_faces = len(template.faces)
+    num_cams = len(template.cameras)
 
     bounds = []
-    for _ in range(len(template.cameras)):
-        bounds.extend([(1.0, 10.0), (-180.0, 180.0), (-45.0, 45.0)])
+    for _ in range(num_cams):
+        bounds.extend(
+            [
+                (1.0, 10.0),  # Radius
+                (-180.0, 180.0),  # Theta (Azimuth)
+                (-45.0, 45.0),  # Phi (Elevation)
+                (0, num_faces - 1),  # Face Index
+            ]
+        )
 
-    num_particles = 20  # or popsize * dim
+    num_particles = 20
     dim = len(initial_vec)
     init_pop = np.zeros((num_particles, dim))
 
     for i in range(num_particles):
         particle = initial_vec.copy()
-        if i >= num_particles // 2:
-            # Flip the Azimuth (theta) for the second half of the population
-            # index 1 is theta in [r, theta, phi]
-            for cam_idx in range(len(template.cameras)):
-                particle[cam_idx * 3 + 1] += 180.0
-                # Keep it within [-180, 180]
-                if particle[cam_idx * 3 + 1] > 180:
-                    particle[cam_idx * 3 + 1] -= 360
 
-        # Add wider noise to help initial spread
-        init_pop[i] = particle + np.random.uniform(-5, 5, dim)
+        # 2. Strategic Diversification
+        if i >= num_particles // 2:
+            for cam_idx in range(num_cams):
+                # Flip Azimuth
+                particle[cam_idx * 4 + 1] = (particle[cam_idx * 4 + 1] + 180) % 360
+                if particle[cam_idx * 4 + 1] > 180:
+                    particle[cam_idx * 4 + 1] -= 360
+
+                # Jiggle the Face Index: Half the population jumps to a random face
+                particle[cam_idx * 4 + 3] = np.random.randint(0, num_faces)
+
+        # 3. Add Noise
+        # Noise for [r, theta, phi]
+        spatial_noise = np.random.uniform(-5, 5, dim)
+
+        # Zero out noise for face_idx to prevent float-rounding issues in initial seeds
+        # We want the seeds to start exactly on faces, not between them.
+        for cam_idx in range(num_cams):
+            spatial_noise[cam_idx * 4 + 3] = 0
+
+        init_pop[i] = particle + spatial_noise
+
+        # Final safety clip to respect bounds
+        lower_b = [b[0] for b in bounds]
+        upper_b = [b[1] for b in bounds]
+        init_pop[i] = np.clip(init_pop[i], lower_b, upper_b)
 
     def objective(vec):
         state = spherical_vector_to_state(vec, template)
-        cost = total_cost(state)
+        cost = total_cost(state, True)
+        render_from_state(None, state)
         return cost
 
     result = differential_evolution(
