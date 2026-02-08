@@ -1,70 +1,115 @@
+from abc import ABC, abstractmethod
 import functools
+from typing import List, Tuple
 from state import CameraState, State
 import numpy as np
 from dataclasses import replace
 from utils import center_of_face, center_of_faces, look_at_quaternion
 import quaternion
 from cost_functions import total_cost
+from constant import VectorSerialization, VECTOR_SERIALIZATION
 
 
-@functools.cache
-def state_vector_dim():
-    face = np.array(
-        [
-            [-1.0, -1.0, -1.0],
-            [-1.0, -1.0, 1.0],
-            [-1.0, 1.0, 1.0],
-            [-1.0, 1.0, -1.0],
-        ]
-    )
-    vec = state_to_vector(
-        state=State(
-            [
-                CameraState(
-                    face=face,
-                    pos=np.array([0, 0, 0]),
-                    angle=quaternion.from_float_array([0, 0, 0, 0]),
-                    pixels=np.array([1920, 1080]),
-                    vfov=70,
-                )
-            ],
-            scale=1,
-            gltf=None,
-        )
-    )
+class AlgorithmSerialization(ABC):
+    @abstractmethod
+    def init_pop(
+        self,
+    ) -> np.array:
+        pass
 
-    return len(vec)
+    @abstractmethod
+    def init_bounds(
+        self,
+    ) -> List[Tuple[float, float]]:
+        pass
 
+    @abstractmethod
+    def init_bounds(
+        self,
+    ) -> List[Tuple[float, float]]:
+        pass
 
-def state_to_vector(state: State):
-    """Flattens State into a 1D numpy array."""
-    vec = []
-    for cam in state.cameras:
-        vec.extend(cam.pos)  # Just 3 params: x, y, z
-    return np.array(vec)
+    @abstractmethod
+    def state_to_vector(self, state: State) -> np.array:
+        pass
+
+    @abstractmethod
+    def vector_to_state(self, vec: np.array, template: State) -> State:
+        pass
 
 
-def vector_to_state(vec, template_state: State):
-    """Reconstructs State from a 1D numpy array."""
-    new_cameras = []
-    idx = 0
-    for i in range(len(template_state.cameras)):
-        pos = vec[idx : idx + 3]
+# def generic_state_to_vector(state: State):
+#     match VECTOR_SERIALIZATION:
+#         case VectorSerialization.CARTESIAN:
+#             return state_to_cartesian_vector(state)
+#         case VectorSerialization.SPHERICAL:
+#             return state_to_spherical_vector(state)
 
-        # Calculate Look-At rotation automatically
-        face_center = center_of_face(template_state.cameras[i].face)
-        direction = face_center - pos
-        # Use your existing utility to keep the camera pointed at the target
-        angle = look_at_quaternion(direction)
 
-        cam = replace(template_state.cameras[i], pos=pos, angle=angle)
-        new_cameras.append(cam)
-        idx += 3
+# def generic_vector_to_state(vec, template: State):
+#     match VECTOR_SERIALIZATION:
+#         case VectorSerialization.CARTESIAN:
+#             return cartesian_vector_to_state(vec, template)
+#         case VectorSerialization.SPHERICAL:
+#             return spherical_vector_to_state(vec, template)
 
-    return State(
-        cameras=new_cameras, scale=template_state.scale, gltf=template_state.gltf
-    )
 
+# @functools.cache
+# def state_spherical_vector_dim():
+#     face = np.array(
+#         [
+#             [-1.0, -1.0, -1.0],
+#             [-1.0, -1.0, 1.0],
+#             [-1.0, 1.0, 1.0],
+#             [-1.0, 1.0, -1.0],
+#         ]
+#     )
+#     vec = state_to_spherical_vector(
+#         state=State(
+#             [
+#                 CameraState(
+#                     face=face,
+#                     pos=np.array([0, 0, 0]),
+#                     angle=quaternion.from_float_array([0, 0, 0, 0]),
+#                     pixels=np.array([1920, 1080]),
+#                     vfov=70,
+#                 )
+#             ],
+#             scale=1,
+#             gltf=None,
+#         )
+#     )
+
+#     return len(vec)
+
+
+# @functools.cache
+# def state_cartesian_vector_dim():
+#     face = np.array(
+#         [
+#             [-1.0, -1.0, -1.0],
+#             [-1.0, -1.0, 1.0],
+#             [-1.0, 1.0, 1.0],
+#             [-1.0, 1.0, -1.0],
+#         ]
+#     )
+#     vec = state_to_cartesian_vector(
+#         state=State(
+#             [
+#                 CameraState(
+#                     face=face,
+#                     pos=np.array([0, 0, 0]),
+#                     angle=quaternion.from_float_array([0, 0, 0, 0]),
+#                     pixels=np.array([1920, 1080]),
+#                     vfov=70,
+#                 )
+#             ],
+#             scale=1,
+#             gltf=None,
+#         )
+#     )
+
+#     return len(vec)
 
 # def state_to_spherical_vector(state: State):
 #     """
@@ -97,45 +142,6 @@ def vector_to_state(vec, template_state: State):
 #         vec.extend([r, theta_deg, phi_deg])
 
 #     return np.array(vec)
-
-
-def state_to_spherical_vector(state: State):
-    """
-    Converts State back to [r, theta, phi, face_idx] per camera.
-    Uses the nearest face as the anchor point.
-    """
-    vec = []
-    # Pre-calculate all face centers for efficiency
-    face_centers = np.array([center_of_face(f) for f in state.faces])
-
-    for cam in state.cameras:
-        # 1. Find the best anchor (nearest face)
-        dists = np.linalg.norm(face_centers - cam.pos, axis=1)
-        face_idx = np.argmin(dists)
-        pivot = face_centers[face_idx]
-
-        # 2. Get relative position
-        rel_pos = cam.pos - pivot
-        x, y, z = rel_pos
-
-        # 3. Calculate Radius (r)
-        r = np.linalg.norm(rel_pos)
-
-        # 4. Calculate Elevation (phi)
-        # Angle from XZ plane to Y axis
-        phi_rad = np.arcsin(y / (r + 1e-8))
-        phi_deg = np.degrees(phi_rad)
-
-        # 5. Calculate Azimuth (theta)
-        # Angle in the XZ plane
-        theta_rad = np.arctan2(z, x)
-        theta_deg = np.degrees(theta_rad)
-
-        # 6. Append all 4 parameters
-        # face_idx is stored as a float so the whole array is homogeneous
-        vec.extend([r, theta_deg, phi_deg, float(face_idx)])
-
-    return np.array(vec)
 
 
 # def spherical_vector_to_state(vec, template: State):
@@ -176,43 +182,185 @@ def state_to_spherical_vector(state: State):
 #     return replace(template, cameras=new_cameras)
 
 
-def spherical_vector_to_state(vec, template: State):
-    new_cameras = []
-    num_faces = len(template.faces)
-    face_centers = np.array([center_of_face(f) for f in template.faces])
+class CartesianSerialize(AlgorithmSerialization):
+    def state_to_vector(self, state: State):
+        """Flattens State into a 1D numpy array."""
+        vec = []
+        for cam in state.cameras:
+            vec.extend(cam.pos)  # Just 3 params: x, y, z
+        return np.array(vec)
 
-    for i in range(len(template.cameras)):
-        # We now use 4 parameters per camera
-        r, theta, phi, face_idx_raw = vec[i * 4 : i * 4 + 4]
+    def vector_to_state(self, vec, template_state: State):
+        """Reconstructs State from a 1D numpy array."""
+        new_cameras = []
+        idx = 0
+        for i in range(len(template_state.cameras)):
+            pos = vec[idx : idx + 3]
 
-        # 1. Selection: Map the continuous DE variable to a valid face index
-        # We use clip and round to handle the DE's floating point nature
-        face_idx = int(np.clip(np.round(face_idx_raw), 0, num_faces - 1))
-        pivot = face_centers[face_idx]
+            # Calculate Look-At rotation automatically
+            face_center = center_of_face(template_state.faces[0])
+            direction = face_center - pos
+            # Use your existing utility to keep the camera pointed at the target
+            angle = look_at_quaternion(direction)
 
-        # 2. Local Spherical to World Cartesian
-        theta_rad = np.radians(theta)
-        phi_rad = np.radians(phi)
+            cam = replace(template_state.cameras[i], pos=pos, angle=angle)
+            new_cameras.append(cam)
+            idx += 3
 
-        local_x = r * np.cos(phi_rad) * np.cos(theta_rad)
-        local_y = r * np.sin(phi_rad)
-        local_z = r * np.cos(phi_rad) * np.sin(theta_rad)
+        return replace(template_state, cameras=new_cameras)
 
-        pos = pivot + np.array([local_x, local_y, local_z])
+    def init_bounds(self, template: State) -> List[Tuple[float, float]]:
+        # Define bounds
+        bounds = []
+        for _ in range(len(template.cameras)):
+            bounds.extend([(-100 / template.scale, 100 / template.scale)] * 3)  # Pos
+            # bounds.extend([(-1, 1)] * 4)  # Quaternion components
 
-        # 3. Look-At Logic
-        # It's safest to look back at the pivot (the face) we are orbiting
-        direction = pivot - pos
-        angle = look_at_quaternion(direction)
+        return bounds
 
-        cam = replace(template.cameras[i], pos=pos, angle=angle, faces=None)
-        new_cameras.append(cam)
+    def init_pop(self, num_particles, initial_vec, bounds, num_cams):
+        """Initializes population for [x, y, z] vectorization."""
+        total_dim = len(initial_vec)
+        init_pop = np.empty((num_particles, total_dim))
 
-    return State(
-        cameras=new_cameras,
-        scale=template.scale,
-        gltf=template.gltf,
-        faces=template.faces,
-        face_centers=template.face_centers,
-        gltf_locator=template.gltf_locator,
-    )
+        low_b = np.array([b[0] for b in bounds])
+        high_b = np.array([b[1] for b in bounds])
+
+        for i in range(num_particles):
+            # Cartesian diversification is purely noise-based or random offsets
+            particle = initial_vec.copy()
+
+            # Add spatial noise
+            noise = np.random.uniform(-5, 5, total_dim)
+
+            # For the second half, we can add a larger "jump" to spread them out
+            if i >= num_particles // 2:
+                noise *= 3
+
+            init_pop[i] = np.clip(particle + noise, low_b, high_b)
+
+        return init_pop
+
+
+class SphericalSerialize(AlgorithmSerialization):
+    def init_bounds(
+        self, num_cams: float, num_faces: float
+    ) -> List[Tuple[float, float]]:
+        bounds = []
+        for _ in range(num_cams):
+            bounds.extend(
+                [
+                    (1.0, 10.0),  # Radius
+                    (-180.0, 180.0),  # Theta (Azimuth)
+                    (-45.0, 45.0),  # Phi (Elevation)
+                    (0, num_faces - 1),  # Face Index
+                ]
+            )
+        return bounds
+
+    def init_pop(self, num_particles, initial_vec, bounds, num_cams, num_faces):
+        """Initializes population for [r, theta, phi, face_idx] vectorization."""
+        total_dim = len(initial_vec)
+        init_pop = np.empty((num_particles, total_dim))
+
+        low_b = np.array([b[0] for b in bounds])
+        high_b = np.array([b[1] for b in bounds])
+
+        for i in range(num_particles):
+            particle = initial_vec.copy()
+
+            # Strategic Diversification for the second half
+            if i >= num_particles // 2:
+                for cam_idx in range(num_cams):
+                    base = cam_idx * 4
+
+                    # Flip Azimuth (index 1: theta)
+                    particle[base + 1] = (particle[base + 1] + 180) % 360
+                    if particle[base + 1] > 180:
+                        particle[base + 1] -= 360
+
+                    # Jiggle Face Index (index 3)
+                    particle[base + 3] = np.random.randint(0, num_faces)
+
+            # Add Noise
+            noise = np.random.uniform(-5, 5, total_dim)
+
+            # Zero out noise for face_idx to prevent rounding errors
+            for cam_idx in range(num_cams):
+                noise[cam_idx * 4 + 3] = 0
+
+            init_pop[i] = np.clip(particle + noise, low_b, high_b)
+
+        return init_pop
+
+    def vector_to_state(self, vec, template: State):
+        new_cameras = []
+        num_faces = len(template.faces)
+        face_centers = np.array([center_of_face(f) for f in template.faces])
+
+        for i in range(len(template.cameras)):
+            # We now use 4 parameters per camera
+            r, theta, phi, face_idx_raw = vec[i * 4 : i * 4 + 4]
+
+            # 1. Selection: Map the continuous DE variable to a valid face index
+            # We use clip and round to handle the DE's floating point nature
+            face_idx = int(np.clip(np.round(face_idx_raw), 0, num_faces - 1))
+            pivot = face_centers[face_idx]
+
+            # 2. Local Spherical to World Cartesian
+            theta_rad = np.radians(theta)
+            phi_rad = np.radians(phi)
+
+            local_x = r * np.cos(phi_rad) * np.cos(theta_rad)
+            local_y = r * np.sin(phi_rad)
+            local_z = r * np.cos(phi_rad) * np.sin(theta_rad)
+
+            pos = pivot + np.array([local_x, local_y, local_z])
+
+            # 3. Look-At Logic
+            # It's safest to look back at the pivot (the face) we are orbiting
+            direction = pivot - pos
+            angle = look_at_quaternion(direction)
+
+            cam = replace(template.cameras[i], pos=pos, angle=angle, faces=None)
+            new_cameras.append(cam)
+
+        return replace(template, cameras=new_cameras)
+
+    def state_to_vector(self, state: State):
+        """
+        Converts State back to [r, theta, phi, face_idx] per camera.
+        Uses the nearest face as the anchor point.
+        """
+        vec = []
+        # Pre-calculate all face centers for efficiency
+        face_centers = np.array([center_of_face(f) for f in state.faces])
+
+        for cam in state.cameras:
+            # 1. Find the best anchor (nearest face)
+            dists = np.linalg.norm(face_centers - cam.pos, axis=1)
+            face_idx = np.argmin(dists)
+            pivot = face_centers[face_idx]
+
+            # 2. Get relative position
+            rel_pos = cam.pos - pivot
+            x, y, z = rel_pos
+
+            # 3. Calculate Radius (r)
+            r = np.linalg.norm(rel_pos)
+
+            # 4. Calculate Elevation (phi)
+            # Angle from XZ plane to Y axis
+            phi_rad = np.arcsin(y / (r + 1e-8))
+            phi_deg = np.degrees(phi_rad)
+
+            # 5. Calculate Azimuth (theta)
+            # Angle in the XZ plane
+            theta_rad = np.arctan2(z, x)
+            theta_deg = np.degrees(theta_rad)
+
+            # 6. Append all 4 parameters
+            # face_idx is stored as a float so the whole array is homogeneous
+            vec.extend([r, theta_deg, phi_deg, float(face_idx)])
+
+        return np.array(vec)
