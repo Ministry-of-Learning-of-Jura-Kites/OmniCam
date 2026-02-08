@@ -31,8 +31,8 @@ def center_of_face(face: Array4x3) -> Array3:
 
 
 def center_of_faces(faces: List[Array4x3]) -> Array3:
-    if not faces:
-        return np.array([0.0, 0.0, 0.0])
+    # if not faces:
+    #     return np.array([0.0, 0.0, 0.0])
 
     # Calculate the center of each individual face
     individual_centers = [np.mean(face, axis=0) for face in faces]

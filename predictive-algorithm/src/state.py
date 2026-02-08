@@ -55,6 +55,7 @@ class CameraState:
     angle: quaternion.quaternion
     # pixels: Array2x2
     # vfov: float
+    center_of_faces: Array3
     meshes: CameraMesh = field(default_factory=CameraMesh)
     camera_config: CameraConfiguration = field(default_factory=CameraConfiguration)
 

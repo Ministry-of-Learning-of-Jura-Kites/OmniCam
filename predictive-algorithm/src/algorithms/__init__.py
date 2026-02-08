@@ -3,7 +3,7 @@ import functools
 from typing import List, Tuple
 from state import CameraState, State
 import numpy as np
-from dataclasses import replace
+from dataclasses import dataclass, replace
 from utils import center_of_face, center_of_faces, look_at_quaternion
 import quaternion
 from cost_functions import total_cost
@@ -242,18 +242,19 @@ class CartesianSerialize(AlgorithmSerialization):
         return init_pop
 
 
+@dataclass
 class SphericalSerialize(AlgorithmSerialization):
-    def init_bounds(
-        self, num_cams: float, num_faces: float
-    ) -> List[Tuple[float, float]]:
+    num_cams: int
+    num_faces: int
+
+    def init_bounds(self) -> List[Tuple[float, float]]:
         bounds = []
-        for _ in range(num_cams):
+        for _ in range(self.num_cams):
             bounds.extend(
                 [
                     (1.0, 10.0),  # Radius
                     (-180.0, 180.0),  # Theta (Azimuth)
                     (-45.0, 45.0),  # Phi (Elevation)
-                    (0, num_faces - 1),  # Face Index
                 ]
             )
         return bounds
@@ -261,6 +262,7 @@ class SphericalSerialize(AlgorithmSerialization):
     def init_pop(self, num_particles, initial_vec, bounds, num_cams, num_faces):
         """Initializes population for [r, theta, phi, face_idx] vectorization."""
         total_dim = len(initial_vec)
+        vector_size = 3
         init_pop = np.empty((num_particles, total_dim))
 
         low_b = np.array([b[0] for b in bounds])
@@ -272,22 +274,22 @@ class SphericalSerialize(AlgorithmSerialization):
             # Strategic Diversification for the second half
             if i >= num_particles // 2:
                 for cam_idx in range(num_cams):
-                    base = cam_idx * 4
+                    base = cam_idx * vector_size
 
                     # Flip Azimuth (index 1: theta)
                     particle[base + 1] = (particle[base + 1] + 180) % 360
                     if particle[base + 1] > 180:
                         particle[base + 1] -= 360
 
-                    # Jiggle Face Index (index 3)
-                    particle[base + 3] = np.random.randint(0, num_faces)
+                    # # Jiggle Face Index (index 3)
+                    # particle[base + 3] = np.random.randint(0, num_faces)
 
             # Add Noise
             noise = np.random.uniform(-5, 5, total_dim)
 
             # Zero out noise for face_idx to prevent rounding errors
             for cam_idx in range(num_cams):
-                noise[cam_idx * 4 + 3] = 0
+                noise[cam_idx * vector_size + (vector_size - 1)] = 0
 
             init_pop[i] = np.clip(particle + noise, low_b, high_b)
 
@@ -295,17 +297,17 @@ class SphericalSerialize(AlgorithmSerialization):
 
     def vector_to_state(self, vec, template: State):
         new_cameras = []
+        vector_size = 3
         num_faces = len(template.faces)
         face_centers = np.array([center_of_face(f) for f in template.faces])
 
         for i in range(len(template.cameras)):
             # We now use 4 parameters per camera
-            r, theta, phi, face_idx_raw = vec[i * 4 : i * 4 + 4]
+            r, theta, phi = vec[i * vector_size : i * vector_size + vector_size]
 
             # 1. Selection: Map the continuous DE variable to a valid face index
             # We use clip and round to handle the DE's floating point nature
-            face_idx = int(np.clip(np.round(face_idx_raw), 0, num_faces - 1))
-            pivot = face_centers[face_idx]
+            pivot = (face_centers[0] + face_centers[1]) / 2.0
 
             # 2. Local Spherical to World Cartesian
             theta_rad = np.radians(theta)
@@ -322,7 +324,7 @@ class SphericalSerialize(AlgorithmSerialization):
             direction = pivot - pos
             angle = look_at_quaternion(direction)
 
-            cam = replace(template.cameras[i], pos=pos, angle=angle, faces=None)
+            cam = replace(template.cameras[i], pos=pos, angle=angle)
             new_cameras.append(cam)
 
         return replace(template, cameras=new_cameras)
@@ -338,9 +340,9 @@ class SphericalSerialize(AlgorithmSerialization):
 
         for cam in state.cameras:
             # 1. Find the best anchor (nearest face)
-            dists = np.linalg.norm(face_centers - cam.pos, axis=1)
-            face_idx = np.argmin(dists)
-            pivot = face_centers[face_idx]
+            # dists = np.linalg.norm(face_centers - cam.pos, axis=1)
+            # face_idx = np.argmin(dists)
+            pivot = face_centers[0]
 
             # 2. Get relative position
             rel_pos = cam.pos - pivot
@@ -361,6 +363,6 @@ class SphericalSerialize(AlgorithmSerialization):
 
             # 6. Append all 4 parameters
             # face_idx is stored as a float so the whole array is homogeneous
-            vec.extend([r, theta_deg, phi_deg, float(face_idx)])
+            vec.extend([r, theta_deg, phi_deg])
 
         return np.array(vec)
