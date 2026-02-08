@@ -85,8 +85,10 @@ def total_cost(state: State, verbose: bool = False):
 def total_cost_pair(state: State, cam_state: CameraState, face: Array4x3):
     angle = angle_cost.cost_single_cam(state, cam_state, face)
     resolution = resolution_cost.cost_single_cam(state, cam_state, face)
-    occlusion = occlusion_cost.cost_single_cam(state, cam_state, face)
-    mounting = 0.5 * mounting_cost.cost_single_cam(state, cam_state, face)
+    # occlusion = occlusion_cost.cost_single_cam(state, cam_state, face)
+    # mounting = 0.5 * mounting_cost.cost_single_cam(state, cam_state, face)
+    occlusion = 0
+    mounting = 0
     return angle + resolution + occlusion + mounting, {
         "angle": angle,
         "res": resolution,

@@ -4,7 +4,6 @@ import time
 
 import pyvistaqt
 from cost_functions import angle_cost, total_cost
-from algorithms.particle_swarm_opt import optimize_pso
 from algorithms.differential_evolution import optimize_de
 import numpy as np
 from state import CameraConfiguration, CameraState, State, render_from_state
