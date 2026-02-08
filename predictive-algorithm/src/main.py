@@ -62,7 +62,10 @@ state = State(
             angle=quaternion.from_rotation_vector([0, 0, 0]),
             # pixels=np.array([1920, 1080]),
             # vfov=70,
-            faces=None,
+            faces=[face1, face2],
+            center_of_faces=np.mean(
+                [center_of_face(face1), center_of_face(face2)], axis=0
+            ),
             camera_config=default_cam,
         )
     ],

@@ -40,46 +40,71 @@ def total_cost(state: State, verbose: bool = False):
     # We want to know how well every camera sees every face
     num_faces = len(state.faces)
     num_cams = len(state.cameras)
-    score_matrix = np.full((num_faces, num_cams), BIG_M)
-
     if verbose:
         stats = {
             i: {"angle": [], "res": [], "occ": [], "mount": 0} for i in range(num_cams)
         }
+    cost = 0
 
     for c_idx, cam in enumerate(state.cameras):
-        # OPTIMIZATION: Only check faces near this camera
-        potential_faces = prune_faces_by_distance(cam, state.faces, state.face_centers)
-
-        for f_idx in potential_faces:
-            total, _ = total_cost_pair(state, cam, state.faces[f_idx])
-            score_matrix[f_idx][c_idx] = total
-
-    # For each face, we only care about the MINIMUM cost across all cameras.
-    # This naturally allows one camera to be the 'best' for 10 faces at once.
-    best_costs_per_face = np.min(score_matrix, axis=1)
-    best_cam_indices = np.argmin(score_matrix, axis=1)
-
-    # # 4. ACTIVE CAMERA PENALTY
-    # # Identify which cameras are actually 'winners' for at least one face
-    # winning_camera_indices = np.argmin(score_matrix, axis=1)
-    # # Filter out faces that are totally occluded (cost == BIG_M)
-    # active_indices = winning_camera_indices[best_costs_per_face < BIG_M]
-    # num_active_cams = len(np.unique(active_indices))
+        for face in cam.faces:
+            total, b = total_cost_pair(state, cam, face)
+            stats[c_idx]["angle"].append(b.get("angle", 0))
+            stats[c_idx]["mount"] = b.get("mount", 0)
+            stats[c_idx]["res"].append(b.get("res", 0))
+            stats[c_idx]["occ"].append(b.get("occ", 0))
+            cost += total
 
     if verbose:
-        for f_idx, c_idx in enumerate(best_cam_indices):
-            if best_costs_per_face[f_idx] < BIG_M:
-                # Re-run or retrieve the specific breakdown for the winner
-                _, b = total_cost_pair(state, state.cameras[c_idx], state.faces[f_idx])
-                stats[c_idx]["angle"].append(b.get("angle", 0))
-                stats[c_idx]["mount"] = b.get("mount", 0)
-                stats[c_idx]["res"].append(b.get("res", 0))
-                stats[c_idx]["occ"].append(b.get("occ", 0))
-
         log_detailed_distribution(stats)
 
-    return np.sum(best_costs_per_face)
+    return cost
+
+
+# def total_cost(state: State, verbose: bool = False):
+#     # We want to know how well every camera sees every face
+#     num_faces = len(state.faces)
+#     num_cams = len(state.cameras)
+#     score_matrix = np.full((num_faces, num_cams), BIG_M)
+
+#     if verbose:
+#         stats = {
+#             i: {"angle": [], "res": [], "occ": [], "mount": 0} for i in range(num_cams)
+#         }
+
+#     for c_idx, cam in enumerate(state.cameras):
+#         # OPTIMIZATION: Only check faces near this camera
+#         potential_faces = prune_faces_by_distance(cam, state.faces, state.face_centers)
+
+#         for f_idx in potential_faces:
+#             total, _ = total_cost_pair(state, cam, state.faces[f_idx])
+#             score_matrix[f_idx][c_idx] = total
+
+#     # For each face, we only care about the MINIMUM cost across all cameras.
+#     # This naturally allows one camera to be the 'best' for 10 faces at once.
+#     best_costs_per_face = np.min(score_matrix, axis=1)
+#     best_cam_indices = np.argmin(score_matrix, axis=1)
+
+#     # # 4. ACTIVE CAMERA PENALTY
+#     # # Identify which cameras are actually 'winners' for at least one face
+#     # winning_camera_indices = np.argmin(score_matrix, axis=1)
+#     # # Filter out faces that are totally occluded (cost == BIG_M)
+#     # active_indices = winning_camera_indices[best_costs_per_face < BIG_M]
+#     # num_active_cams = len(np.unique(active_indices))
+
+#     if verbose:
+#         for f_idx, c_idx in enumerate(best_cam_indices):
+#             if best_costs_per_face[f_idx] < BIG_M:
+#                 # Re-run or retrieve the specific breakdown for the winner
+#                 _, b = total_cost_pair(state, state.cameras[c_idx], state.faces[f_idx])
+#                 stats[c_idx]["angle"].append(b.get("angle", 0))
+#                 stats[c_idx]["mount"] = b.get("mount", 0)
+#                 stats[c_idx]["res"].append(b.get("res", 0))
+#                 stats[c_idx]["occ"].append(b.get("occ", 0))
+
+#         log_detailed_distribution(stats)
+
+#     return np.sum(best_costs_per_face)
 
 
 def total_cost_pair(state: State, cam_state: CameraState, face: Array4x3):
