@@ -1,7 +1,7 @@
 import math
 import os
 import time
-
+from scipy.spatial.distance import cdist
 import pyvistaqt
 from cost_functions import angle_cost, total_cost
 from algorithms.differential_evolution import optimize_de
@@ -10,7 +10,12 @@ from state import CameraConfiguration, CameraState, State, render_from_state
 import pyvista as pv
 from pyvistaqt import BackgroundPlotter
 import quaternion
-from utils import center_of_face, get_seeded_color_rgb, look_at_quaternion
+from utils import (
+    center_of_face,
+    get_seeded_color_rgb,
+    look_at_quaternion,
+    normal_vec_of_face,
+)
 import logging
 import vtk
 
@@ -62,7 +67,7 @@ state = State(
             angle=quaternion.from_rotation_vector([0, 0, 0]),
             # pixels=np.array([1920, 1080]),
             # vfov=70,
-            faces=[face1, face2],
+            faces=None,
             center_of_faces=np.mean(
                 [center_of_face(face1), center_of_face(face2)], axis=0
             ),
@@ -75,7 +80,55 @@ state = State(
 )
 
 
-def init_state(pl: pyvistaqt.BackgroundPlotter | None, state: State):
+def assign_faces(state: State):
+    num_faces = len(state.faces)
+    num_cameras = len(state.cameras)
+
+    if num_cameras == 0:
+        return
+
+    # 1. Extract features for each face (Center + Normal)
+    face_centers = np.array([center_of_face(f) for f in state.faces])
+    face_normals = np.array([normal_vec_of_face(f) for f in state.faces])
+
+    # 2. Initialize Camera Clusters
+    # If cameras already have positions, use them.
+    # Otherwise, distribute seeds across the face set using K-Means++ logic
+    seeds = face_centers[np.random.choice(num_faces, num_cameras, replace=False)]
+
+    # 3. Compute Compatibility Score
+    # Lower is better. We mix Euclidean distance and Normal angular difference.
+    dist_mat = cdist(face_centers, seeds, metric="euclidean")
+
+    # 4. Greedy Assignment with Constraints
+    # Ensure every face is covered by at least one camera
+    assignments = [[] for _ in range(num_cameras)]
+    face_to_cam = np.argmin(dist_mat, axis=1)
+
+    for face_idx, cam_idx in enumerate(face_to_cam):
+        assignments[cam_idx].append(state.faces[face_idx])
+
+    # 5. Handle "Empty Camera" Constraint
+    # If a camera has no faces, steal the closest face from another camera
+    for cam_idx in range(num_cameras):
+        if not assignments[cam_idx]:
+            # Find closest face to this camera seed that isn't the only face of another cam
+            closest_face_idx = np.argmin(dist_mat[:, cam_idx])
+            assignments[cam_idx].append(state.faces[closest_face_idx])
+
+    # 6. Update State
+    for i, cam in enumerate(state.cameras):
+        cam.faces = assignments[i]
+        if assignments[i]:
+            # Update center of faces for the camera to help DE initialization
+            cam.center_of_faces = np.mean(
+                [center_of_face(f) for f in assignments[i]], axis=0
+            )
+
+    return state
+
+
+def init_3d_scene(pl: pyvistaqt.BackgroundPlotter | None, state: State):
     if pl == None:
         return
     pl.add_mesh(state.gltf)
@@ -122,9 +175,12 @@ def init_state(pl: pyvistaqt.BackgroundPlotter | None, state: State):
 
 
 def main():
-    init_state(pl, state)
+    global state
+    init_3d_scene(pl, state)
     render_from_state(pl, state)
     pl.show()
+
+    state = assign_faces(state)
 
     breakpoint()
 

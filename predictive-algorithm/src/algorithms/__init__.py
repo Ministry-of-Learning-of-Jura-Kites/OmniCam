@@ -313,8 +313,6 @@ class SphericalSerialize(AlgorithmSerialization):
     def vector_to_state(self, vec, template: State):
         new_cameras = []
         vector_size = 3
-        num_faces = len(template.faces)
-        face_centers = np.array([center_of_face(f) for f in template.faces])
 
         for i in range(len(template.cameras)):
             # We now use 4 parameters per camera
@@ -322,7 +320,7 @@ class SphericalSerialize(AlgorithmSerialization):
 
             # 1. Selection: Map the continuous DE variable to a valid face index
             # We use clip and round to handle the DE's floating point nature
-            pivot = (face_centers[0] + face_centers[1]) / 2.0
+            pivot = template.cameras[i].center_of_faces
 
             # 2. Local Spherical to World Cartesian
             theta_rad = np.radians(theta)
@@ -350,14 +348,12 @@ class SphericalSerialize(AlgorithmSerialization):
         Uses the nearest face as the anchor point.
         """
         vec = []
-        # Pre-calculate all face centers for efficiency
-        face_centers = np.array([center_of_face(f) for f in state.faces])
 
         for cam in state.cameras:
             # 1. Find the best anchor (nearest face)
             # dists = np.linalg.norm(face_centers - cam.pos, axis=1)
             # face_idx = np.argmin(dists)
-            pivot = face_centers[0]
+            pivot = cam.center_of_faces
 
             # 2. Get relative position
             rel_pos = cam.pos - pivot
