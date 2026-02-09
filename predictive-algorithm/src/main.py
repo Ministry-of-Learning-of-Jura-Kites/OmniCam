@@ -50,7 +50,7 @@ gltf_locator.BuildLocator()
 
 default_cam = CameraConfiguration(
     pixels=np.array([1920, 1080]),
-    vfov=70,
+    vfov=50,
 )
 
 state = State(
@@ -75,7 +75,9 @@ state = State(
 )
 
 
-def init_state(pl: pyvistaqt.BackgroundPlotter, state: State):
+def init_state(pl: pyvistaqt.BackgroundPlotter | None, state: State):
+    if pl == None:
+        return
     pl.add_mesh(state.gltf)
     pl.show_grid(color="gray", location="outer")
     face_mesh: pv.PolyData | None = None

@@ -246,13 +246,14 @@ class CartesianSerialize(AlgorithmSerialization):
 class SphericalSerialize(AlgorithmSerialization):
     num_cams: int
     num_faces: int
+    scale: float  # virtual meter per meter
 
     def init_bounds(self) -> List[Tuple[float, float]]:
         bounds = []
         for _ in range(self.num_cams):
             bounds.extend(
                 [
-                    (1.0, 10.0),  # Radius
+                    (1.0 / self.scale, 25.0 / self.scale),  # Radius
                     (-180.0, 180.0),  # Theta (Azimuth)
                     (-45.0, 45.0),  # Phi (Elevation)
                 ]
@@ -260,7 +261,7 @@ class SphericalSerialize(AlgorithmSerialization):
         return bounds
 
     def init_pop(self, num_particles, initial_vec, bounds, num_cams, num_faces):
-        """Initializes population for [r, theta, phi, face_idx] vectorization."""
+        """Initializes population with Normal-vector bias and radius diversification."""
         total_dim = len(initial_vec)
         vector_size = 3
         init_pop = np.empty((num_particles, total_dim))
@@ -268,30 +269,44 @@ class SphericalSerialize(AlgorithmSerialization):
         low_b = np.array([b[0] for b in bounds])
         high_b = np.array([b[1] for b in bounds])
 
+        # Extract target "normal" or reference angles from the initial_vec
+        # We assume initial_vec represents a 'good' starting orientation
         for i in range(num_particles):
             particle = initial_vec.copy()
 
-            # Strategic Diversification for the second half
-            if i >= num_particles // 2:
-                for cam_idx in range(num_cams):
-                    base = cam_idx * vector_size
-
-                    # Flip Azimuth (index 1: theta)
-                    particle[base + 1] = (particle[base + 1] + 180) % 360
-                    if particle[base + 1] > 180:
-                        particle[base + 1] -= 360
-
-                    # # Jiggle Face Index (index 3)
-                    # particle[base + 3] = np.random.randint(0, num_faces)
-
-            # Add Noise
-            noise = np.random.uniform(-5, 5, total_dim)
-
-            # Zero out noise for face_idx to prevent rounding errors
             for cam_idx in range(num_cams):
-                noise[cam_idx * vector_size + (vector_size - 1)] = 0
+                base = cam_idx * vector_size
 
-            init_pop[i] = np.clip(particle + noise, low_b, high_b)
+                # 1. Diversify Radius (r)
+                # Mix of close and far within bounds
+                r_min, r_max = bounds[base][0], bounds[base][1]
+                # Use a beta distribution to favor the middle-range but allow extremes
+                particle[base] = np.random.uniform(r_min, r_max)
+
+                # 2. Diversify Angles (theta, phi) with Normal Bias
+                # Instead of pure uniform, we use a normal dist centered on the initial_vec
+                # but with increasing spread as 'i' increases
+                spread_factor = (
+                    i / num_particles
+                ) * 2.0  # Increases variance across pop
+
+                # Theta (Azimuth) noise
+                theta_noise = np.random.normal(0, 30 * spread_factor)
+                particle[base + 1] += theta_noise
+
+                # Phi (Elevation) noise - favor 'top-down' or 'front-on' based on initial
+                phi_noise = np.random.normal(0, 15 * spread_factor)
+                particle[base + 2] += phi_noise
+
+                # Wrap angles
+                particle[base + 1] = (particle[base + 1] + 180) % 360 - 180
+                particle[base + 2] = np.clip(particle[base + 2], -90, 90)
+
+            # 3. Add a final layer of uniform jitter for global coverage
+            jitter = np.random.uniform(-2, 2, total_dim)
+
+            # Ensure the particle stays within search space
+            init_pop[i] = np.clip(particle + jitter, low_b, high_b)
 
         return init_pop
 
