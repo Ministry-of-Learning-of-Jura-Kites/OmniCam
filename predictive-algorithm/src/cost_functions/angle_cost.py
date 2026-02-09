@@ -72,7 +72,9 @@ def off_center_penalty(
     return cost
 
 
-def cost_single_cam(state: State, cam_state: CameraState, face: Array4x3):
+def cost_single_cam(
+    state: State, cam_state: CameraState, face: Array4x3, verbose=False
+):
     cost = 0
     hor, ver = angle_from_face_normal(face, cam_state.pos, cam_state.angle)
     hor_deg, ver_deg = hor.to(u.degree), ver.to(u.degree)
@@ -80,14 +82,19 @@ def cost_single_cam(state: State, cam_state: CameraState, face: Array4x3):
     cost += vertical_cost(ver_deg)
 
     off_h, off_v = angle_from_face_position(face, cam_state.pos, cam_state.angle)
+    off_h_deg, off_v_deg = off_h.to(u.deg), off_v.to(u.deg)
     cost += off_center_penalty(
-        off_h.to(u.deg),
-        off_v.to(u.deg),
+        off_h_deg,
+        off_v_deg,
         cam_state.camera_config.get_hfov(),
         cam_state.camera_config.vfov,
     )
 
-    print(hor_deg, ver_deg, off_h, off_v)
+    if verbose:
+        print("hor_deg:", hor_deg)
+        print("ver_deg:", ver_deg)
+        print("off_h_deg:", off_h_deg)
+        print("off_v_deg:", off_v_deg)
 
     # 3. FIELD OF VIEW (Hard Cutoff)
     # If the face is outside the camera's FOV (e.g. > 45 degrees off-center for a 90 FOV)

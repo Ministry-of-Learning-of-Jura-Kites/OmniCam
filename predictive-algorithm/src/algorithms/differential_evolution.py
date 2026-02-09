@@ -25,7 +25,6 @@ def optimize_de(initial_state: State):
     bounds = spherical.init_bounds()
 
     num_particles = 20
-    dim = len(initial_vec)
     # init_pop = cartesian.init_pop(num_particles, initial_vec, bounds, num_cams)
     init_pop = spherical.init_pop(
         num_particles, initial_vec, bounds, num_cams, num_faces
@@ -41,13 +40,13 @@ def optimize_de(initial_state: State):
     result = differential_evolution(
         objective,
         bounds,
-        strategy="best1bin",
+        strategy="rand1bin",
         maxiter=50,
         init=init_pop,
-        mutation=(0.1, 1.0),
-        popsize=20,
+        mutation=(0.2, 0.7),
+        popsize=100,
         recombination=0.7,
-        rng=200,
+        rng=20000,
     )
     # return cartesian.vector_to_state(result.x, template)
     return spherical.vector_to_state(result.x, template)

@@ -48,7 +48,7 @@ def total_cost(state: State, verbose: bool = False):
 
     for c_idx, cam in enumerate(state.cameras):
         for face in cam.faces:
-            total, b = total_cost_pair(state, cam, face)
+            total, b = total_cost_pair(state, cam, face, verbose)
             stats[c_idx]["angle"].append(b.get("angle", 0))
             stats[c_idx]["mount"] = b.get("mount", 0)
             stats[c_idx]["res"].append(b.get("res", 0))
@@ -107,13 +107,15 @@ def total_cost(state: State, verbose: bool = False):
 #     return np.sum(best_costs_per_face)
 
 
-def total_cost_pair(state: State, cam_state: CameraState, face: Array4x3):
-    angle = angle_cost.cost_single_cam(state, cam_state, face)
-    resolution = resolution_cost.cost_single_cam(state, cam_state, face)
-    # occlusion = occlusion_cost.cost_single_cam(state, cam_state, face)
-    # mounting = 0.5 * mounting_cost.cost_single_cam(state, cam_state, face)
-    occlusion = 0
-    mounting = 0
+def total_cost_pair(
+    state: State, cam_state: CameraState, face: Array4x3, verbose=False
+):
+    angle = angle_cost.cost_single_cam(state, cam_state, face, verbose)
+    resolution = resolution_cost.cost_single_cam(state, cam_state, face, verbose)
+    occlusion = occlusion_cost.cost_single_cam(state, cam_state, face)
+    mounting = 0.5 * mounting_cost.cost_single_cam(state, cam_state, face)
+    # occlusion = 0
+    # mounting = 0
     return angle + resolution + occlusion + mounting, {
         "angle": angle,
         "res": resolution,

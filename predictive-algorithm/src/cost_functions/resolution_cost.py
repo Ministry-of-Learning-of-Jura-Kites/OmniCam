@@ -28,6 +28,15 @@ def get_pixel_per_meter(cam_state: CameraState, distance_to_plane: float):
 
 
 def get_distance_to_face(face: Array4x3, cam_pos: Array3):
+    """
+    Args:
+      :param face: Description
+      :type face: Array4x3
+      :param cam_pos: Description
+      :type cam_pos: Array3
+    Returns:
+      distance: Virtual Meter
+    """
     face_center = center_of_face(face)
 
     return np.linalg.norm(face_center - cam_pos)
@@ -45,10 +54,12 @@ def ppm_to_cost(ppd: float):
     return max(cost, 0.0001)
 
 
-def cost_single_cam(state: State, cam_state: CameraState, face: Array4x3):
+def cost_single_cam(
+    state: State, cam_state: CameraState, face: Array4x3, verbose=False
+):
     cost = 0
-    min_dist_threshold = 1 * state.scale
-    face_dist = get_distance_to_face(face, cam_state.pos)
+    min_dist_threshold = 1  # Meter
+    face_dist = get_distance_to_face(face, cam_state.pos) / state.scale  # Metre
 
     if face_dist < min_dist_threshold:
         # Quadratic penalty: The closer it gets to 0, the higher the cost explodes
@@ -58,6 +69,10 @@ def cost_single_cam(state: State, cam_state: CameraState, face: Array4x3):
         cost += 1000 * (dist_error / min_dist_threshold) ** 2
 
     x_pixel_per_dist, y_pixel_per_dist = get_pixel_per_meter(cam_state, face_dist)
+    if verbose:
+        print("x_pixel_per_dist:", x_pixel_per_dist)
+        print("y_pixel_per_dist:", y_pixel_per_dist)
+
     cost += ppm_to_cost(x_pixel_per_dist * state.scale)
     cost += ppm_to_cost(y_pixel_per_dist * state.scale)
 
