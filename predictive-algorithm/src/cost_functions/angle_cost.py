@@ -64,10 +64,10 @@ def off_center_penalty(
 
     if h > h_limit:
         # The further away it is, the harder it 'pulls' the camera back
-        cost += 1000 * (h - h_limit) ** 2
+        cost += 5000 * (h - h_limit) ** 2
 
     if v > v_limit:
-        cost += 1000 * (v - v_limit) ** 2
+        cost += 5000 * (v - v_limit) ** 2
 
     return cost
 
