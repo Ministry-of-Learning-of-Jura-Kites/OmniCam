@@ -9,7 +9,7 @@ from state import State, render_from_state
 from cost_functions import total_cost
 
 
-def optimize_de(initial_state: State):
+def optimize_de(initial_state: State, seed: int, verbose=False):
     template = initial_state
 
     num_faces = len(template.faces)
@@ -33,8 +33,8 @@ def optimize_de(initial_state: State):
     def objective(vec):
         # state = cartesian.vector_to_state(vec, template)
         state = spherical.vector_to_state(vec, template)
-        cost = total_cost(state, True)
-        render_from_state(None, state)
+        cost = total_cost(state, verbose)
+        # render_from_state(None, state)
         return cost
 
     result = differential_evolution(
@@ -46,7 +46,7 @@ def optimize_de(initial_state: State):
         mutation=(0.2, 0.7),
         popsize=100,
         recombination=0.7,
-        rng=20000,
+        rng=seed,
     )
     # return cartesian.vector_to_state(result.x, template)
     return spherical.vector_to_state(result.x, template)

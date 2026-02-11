@@ -49,10 +49,11 @@ def total_cost(state: State, verbose: bool = False):
     for c_idx, cam in enumerate(state.cameras):
         for face in cam.faces:
             total, b = total_cost_pair(state, cam, face, verbose)
-            stats[c_idx]["angle"].append(b.get("angle", 0))
-            stats[c_idx]["mount"] = b.get("mount", 0)
-            stats[c_idx]["res"].append(b.get("res", 0))
-            stats[c_idx]["occ"].append(b.get("occ", 0))
+            if verbose:
+                stats[c_idx]["angle"].append(b.get("angle", 0))
+                stats[c_idx]["mount"] = b.get("mount", 0)
+                stats[c_idx]["res"].append(b.get("res", 0))
+                stats[c_idx]["occ"].append(b.get("occ", 0))
             cost += total
 
     if verbose:
