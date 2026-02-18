@@ -196,6 +196,16 @@ watch(
       sceneStates.spectatorRotation.onBlur(e);
       sceneStates.spectatorPosition.onBlur(e);
     });
+
+    renderer.value.domElement.addEventListener(
+      "contextmenu",
+      (event: Event) => {
+        event.preventDefault();
+
+        sceneStates.spectatorRotation.onBlur(event as unknown as FocusEvent);
+        sceneStates.spectatorPosition.onBlur(event as unknown as FocusEvent);
+      },
+    );
   },
   { once: true },
 );
