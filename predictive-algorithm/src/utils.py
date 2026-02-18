@@ -1,6 +1,6 @@
 import math
 import random
-from typing import Tuple
+from typing import List, Tuple
 import numpy as np
 import quaternion
 from basic_types import Array4x3, Array3
@@ -30,6 +30,17 @@ def center_of_face(face: Array4x3) -> Array3:
     return np.mean(face, axis=0)
 
 
+def center_of_faces(faces: List[Array4x3]) -> Array3:
+    # if not faces:
+    #     return np.array([0.0, 0.0, 0.0])
+
+    # Calculate the center of each individual face
+    individual_centers = [np.mean(face, axis=0) for face in faces]
+
+    # Average of all those centers
+    return np.mean(individual_centers, axis=0)
+
+
 def normal_vec_of_face(face: Array4x3) -> Array3:
     A = face[0]
     B = face[1]
@@ -49,7 +60,6 @@ def normal_vec_of_face(face: Array4x3) -> Array3:
     return normal / norm
 
 
-# TODO: Correct horizontal angle
 def angle_from_face_normal(
     face: Array4x3,
     pos: Array3,
@@ -90,6 +100,48 @@ def angle_from_face_normal(
 
     # 6. Add a "Side Penalty" (Optional)
     # If you prefer the front over the back, add a small flat cost if is_behind == True
+
+    return (
+        horizontal_offset * u.radian,
+        vertical_offset * u.radian,
+    )
+
+
+def angle_from_face_position(
+    face: Array4x3,
+    pos: Array3,
+    angle: quaternion.quaternion,
+) -> Tuple[Quantity[u.radian], Quantity[u.radian]]:
+
+    # 1. Camera's actual forward direction
+    # (Assuming [1, 0, 0] is forward based on your previous code)
+    cam_forward_vec = quaternion.rotate_vectors(angle, [1, 0, 0])
+
+    # 2. Vector from Camera to Face Center (The "Desired" vector)
+    face_center = np.mean(face, axis=0)
+    target_vec = face_center - pos
+
+    # Normalize the target vector
+    target_dist = np.linalg.norm(target_vec)
+    target_unit = target_vec / (target_dist + 1e-8)
+
+    # 3. Horizontal Offset (XZ Plane)
+    # Target azimuth vs Camera azimuth
+    horiz_target_angle = math.atan2(target_unit[2], target_unit[0])
+    horiz_cam_angle = math.atan2(cam_forward_vec[2], cam_forward_vec[0])
+    horizontal_offset = horiz_target_angle - horiz_cam_angle
+
+    # 4. Vertical Offset
+    # Target elevation vs Camera elevation
+    dist_xz_target = math.sqrt(target_unit[0] ** 2 + target_unit[2] ** 2)
+    dist_xz_cam = math.sqrt(cam_forward_vec[0] ** 2 + cam_forward_vec[2] ** 2)
+
+    vert_target_angle = math.atan2(target_unit[1], dist_xz_target)
+    vert_cam_angle = math.atan2(cam_forward_vec[1], dist_xz_cam)
+    vertical_offset = vert_target_angle - vert_cam_angle
+
+    # 5. Normalize Horizontal to [-pi, pi]
+    horizontal_offset = (horizontal_offset + math.pi) % (2 * math.pi) - math.pi
 
     return (
         horizontal_offset * u.radian,
