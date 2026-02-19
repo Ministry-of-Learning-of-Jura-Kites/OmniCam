@@ -179,7 +179,7 @@ async function createWorkspace() {
         credentials: "include",
       },
     );
-    useState(MODEL_INFO_KEY, () => data);
+    useState(`${MODEL_INFO_KEY}-${route.params.modelId}`, () => data);
     goToMyWorkspace();
   } catch (err) {
     console.error(err);
@@ -201,7 +201,7 @@ async function deleteWorkspace() {
       },
     );
 
-    useState(MODEL_INFO_KEY, () => undefined);
+    useState(`${MODEL_INFO_KEY}-${route.params.modelId}`, () => undefined);
     goToModel();
   } catch (err) {
     console.error(err);
