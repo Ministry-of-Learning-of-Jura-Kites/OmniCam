@@ -1,12 +1,15 @@
-<script setup>
+<script setup lang="ts">
 import LazyTopBar from "@/components/TopBar.vue";
 import LazyCameraPanel from "@/components/CameraPanel.vue";
+import LazyAlgoPanel from "@/components/AlgoPanel.vue";
 import SceneStatesProvider from "~/components/3d/scene-states-provider/SceneStatesProvider.vue";
 import {
-  IS_PANEL_OPEN_KEY,
-  TOGGLE_PANEL_KEY,
+  TOGGLE_CAM_PANEL_KEY,
   IS_MAP_OPEN_KEY,
   TOGGLE_MINIMAP_KEY,
+  CURRENT_PANEL,
+  TOGGLE_ALGO_PANEL_KEY,
+  WORKSPACE,
 } from "~/constants/state-keys";
 
 import FailDialog from "~/components/dialog/FailDialog.vue";
@@ -15,40 +18,59 @@ const { open, message } = useFailDialog();
 
 const route = useRoute();
 
-const isPanelOpen = ref(true);
-const slotWidth = ref("100%");
+const currentPanel = ref<"camera" | "algo" | null>("camera");
 const isMapOpen = ref(false);
 
-onMounted(() => {
-  slotWidth.value = isPanelOpen.value ? "calc(100% - 20rem)" : "100%";
+const slotWidth = computed(() => {
+  return currentPanel.value != null ? "calc(100% - 20rem)" : "100%";
 });
 
-function togglePanel() {
-  isPanelOpen.value = !isPanelOpen.value;
-  slotWidth.value = isPanelOpen.value ? "calc(100% - 20rem)" : "100%";
+const panelsWidth = computed(() => {
+  return {
+    camera: currentPanel.value == "camera" ? "20rem" : "0",
+    algo: currentPanel.value == "algo" ? "20rem" : "0",
+  };
+});
+
+function toggleCamPanel() {
+  if (currentPanel.value == "camera") {
+    currentPanel.value = null;
+  } else {
+    currentPanel.value = "camera";
+  }
 }
 
 function toggleMiniMap() {
   isMapOpen.value = !isMapOpen.value;
 }
 
-provide(IS_PANEL_OPEN_KEY, isPanelOpen);
-provide(TOGGLE_PANEL_KEY, togglePanel);
+function toggleAlgoPanel() {
+  if (currentPanel.value == "algo") {
+    currentPanel.value = null;
+  } else {
+    currentPanel.value = "algo";
+  }
+}
+
+provide(CURRENT_PANEL, currentPanel);
+provide(TOGGLE_CAM_PANEL_KEY, toggleCamPanel);
+provide(TOGGLE_ALGO_PANEL_KEY, toggleAlgoPanel);
+
 provide(IS_MAP_OPEN_KEY, isMapOpen);
 provide(TOGGLE_MINIMAP_KEY, toggleMiniMap);
 
-const workspace = computed(() => route.meta.routeInfo?.workspace);
+const workspace = route.meta.routeInfo?.workspace ?? null;
+provide(WORKSPACE, workspace);
 </script>
 
 <template>
   <div class="flex flex-col h-screen">
     <SceneStatesProvider
       :key="`${route.params.projectId}-${route.params.modelId}-${workspace}`"
-      :project-id="route.params.projectId"
-      :model-id="route.params.modelId"
-      :workspace="workspace"
+      :project-id="route.params.projectId as string"
+      :model-id="route.params.modelId as string"
     >
-      <LazyTopBar :workspace="workspace" />
+      <LazyTopBar />
       <div class="flex-1 flex overflow-hidden">
         <div
           class="h-full transition-all duration-300"
@@ -59,9 +81,16 @@ const workspace = computed(() => route.meta.routeInfo?.workspace);
 
         <div
           class="h-full transition-all duration-300 overflow-hidden"
-          :style="{ width: isPanelOpen ? '20rem' : '0' }"
+          :style="{ width: panelsWidth.camera }"
         >
-          <LazyCameraPanel :workspace="workspace" />
+          <LazyCameraPanel />
+        </div>
+
+        <div
+          class="h-full transition-all duration-300 overflow-hidden"
+          :style="{ width: panelsWidth.algo }"
+        >
+          <LazyAlgoPanel />
         </div>
       </div>
 

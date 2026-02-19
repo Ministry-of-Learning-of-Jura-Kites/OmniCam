@@ -6,7 +6,11 @@ import {
   type ModelWithCamsResp,
 } from "./create-scene-states";
 import { useWebSocket, type UseWebSocketReturn } from "@vueuse/core";
-import { MODEL_INFO_KEY, SCENE_STATES_KEY } from "~/constants/state-keys";
+import {
+  MODEL_INFO_KEY,
+  SCENE_STATES_KEY,
+  WORKSPACE,
+} from "~/constants/state-keys";
 
 const props = defineProps({
   projectId: {
@@ -17,16 +21,13 @@ const props = defineProps({
     type: String,
     required: true,
   },
-  workspace: {
-    type: String,
-    default: null,
-  },
 });
 
 const runtimeConfig = useRuntimeConfig();
 
-const workspaceSuffix =
-  props.workspace == null ? "" : `/workspaces/${props.workspace}`;
+const workspace = inject(WORKSPACE) as string | null;
+
+const workspaceSuffix = workspace == null ? "" : `/workspaces/${workspace}`;
 
 const modelWithCamsResp = useState<ModelWithCamsResp | undefined>(
   MODEL_INFO_KEY,
@@ -73,7 +74,7 @@ if (modelWithCamsResp.value == undefined) {
 } else {
   // If exit from workspace into model
   if (
-    props.workspace == null &&
+    workspace == null &&
     modelWithCamsResp.value.data.workspaceExists == undefined
   ) {
     await fetchAndCombine(["workspace_exists"]);
@@ -81,7 +82,7 @@ if (modelWithCamsResp.value == undefined) {
 
   // If open workspace from model page
   else if (
-    props.workspace != null &&
+    workspace != null &&
     modelWithCamsResp.value.data.workspaceExists != undefined
   ) {
     await fetchAndCombine(["cameras"]);
@@ -89,7 +90,7 @@ if (modelWithCamsResp.value == undefined) {
 }
 
 let websocket: UseWebSocketReturn<unknown> | undefined = undefined;
-if (props.workspace != undefined && import.meta.client) {
+if (workspace != undefined && import.meta.client) {
   const websocketUrl = `ws://${runtimeConfig.public.externalBackendHost}/api/v1/projects/${props.projectId}/models/${props.modelId}/autosave`;
 
   websocket = useWebSocket(websocketUrl, {
@@ -118,7 +119,7 @@ if (sceneStates.error != null) {
 } else {
   const sceneStatesWithHelper = createSceneStatesWithHelper(
     sceneStates as SceneStates,
-    props.workspace,
+    workspace,
   );
 
   provide(SCENE_STATES_KEY, sceneStatesWithHelper);
