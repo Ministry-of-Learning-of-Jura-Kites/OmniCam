@@ -215,7 +215,7 @@ const directionAngles = computed(() => {
     x:
       Math.round(
         MathUtils.radToDeg(
-          signedAngle(forward, new Vector3(1, 0, 0), new Vector3(0, -1, 0)),
+          signedAngle(forward, new Vector3(1, 0, 0), new Vector3(0, 1, 0)),
         ) * 100,
       ) / 100,
 
@@ -229,7 +229,7 @@ const directionAngles = computed(() => {
     z:
       Math.round(
         MathUtils.radToDeg(
-          signedAngle(forward, new Vector3(0, 0, 1), new Vector3(0, 1, 0)),
+          signedAngle(forward, new Vector3(0, 0, 1), new Vector3(0, -1, 0)),
         ) * 100,
       ) / 100,
   };
