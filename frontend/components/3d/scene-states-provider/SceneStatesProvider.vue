@@ -29,7 +29,7 @@ const workspaceSuffix =
   props.workspace == null ? "" : `/workspaces/${props.workspace}`;
 
 const modelWithCamsResp = useState<ModelWithCamsResp | undefined>(
-  `${MODEL_INFO_KEY}-${props.projectId}-${props.modelId}`,
+  `${MODEL_INFO_KEY}-${props.modelId}`,
 );
 
 const error = ref<unknown | undefined>(undefined);
