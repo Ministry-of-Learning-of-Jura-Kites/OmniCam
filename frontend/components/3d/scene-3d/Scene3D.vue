@@ -20,10 +20,10 @@ import type { IUserData } from "~/types/obj-3d-user-data";
 import ModelLoader from "../model-loader/ModelLoader.vue";
 import { onBeforeRouteLeave } from "vue-router";
 
-const props = defineProps({
+const _props = defineProps({
   projectId: { type: String, required: true },
   modelId: { type: String, required: true },
-  workspace: { type: String, default: null },
+  workspace: { type: Object as PropType<string | null>, default: null },
 });
 
 const config = useRuntimeConfig();
@@ -394,7 +394,7 @@ onBeforeRouteLeave((to, from, next) => {
             :key="camId"
             :cam-id="camId"
             :name="cam.name"
-            :workspace="props.workspace"
+            :workspace="workspace"
           />
 
           <Suspense><Environment preset="city" /></Suspense>

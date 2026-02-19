@@ -19,8 +19,9 @@ import {
   Dices,
 } from "lucide-vue-next";
 import { randomVividColor } from "~/utils/randomVividColor";
-import { SCENE_STATES_KEY } from "@/constants/state-keys";
+import { SCENE_STATES_KEY, WORKSPACE } from "@/constants/state-keys";
 import CameraSpawnDialog from "~/components/dialog/CameraSpawnDialog.vue";
+import { gcd } from "~/utils/math";
 
 type Camerapreset = {
   vendor: string;
@@ -37,12 +38,7 @@ type Camerapreset = {
   _id?: string;
 };
 
-const props = defineProps({
-  workspace: {
-    type: String,
-    default: null,
-  },
-});
+const workspace = inject(WORKSPACE);
 
 const sceneStates = inject(SCENE_STATES_KEY)!;
 
@@ -127,19 +123,11 @@ function getUniqueCameraName(baseName: string) {
 }
 
 const isLockingRotation = computed(() => {
-  return (
-    sceneStates.currentCam.value.isLockingRotation || props.workspace == null
-  );
+  return sceneStates.currentCam.value.isLockingRotation || workspace == null;
 });
 const isLockingPosition = computed(() => {
-  return (
-    sceneStates.currentCam.value.isLockingPosition || props.workspace == null
-  );
+  return sceneStates.currentCam.value.isLockingPosition || workspace == null;
 });
-
-const gcd = (a: number, b: number): number => {
-  return b === 0 ? a : gcd(b, a % b);
-};
 
 const handleSpawnCamera = (preset: Camerapreset) => {
   const camId = sceneStates.cameraManagement.spawnCameraHere();
@@ -251,7 +239,7 @@ const directionAngles = computed(() => {
       </Button> -->
       <!-- <Button
         size="sm"
-        :disabled="props.workspace == null"
+        :disabled="workspace == null"
         @click="
           spawnCamera();
           $event.currentTarget.blur();
@@ -261,7 +249,7 @@ const directionAngles = computed(() => {
       </Button> -->
       <Button
         size="sm"
-        :disabled="props.workspace == null"
+        :disabled="workspace == null"
         @click="
           isCameraSpawnDialogOpen = true;
           $event.currentTarget.blur();
@@ -315,7 +303,7 @@ const directionAngles = computed(() => {
             <Input
               id="camera-name"
               v-model="sceneStates.cameras[selectedCamId]!.name"
-              :disabled="props.workspace == null"
+              :disabled="workspace == null"
               disabled-class="disabled-input"
               @change="sceneStates.markedForCheck.add(selectedCamId)"
             />
@@ -361,7 +349,7 @@ const directionAngles = computed(() => {
             <input
               id="lock-position"
               v-model="isLockingPosition"
-              :disabled="props.workspace == null"
+              :disabled="workspace == null"
               type="checkbox"
               @change="onToggleLockPosition"
             />
@@ -376,9 +364,7 @@ const directionAngles = computed(() => {
               <Input
                 id="angle-x"
                 v-model.number="angleX"
-                :disabled="
-                  selectedCam?.isLockingRotation || props.workspace == null
-                "
+                :disabled="selectedCam?.isLockingRotation || workspace == null"
                 disabled-class="disabled-input"
                 type="number"
                 step="0.1"
@@ -393,9 +379,7 @@ const directionAngles = computed(() => {
               <Input
                 id="angle-y"
                 v-model.number="angleY"
-                :disabled="
-                  selectedCam?.isLockingRotation || props.workspace == null
-                "
+                :disabled="selectedCam?.isLockingRotation || workspace == null"
                 disabled-class="disabled-input"
                 type="number"
                 step="0.1"
@@ -410,9 +394,7 @@ const directionAngles = computed(() => {
               <Input
                 id="angle-z"
                 v-model.number="angleZ"
-                :disabled="
-                  selectedCam?.isLockingRotation || props.workspace == null
-                "
+                :disabled="selectedCam?.isLockingRotation || workspace == null"
                 disabled-class="disabled-input"
                 type="number"
                 step="0.1"
@@ -443,7 +425,7 @@ const directionAngles = computed(() => {
             <input
               id="lock-rotation"
               v-model="sceneStates.cameras[selectedCamId]!.isLockingRotation"
-              :disabled="props.workspace == null"
+              :disabled="workspace == null"
               type="checkbox"
               @change="onToggleLockRotation"
             />
@@ -456,7 +438,7 @@ const directionAngles = computed(() => {
               <Input
                 id="aspect-ratio-width"
                 v-model.number="sceneStates.cameras[selectedCamId]!.aspectWidth"
-                :disabled="props.workspace == null"
+                :disabled="workspace == null"
                 disabled-class="disabled-input"
                 type="number"
                 @change="sceneStates.markedForCheck.add(selectedCamId)"
@@ -467,7 +449,7 @@ const directionAngles = computed(() => {
                 v-model.number="
                   sceneStates.cameras[selectedCamId]!.aspectHeight
                 "
-                :disabled="props.workspace == null"
+                :disabled="workspace == null"
                 disabled-class="disabled-input"
                 type="number"
                 @change="sceneStates.markedForCheck.add(selectedCamId)"
@@ -480,7 +462,7 @@ const directionAngles = computed(() => {
             <Input
               id="fov"
               v-model.number="sceneStates.cameras[selectedCamId]!.fov"
-              :disabled="props.workspace == null"
+              :disabled="workspace == null"
               disabled-class="disabled-input"
               type="number"
               min="10"
@@ -522,7 +504,7 @@ const directionAngles = computed(() => {
               variant="ghost"
               :disabled="
                 sceneStates.cameras[selectedCamId]!.isLockingRotation ||
-                props.workspace == null
+                workspace == null
               "
               disabled-class="disabled-input"
               @click="
@@ -562,7 +544,7 @@ const directionAngles = computed(() => {
               variant="ghost"
               :disabled="
                 sceneStates.currentCamId.value == selectedCamId ||
-                props.workspace == null
+                workspace == null
               "
               @click="
                 deleteCamera(selectedCamId);
@@ -580,7 +562,7 @@ const directionAngles = computed(() => {
               :disabled="
                 sceneStates.cameras[selectedCamId]!.isLockingPosition ||
                 sceneStates.cameras[selectedCamId]!.isLockingRotation ||
-                props.workspace == null
+                workspace == null
               "
               disabled-class="disabled-input"
               @click="
@@ -648,6 +630,8 @@ const directionAngles = computed(() => {
                 v-model.number="
                   sceneStates.cameras[selectedCamId]!.frustumColor.r
                 "
+                :disabled="workspace == null"
+                disabled-class="disabled-input"
                 type="number"
                 min="0"
                 max="1"
@@ -661,6 +645,8 @@ const directionAngles = computed(() => {
                 v-model.number="
                   sceneStates.cameras[selectedCamId]!.frustumColor.g
                 "
+                :disabled="workspace == null"
+                disabled-class="disabled-input"
                 type="number"
                 min="0"
                 max="1"
@@ -674,6 +660,8 @@ const directionAngles = computed(() => {
                 v-model.number="
                   sceneStates.cameras[selectedCamId]!.frustumColor.b
                 "
+                :disabled="workspace == null"
+                disabled-class="disabled-input"
                 type="number"
                 min="0"
                 max="1"
@@ -689,6 +677,8 @@ const directionAngles = computed(() => {
                 v-model.number="
                   sceneStates.cameras[selectedCamId]!.frustumColor.a
                 "
+                :disabled="workspace == null"
+                disabled-class="disabled-input"
                 type="number"
                 min="0"
                 max="1"
@@ -702,6 +692,8 @@ const directionAngles = computed(() => {
                 v-model.number="
                   sceneStates.cameras[selectedCamId]!.frustumLength
                 "
+                :disabled="workspace == null"
+                disabled-class="disabled-input"
                 type="number"
                 min="0"
                 max="1e6"
@@ -722,6 +714,12 @@ const directionAngles = computed(() => {
 <style lang="scss" scoped>
 input {
   field-sizing: content;
+  border-radius: 5px;
+  border: 1px solid black;
+  outline: 1px solid white;
+  box-sizing: border-box;
+
+  margin-top: 4px;
 }
 
 /* For WebKit browsers (Chrome, Safari) */
@@ -737,17 +735,9 @@ input[type="number"] {
   -moz-appearance: textfield;
 }
 
-input {
-  border-radius: 5px;
-  border: 1px solid black;
-  outline: 1px solid white;
-  box-sizing: border-box;
-
-  margin-top: 4px;
-}
-
 .disabled-input {
   background-color: var(--color-gray-200);
+  color: oklch(0.145 0 0);
   cursor: not-allowed;
 }
 

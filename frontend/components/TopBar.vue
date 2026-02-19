@@ -26,31 +26,32 @@ import {
 
 import { exportCamerasToJson } from "@/utils/exportScene";
 import { importJsonToCameras } from "@/utils/importScene";
-import { SCENE_STATES_KEY } from "@/constants/state-keys";
+import {
+  CURRENT_PANEL,
+  SCENE_STATES_KEY,
+  TOGGLE_ALGO_PANEL_KEY,
+  WORKSPACE,
+} from "@/constants/state-keys";
 
 import Tooltip from "./ui/tooltip/Tooltip.vue";
 import TooltipTrigger from "./ui/tooltip/TooltipTrigger.vue";
 import TooltipContent from "./ui/tooltip/TooltipContent.vue";
 import TooltipProvider from "./ui/tooltip/TooltipProvider.vue";
 import {
-  IS_PANEL_OPEN_KEY,
   MODEL_INFO_KEY,
-  TOGGLE_PANEL_KEY,
+  TOGGLE_CAM_PANEL_KEY,
   TOGGLE_MINIMAP_KEY,
 } from "~/constants/state-keys";
 import Setting3dDialog from "./dialog/Setting3dDialog.vue";
 
-const props = defineProps({
-  workspace: {
-    type: String,
-    default: null,
-  },
-});
+const workspace = inject(WORKSPACE);
 
 const sceneStates = inject(SCENE_STATES_KEY)!;
 
-const isPanelOpen = inject(IS_PANEL_OPEN_KEY);
-const togglePanel = inject(TOGGLE_PANEL_KEY)!;
+const currentPanel = inject(CURRENT_PANEL);
+const toggleAlgoPanel = inject(TOGGLE_ALGO_PANEL_KEY)!;
+const togglePanel = inject(TOGGLE_CAM_PANEL_KEY)!;
+
 const toggleMinimap = inject(TOGGLE_MINIMAP_KEY)!;
 
 const route = useRoute();
@@ -256,7 +257,7 @@ function goToMyWorkspace() {
               sceneStates.modelInfo.data.name
             }}</span>
             <Badge variant="secondary" class="ml-2">
-              {{ props.workspace == null ? "Public" : "Workspace" }}
+              {{ workspace == null ? "Public" : "Workspace" }}
             </Badge>
           </div>
         </Card>
@@ -338,10 +339,17 @@ function goToMyWorkspace() {
         </template>
 
         <Button size="sm" variant="outline" @click="() => togglePanel()">
-          <IndentIncrease v-if="isPanelOpen" class="button-icon" />
+          <IndentIncrease v-if="currentPanel == 'camera'" class="button-icon" />
           <IndentDecrease v-else class="button-icon" />
           <span class="ml-2 button-span-text"> Panel </span>
         </Button>
+
+        <Button size="sm" variant="outline" @click="() => toggleAlgoPanel()">
+          <IndentIncrease v-if="currentPanel == 'algo'" class="button-icon" />
+          <IndentDecrease v-else class="button-icon" />
+          <span class="ml-2 button-span-text"> Algo </span>
+        </Button>
+
         <Button size="sm" variant="outline" @click="() => toggleMap()">
           <Map class="h-4 w-4" />
           Map
