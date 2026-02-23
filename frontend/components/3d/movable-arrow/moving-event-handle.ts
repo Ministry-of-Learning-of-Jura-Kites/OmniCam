@@ -61,8 +61,8 @@ export class MovingUserData implements IUserData {
 
     const vectorEnd = dirVector.add(point);
 
-    const pointNDC = point.clone().project(camera.value!);
-    const endNDC = vectorEnd.clone().project(camera.value!);
+    const pointNDC = point.clone().project(camera.activeCamera.value!);
+    const endNDC = vectorEnd.clone().project(camera.activeCamera.value!);
 
     const projectedVector = endNDC.sub(pointNDC).normalize();
 
