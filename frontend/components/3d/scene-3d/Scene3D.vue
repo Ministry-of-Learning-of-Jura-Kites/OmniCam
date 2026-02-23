@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { TresCanvas } from "@tresjs/core";
-import { Grid, Environment, CustomShaderMaterial } from "@tresjs/cientos";
+import { Grid, Environment } from "@tresjs/cientos";
 import AdjustableInput from "../../adjustable-input/AdjustableInput.vue";
 import { SPECTATOR_ADJ_INPUT_SENTIVITY } from "~/constants";
 import CameraObject from "../camera-object/CameraObject.vue";
@@ -149,51 +149,6 @@ onMounted(() => {
     document.body.appendChild(stats.dom);
   }
 });
-
-const vertexShader = `
-// Uniforms: 
-// uTexture: The scene rendered normally
-// uPower: Strength of the effect (typically 1.0 - 2.0)
-
-varying vec2 vUv;
-uniform sampler2D uTexture;
-uniform float uPower; 
-
-void main() {
-    // 1. Center the UV coordinates from [0,1] to [-1,1]
-    vec2 p = vUv * 2.0 - 1.0;
-    
-    // 2. Calculate the distance from center (r)
-    float r = length(p);
-    
-    // 3. Apply the equidistant warping
-    // We calculate a new radius 'nr' based on the inverse of the model
-    if (r <= 1.0) {
-        float theta = r * (3.14159265 / 2.0); // Map r to 90 degrees
-        float nr = tan(theta / uPower);      // Distort the radius
-        
-        // 4. Calculate new UVs
-        vec2 uv;
-        float phi = atan(p.y, p.x);
-        uv.x = nr * cos(phi);
-        uv.y = nr * sin(phi);
-        
-        // 5. Back to [0,1] space and sample
-        uv = (uv + 1.0) * 0.5;
-        
-        // Simple clipping for the circular "lens" look
-        if (uv.x < 0.0 || uv.x > 1.0 || uv.y < 0.0 || uv.y > 1.0) {
-            gl_FragColor = vec4(0.0, 0.0, 0.0, 1.0);
-        } else {
-            gl_FragColor = texture2D(uTexture, uv);
-        }
-    } else {
-        gl_FragColor = vec4(0.0, 0.0, 0.0, 1.0);
-    }
-}
-    `;
-
-const fragmentShader = ``;
 </script>
 
 <template>
@@ -303,11 +258,13 @@ const fragmentShader = ``;
 
           <TresOrthographicCamera ref="minimapCamera" :manual="true" />
 
-          <CustomShaderMaterial
-            :vertex-shader="vertexShader"
-            :fragment-shader="fragmentShader"
-            :base-material="() => undefined"
-          />
+          <!-- <TresMesh>
+            <TresBoxGeometry :args="[2, 2, 2, 32, 32, 32]" />
+            <TresMeshStandardMaterial
+              :wireframe="true"
+              @before-compile="injectFisheye"
+            />
+          </TresMesh> -->
 
           <CameraObject
             v-for="[camId, cam] in Object.entries(sceneStates.cameras)"

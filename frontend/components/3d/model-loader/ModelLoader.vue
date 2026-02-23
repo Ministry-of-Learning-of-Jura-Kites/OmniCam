@@ -1,5 +1,8 @@
+<!-- eslint-disable @typescript-eslint/no-explicit-any -->
 <script setup lang="ts">
-import { GLTFModel } from "@tresjs/cientos";
+import { useGLTF } from "@tresjs/cientos";
+import { useFisheye } from "../scene-3d/use-fisheye";
+import { SCENE_STATES_KEY } from "~/constants/state-keys";
 
 const props = defineProps<{
   path?: string;
@@ -8,6 +11,8 @@ const props = defineProps<{
 
 console.log("path", props.path);
 const blobUrl = ref<string | null>();
+const sceneStates = inject(SCENE_STATES_KEY)!;
+let state = null;
 try {
   const response = await useFetch(props.path ?? "", {
     method: "GET",
@@ -24,13 +29,43 @@ try {
     throw new Error("Blob is empty or invalid");
   }
   blobUrl.value = URL.createObjectURL(blob);
+  const gltf = useGLTF(blobUrl.value);
+  state = gltf.state;
 } catch (err) {
   console.error("[Fail] load model fail:", err);
 }
+
+const { injectFisheye } = useFisheye(sceneStates);
+
+watch(state!, (state) => {
+  if (state == null) {
+    return;
+  }
+  state!.scene.traverse((child: any) => {
+    if (child.isMesh) {
+      child.frustumCulled = false;
+
+      const apply = (mat: any) => {
+        mat.onBeforeCompile = injectFisheye;
+        // CRITICAL: This forces Three.js to re-read the onBeforeCompile hook
+        mat.needsUpdate = true;
+
+        // Optional: Ensure the uniform is unique if you want different strengths
+        mat.customProgramCacheKey = () => "fisheye_v1";
+      };
+
+      if (Array.isArray(child.material)) {
+        child.material.forEach(apply);
+      } else {
+        apply(child.material);
+      }
+    }
+  });
+});
 </script>
 
 <template>
-  <GLTFModel v-if="blobUrl != null" :path="blobUrl" />
+  <primitive v-if="state?.scene" :object="state.scene" />
 
   <!-- Block Placeholder  -->
   <TresMesh v-if="blobUrl == null" :position="props.position ?? [0, 0, 0]">
