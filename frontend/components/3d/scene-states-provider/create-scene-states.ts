@@ -11,6 +11,7 @@ import type { UseWebSocketReturn } from "@vueuse/core";
 import type { Camera } from "~/messages/protobufs/autosave_event";
 import { useAspectRatio as useAspectRatioManagement } from "../scene-3d/use-aspect-ratio";
 import { useAutosave } from "../scene-3d/use-autosave";
+import { getFisheyeStrength } from "../scene-3d/use-fisheye";
 
 export interface ModelWithCamsResp {
   data: {
@@ -141,6 +142,22 @@ export function createBaseSceneStates(
   const localVersion = ref(modelInfo.data.version);
   const lastSyncedVersion = ref(modelInfo.data.version);
 
+  const fisheyeFovStrength = {
+    value: 0,
+  };
+
+  if (window) {
+    function setFisheyeStrength(
+      type: "linear" | "quad" | "atan" | "equisolid" | "ortho" | "pers",
+      intensity: number,
+      fov: number,
+    ) {
+      fisheyeFovStrength.value = getFisheyeStrength(type, intensity, fov);
+    }
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (window as any).setFisheyeStrength = setFisheyeStrength;
+  }
+
   const sceneStates = {
     tresContext,
     draggableObjects,
@@ -162,6 +179,7 @@ export function createBaseSceneStates(
     aspectMarginType,
     localVersion,
     lastSyncedVersion,
+    fisheyeFovStrength,
   } as const;
 
   // websocket.ws.value!.onclose = (_closeEvent: CloseEvent) => {
