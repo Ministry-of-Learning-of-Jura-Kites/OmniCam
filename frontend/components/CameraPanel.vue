@@ -50,6 +50,7 @@ const selectedCamId = ref<string | null>(null);
 
 const isCameraPropertiesOpen = ref(true);
 const isFrustumPropertiesOpen = ref(true);
+const isDistortionPropertiesOpen = ref(true);
 const isCameraSpawnDialogOpen = ref(false);
 
 const selectedCam = computed(() =>
@@ -638,6 +639,114 @@ const directionAngles = computed(() => {
             >
               <Dices class="h-3 w-3" />
               Random Color
+            </Button>
+          </div>
+          <div class="grid grid-cols-3 gap-2">
+            <div>
+              <Label for="color-r"><p>R</p></Label>
+              <Input
+                id="color-r"
+                v-model.number="
+                  sceneStates.cameras[selectedCamId]!.frustumColor.r
+                "
+                type="number"
+                min="0"
+                max="1"
+                @change="sceneStates.markedForCheck.add(selectedCamId)"
+              />
+            </div>
+            <div>
+              <Label for="color-g"><p>G</p></Label>
+              <Input
+                id="color-g"
+                v-model.number="
+                  sceneStates.cameras[selectedCamId]!.frustumColor.g
+                "
+                type="number"
+                min="0"
+                max="1"
+                @change="sceneStates.markedForCheck.add(selectedCamId)"
+              />
+            </div>
+            <div>
+              <Label for="color-b"><p>B</p></Label>
+              <Input
+                id="color-b"
+                v-model.number="
+                  sceneStates.cameras[selectedCamId]!.frustumColor.b
+                "
+                type="number"
+                min="0"
+                max="1"
+                @change="sceneStates.markedForCheck.add(selectedCamId)"
+              />
+            </div>
+          </div>
+          <div class="grid grid-cols-2 gap-2">
+            <div>
+              <Label for="opacity">Opacity</Label>
+              <Input
+                id="opacity"
+                v-model.number="
+                  sceneStates.cameras[selectedCamId]!.frustumColor.a
+                "
+                type="number"
+                min="0"
+                max="1"
+                @change="sceneStates.markedForCheck.add(selectedCamId)"
+              />
+            </div>
+            <div>
+              <Label for="length">Length</Label>
+              <Input
+                id="length"
+                v-model.number="
+                  sceneStates.cameras[selectedCamId]!.frustumLength
+                "
+                type="number"
+                min="0"
+                max="1e6"
+                @change="sceneStates.markedForCheck.add(selectedCamId)"
+              />
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card v-if="selectedCamId && sceneStates.cameras[selectedCamId]">
+        <CardHeader
+          class="cursor-pointer flex items-center justify-between"
+          @click="isDistortionPropertiesOpen = !isDistortionPropertiesOpen"
+          @change="sceneStates.markedForCheck.add(selectedCamId)"
+        >
+          <CardTitle class="text-base flex items-center gap-2">
+            <Pyramid class="h-4 w-4" />
+            Distortion
+          </CardTitle>
+          <span class="text-sm">
+            <ChevronDown
+              v-if="isDistortionPropertiesOpen"
+              class="inline h-4 w-4" />
+            <ChevronLeft v-else class="inline h-4 w-4"
+          /></span>
+        </CardHeader>
+        <CardContent v-if="isDistortionPropertiesOpen" class="space-y-2">
+          <div class="grid grid-cols-2 gap-2">
+            <Button
+              size="sm"
+              class="flex-1"
+              @click="
+                sceneStates.cameras[selectedCamId]!.isHidingFrustum =
+                  !sceneStates.cameras[selectedCamId]!.isHidingFrustum;
+                sceneStates.markedForCheck.add(selectedCamId);
+              "
+            >
+              <Eye
+                v-if="!sceneStates.cameras[selectedCamId]!.isHidingFrustum"
+                class="h-3 w-3"
+              />
+              <EyeOff v-else class="h-3 w-3" />
+              Frustum
             </Button>
           </div>
           <div class="grid grid-cols-3 gap-2">

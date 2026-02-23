@@ -1,4 +1,5 @@
 import { Vector3, Euler } from "three";
+import { DistortionMode } from "~/components/3d/scene-3d/use-fisheye";
 import type { ColorRGBA } from "~/messages/protobufs/autosave_event";
 
 export interface ICamera {
@@ -10,11 +11,15 @@ export interface ICamera {
   aspectHeight: number;
   frustumColor: ColorRGBA;
   frustumLength: number;
+  distortion: {
+    intensity: number;
+    mode: DistortionMode;
+  };
   isHidingArrows: boolean;
   isHidingWheels: boolean;
+  isHidingFrustum: boolean;
   isLockingPosition: boolean;
   isLockingRotation: boolean;
-  isHidingFrustum: boolean;
   controlling?: {
     type: "rotation" | "moving";
     direction: "x" | "y" | "z";
@@ -32,6 +37,10 @@ export const cameraDefault: ICamera = {
   isHidingWheels: false,
   isLockingPosition: false,
   isLockingRotation: false,
+  distortion: {
+    intensity: 1,
+    mode: DistortionMode.NONE,
+  },
   isHidingFrustum: true,
   controlling: undefined,
   frustumColor: { r: 1, g: 0.8, b: 0.2, a: 0.5 },
