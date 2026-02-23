@@ -9,7 +9,7 @@ export function useCameraUpdate(states: SceneStatesWithHelper) {
           ? cam!.value!.rotation
           : transform.value.rotation;
       if (states.tresContext.value?.camera) {
-        states.tresContext.value.camera.rotation.set(
+        states.tresContext.value.camera.activeCamera.rotation.set(
           rotation.x,
           rotation.y,
           rotation.z,
@@ -21,7 +21,11 @@ export function useCameraUpdate(states: SceneStatesWithHelper) {
           ? cam!.value!.position
           : transform.value.position;
       if (states.tresContext.value?.camera) {
-        states.tresContext.value.camera.position.set(pos.x, pos.y, pos.z);
+        states.tresContext.value.camera.activeCamera.position.set(
+          pos.x,
+          pos.y,
+          pos.z,
+        );
       }
     },
     { deep: true },

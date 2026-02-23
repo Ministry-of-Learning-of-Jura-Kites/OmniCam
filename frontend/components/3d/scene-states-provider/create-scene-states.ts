@@ -2,7 +2,7 @@ import type { TresContext } from "@tresjs/core";
 import type { Reactive } from "vue";
 import type { Obj3DWithUserData } from "~/types/obj-3d-user-data";
 import type { SceneStates as BaseSceneStates } from "~/types/scene-states";
-import { Quaternion, Euler, Vector3 } from "three";
+import { Quaternion, Euler, Vector3, type PerspectiveCamera } from "three";
 import { cameraDefault, type ICamera } from "~/types/camera";
 import { useCameraManagement } from "../scene-3d/use-camera-management";
 import { useSpectatorRotation } from "../scene-3d/use-spectator-rotation";
@@ -179,6 +179,19 @@ export function createSceneStatesWithHelper(
 
   onMounted(() => {
     useAutosave(sceneStates, workspace);
+
+    watch(
+      () => [sceneStates.transformingInfo, sceneStates.currentCam],
+      ([transform, cam]) => {
+        const newFov = transform?.value?.fov ?? cam?.value?.fov;
+        const actualCamera = sceneStates.tresContext.value?.camera.activeCamera;
+        if (actualCamera && newFov !== undefined) {
+          (actualCamera as PerspectiveCamera).fov = newFov;
+          actualCamera.updateProjectionMatrix();
+        }
+      },
+      { deep: true },
+    );
   });
 
   const sceneStatesWithCam = {
