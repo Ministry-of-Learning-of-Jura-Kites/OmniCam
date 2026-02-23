@@ -43,22 +43,22 @@ export class RotatingUserData implements IUserData {
 
     this.initialCamQuaternion.setFromEuler(this.cam.rotation);
 
-    const ele = this.context.renderer.value.domElement;
+    const ele = this.context.renderer.instance.domElement;
     const rect = ele.getBoundingClientRect();
 
     const scaledX = ((event.clientX - rect.left) / rect.width) * 2 - 1;
     const scaledY = -((event.clientY - rect.top) / rect.height) * 2 + 1;
     const objNdc = this.cam.position
       .clone()
-      .project(this.context.camera.value!);
+      .project(this.context.camera.activeCamera.value!);
     this.downAngle = Math.atan2(scaledY - objNdc.y, scaledX - objNdc.x);
   };
 
   handlePointerMoveEvent = (event: PointerEvent) => {
     const objNdc = this.cam.position.clone();
-    objNdc.project(this.context.camera.value!);
+    objNdc.project(this.context.camera.activeCamera.value!);
 
-    const ele = this.context.renderer.value.domElement;
+    const ele = this.context.renderer.instance.domElement;
     const rect = ele.getBoundingClientRect();
 
     const scaledX = ((event.clientX - rect.left) / rect.width) * 2 - 1;
@@ -70,7 +70,7 @@ export class RotatingUserData implements IUserData {
 
     const cameraDirection = new Vector3();
 
-    this.context.camera.value!.getWorldDirection(cameraDirection);
+    this.context.camera.activeCamera.value!.getWorldDirection(cameraDirection);
 
     // Clockwise/Anticlockwise depend on side of object looked from
     const direction = -Math.sign(cameraDirection[this.type]);

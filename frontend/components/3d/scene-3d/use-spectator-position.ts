@@ -59,7 +59,7 @@ export function useSpectatorPosition(sceneStates: SceneStates) {
       setTimeout(() => requestAnimationFrame(refreshCameraState), 10);
       return;
     }
-    const spectatorCamera = sceneStates.tresContext.value?.camera;
+    const spectatorCamera = sceneStates.tresContext.value?.camera.activeCamera;
     const camPreviewId = sceneStates.currentCamId.value;
     const isLock = sceneStates.cameras[camPreviewId!]?.isLockingPosition;
     for (const [key, isDown] of Object.entries(isKeyDown) as [
@@ -129,6 +129,10 @@ export function useSpectatorPosition(sceneStates: SceneStates) {
   function onBlur(_e: FocusEvent) {
     isKeyDown = {};
   }
+
+  onMounted(() => {
+    refreshCameraState();
+  });
 
   return {
     onKeyUp,
