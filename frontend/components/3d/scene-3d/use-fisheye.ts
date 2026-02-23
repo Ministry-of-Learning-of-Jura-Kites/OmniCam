@@ -2,8 +2,18 @@ import type { ShaderMaterialParameters } from "three";
 import type { SceneStatesWithHelper } from "~/types/scene-states";
 // import type { ICamera } from "~/types/camera";
 
+export enum DistortionMode {
+  NONE = 0,
+  PERSPECTIVE = 1,
+  ORTHO = 2,
+  EQUISOLID = 3,
+  ATAN = 4,
+  LINEAR = 5,
+  QUAD = 6,
+}
+
 export function getFisheyeStrength(
-  type: "linear" | "quad" | "atan" | "equisolid" | "ortho" | "pers",
+  type: DistortionMode,
   intensity: number,
   fov: number,
 ): number {
@@ -11,91 +21,86 @@ export function getFisheyeStrength(
   const scale = Math.tan(fovRad / 2);
 
   switch (type) {
-    case "linear":
-      // Linear radial compression
+    case DistortionMode.LINEAR:
       return intensity * 0.5 * scale;
 
-    case "quad":
-      // Stereographic approximation (r^2)
+    case DistortionMode.QUAD:
       return intensity * 0.05 * (scale * scale);
 
-    case "atan":
-      // Equidistant mapping (r = f * theta)
-      // High intensity needed to move into the curve of the atan function
+    case DistortionMode.ATAN:
       return (intensity * 2.5) / scale;
 
-    case "equisolid":
-      // r = 2f sin(theta/2). Preserves area.
+    case DistortionMode.EQUISOLID:
       return intensity * (1.2 / scale);
 
-    case "ortho":
-      // r = f sin(theta). Extreme peep-hole.
+    case DistortionMode.ORTHO:
       return intensity * (0.9 / scale);
 
-    case "pers": {
+    case DistortionMode.PERSPECTIVE: {
       const f = 1.0 / Math.tan(fovRad / 2);
       return (1.0 / f) * intensity;
     }
+
+    case DistortionMode.NONE:
     default:
       return 0.0;
   }
 }
 
-const updateMvQuad = `
-    float dist = 1.0 / (1.0 + r * r * uStrength);
+const updateMv = `
+    switch (fisheyeMode) {
+        case 0: // None
+          break;
+        case ${DistortionMode.PERSPECTIVE}: // Perspective
+          if (r > 0.0 && uStrength!=0.0) {
+              // 2. Convert perspective distance back to an angle (theta)
+              // In perspective: r = f * tan(theta) -> theta = atan(r/f)
+              // We treat uStrength as the inverse focal length (1/f)
+              float theta = atan(r * uStrength);
+              
+              // 3. The Equidistant rule: r_distorted = f * theta
+              // To find the multiplier: (f * theta) / r_original
+              // Which simplifies to: theta / (uStrength * r)
+              float dist = theta / (r * uStrength);
+              
+              // 4. Apply
+              mvPosition.xy *= dist;
+          }
+          break;
+        case ${DistortionMode.ORTHO}: // ortho
+          if (r > 0.0 && uStrength!=0.0) {
+              float theta = atan(r);
+              float dist = (sin(theta) * uStrength) / r;
+              mvPosition.xy *= dist;
+          }
+          break;
+        case ${DistortionMode.EQUISOLID}: // Equidsolid
+          if (r > 0.0 && uStrength!=0.0) {
+              float theta = atan(r); 
+              float dist = (2.0 * sin(theta * 0.5) * uStrength) / r;
+              mvPosition.xy *= dist;
+          }
+          break;
+        case ${DistortionMode.ATAN}: // atan
+          if (r > 0.0 && uStrength!=0.0) {
+              float theta = atan(r * uStrength); 
+              float dist = theta / r;
+              // Auto-zoom to maintain center composition
+              float zoom = 1.0 + (uStrength * 0.15); 
+              mvPosition.xy *= dist * zoom;
+          }
+          break;
+        case ${DistortionMode.LINEAR}: //linear
+          float dist = 1.0 / (1.0 + r * uStrength);
 
-    mvPosition.xy *= dist;
-    mvPosition.z -= r * r * uStrength;
-`;
-
-const updateMvLinear = `
-    float dist = 1.0 / (1.0 + r * uStrength);
-
-    mvPosition.xy *= dist;
-    mvPosition.z -= r * r * (uStrength * 0.5);
-`;
-
-// Equidistant
-const updateMvAtan = `
-    if (r > 0.0 && uStrength!=0.0) {
-        float theta = atan(r * uStrength); 
-        float dist = theta / r;
-        // Auto-zoom to maintain center composition
-        float zoom = 1.0 + (uStrength * 0.15); 
-        mvPosition.xy *= dist * zoom;
-    }
-`;
-
-const updateMvEquisolid = `
-    if (r > 0.0 && uStrength!=0.0) {
-        float theta = atan(r); 
-        float dist = (2.0 * sin(theta * 0.5) * uStrength) / r;
-        mvPosition.xy *= dist;
-    }
-`;
-
-const updateMvOrthogonal = `
-    if (r > 0.0 && uStrength!=0.0) {
-        float theta = atan(r);
-        float dist = (sin(theta) * uStrength) / r;
-        mvPosition.xy *= dist;
-    }
-`;
-
-const updateMvPers = `
-    if (r > 0.0 && uStrength!=0.0) {
-        // 2. Convert perspective distance back to an angle (theta)
-        // In perspective: r = f * tan(theta) -> theta = atan(r/f)
-        // We treat uStrength as the inverse focal length (1/f)
-        float theta = atan(r * uStrength);
-        
-        // 3. The Equidistant rule: r_distorted = f * theta
-        // To find the multiplier: (f * theta) / r_original
-        // Which simplifies to: theta / (uStrength * r)
-        float dist = theta / (r * uStrength);
-        
-        // 4. Apply
-        mvPosition.xy *= dist;
+          mvPosition.xy *= dist;
+          mvPosition.z -= r * r * (uStrength * 0.5);
+          break;
+        case ${DistortionMode.QUAD}: // Quad
+          float dist = 1.0 / (1.0 + r * r * uStrength);
+          mvPosition.xy *= dist;
+          mvPosition.z -= r * r * uStrength;
+          break;
     }
 `;
 
@@ -109,7 +114,7 @@ export function useFisheye(sceneStates: SceneStatesWithHelper) {
       `
     #include <project_vertex>
 
-    ${updateMvPers}
+    ${updateMv}
 
     gl_Position = projectionMatrix * mvPosition;
     `,

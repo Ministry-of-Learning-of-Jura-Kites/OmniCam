@@ -11,7 +11,7 @@ import type { UseWebSocketReturn } from "@vueuse/core";
 import type { Camera } from "~/messages/protobufs/autosave_event";
 import { useAspectRatio as useAspectRatioManagement } from "../scene-3d/use-aspect-ratio";
 import { useAutosave } from "../scene-3d/use-autosave";
-import { getFisheyeStrength } from "../scene-3d/use-fisheye";
+import { DistortionMode, getFisheyeStrength } from "../scene-3d/use-fisheye";
 
 export interface ModelWithCamsResp {
   data: {
@@ -50,6 +50,7 @@ export function transformProtoEventToCamera(rawCam: Camera): ICamera {
     aspectHeight: rawCam.aspectHeight,
     isHidingArrows: rawCam.isHidingArrows,
     isHidingWheels: rawCam.isHidingWheels,
+    distortion: rawCam.distortion,
     isLockingPosition: rawCam.isLockingPosition,
     isLockingRotation: rawCam.isLockingRotation,
     isHidingFrustum: rawCam.isHidingFrustum,
@@ -148,7 +149,7 @@ export function createBaseSceneStates(
 
   if (window) {
     function setFisheyeStrength(
-      type: "linear" | "quad" | "atan" | "equisolid" | "ortho" | "pers",
+      type: DistortionMode,
       intensity: number,
       fov: number,
     ) {
