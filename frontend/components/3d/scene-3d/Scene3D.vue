@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { TresCanvas, useRenderLoop } from "@tresjs/core";
+import { TresCanvas } from "@tresjs/core";
 import { Grid, Environment } from "@tresjs/cientos";
 import AdjustableInput from "../../adjustable-input/AdjustableInput.vue";
 import { SPECTATOR_ADJ_INPUT_SENTIVITY } from "~/constants";
@@ -10,15 +10,15 @@ import {
   Vector2,
   DoubleSide,
   type OrthographicCamera,
-  WebGLRenderer,
-  type Scene,
 } from "three";
 import { IS_MAP_OPEN_KEY, SCENE_STATES_KEY } from "@/constants/state-keys";
-
+import Stats from "stats.js";
+import LazyMinimap from "@/components/3d/minimap/Minimap.vue";
 import { useCameraUpdate } from "./use-camera-update";
 import type { IUserData } from "~/types/obj-3d-user-data";
 import ModelLoader from "../model-loader/ModelLoader.vue";
-import { onBeforeRouteLeave } from "vue-router";
+import { usePromptUnsaved } from "./use-prompt-unsaved";
+import FrustumOverlay from "@/components/3d/camera-frustum/FrustumOverlay.vue";
 
 const props = defineProps({
   projectId: { type: String, required: true },
@@ -28,18 +28,15 @@ const props = defineProps({
 
 const config = useRuntimeConfig();
 const sceneStates = inject(SCENE_STATES_KEY)!;
-const isMapOpen = inject(IS_MAP_OPEN_KEY)!;
 const { data: modelResp } = sceneStates.modelInfo;
 
 const modelPath = `http://${config.public.externalBackendHost}/api/v1/assets/projects/${modelResp.projectId}/models/${modelResp.modelId}/file/${modelResp.fileExtension.slice(1)}`;
 
-// UPDATED: Starting height for the "slicing" view
-const minimapHeight: Ref<number> = ref(5);
-
 const camera = ref<PerspectiveCamera | null>(null);
+const canvas: Ref<InstanceType<typeof TresCanvas> | null> = ref(null);
+
 const minimapCamera = ref<OrthographicCamera | null>(null);
-const canvas = ref<InstanceType<typeof TresCanvas> | null>(null);
-const minimapCanvas = ref<HTMLCanvasElement | null>(null);
+const isMapOpen = inject(IS_MAP_OPEN_KEY)!;
 
 const aspect = computed(() => {
   const width = sceneStates.currentCam.value.aspectHeight;
@@ -48,115 +45,17 @@ const aspect = computed(() => {
   return width / height;
 });
 
-const minimapSize = 220;
-const minimapFrustumSize = ref(40);
-
-function handleMinimapZoom(event: WheelEvent) {
-  const zoomSpeed = 0.05;
-  const delta = event.deltaY * zoomSpeed;
-  minimapFrustumSize.value = Math.max(
-    5,
-    Math.min(300, minimapFrustumSize.value + delta),
-  );
-}
-
-// watch(minimapFrustumSize, async () => {
-//   await nextTick();
-//   if (minimapCamera.value) {
-//     minimapCamera.value.updateProjectionMatrix();
-//   }
-// });
-
-let miniCamUpdate = false;
-
-watch(
-  [minimapFrustumSize, minimapHeight, sceneStates.spectatorCameraPosition],
-  () => {
-    miniCamUpdate = true;
-  },
-  { immediate: true },
-);
-
-let miniRenderer: WebGLRenderer | null = null;
+usePromptUnsaved(sceneStates);
 
 useCameraUpdate(sceneStates);
-
-// ── Minimap Render Loop ──────────────────────────────────────────────
-const { onLoop } = useRenderLoop();
-
-onLoop(() => {
-  if (
-    !minimapCanvas.value ||
-    !camera.value ||
-    !minimapCamera.value ||
-    !sceneStates.tresContext.value
-  )
-    return;
-
-  const mainScene = sceneStates.tresContext.value.scene as Scene;
-  const miniCam = minimapCamera.value as OrthographicCamera;
-
-  if (!miniRenderer) {
-    miniRenderer = new WebGLRenderer({
-      canvas: minimapCanvas.value,
-      antialias: true,
-      alpha: true,
-    });
-    miniRenderer.setSize(minimapSize, minimapSize);
-    miniRenderer.setClearColor(0x111122, 1);
-  }
-
-  if (miniCamUpdate) {
-    miniCamUpdate = false;
-    // CHANGE: Set the Y position to our slider value.
-    // This effectively makes the camera "hover" at the slider height.
-    miniCam.position.set(
-      camera.value.position.x,
-      minimapHeight.value,
-      camera.value.position.z,
-    );
-
-    // Look straight down from that height
-    miniCam.lookAt(
-      camera.value.position.x,
-      minimapHeight.value - 1,
-      camera.value.position.z,
-    );
-
-    const halfSize = minimapFrustumSize.value / 2;
-    miniCam.left = -halfSize;
-    miniCam.right = halfSize;
-    miniCam.top = halfSize;
-    miniCam.bottom = -halfSize;
-
-    // CHANGE: By setting near to 0.1, everything ABOVE the camera height is invisible.
-    // It effectively slices the building/model at the slider's Y level.
-    miniCam.near = 0.1;
-    miniCam.far = 1000;
-
-    miniCam.updateProjectionMatrix();
-  }
-
-  if (miniRenderer) {
-    miniRenderer.render(mainScene, miniCam);
-  }
-});
-
-onMounted(() => {
-  sceneStates.spectatorPosition.refreshCameraState();
-});
-
-onUnmounted(() => {
-  if (miniRenderer) miniRenderer.dispose();
-});
 
 // ── Raycasting & Input Events (Omitted same logic for brevity) ───────
 const raycaster = new Raycaster();
 const mouse = new Vector2();
 
 function onCanvasPointer(event: PointerEvent) {
-  if (!sceneStates.tresContext.value) return;
-  const ele = sceneStates.tresContext.value.renderer.domElement;
+  if (!sceneStates.tresContext.value || !camera.value) return;
+  const ele = sceneStates.tresContext.value.renderer.instance.domElement;
   const rect = ele.getBoundingClientRect();
   mouse.x = ((event.clientX - rect.left) / rect.width!) * 2 - 1;
   mouse.y = -((event.clientY - rect.top) / rect.height!) * 2 + 1;
@@ -174,41 +73,59 @@ function onCanvasPointer(event: PointerEvent) {
   }
 }
 
-watch(
-  canvas,
-  (newCanvas) => {
-    if (!newCanvas) return;
-    const context = newCanvas.context!;
-    const renderer = context.renderer;
-    sceneStates.tresContext.value = context;
-    renderer.value.domElement.addEventListener("pointerdown", onCanvasPointer);
-    renderer.value.domElement.addEventListener("pointermove", onCanvasPointer);
-    renderer.value.domElement.addEventListener("pointerup", onCanvasPointer);
-    renderer.value.domElement.addEventListener(
-      "keydown",
-      sceneStates.spectatorPosition.onKeyDown,
-    );
-    renderer.value.domElement.addEventListener(
-      "keyup",
-      sceneStates.spectatorPosition.onKeyUp,
-    );
-    renderer.value.domElement.addEventListener("blur", (e: FocusEvent) => {
-      sceneStates.spectatorRotation.onBlur(e);
-      sceneStates.spectatorPosition.onBlur(e);
-    });
+let stats: Stats | null = null;
 
-    renderer.value.domElement.addEventListener(
-      "contextmenu",
-      (event: Event) => {
-        event.preventDefault();
+onMounted(() => {
+  watch(
+    () => canvas.value?.context,
+    (context) => {
+      if (!context || !stats) return;
+      const renderer = context.renderer;
+      renderer.loop.onBeforeLoop(() => {
+        stats!.begin();
+      });
+      renderer.loop.onLoop(() => {
+        stats!.end();
+      });
+      sceneStates.tresContext.value = context;
+      renderer.instance.domElement.addEventListener(
+        "pointerdown",
+        onCanvasPointer,
+      );
+      renderer.instance.domElement.addEventListener(
+        "pointermove",
+        onCanvasPointer,
+      );
+      renderer.instance.domElement.addEventListener(
+        "pointerup",
+        onCanvasPointer,
+      );
+      renderer.instance.domElement.addEventListener(
+        "keydown",
+        sceneStates.spectatorPosition.onKeyDown,
+      );
+      renderer.instance.domElement.addEventListener(
+        "keyup",
+        sceneStates.spectatorPosition.onKeyUp,
+      );
+      renderer.instance.domElement.addEventListener("blur", (e: FocusEvent) => {
+        sceneStates.spectatorRotation.onBlur(e);
+        sceneStates.spectatorPosition.onBlur(e);
+      });
 
-        sceneStates.spectatorRotation.onBlur(event as unknown as FocusEvent);
-        sceneStates.spectatorPosition.onBlur(event as unknown as FocusEvent);
-      },
-    );
-  },
-  { once: true },
-);
+      renderer.instance.domElement.addEventListener(
+        "contextmenu",
+        (event: Event) => {
+          event.preventDefault();
+
+          sceneStates.spectatorRotation.onBlur(event as unknown as FocusEvent);
+          sceneStates.spectatorPosition.onBlur(event as unknown as FocusEvent);
+        },
+      );
+    },
+    { once: true },
+  );
+});
 
 const spectatorRefs = {
   position: {
@@ -223,44 +140,14 @@ const spectatorRefs = {
   },
 };
 
-watch(
-  () => [sceneStates.transformingInfo, sceneStates.currentCam],
-  ([transform, cam]) => {
-    const newFov = transform?.value?.fov ?? cam?.value?.fov;
-    if (camera.value && newFov !== undefined) {
-      camera.value.fov = newFov;
-      camera.value.updateProjectionMatrix();
-    }
-  },
-  { deep: true },
-);
-
-const handleBeforeUnload = (event: BeforeUnloadEvent) => {
-  if (sceneStates.markedForCheck.size > 0) {
-    const message =
-      "You have unsaved camera changes. Are you sure you want to leave?";
-    event.preventDefault();
-    event.returnValue = message;
-    return message;
-  }
-};
 onMounted(() => {
-  window.addEventListener("beforeunload", handleBeforeUnload);
-});
-onUnmounted(() => {
-  window.removeEventListener("beforeunload", handleBeforeUnload);
-});
-onBeforeRouteLeave((to, from, next) => {
-  if (sceneStates.markedForCheck.size > 0) {
-    const answer = window.confirm(
-      "You have unsaved camera changes. Are you sure you want to leave?",
-    );
-    if (!answer) {
-      next(false);
-      return;
-    }
+  stats = new Stats();
+  stats.showPanel(0);
+  // stats.showPanel(1);
+  // stats.showPanel(2); // 0: fps, 1: ms, 2: mb, 3+: custom
+  if (document) {
+    document.body.appendChild(stats.dom);
   }
-  next();
 });
 </script>
 
@@ -335,41 +222,13 @@ onBeforeRouteLeave((to, from, next) => {
         </div>
       </div>
 
-      <div
-        v-show="isMapOpen"
-        class="minimap-container absolute bottom-4 right-4 z-20 pointer-events-auto select-none"
-        @wheel.prevent="handleMinimapZoom"
-      >
-        <div class="flex flex-col gap-1 mb-2">
-          <label class="text-[10px] text-white opacity-70 uppercase">
-            Cut Height: {{ minimapHeight }}m
-          </label>
-          <input
-            id="minimap-slider"
-            v-model.number="minimapHeight"
-            type="range"
-            min="0"
-            max="5"
-            step="0.01"
-            class="slider"
-          />
-        </div>
-        <div
-          class="minimap-label text-white text-[10px] text-center mb-1 opacity-80 uppercase tracking-widest"
-        >
-          Minimap (Scroll to Zoom)
-        </div>
-        <canvas
-          ref="minimapCanvas"
-          class="rounded-lg shadow-2xl border border-gray-600/50 cursor-zoom-in bg-black"
-        ></canvas>
-      </div>
+      <LazyMinimap :show="isMapOpen" :minimap-camera="minimapCamera" />
 
       <div
         :ref="sceneStates.tresCanvasParent"
         :style="{
-          width: sceneStates.screenSize.width + 'px',
-          height: sceneStates.screenSize.height + 'px',
+          width: (sceneStates.screenSize.width ?? 0) + 'px',
+          height: (sceneStates.screenSize.height ?? 0) + 'px',
         }"
         class="relative"
       >
@@ -407,6 +266,8 @@ onBeforeRouteLeave((to, from, next) => {
             :workspace="props.workspace"
           />
 
+          <FrustumOverlay />
+
           <Suspense><Environment preset="city" /></Suspense>
           <TresAmbientLight :intensity="0.4" />
           <TresDirectionalLight :position="[10, 10, 5]" :intensity="1" />
@@ -416,8 +277,10 @@ onBeforeRouteLeave((to, from, next) => {
           </Suspense>
 
           <Grid
-            :args="[20, 20]"
-            :cell-size="1"
+            :args="[1, 1]"
+            :cell-size="0.2"
+            cell-color="#90EE90"
+            section-color="white"
             :infinite-grid="true"
             :side="DoubleSide"
           />
