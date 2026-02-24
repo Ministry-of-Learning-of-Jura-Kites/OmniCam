@@ -17,6 +17,7 @@ import LazyMinimap from "@/components/3d/minimap/Minimap.vue";
 import { useCameraUpdate } from "./use-camera-update";
 import type { IUserData } from "~/types/obj-3d-user-data";
 import ModelLoader from "../model-loader/ModelLoader.vue";
+import CalibrationGrid from "../calibration/CalibrationGrid.vue";
 import { usePromptUnsaved } from "./use-prompt-unsaved";
 import FrustumOverlay from "@/components/3d/camera-frustum/FrustumOverlay.vue";
 
@@ -272,10 +273,13 @@ onMounted(() => {
           <TresAmbientLight :intensity="0.4" />
           <TresDirectionalLight :position="[10, 10, 5]" :intensity="1" />
 
+          <CalibrationGrid :workspace="props.workspace" />
+
           <Suspense>
-            <ModelLoader :path="modelPath" :position="[0, 0, 0]" />
+            <ModelLoader :path="modelPath" />
           </Suspense>
 
+          <!-- Grid  1 unit = 1 virtual m -->
           <Grid
             :args="[1, 1]"
             :cell-size="0.2"
