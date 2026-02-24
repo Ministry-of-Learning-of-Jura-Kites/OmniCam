@@ -1,10 +1,18 @@
 <script setup lang="ts">
 import { GLTFModel } from "@tresjs/cientos";
+import { CALIBRATION_SCALE, CALIBRATION_HEIGHT } from "~/constants/state-keys";
 
-const props = defineProps<{
-  path?: string;
-  position?: [number, number, number];
-}>();
+const props = withDefaults(
+  defineProps<{
+    path: string;
+    position?: [number, number, number];
+    modelScale?: number;
+  }>(),
+  {
+    modelScale: 1,
+    position: () => [0, 0, 0],
+  },
+);
 
 console.log("path", props.path);
 const blobUrl = ref<string | null>();
@@ -27,10 +35,26 @@ try {
 } catch (err) {
   console.error("[Fail] load model fail:", err);
 }
+
+const scaleFactor = inject(CALIBRATION_SCALE, ref(1));
+const modelHeight = inject(CALIBRATION_HEIGHT, ref(0));
+
+const finalScale = computed(() => {
+  return props.modelScale * scaleFactor.value;
+});
 </script>
 
 <template>
-  <GLTFModel v-if="blobUrl != null" :path="blobUrl" />
+  <TresGroup
+    :position="[
+      props.position?.[0] ?? 0,
+      (props.position?.[1] ?? 0) + modelHeight,
+      props.position?.[2] ?? 0,
+    ]"
+    :scale="[finalScale, finalScale, finalScale]"
+  >
+    <GLTFModel v-if="blobUrl != null" :path="blobUrl" />
+  </TresGroup>
 
   <!-- Block Placeholder  -->
   <TresMesh v-if="blobUrl == null" :position="props.position ?? [0, 0, 0]">

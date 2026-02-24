@@ -1,14 +1,14 @@
 import type { TresContext } from "@tresjs/core";
-import type { ICamera } from "~/types/camera";
+import type { MovableObject } from "~/types/movable";
 import type { IUserData } from "~/types/obj-3d-user-data";
 import { Quaternion, Vector3 } from "three";
 import { getAxisVector } from "~/lib/three";
 
 export const ROTATING_TYPE = "rotation";
 
-export class RotatingUserData implements IUserData {
+export class RotatingUserData implements IUserData<MovableObject> {
   type: "x" | "y" | "z";
-  cam: ICamera;
+  target: MovableObject;
   context: TresContext;
 
   isDragging = false;
@@ -16,9 +16,9 @@ export class RotatingUserData implements IUserData {
   initialCamQuaternion = new Quaternion();
   downAngle = 0;
 
-  constructor(type: string, obj: ICamera, context: TresContext) {
+  constructor(type: string, obj: MovableObject, context: TresContext) {
     this.type = type as "x" | "y" | "z";
-    this.cam = obj;
+    this.target = obj;
     this.context = context;
   }
 
@@ -34,28 +34,28 @@ export class RotatingUserData implements IUserData {
 
   handlePointerDownEvent = (event: PointerEvent) => {
     this.isDragging = true;
-    this.cam.controlling = {
+    this.target.controlling = {
       type: ROTATING_TYPE,
       direction: this.type,
     };
     document.addEventListener("pointermove", this.handlePointerMoveEvent);
     document.addEventListener("pointerup", this.handlePointerUpEvent);
 
-    this.initialCamQuaternion.setFromEuler(this.cam.rotation);
+    this.initialCamQuaternion.setFromEuler(this.target.rotation);
 
     const ele = this.context.renderer.instance.domElement;
     const rect = ele.getBoundingClientRect();
 
     const scaledX = ((event.clientX - rect.left) / rect.width) * 2 - 1;
     const scaledY = -((event.clientY - rect.top) / rect.height) * 2 + 1;
-    const objNdc = this.cam.position
+    const objNdc = this.target.position
       .clone()
       .project(this.context.camera.activeCamera.value!);
     this.downAngle = Math.atan2(scaledY - objNdc.y, scaledX - objNdc.x);
   };
 
   handlePointerMoveEvent = (event: PointerEvent) => {
-    const objNdc = this.cam.position.clone();
+    const objNdc = this.target.position.clone();
     objNdc.project(this.context.camera.activeCamera.value!);
 
     const ele = this.context.renderer.instance.domElement;
@@ -82,12 +82,12 @@ export class RotatingUserData implements IUserData {
     );
     quaternion.premultiply(rotation);
 
-    this.cam.rotation.setFromQuaternion(quaternion);
+    this.target.rotation.setFromQuaternion(quaternion);
   };
 
   handlePointerUpEvent = (_event: PointerEvent) => {
     this.isDragging = false;
-    this.cam.controlling = undefined;
+    this.target.controlling = undefined;
     document.removeEventListener("pointerup", this.handlePointerUpEvent);
     document.removeEventListener("pointermove", this.handlePointerMoveEvent);
   };
