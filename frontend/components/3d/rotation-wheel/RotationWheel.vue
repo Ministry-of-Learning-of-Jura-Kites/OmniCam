@@ -6,18 +6,14 @@ import { ROTATING_TYPE, RotatingUserData } from "./rotating-event-handle";
 import { useTresContext } from "@tresjs/core";
 import type { Obj3DWithUserData } from "~/types/obj-3d-user-data";
 import { ROTATING_TORUS_CONFIG } from "~/constants";
-import type { ICamera } from "~/types/camera";
+import type { MovableObject } from "~/types/movable";
 
-const cam = defineModel<ICamera>({ required: true });
+const object = defineModel<MovableObject>({ required: true });
 
 const props = defineProps({
   direction: {
     type: String as PropType<"x" | "y" | "z">,
     default: "x",
-  },
-  cameraMesh: {
-    type: Object as PropType<Mesh | null>,
-    default: null,
   },
   isHiding: {
     type: Boolean,
@@ -42,7 +38,11 @@ const geometry = new TorusGeometry(
 const material = new MeshBasicMaterial({ color: props.color });
 const wheelBase = new Mesh(geometry, material);
 
-wheelBase.userData = new RotatingUserData(props.direction, cam.value, context);
+wheelBase.userData = new RotatingUserData(
+  props.direction,
+  object.value,
+  context,
+);
 
 const wheel = wheelBase as unknown as Obj3DWithUserData;
 
@@ -62,9 +62,9 @@ switch (props.direction) {
 const isActuallyHiding = computed(() => {
   const shouldHide =
     props.isHiding ||
-    (cam.value.controlling != null &&
-      (cam.value.controlling.type != ROTATING_TYPE ||
-        cam.value.controlling.direction != props.direction));
+    (object.value.controlling != null &&
+      (object.value.controlling.type != ROTATING_TYPE ||
+        object.value.controlling.direction != props.direction));
 
   return shouldHide;
 });
