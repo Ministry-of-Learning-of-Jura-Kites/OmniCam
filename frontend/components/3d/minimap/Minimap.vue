@@ -5,7 +5,7 @@ import { SCENE_STATES_KEY } from "~/constants/state-keys";
 const { minimapCamera, show } = defineProps({
   minimapCamera: {
     type: Object as PropType<OrthographicCamera | null>,
-    required: true,
+    default: null,
   },
   show: {
     type: Boolean,

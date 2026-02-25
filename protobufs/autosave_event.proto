@@ -18,9 +18,19 @@ message ColorRGBA {
   double a = 4;
 }
 
-message Distortion{
+enum DistortionMode{
+  NONE        = 0;
+  PERSPECTIVE = 1;
+  ORTHO       = 2;
+  EQUISOLID   = 3;
+  ATAN        = 4;
+  LINEAR      = 5;
+  QUAD        = 6;
+}
 
-  double intensity = 1;
+message Distortion{
+  double         intensity = 1;
+  DistortionMode mode      = 2;
 }
 
 // Camera message

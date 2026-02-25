@@ -11,7 +11,7 @@ import type { UseWebSocketReturn } from "@vueuse/core";
 import type { Camera } from "~/messages/protobufs/autosave_event";
 import { useAspectRatio as useAspectRatioManagement } from "../scene-3d/use-aspect-ratio";
 import { useAutosave } from "../scene-3d/use-autosave";
-import { DistortionMode, getFisheyeStrength } from "../scene-3d/use-fisheye";
+import { calcFisheyeStrength as calcFisheyeStrength } from "../scene-3d/use-fisheye";
 
 export interface ModelWithCamsResp {
   data: {
@@ -50,7 +50,7 @@ export function transformProtoEventToCamera(rawCam: Camera): ICamera {
     aspectHeight: rawCam.aspectHeight,
     isHidingArrows: rawCam.isHidingArrows,
     isHidingWheels: rawCam.isHidingWheels,
-    distortion: rawCam.distortion,
+    distortion: rawCam.distortion ?? structuredClone(cameraDefault.distortion),
     isLockingPosition: rawCam.isLockingPosition,
     isLockingRotation: rawCam.isLockingRotation,
     isHidingFrustum: rawCam.isHidingFrustum,
@@ -143,21 +143,29 @@ export function createBaseSceneStates(
   const localVersion = ref(modelInfo.data.version);
   const lastSyncedVersion = ref(modelInfo.data.version);
 
-  const fisheyeFovStrength = {
-    value: 0,
-  };
+  const distortionStrength = computed(() => {
+    return calcFisheyeStrength(
+      currentCam.value.distortion.mode,
+      currentCam.value.distortion.intensity,
+      currentCam.value.fov,
+    );
+  });
 
-  if (window) {
-    function setFisheyeStrength(
-      type: DistortionMode,
-      intensity: number,
-      fov: number,
-    ) {
-      fisheyeFovStrength.value = getFisheyeStrength(type, intensity, fov);
-    }
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (window as any).setFisheyeStrength = setFisheyeStrength;
-  }
+  const distortionMode = computed(() => {
+    return currentCam.value.distortion.mode;
+  });
+
+  // if (window) {
+  //   function setFisheyeStrength(
+  //     type: DistortionMode,
+  //     intensity: number,
+  //     fov: number,
+  //   ) {
+  //     distortionStrength.value = calcFisheyeStrength(type, intensity, fov);
+  //   }
+  //   // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  //   (window as any).setFisheyeStrength = setFisheyeStrength;
+  // }
 
   const sceneStates = {
     tresContext,
@@ -180,7 +188,8 @@ export function createBaseSceneStates(
     aspectMarginType,
     localVersion,
     lastSyncedVersion,
-    fisheyeFovStrength,
+    distortionStrength,
+    distortionMode,
   } as const;
 
   // websocket.ws.value!.onclose = (_closeEvent: CloseEvent) => {
