@@ -755,12 +755,16 @@ const directionAngles = computed(() => {
               min="0"
               max="1"
               step="0.01"
+              @change="sceneStates.markedForCheck.add(selectedCamId)"
             />
           </div>
           <div class="grid grid-cols-1 gap-2">
             <h2>Distortion Mode</h2>
             <Select
               v-model="sceneStates.cameras[selectedCamId]!.distortion.mode"
+              @update:model-value="
+                sceneStates.markedForCheck.add(selectedCamId)
+              "
             >
               <SelectTrigger class-name="w-full max-w-48">
                 <SelectValue />
@@ -813,7 +817,7 @@ input[type="number"] {
   -moz-appearance: textfield;
 }
 
-input {
+input[type="number"] {
   border-radius: 5px;
   border: 1px solid black;
   outline: 1px solid white;

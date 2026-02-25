@@ -40,6 +40,7 @@ export function transformCameraToProtoEvent(cam: ICamera): Omit<Camera, "id"> {
     isLockingPosition: cam.isLockingPosition,
     isLockingRotation: cam.isLockingRotation,
     isHidingFrustum: cam.isHidingFrustum,
+    distortion: structuredClone(toRaw(cam.distortion)),
   };
 }
 
@@ -64,65 +65,68 @@ export function useAutosave(
     }),
   );
 
-  watch(
-    () => sceneStates.websocket?.data.value,
-    async (messageBlob) => {
-      if (messageBlob) {
-        const messageArrayBuf = await (messageBlob as Blob).arrayBuffer();
-        const messageByteArr = new Uint8Array(messageArrayBuf);
-        const resp = CameraAutosaveResponse.decode(messageByteArr);
-        sceneStates.lastSyncedVersion.value = resp.ack!.lastUpdatedVersion;
+  onMounted(() => {
+    watch(
+      () => sceneStates.websocket?.data.value,
+      async (messageBlob) => {
+        if (messageBlob) {
+          const messageArrayBuf = await (messageBlob as Blob).arrayBuffer();
+          const messageByteArr = new Uint8Array(messageArrayBuf);
+          const resp = CameraAutosaveResponse.decode(messageByteArr);
+          sceneStates.lastSyncedVersion.value = resp.ack!.lastUpdatedVersion;
+        }
+      },
+    );
+
+    setInterval(() => {
+      if (sceneStates.markedForCheck.size == 0) {
+        return;
       }
-    },
-  );
 
-  setInterval(() => {
-    if (sceneStates.markedForCheck.size == 0) {
-      return;
-    }
+      const newVal = sceneStates.cameras;
+      const changed: CameraSaveEvent[] = [];
 
-    const newVal = sceneStates.cameras;
-    const changed: CameraSaveEvent[] = [];
-
-    // check new or updated
-    for (const camId of sceneStates.markedForCheck) {
-      const prev = lastSynced.get(camId);
-      const cam = newVal[camId];
-      if (cam == undefined && prev == undefined) {
-        continue;
+      // check new or updated
+      for (const camId of sceneStates.markedForCheck) {
+        const prev = lastSynced.get(camId);
+        const cam = newVal[camId];
+        if (cam == undefined && prev == undefined) {
+          continue;
+        }
+        // If is deleted
+        if (cam == undefined) {
+          lastSynced.delete(camId);
+          changed.push({
+            delete: {
+              id: camId,
+            },
+          });
+          continue;
+        }
+        const formattedCam = transformCameraToProtoEventWithId(camId, cam);
+        console.log(prev, formattedCam);
+        // If is newly added, or changed
+        if (prev == undefined || !isEqual(prev, formattedCam)) {
+          changed.push({
+            upsert: {
+              camera: formattedCam,
+            },
+          });
+          lastSynced.set(camId, transformCameraToProtoEventWithId(camId, cam));
+        }
       }
-      // If is deleted
-      if (cam == undefined) {
-        lastSynced.delete(camId);
-        changed.push({
-          delete: {
-            id: camId,
-          },
-        });
-        continue;
-      }
-      const formattedCam = transformCameraToProtoEventWithId(camId, cam);
-      // If is newly added, or changed
-      if (prev == undefined || !isEqual(prev, formattedCam)) {
-        changed.push({
-          upsert: {
-            camera: formattedCam,
-          },
-        });
-        lastSynced.set(camId, transformCameraToProtoEventWithId(camId, cam));
-      }
-    }
 
-    if (changed.length > 0 && sceneStates.websocket != undefined) {
-      sceneStates.localVersion.value += 1;
-      sceneStates.websocket.send(
-        CameraSaveEventSeries.encode({
-          version: sceneStates.localVersion.value,
-          events: changed,
-        }).finish().buffer,
-      );
-    }
+      if (changed.length > 0 && sceneStates.websocket != undefined) {
+        sceneStates.localVersion.value += 1;
+        sceneStates.websocket.send(
+          CameraSaveEventSeries.encode({
+            version: sceneStates.localVersion.value,
+            events: changed,
+          }).finish().buffer,
+        );
+      }
 
-    sceneStates.markedForCheck.clear();
-  }, 2000);
+      sceneStates.markedForCheck.clear();
+    }, 2000);
+  });
 }
