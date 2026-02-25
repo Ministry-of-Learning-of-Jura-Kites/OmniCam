@@ -78,7 +78,6 @@ onMounted(() => {
             if (s != undefined) {
               s.scene.traverse(applyFisheye);
               state.value = s;
-              console.log("ggg", s);
 
               URL.revokeObjectURL(blobUrl!);
 

@@ -204,10 +204,9 @@ export function createSceneStatesWithHelper(
   workspace: string | null,
 ) {
   const aspectRatioManagement = useAspectRatioManagement(sceneStates);
+  useAutosave(sceneStates, workspace);
 
   onMounted(() => {
-    useAutosave(sceneStates, workspace);
-
     watch(
       () => [sceneStates.transformingInfo, sceneStates.currentCam],
       ([transform, cam]) => {
