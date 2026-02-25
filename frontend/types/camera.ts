@@ -1,6 +1,8 @@
 import { Vector3, Euler } from "three";
-import { DistortionMode } from "~/components/3d/scene-3d/use-fisheye";
-import type { ColorRGBA } from "~/messages/protobufs/autosave_event";
+import {
+  DistortionMode,
+  type ColorRGBA,
+} from "~/messages/protobufs/autosave_event";
 
 export interface ICamera {
   name: string;

@@ -21,6 +21,16 @@ import {
 import { randomVividColor } from "~/utils/randomVividColor";
 import { SCENE_STATES_KEY } from "@/constants/state-keys";
 import CameraSpawnDialog from "~/components/dialog/CameraSpawnDialog.vue";
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectLabel,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { DistortionMode } from "~/messages/protobufs/autosave_event";
 
 type Camerapreset = {
   vendor: string;
@@ -731,92 +741,49 @@ const directionAngles = computed(() => {
           /></span>
         </CardHeader>
         <CardContent v-if="isDistortionPropertiesOpen" class="space-y-2">
-          <div class="grid grid-cols-2 gap-2">
-            <Button
-              size="sm"
-              class="flex-1"
-              @click="
-                sceneStates.cameras[selectedCamId]!.isHidingFrustum =
-                  !sceneStates.cameras[selectedCamId]!.isHidingFrustum;
-                sceneStates.markedForCheck.add(selectedCamId);
+          <div class="grid grid-cols-1 gap-2">
+            <label for="intensity">
+              Intensity:
+              {{ sceneStates.cameras[selectedCamId]!.distortion.intensity }}
+            </label>
+            <input
+              id="intensity"
+              v-model.number="
+                sceneStates.cameras[selectedCamId]!.distortion.intensity
               "
+              type="range"
+              min="0"
+              max="1"
+              step="0.01"
+            />
+          </div>
+          <div class="grid grid-cols-1 gap-2">
+            <h2>Distortion Mode</h2>
+            <Select
+              v-model="sceneStates.cameras[selectedCamId]!.distortion.mode"
             >
-              <Eye
-                v-if="!sceneStates.cameras[selectedCamId]!.isHidingFrustum"
-                class="h-3 w-3"
-              />
-              <EyeOff v-else class="h-3 w-3" />
-              Frustum
-            </Button>
-          </div>
-          <div class="grid grid-cols-3 gap-2">
-            <div>
-              <Label for="color-r"><p>R</p></Label>
-              <Input
-                id="color-r"
-                v-model.number="
-                  sceneStates.cameras[selectedCamId]!.frustumColor.r
-                "
-                type="number"
-                min="0"
-                max="1"
-                @change="sceneStates.markedForCheck.add(selectedCamId)"
-              />
-            </div>
-            <div>
-              <Label for="color-g"><p>G</p></Label>
-              <Input
-                id="color-g"
-                v-model.number="
-                  sceneStates.cameras[selectedCamId]!.frustumColor.g
-                "
-                type="number"
-                min="0"
-                max="1"
-                @change="sceneStates.markedForCheck.add(selectedCamId)"
-              />
-            </div>
-            <div>
-              <Label for="color-b"><p>B</p></Label>
-              <Input
-                id="color-b"
-                v-model.number="
-                  sceneStates.cameras[selectedCamId]!.frustumColor.b
-                "
-                type="number"
-                min="0"
-                max="1"
-                @change="sceneStates.markedForCheck.add(selectedCamId)"
-              />
-            </div>
-          </div>
-          <div class="grid grid-cols-2 gap-2">
-            <div>
-              <Label for="opacity">Opacity</Label>
-              <Input
-                id="opacity"
-                v-model.number="
-                  sceneStates.cameras[selectedCamId]!.frustumColor.a
-                "
-                type="number"
-                min="0"
-                max="1"
-                @change="sceneStates.markedForCheck.add(selectedCamId)"
-              />
-            </div>
-            <div>
-              <Label for="length">Length</Label>
-              <Input
-                id="length"
-                v-model.number="
-                  sceneStates.cameras[selectedCamId]!.frustumLength
-                "
-                type="number"
-                min="0"
-                max="1e6"
-                @change="sceneStates.markedForCheck.add(selectedCamId)"
-              />
-            </div>
+              <SelectTrigger class-name="w-full max-w-48">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectGroup>
+                  <SelectLabel>Distortion Mode</SelectLabel>
+                  <SelectItem :value="DistortionMode.NONE">None</SelectItem>
+                  <SelectItem :value="DistortionMode.PERSPECTIVE"
+                    >Perspective</SelectItem
+                  >
+                  <SelectItem :value="DistortionMode.ORTHO"
+                    >Orthogonal</SelectItem
+                  >
+                  <SelectItem :value="DistortionMode.EQUISOLID"
+                    >Equisolid</SelectItem
+                  >
+                  <SelectItem :value="DistortionMode.ATAN">Atan</SelectItem>
+                  <SelectItem :value="DistortionMode.LINEAR">Linear</SelectItem>
+                  <SelectItem :value="DistortionMode.QUAD">Quadaric</SelectItem>
+                </SelectGroup>
+              </SelectContent>
+            </Select>
           </div>
         </CardContent>
       </Card>

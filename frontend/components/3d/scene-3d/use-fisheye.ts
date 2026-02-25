@@ -1,18 +1,9 @@
-import type { ShaderMaterialParameters } from "three";
+import type { WebGLProgramParametersWithUniforms, WebGLRenderer } from "three";
+import { DistortionMode } from "~/messages/protobufs/autosave_event";
 import type { SceneStatesWithHelper } from "~/types/scene-states";
 // import type { ICamera } from "~/types/camera";
 
-export enum DistortionMode {
-  NONE = 0,
-  PERSPECTIVE = 1,
-  ORTHO = 2,
-  EQUISOLID = 3,
-  ATAN = 4,
-  LINEAR = 5,
-  QUAD = 6,
-}
-
-export function getFisheyeStrength(
+export function calcFisheyeStrength(
   type: DistortionMode,
   intensity: number,
   fov: number,
@@ -48,10 +39,11 @@ export function getFisheyeStrength(
 }
 
 const updateMv = `
-    switch (fisheyeMode) {
+    float r = length(mvPosition.xy);
+    switch (uDistortionMode) {
         case 0: // None
           break;
-        case ${DistortionMode.PERSPECTIVE}: // Perspective
+        case ${DistortionMode.PERSPECTIVE}: {
           if (r > 0.0 && uStrength!=0.0) {
               // 2. Convert perspective distance back to an angle (theta)
               // In perspective: r = f * tan(theta) -> theta = atan(r/f)
@@ -67,21 +59,24 @@ const updateMv = `
               mvPosition.xy *= dist;
           }
           break;
-        case ${DistortionMode.ORTHO}: // ortho
+        }
+        case ${DistortionMode.ORTHO}: {
           if (r > 0.0 && uStrength!=0.0) {
               float theta = atan(r);
               float dist = (sin(theta) * uStrength) / r;
               mvPosition.xy *= dist;
           }
           break;
-        case ${DistortionMode.EQUISOLID}: // Equidsolid
+        }
+        case ${DistortionMode.EQUISOLID}: {
           if (r > 0.0 && uStrength!=0.0) {
               float theta = atan(r); 
               float dist = (2.0 * sin(theta * 0.5) * uStrength) / r;
               mvPosition.xy *= dist;
           }
           break;
-        case ${DistortionMode.ATAN}: // atan
+        }
+        case ${DistortionMode.ATAN}: {
           if (r > 0.0 && uStrength!=0.0) {
               float theta = atan(r * uStrength); 
               float dist = theta / r;
@@ -90,25 +85,35 @@ const updateMv = `
               mvPosition.xy *= dist * zoom;
           }
           break;
-        case ${DistortionMode.LINEAR}: //linear
+        }
+        case ${DistortionMode.LINEAR}: {
           float dist = 1.0 / (1.0 + r * uStrength);
 
           mvPosition.xy *= dist;
           mvPosition.z -= r * r * (uStrength * 0.5);
           break;
-        case ${DistortionMode.QUAD}: // Quad
+        }
+        case ${DistortionMode.QUAD}: {
           float dist = 1.0 / (1.0 + r * r * uStrength);
           mvPosition.xy *= dist;
           mvPosition.z -= r * r * uStrength;
           break;
+        }
     }
 `;
 
 export function useFisheye(sceneStates: SceneStatesWithHelper) {
-  function injectFisheye(shader: ShaderMaterialParameters) {
-    shader.uniforms!.uStrength = sceneStates.fisheyeFovStrength;
+  function injectFisheye(
+    shader: WebGLProgramParametersWithUniforms,
+    _renderer: WebGLRenderer,
+  ) {
+    shader.uniforms!.uStrength = sceneStates.distortionStrength;
+    shader.uniforms!.uDistortionMode = sceneStates.distortionMode;
 
-    shader.vertexShader = `uniform float uStrength;\n` + shader.vertexShader;
+    shader.vertexShader =
+      `uniform float uStrength;\n` +
+      `uniform int uDistortionMode;\n` +
+      shader.vertexShader;
     shader.vertexShader = shader.vertexShader.replace(
       "#include <project_vertex>",
       `
