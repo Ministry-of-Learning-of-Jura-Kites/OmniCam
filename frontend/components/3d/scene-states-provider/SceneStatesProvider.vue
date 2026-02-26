@@ -6,7 +6,12 @@ import {
   type ModelWithCamsResp,
 } from "./create-scene-states";
 import { useWebSocket, type UseWebSocketReturn } from "@vueuse/core";
-import { MODEL_INFO_KEY, SCENE_STATES_KEY } from "~/constants/state-keys";
+import {
+  MODEL_INFO_KEY,
+  SCENE_STATES_KEY,
+  CALIBRATION_SCALE,
+  CALIBRATION_HEIGHT,
+} from "~/constants/state-keys";
 
 const props = defineProps({
   projectId: {
@@ -31,6 +36,9 @@ const workspaceSuffix =
 const modelWithCamsResp = useState<ModelWithCamsResp | undefined>(
   `${MODEL_INFO_KEY}-${props.modelId}`,
 );
+
+const calibrationScale = inject<Ref<number>>(CALIBRATION_SCALE)!;
+const calibrationHeight = inject<Ref<number>>(CALIBRATION_HEIGHT)!;
 
 const error = ref<unknown | undefined>(undefined);
 
@@ -103,7 +111,12 @@ if (props.workspace != undefined && import.meta.client) {
   });
 }
 
-const sceneStates = createBaseSceneStates(websocket, modelWithCamsResp.value!);
+const sceneStates = createBaseSceneStates(
+  websocket,
+  modelWithCamsResp.value!,
+  calibrationScale,
+  calibrationHeight,
+);
 
 if (sceneStates.error != null) {
   if (
@@ -120,6 +133,8 @@ if (sceneStates.error != null) {
   const sceneStatesWithHelper = createSceneStatesWithHelper(
     sceneStates as SceneStates,
     props.workspace,
+    props.projectId,
+    props.modelId,
   );
 
   provide(SCENE_STATES_KEY, sceneStatesWithHelper);

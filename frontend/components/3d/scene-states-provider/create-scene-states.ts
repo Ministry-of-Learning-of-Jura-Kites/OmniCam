@@ -17,6 +17,7 @@ import type { UseWebSocketReturn } from "@vueuse/core";
 import type { Camera } from "~/messages/protobufs/autosave_event";
 import { useAspectRatio as useAspectRatioManagement } from "../scene-3d/use-aspect-ratio";
 import { useAutosave } from "../scene-3d/use-autosave";
+import { useAutosaveCalibration } from "../scene-3d/use-autosave-calibration";
 
 export interface ModelWithCamsResp {
   data: {
@@ -33,6 +34,8 @@ export interface ModelWithCamsResp {
     imagePath: string;
     imageExtension: string;
     cameras: Record<string, Camera>;
+    scaleFactor?: number;
+    modelHeight?: number;
   };
 }
 
@@ -78,6 +81,8 @@ function transformCamsData(
 export function createBaseSceneStates(
   websocket: UseWebSocketReturn<unknown> | undefined,
   modelWithCamsResp: ModelWithCamsResp,
+  externalCalibrationScale: Ref<number>,
+  externalCalibrationHeight: Ref<number>,
 ) {
   const tresContext = ref<TresContext | null>(null);
 
@@ -148,6 +153,13 @@ export function createBaseSceneStates(
   const localVersion = ref(modelInfo.data.version);
   const lastSyncedVersion = ref(modelInfo.data.version);
 
+  const calibrationScale =
+    externalCalibrationScale ?? ref(modelWithCamsResp.data.scaleFactor ?? 1.0);
+  const calibrationHeight =
+    externalCalibrationHeight ?? ref(modelWithCamsResp.data.modelHeight ?? 0.0);
+  const calibrationVersion = ref(modelWithCamsResp.data.version);
+  const calibrationDirty = ref(false);
+
   const currentIsFisheye = computed(() => {
     if (currentCamId.value != null) {
       return cameras[currentCamId.value]!.distortion.isFisheye;
@@ -209,6 +221,10 @@ export function createBaseSceneStates(
     aspectMarginType,
     localVersion,
     lastSyncedVersion,
+    calibrationScale,
+    calibrationHeight,
+    calibrationVersion,
+    calibrationDirty,
     currentDistEnabled,
     currentFov,
     currentIsFisheye,
@@ -227,11 +243,15 @@ export function createBaseSceneStates(
 export function createSceneStatesWithHelper(
   sceneStates: Awaited<BaseSceneStates>,
   workspace: string | null,
+  projectId: string,
+  modelId: string,
 ) {
   const aspectRatioManagement = useAspectRatioManagement(sceneStates);
   useAutosave(sceneStates, workspace);
 
   onMounted(() => {
+    useAutosave(sceneStates, workspace);
+    useAutosaveCalibration(sceneStates, workspace, projectId, modelId);
     watch(
       () => [sceneStates.transformingInfo, sceneStates.currentCam],
       ([transform, cam]) => {
