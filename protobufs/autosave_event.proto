@@ -1,9 +1,9 @@
 syntax = "proto3";
 
-package camera;
+package autosave;
 
-// Go: generated under go/camera
-option go_package = "omnicam.com/gen/go/camera";
+// Go: generated under go/autosave
+option go_package = "omnicam.com/gen/go/autosave";
 
 enum CameraEventType {
   CAMERA_EVENT_TYPE_DELETE = 0;
@@ -67,4 +67,26 @@ message CameraAutosaveResponse {
 
 message CameraAutosaveResponseAck {
   int32 last_updated_version = 1; // for ACK
+}
+
+message CalibrationData {
+  double scale_factor = 1;
+  double model_height = 2;
+}
+
+message CalibrationSaveEvent {
+  CalibrationData calibration = 1;
+  uint32          version     = 2;
+}
+
+message CalibrationAutosaveResponse {
+  oneof payload {
+    CalibrationAutosaveResponseAck ack = 1;
+  }
+}
+
+message CalibrationAutosaveResponseAck {
+  int32  last_updated_version = 1;
+  double scale_factor         = 2;
+  double model_height         = 3;
 }
