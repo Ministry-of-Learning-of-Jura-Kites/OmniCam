@@ -53,9 +53,11 @@ provide(IS_CALIBRATING_KEY, isCalibrating);
 provide(TOGGLE_CALIBRATION_KEY, toggleCalibration);
 const calibrationGridScale = ref(1);
 provide(CALIBRATION_GRID_SCALE, calibrationGridScale);
-const calibrationScale = ref(1);
+
+const calibrationScale = ref(1.0);
+const calibrationHeight = ref(0.0);
+
 provide(CALIBRATION_SCALE, calibrationScale);
-const calibrationHeight = ref(0);
 provide(CALIBRATION_HEIGHT, calibrationHeight);
 
 const workspace = computed(() => route.meta.routeInfo?.workspace);
