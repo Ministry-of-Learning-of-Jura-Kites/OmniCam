@@ -271,7 +271,8 @@ function goToMyWorkspace() {
             v-if="
               workspace != null &&
               (sceneStates.markedForCheck.size > 0 ||
-                sceneStates.localVersion === sceneStates.lastSyncedVersion)
+                sceneStates.localVersion === sceneStates.lastSyncedVersion ||
+                !sceneStates.calibrationDirty)
             "
           >
             <TooltipTrigger>
