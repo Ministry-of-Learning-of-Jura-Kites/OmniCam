@@ -77,7 +77,7 @@ if (modelWithCamsResp.value == undefined) {
     props.workspace == null &&
     modelWithCamsResp.value.data.workspaceExists == undefined
   ) {
-    await fetchAndCombine(["workspace_exists"]);
+    await fetchAndCombine(["cameras", "workspace_exists"]);
   }
 
   // If open workspace from model page
