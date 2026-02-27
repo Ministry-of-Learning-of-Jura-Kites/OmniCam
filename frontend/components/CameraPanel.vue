@@ -21,16 +21,6 @@ import {
 import { randomVividColor } from "~/utils/randomVividColor";
 import { SCENE_STATES_KEY } from "@/constants/state-keys";
 import CameraSpawnDialog from "~/components/dialog/CameraSpawnDialog.vue";
-import {
-  Select,
-  SelectContent,
-  SelectGroup,
-  SelectItem,
-  SelectLabel,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { DistortionMode } from "~/messages/protobufs/autosave_event";
 
 type Camerapreset = {
   vendor: string;
@@ -741,53 +731,27 @@ const directionAngles = computed(() => {
           /></span>
         </CardHeader>
         <CardContent v-if="isDistortionPropertiesOpen" class="space-y-2">
-          <div class="grid grid-cols-1 gap-2">
-            <label for="intensity">
-              Intensity:
-              {{ sceneStates.cameras[selectedCamId]!.distortion.intensity }}
-            </label>
+          <div class="flex items-center gap-2">
             <input
-              id="intensity"
-              v-model.number="
-                sceneStates.cameras[selectedCamId]!.distortion.intensity
-              "
-              type="range"
-              min="0"
-              max="1"
-              step="0.01"
+              id="distortion-enabled"
+              v-model="sceneStates.cameras[selectedCamId]!.distortion.enabled"
+              type="checkbox"
+              :disabled="props.workspace == null"
+              disabled-class="disabled-input"
               @change="sceneStates.markedForCheck.add(selectedCamId)"
             />
+            <label for="distortion-enabled">Enable Distortion</label>
           </div>
-          <div class="grid grid-cols-1 gap-2">
-            <h2>Distortion Mode</h2>
-            <Select
-              v-model="sceneStates.cameras[selectedCamId]!.distortion.mode"
-              @update:model-value="
-                sceneStates.markedForCheck.add(selectedCamId)
-              "
-            >
-              <SelectTrigger class-name="w-full max-w-48">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectGroup>
-                  <SelectLabel>Distortion Mode</SelectLabel>
-                  <SelectItem :value="DistortionMode.NONE">None</SelectItem>
-                  <SelectItem :value="DistortionMode.PERSPECTIVE"
-                    >Perspective</SelectItem
-                  >
-                  <SelectItem :value="DistortionMode.ORTHO"
-                    >Orthogonal</SelectItem
-                  >
-                  <SelectItem :value="DistortionMode.EQUISOLID"
-                    >Equisolid</SelectItem
-                  >
-                  <SelectItem :value="DistortionMode.ATAN">Atan</SelectItem>
-                  <SelectItem :value="DistortionMode.LINEAR">Linear</SelectItem>
-                  <SelectItem :value="DistortionMode.QUAD">Quadaric</SelectItem>
-                </SelectGroup>
-              </SelectContent>
-            </Select>
+          <div class="flex items-center gap-2">
+            <input
+              id="is-fisheye"
+              v-model="sceneStates.cameras[selectedCamId]!.distortion.isFisheye"
+              type="checkbox"
+              :disabled="props.workspace == null"
+              disabled-class="disabled-input"
+              @change="sceneStates.markedForCheck.add(selectedCamId)"
+            />
+            <label for="is-fisheye">Is Fisheye</label>
           </div>
         </CardContent>
       </Card>

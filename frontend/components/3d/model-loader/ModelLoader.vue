@@ -76,7 +76,7 @@ onMounted(() => {
           () => gltf.state.value,
           (s) => {
             if (s != undefined) {
-              s.scene.traverse(applyFisheye);
+              // s.scene.traverse(applyFisheye);
               state.value = s;
 
               URL.revokeObjectURL(blobUrl!);

@@ -1,6 +1,10 @@
 package messages_cameras
 
-import camera "omnicam.com/backend/pkg/messages/protobufs"
+import (
+	"encoding/json"
+
+	camera "omnicam.com/backend/pkg/messages/protobufs"
+)
 
 type CamId string
 
@@ -14,22 +18,22 @@ type ColorRGBA struct {
 }
 
 type DistortionConfig struct {
-	Intensity float64               `json:"intensity"`
-	Mode      camera.DistortionMode `json:"mode"`
+	Enabled   bool `json:"enabled"`
+	IsFisheye bool `json:"isFisheye"`
 }
 
 type CameraStruct struct {
 	Name              string           `json:"name" binding:"required" diff:"name"`
-	AngleX            float64          `json:"angleX" binding:"required" diff:"angleX"`
-	AngleY            float64          `json:"angleY" binding:"required" diff:"angleY"`
-	AngleZ            float64          `json:"angleZ" binding:"required" diff:"angleZ"`
-	AngleW            float64          `json:"angleW" binding:"required" diff:"angleW"`
-	PosX              float64          `json:"posX" binding:"required" diff:"posX"`
-	PosY              float64          `json:"posY" binding:"required" diff:"posY"`
-	PosZ              float64          `json:"posZ" binding:"required" diff:"posZ"`
-	Fov               float64          `json:"fov" binding:"required" diff:"fov"`
-	FrustumColor      ColorRGBA        `json:"frustumColor" binding:"required" diff:"frustumColor"`
-	FrustumLength     float64          `json:"frustumLength" binding:"required" diff:"frustumLength"`
+	AngleX            float64          `json:"angleX" diff:"angleX"`
+	AngleY            float64          `json:"angleY" diff:"angleY"`
+	AngleZ            float64          `json:"angleZ" diff:"angleZ"`
+	AngleW            float64          `json:"angleW" diff:"angleW"`
+	PosX              float64          `json:"posX" diff:"posX"`
+	PosY              float64          `json:"posY" diff:"posY"`
+	PosZ              float64          `json:"posZ" diff:"posZ"`
+	Fov               float64          `json:"fov"  diff:"fov"`
+	FrustumColor      ColorRGBA        `json:"frustumColor" diff:"frustumColor"`
+	FrustumLength     float64          `json:"frustumLength" diff:"frustumLength"`
 	IsHidingArrows    bool             `json:"isHidingArrows" diff:"-"`
 	IsHidingWheels    bool             `json:"isHidingWheels" diff:"-"`
 	IsLockingPosition bool             `json:"isLockingPosition" diff:"-"`
@@ -38,6 +42,28 @@ type CameraStruct struct {
 	AspectWidth       float64          `json:"aspectWidth" binding:"required" diff:"aspectWidth"`
 	AspectHeight      float64          `json:"aspectHeight" binding:"required" diff:"aspectHeight"`
 	Distortion        DistortionConfig `json:"distortion" diff:"distortion"`
+}
+
+func UnmarshalCameras(data []byte) (Cameras, error) {
+	var raw map[string]json.RawMessage
+	if err := json.Unmarshal(data, &raw); err != nil {
+		return nil, err
+	}
+	result := make(Cameras)
+	for id, cameraBlob := range raw {
+		// Start with a fresh set of default values for EACH camera
+		cam := DefaultCam()
+
+		// Unmarshal the JSON blob into the defaulted struct.
+		// json.Unmarshal only overwrites fields that ARE present in the JSON.
+		if err := json.Unmarshal(cameraBlob, &cam); err != nil {
+			return nil, err
+		}
+
+		result[CamId(id)] = cam
+	}
+
+	return result, nil
 }
 
 func ProtoColorToColor(protoColor *camera.ColorRGBA) ColorRGBA {
@@ -55,38 +81,81 @@ func ProtoColorToColor(protoColor *camera.ColorRGBA) ColorRGBA {
 
 func ProtoDistortionToDistortion(protoDist *camera.Distortion) DistortionConfig {
 	distortion := DistortionConfig{
-		Intensity: 1,
-		Mode:      camera.DistortionMode_NONE,
+		Enabled:   true,
+		IsFisheye: false,
 	}
 	if protoDist != nil {
 		distortion = DistortionConfig{
-			Intensity: protoDist.Intensity,
-			Mode:      protoDist.Mode,
+			Enabled:   protoDist.Enabled,
+			IsFisheye: protoDist.IsFisheye,
 		}
 	}
 	return distortion
 }
 
 func ProtoCamToCam(protoCam *camera.Camera) CameraStruct {
+	cam := DefaultCam()
+
+	cam.Name = protoCam.Name
+	cam.AngleX = protoCam.AngleX
+	cam.AngleY = protoCam.AngleY
+	cam.AngleZ = protoCam.AngleZ
+	cam.AngleW = protoCam.AngleW
+	cam.PosX = protoCam.PosX
+	cam.PosY = protoCam.PosY
+	cam.PosZ = protoCam.PosZ
+	cam.Fov = protoCam.Fov
+	cam.FrustumLength = protoCam.FrustumLength
+	cam.IsHidingArrows = protoCam.IsHidingArrows
+	cam.IsHidingWheels = protoCam.IsHidingWheels
+	cam.IsLockingPosition = protoCam.IsLockingPosition
+	cam.IsLockingRotation = protoCam.IsLockingRotation
+	cam.IsHidingFrustum = protoCam.IsHidingFrustum
+	cam.AspectWidth = protoCam.AspectWidth
+	cam.AspectHeight = protoCam.AspectHeight
+
+	if protoCam.FrustumColor != nil {
+		cam.FrustumColor = ColorRGBA{
+			R: protoCam.FrustumColor.R,
+			G: protoCam.FrustumColor.G,
+			B: protoCam.FrustumColor.B,
+			A: protoCam.FrustumColor.A,
+		}
+	}
+
+	if protoCam.Distortion != nil {
+		cam.Distortion = DistortionConfig{
+			Enabled:   protoCam.Distortion.Enabled,
+			IsFisheye: protoCam.Distortion.IsFisheye,
+		}
+	}
+
+	return cam
+}
+
+func DefaultCam() CameraStruct {
 	return CameraStruct{
-		Name:              protoCam.Name,
-		AngleX:            protoCam.AngleX,
-		AngleY:            protoCam.AngleY,
-		AngleZ:            protoCam.AngleZ,
-		AngleW:            protoCam.AngleW,
-		PosX:              protoCam.PosX,
-		PosY:              protoCam.PosY,
-		PosZ:              protoCam.PosZ,
-		Fov:               protoCam.Fov,
-		FrustumColor:      ProtoColorToColor(protoCam.FrustumColor),
-		FrustumLength:     protoCam.FrustumLength,
-		IsHidingArrows:    protoCam.IsHidingArrows,
-		IsHidingWheels:    protoCam.IsHidingWheels,
-		IsLockingPosition: protoCam.IsLockingPosition,
-		IsLockingRotation: protoCam.IsLockingRotation,
-		IsHidingFrustum:   protoCam.IsHidingFrustum,
-		AspectWidth:       protoCam.AspectWidth,
-		AspectHeight:      protoCam.AspectHeight,
-		Distortion:        ProtoDistortionToDistortion(protoCam.Distortion),
+		Name:              "Untitled",
+		AngleX:            0,
+		AngleY:            0,
+		AngleZ:            0,
+		AngleW:            0,
+		PosX:              0,
+		PosY:              0,
+		PosZ:              0,
+		Fov:               60,
+		FrustumColor:      ColorRGBA{R: 0.5, G: 0.5, B: 0.5, A: 0.5},
+		FrustumLength:     1000,
+		IsHidingArrows:    false,
+		IsHidingWheels:    false,
+		IsLockingPosition: false,
+		IsLockingRotation: false,
+		IsHidingFrustum:   true,
+		AspectWidth:       1,
+		AspectHeight:      1,
+		Distortion: DistortionConfig{
+			Enabled:   true,
+			IsFisheye: false,
+		},
 	}
 }

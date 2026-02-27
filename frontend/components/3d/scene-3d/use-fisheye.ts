@@ -24,8 +24,10 @@ export function calcFisheyeStrength(
     case DistortionMode.EQUISOLID:
       return intensity * (1.2 / scale);
 
-    case DistortionMode.ORTHO:
-      return intensity * (0.9 / scale);
+    case DistortionMode.ORTHO: {
+      const orthoFit = 3 / scale;
+      return 1.0 + intensity * (orthoFit - 1.0);
+    }
 
     case DistortionMode.PERSPECTIVE: {
       const f = 1.0 / Math.tan(fovRad / 2);
@@ -45,17 +47,8 @@ const updateMv = `
           break;
         case ${DistortionMode.PERSPECTIVE}: {
           if (r > 0.0 && uStrength!=0.0) {
-              // 2. Convert perspective distance back to an angle (theta)
-              // In perspective: r = f * tan(theta) -> theta = atan(r/f)
-              // We treat uStrength as the inverse focal length (1/f)
               float theta = atan(r * uStrength);
-              
-              // 3. The Equidistant rule: r_distorted = f * theta
-              // To find the multiplier: (f * theta) / r_original
-              // Which simplifies to: theta / (uStrength * r)
               float dist = theta / (r * uStrength);
-              
-              // 4. Apply
               mvPosition.xy *= dist;
           }
           break;
@@ -94,22 +87,50 @@ const updateMv = `
           break;
         }
         case ${DistortionMode.QUAD}: {
-          float dist = 1.0 / (1.0 + r * r * uStrength);
-          mvPosition.xy *= dist;
-          mvPosition.z -= r * r * uStrength;
-          break;
+          // 1. Setup coordinates (-1.0 to 1.0)
+          vec2 pos = 2.0 * uv - 1.0;
+          
+          // 2. Adjust for aspect ratio
+          float aspect = 1.0;
+          vec2 p = pos;
+          p.x *= aspect;
+          float l = length(p);
+
+          // 3. Apply Distortion Math
+          // Note: We apply the math to the vertex positions before projection
+          float r = l;
+          
+          // Standard Brown-Conrady Barrel Distortion
+          float distortedR = (l * (1.0 + uStrength * l * l)) / (1.0 + uStrength);
+          
+          // Mix based on strength
+          r = mix(l, distortedR, uStrength);
+
+          // 4. Calculate new position
+          // We reconstruct the point based on the new radius 'r'
+          float phi = atan(p.y, p.x);
+          vec2 newP;
+          newP.x = (r * cos(phi)) / aspect;
+          newP.y = r * sin(phi)*2.0;
+
+          // 5. Final Position Output
+          // Converting back from our local -1.0->1.0 space to clip space
+          // gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+          
+          // To warp the actual geometry:
+          gl_Position = vec4(newP, 0.0, 1.0); 
         }
     }
 `;
 
+// Experimental composable with 3d shader to distort
 export function useFisheye(sceneStates: SceneStatesWithHelper) {
   function injectFisheye(
     shader: WebGLProgramParametersWithUniforms,
     _renderer: WebGLRenderer,
   ) {
-    shader.uniforms!.uStrength = sceneStates.distortionStrength;
-    shader.uniforms!.uDistortionMode = sceneStates.distortionMode;
-
+    shader.uniforms!.uStrength = sceneStates.currentDistStrength;
+    shader.uniforms!.uDistortionMode = sceneStates.currentDistMode;
     shader.vertexShader =
       `uniform float uStrength;\n` +
       `uniform int uDistortionMode;\n` +
@@ -118,9 +139,7 @@ export function useFisheye(sceneStates: SceneStatesWithHelper) {
       "#include <project_vertex>",
       `
     #include <project_vertex>
-
     ${updateMv}
-
     gl_Position = projectionMatrix * mvPosition;
     `,
     );

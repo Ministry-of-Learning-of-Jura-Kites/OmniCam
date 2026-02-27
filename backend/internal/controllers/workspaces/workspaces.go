@@ -275,8 +275,8 @@ func (t *WorkspaceRoute) postResolveWorkspaceMe(c *gin.Context) {
 		return
 	}
 
-	var workspaceCameras messages_cameras.Cameras
-	if err := json.Unmarshal(workspaceData.Cameras, &workspaceCameras); err != nil {
+	workspaceCameras, err := messages_cameras.UnmarshalCameras(workspaceData.Cameras)
+	if err != nil {
 		t.Logger.Error("error while unmarshalling workspace cams", zap.Error(err))
 		c.JSON(http.StatusInternalServerError, gin.H{})
 		return

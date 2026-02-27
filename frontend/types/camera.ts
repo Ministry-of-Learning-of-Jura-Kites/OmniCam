@@ -1,8 +1,5 @@
 import { Vector3, Euler } from "three";
-import {
-  DistortionMode,
-  type ColorRGBA,
-} from "~/messages/protobufs/autosave_event";
+import type { ColorRGBA } from "~/messages/protobufs/autosave_event";
 
 export interface ICamera {
   name: string;
@@ -14,8 +11,8 @@ export interface ICamera {
   frustumColor: ColorRGBA;
   frustumLength: number;
   distortion: {
-    intensity: number;
-    mode: DistortionMode;
+    enabled: boolean;
+    isFisheye: boolean;
   };
   isHidingArrows: boolean;
   isHidingWheels: boolean;
@@ -40,8 +37,8 @@ export const cameraDefault: ICamera = {
   isLockingPosition: false,
   isLockingRotation: false,
   distortion: {
-    intensity: 1,
-    mode: DistortionMode.NONE,
+    enabled: true,
+    isFisheye: false,
   },
   isHidingFrustum: true,
   controlling: undefined,

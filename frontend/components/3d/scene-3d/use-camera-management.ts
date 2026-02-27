@@ -4,7 +4,6 @@ import type { SceneStates } from "~/types/scene-states";
 import { Vector3, Euler } from "three";
 import { cameraDefault } from "~/types/camera";
 import { randomVividColor } from "~/utils/randomVividColor";
-import { calcFisheyeStrength } from "./use-fisheye";
 export function useCameraManagement(sceneStates: SceneStates) {
   function spawnCameraHere() {
     const camId = uuidv4();
@@ -48,13 +47,13 @@ export function useCameraManagement(sceneStates: SceneStates) {
         y: cam.rotation.y,
         z: cam.rotation.z,
       }),
-      gsap.to(sceneStates.distortionStrength, {
-        value: calcFisheyeStrength(
-          "atan",
-          0.5,
-          sceneStates.transformingInfo.value.fov,
-        ),
-      }),
+      // gsap.to(sceneStates.distortionStrength, {
+      //   value: calcFisheyeStrength(
+      //     "atan",
+      //     0.5,
+      //     sceneStates.transformingInfo.value.fov,
+      //   ),
+      // }),
     ];
     await Promise.all(tasks);
     sceneStates.currentCamId.value = camId;
@@ -83,9 +82,9 @@ export function useCameraManagement(sceneStates: SceneStates) {
         y: sceneStates.spectatorCameraRotation.y,
         z: sceneStates.spectatorCameraRotation.z,
       }),
-      gsap.to(sceneStates.distortionStrength, {
-        value: 0,
-      }),
+      // gsap.to(sceneStates.distortionStrength, {
+      //   value: 0,
+      // }),
     ];
     await Promise.all(tasks);
     sceneStates.currentCamId.value = null;
