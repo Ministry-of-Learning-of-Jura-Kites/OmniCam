@@ -1,7 +1,5 @@
 <script setup lang="ts">
 import { useGLTF } from "@tresjs/cientos";
-import { useFisheye } from "../scene-3d/use-fisheye";
-import { SCENE_STATES_KEY } from "~/constants/state-keys";
 import type { Material, Mesh, Object3D } from "three";
 import type { GLTF } from "three-stdlib";
 
@@ -9,10 +7,6 @@ const props = defineProps<{
   path?: string;
   position?: [number, number, number];
 }>();
-
-const sceneStates = inject(SCENE_STATES_KEY)!;
-
-const { injectFisheye } = useFisheye(sceneStates);
 
 function isMesh(object: Object3D): object is Mesh {
   return (object as Mesh).isMesh === true;
@@ -33,26 +27,26 @@ function disposeMaterial(mat: Material) {
   mat.dispose();
 }
 
-function applyFisheye(obj: Object3D) {
-  if (isMesh(obj)) {
-    const mesh = obj as Mesh;
+// function applyFisheye(obj: Object3D) {
+//   if (isMesh(obj)) {
+//     const mesh = obj as Mesh;
 
-    mesh.frustumCulled = false;
+//     mesh.frustumCulled = false;
 
-    const setupMaterial = (mat: Material) => {
-      mat.onBeforeCompile = injectFisheye;
-      mat.needsUpdate = true;
-      // Unique key prevents shader sharing issues if some meshes shouldn't be fisheyed
-      mat.customProgramCacheKey = () => "fisheye_v1";
-    };
+//     const setupMaterial = (mat: Material) => {
+//       mat.onBeforeCompile = injectFisheye;
+//       mat.needsUpdate = true;
+//       // Unique key prevents shader sharing issues if some meshes shouldn't be fisheyed
+//       mat.customProgramCacheKey = () => "fisheye_v1";
+//     };
 
-    if (Array.isArray(mesh.material)) {
-      mesh.material.forEach(setupMaterial);
-    } else {
-      setupMaterial(mesh.material);
-    }
-  }
-}
+//     if (Array.isArray(mesh.material)) {
+//       mesh.material.forEach(setupMaterial);
+//     } else {
+//       setupMaterial(mesh.material);
+//     }
+//   }
+// }
 
 console.log("path", props.path);
 const state = shallowRef<GLTF | null>(null);

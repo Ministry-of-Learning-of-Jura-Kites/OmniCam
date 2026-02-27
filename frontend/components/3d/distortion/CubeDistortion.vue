@@ -7,7 +7,6 @@ import { RenderPass } from "three/addons/postprocessing/RenderPass.js";
 import { ShaderPass } from "three/examples/jsm/postprocessing/ShaderPass.js";
 import type { WatchHandle } from "vue";
 import { SCENE_STATES_KEY } from "~/constants/state-keys";
-import { DistortionMode } from "~/messages/protobufs/autosave_event";
 
 const { logger } = useLogger("CubeDistortion");
 
@@ -52,7 +51,7 @@ void main() {
 
   // Fisheye Mapping
   // 'r' is the angle from the forward vector.
-  float theta = r * halfAngle; 
+  float theta = r * halfAngle;
   float phi = atan(aspectP.y, aspectP.x);
 
   // Convert to 3D direction vector
@@ -76,6 +75,11 @@ onMounted(() => {
     () =>
       [sceneStates.cubeCamera.value, sceneStates.tresContext.value] as const,
     ([cubeCam, tresContext]) => {
+      if (renderCallback) {
+        renderCallback.off();
+        renderCallback = null;
+      }
+
       if (cubeCam == undefined || tresContext == undefined) {
         return;
       }
@@ -109,21 +113,21 @@ onMounted(() => {
         const isDistorting =
           sceneStates.currentDistEnabled.value &&
           sceneStates.transformingInfo.value == undefined;
-        if (isDistorting && composer) {
-          try {
-            cubeCam.update(renderer, tresContext.scene);
-          } catch (err) {
-            logger.error("Update cube cam failed", err);
-            if (renderCallback) {
-              renderCallback.off();
-            }
-            return;
-          }
-
-          customPass.uniforms.tCube!.value = cubeCam.renderTarget.texture;
-
-          composer.render();
+        if (!isDistorting || !composer) {
+          return;
         }
+        if (cubeCam.parent != null) {
+          cubeCam.update(renderer, tresContext.scene);
+        } else {
+          logger.error("Improperly disposed cube camera");
+          if (renderCallback) {
+            renderCallback.off();
+          }
+          return;
+        }
+        customPass.uniforms.tCube!.value = cubeCam.renderTarget.texture;
+
+        composer.render();
       });
 
       if (stopWatch) {
