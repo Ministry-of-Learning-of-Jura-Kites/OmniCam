@@ -115,6 +115,13 @@ function onToggleLockRotation() {
   }
 }
 
+function onFovChange() {
+  const cam = sceneStates.cameras[selectedCamId.value!]!;
+  if (cam.fov > 179) {
+    cam.isHidingFrustum.value = true;
+  }
+}
+
 function getUniqueCameraName(baseName: string) {
   const names = Object.values(sceneStates.cameras).map((c) => c.name);
 
@@ -631,12 +638,12 @@ const directionAngles = computed(() => {
             /></span>
           </CardHeader>
           <CardContent v-if="isFrustumPropertiesOpen" class="space-y-2">
-            <div class="grid grid-cols-2 gap-2">
+            <div class="flex flex-row gap-2">
               <Tooltip>
                 <TooltipTrigger>
                   <Button
                     size="sm"
-                    class="flex-1"
+                    class="flex-1 w-full"
                     :disabled="sceneStates.cameras[selectedCamId]!.fov > 179"
                     @click="
                       sceneStates.cameras[selectedCamId]!.isHidingFrustum =
