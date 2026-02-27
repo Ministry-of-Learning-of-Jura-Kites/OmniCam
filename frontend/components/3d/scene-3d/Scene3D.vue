@@ -73,7 +73,10 @@ function onCanvasPointer(event: PointerEvent) {
     const foundObj = intersects[0];
     const userData = foundObj?.object.userData as IUserData;
     userData.handleEvent.call(userData, event.type, event);
-  } else if (event.type === "pointerdown") {
+  } else if (
+    event.type === "pointerdown" &&
+    (sceneStates.currentCamId.value == null || props.workspace != null)
+  ) {
     sceneStates.spectatorRotation.onPointerDown(event);
   }
 }
