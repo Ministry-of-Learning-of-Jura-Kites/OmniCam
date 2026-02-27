@@ -274,9 +274,8 @@ func (t *WorkspaceRoute) postResolveWorkspaceMe(c *gin.Context) {
 		c.Status(http.StatusOK)
 		return
 	}
-
-	var workspaceCameras messages_cameras.Cameras
-	if err := json.Unmarshal(workspaceData.Cameras, &workspaceCameras); err != nil {
+	workspaceCameras, err := messages_cameras.UnmarshalCameras(workspaceData.Cameras)
+	if err != nil {
 		t.Logger.Error("error while unmarshalling workspace cams", zap.Error(err))
 		c.JSON(http.StatusInternalServerError, gin.H{})
 		return
@@ -286,7 +285,8 @@ func (t *WorkspaceRoute) postResolveWorkspaceMe(c *gin.Context) {
 	if len(workspaceData.BaseCameras) == 0 {
 		baseCameras = make(messages_cameras.Cameras)
 	} else {
-		err := json.Unmarshal(workspaceData.BaseCameras, &baseCameras)
+		cams, err := messages_cameras.UnmarshalCameras(workspaceData.BaseCameras)
+		baseCameras = cams
 		if err != nil {
 			t.Logger.Error("error while unmarshalling workspace cams", zap.Error(err))
 			c.JSON(http.StatusInternalServerError, gin.H{})
@@ -305,8 +305,8 @@ func (t *WorkspaceRoute) postResolveWorkspaceMe(c *gin.Context) {
 		return
 	}
 
-	var modelCameras messages_cameras.Cameras
-	if err := json.Unmarshal(modelData.Cameras, &modelCameras); err != nil {
+	modelCameras, err := messages_cameras.UnmarshalCameras(modelData.Cameras)
+	if err != nil {
 		t.Logger.Error("error while unmarshalling workspace base cams", zap.Error(err))
 		c.Status(http.StatusInternalServerError)
 		return
@@ -423,23 +423,23 @@ func (t *WorkspaceRoute) postMergeWorkspace(c *gin.Context) {
 		return
 	// model is grater than workspace
 	case 1:
-		var workspaceCameras messages_cameras.Cameras
-		var baseCameras messages_cameras.Cameras
-		var mainCameras messages_cameras.Cameras
 
-		if err := json.Unmarshal(workspaceData.Cameras, &workspaceCameras); err != nil {
+		workspaceCameras, err := messages_cameras.UnmarshalCameras(workspaceData.Cameras)
+		if err != nil {
 			t.Logger.Error("error while unmarshalling workspace cams", zap.Error(err))
 			c.JSON(http.StatusInternalServerError, gin.H{})
 			return
 		}
 
-		if err := json.Unmarshal(workspaceData.BaseCameras, &baseCameras); err != nil {
+		baseCameras, err := messages_cameras.UnmarshalCameras(workspaceData.BaseCameras)
+		if err != nil {
 			t.Logger.Error("error while unmarshalling workspace base cams", zap.Error(err))
 			c.JSON(http.StatusInternalServerError, gin.H{})
 			return
 		}
 
-		if err := json.Unmarshal(modelData.Cameras, &mainCameras); err != nil {
+		mainCameras, err := messages_cameras.UnmarshalCameras(modelData.Cameras)
+		if err != nil {
 			t.Logger.Error("error while unmarshalling model cams", zap.Error(err))
 			c.JSON(http.StatusInternalServerError, gin.H{})
 			return
@@ -626,7 +626,8 @@ func (t *WorkspaceRoute) getWorkspaceMe(c *gin.Context) {
 
 	var cameras messages_cameras.Cameras
 	if slices.Contains(includedFields, "cameras") {
-		err = json.Unmarshal(data.Cameras, &cameras)
+		cams, err := messages_cameras.UnmarshalCameras(data.Cameras)
+		cameras = cams
 		if err != nil {
 			t.Logger.Error("cameras jsonb are invalid", zap.Error(err))
 			c.JSON(http.StatusInternalServerError, gin.H{})

@@ -5,7 +5,7 @@ import { SCENE_STATES_KEY } from "~/constants/state-keys";
 const { minimapCamera, show } = defineProps({
   minimapCamera: {
     type: Object as PropType<OrthographicCamera | null>,
-    required: true,
+    default: null,
   },
   show: {
     type: Boolean,
@@ -125,7 +125,7 @@ watch(
     @wheel.prevent="handleMinimapZoom"
   >
     <div class="flex flex-col gap-1 mb-2">
-      <label class="text-[10px] text-white opacity-70 uppercase">
+      <label class="text-[10px] text-white opacity-70 uppercase stroked">
         Cut Height: {{ minimapHeight }}m
       </label>
       <input
@@ -139,7 +139,7 @@ watch(
       />
     </div>
     <div
-      class="minimap-label text-white text-[10px] text-center mb-1 opacity-80 uppercase tracking-widest"
+      class="minimap-label text-white text-[10px] text-center mb-1 opacity-80 uppercase tracking-widest stroked"
     >
       Minimap (Scroll to Zoom)
     </div>
@@ -149,3 +149,11 @@ watch(
     ></canvas>
   </div>
 </template>
+
+<style lang="css" scoped>
+.stroked {
+  -webkit-text-stroke: 2px #000;
+  paint-order: stroke fill;
+  color: white;
+}
+</style>

@@ -2,7 +2,13 @@ import type { TresContext } from "@tresjs/core";
 import type { Reactive } from "vue";
 import type { Obj3DWithUserData } from "~/types/obj-3d-user-data";
 import type { SceneStates as BaseSceneStates } from "~/types/scene-states";
-import { Quaternion, Euler, Vector3, type PerspectiveCamera } from "three";
+import {
+  Quaternion,
+  Euler,
+  Vector3,
+  type PerspectiveCamera,
+  type CubeCamera,
+} from "three";
 import { cameraDefault, type ICamera } from "~/types/camera";
 import { useCameraManagement } from "../scene-3d/use-camera-management";
 import { useSpectatorRotation } from "../scene-3d/use-spectator-rotation";
@@ -49,6 +55,7 @@ export function transformProtoEventToCamera(rawCam: Camera): ICamera {
     aspectHeight: rawCam.aspectHeight,
     isHidingArrows: rawCam.isHidingArrows,
     isHidingWheels: rawCam.isHidingWheels,
+    distortion: rawCam.distortion ?? structuredClone(cameraDefault.distortion),
     isLockingPosition: rawCam.isLockingPosition,
     isLockingRotation: rawCam.isLockingRotation,
     isHidingFrustum: rawCam.isHidingFrustum,
@@ -141,6 +148,46 @@ export function createBaseSceneStates(
   const localVersion = ref(modelInfo.data.version);
   const lastSyncedVersion = ref(modelInfo.data.version);
 
+  const currentIsFisheye = computed(() => {
+    if (currentCamId.value != null) {
+      return cameras[currentCamId.value]!.distortion.isFisheye;
+    }
+    return false;
+  });
+
+  const currentFov = computed(() => {
+    return currentCam.value.fov;
+  });
+
+  const currentDistEnabled = computed(() => {
+    if (currentCamId.value == undefined) {
+      return false;
+    }
+    return currentCam.value.distortion.enabled;
+  });
+
+  const aspectRatio = computed<number>(() => {
+    if (screenSize.width == null || screenSize.height == null) {
+      return 1;
+    }
+    return screenSize.width! / screenSize.height!;
+  });
+
+  const perspectiveCamera = ref<PerspectiveCamera | null>(null);
+  const cubeCamera = ref<CubeCamera | null>(null);
+
+  // if (window) {
+  //   function setFisheyeStrength(
+  //     type: DistortionMode,
+  //     intensity: number,
+  //     fov: number,
+  //   ) {
+  //     distortionStrength.value = calcFisheyeStrength(type, intensity, fov);
+  //   }
+  //   // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  //   (window as any).setFisheyeStrength = setFisheyeStrength;
+  // }
+
   const sceneStates = {
     tresContext,
     draggableObjects,
@@ -162,6 +209,12 @@ export function createBaseSceneStates(
     aspectMarginType,
     localVersion,
     lastSyncedVersion,
+    currentDistEnabled,
+    currentFov,
+    currentIsFisheye,
+    aspectRatio,
+    perspectiveCamera,
+    cubeCamera,
   } as const;
 
   // websocket.ws.value!.onclose = (_closeEvent: CloseEvent) => {
@@ -176,10 +229,9 @@ export function createSceneStatesWithHelper(
   workspace: string | null,
 ) {
   const aspectRatioManagement = useAspectRatioManagement(sceneStates);
+  useAutosave(sceneStates, workspace);
 
   onMounted(() => {
-    useAutosave(sceneStates, workspace);
-
     watch(
       () => [sceneStates.transformingInfo, sceneStates.currentCam],
       ([transform, cam]) => {

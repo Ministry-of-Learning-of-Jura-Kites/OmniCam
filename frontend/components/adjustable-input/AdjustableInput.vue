@@ -127,7 +127,7 @@ function handleClickOutside(e: MouseEvent) {
     <span
       v-if="!isInputting"
       ref="textValue"
-      class="text-right w-full select-none"
+      class="text-right w-full select-none cursor-pointer"
       @pointerdown="onPointerDown"
       >{{ (model ?? 0).toFixed(2) }}</span
     >
