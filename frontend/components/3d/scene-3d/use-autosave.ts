@@ -104,7 +104,6 @@ export function useAutosave(
           continue;
         }
         const formattedCam = transformCameraToProtoEventWithId(camId, cam);
-        console.log(prev, formattedCam);
         // If is newly added, or changed
         if (prev == undefined || !isEqual(prev, formattedCam)) {
           changed.push({

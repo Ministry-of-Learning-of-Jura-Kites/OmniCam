@@ -34,7 +34,10 @@ const camQuat = computed(() => {
 </script>
 
 <template>
-  <TresMesh :position="[cam!.position.x, cam!.position.y, cam!.position.z]">
+  <TresMesh
+    :visible="sceneStates.currentCamId.value !== props.camId"
+    :position="[cam!.position.x, cam!.position.y, cam!.position.z]"
+  >
     <TresObject3D :quaternion="camQuat">
       <!-- Use quaternion for applying on top of local rotation -->
       <TresMesh :rotation="[Math.PI / 2, 0, 0]" :position="[0, 0, 0.25 + 0.06]">

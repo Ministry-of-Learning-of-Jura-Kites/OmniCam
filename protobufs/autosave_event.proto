@@ -29,8 +29,8 @@ enum DistortionMode{
 }
 
 message Distortion{
-  double         intensity = 1;
-  DistortionMode mode      = 2;
+  bool enabled    = 1;
+  bool is_fisheye = 2;
 }
 
 // Camera message

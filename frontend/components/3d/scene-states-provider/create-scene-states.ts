@@ -2,7 +2,13 @@ import type { TresContext } from "@tresjs/core";
 import type { Reactive } from "vue";
 import type { Obj3DWithUserData } from "~/types/obj-3d-user-data";
 import type { SceneStates as BaseSceneStates } from "~/types/scene-states";
-import { Quaternion, Euler, Vector3, type PerspectiveCamera } from "three";
+import {
+  Quaternion,
+  Euler,
+  Vector3,
+  type PerspectiveCamera,
+  type CubeCamera,
+} from "three";
 import { cameraDefault, type ICamera } from "~/types/camera";
 import { useCameraManagement } from "../scene-3d/use-camera-management";
 import { useSpectatorRotation } from "../scene-3d/use-spectator-rotation";
@@ -11,7 +17,6 @@ import type { UseWebSocketReturn } from "@vueuse/core";
 import type { Camera } from "~/messages/protobufs/autosave_event";
 import { useAspectRatio as useAspectRatioManagement } from "../scene-3d/use-aspect-ratio";
 import { useAutosave } from "../scene-3d/use-autosave";
-import { calcFisheyeStrength as calcFisheyeStrength } from "../scene-3d/use-fisheye";
 
 export interface ModelWithCamsResp {
   data: {
@@ -143,17 +148,33 @@ export function createBaseSceneStates(
   const localVersion = ref(modelInfo.data.version);
   const lastSyncedVersion = ref(modelInfo.data.version);
 
-  const distortionStrength = computed(() => {
-    return calcFisheyeStrength(
-      currentCam.value.distortion.mode,
-      currentCam.value.distortion.intensity,
-      currentCam.value.fov,
-    );
+  const currentIsFisheye = computed(() => {
+    if (currentCamId.value != null) {
+      return cameras[currentCamId.value]!.distortion.isFisheye;
+    }
+    return false;
   });
 
-  const distortionMode = computed(() => {
-    return currentCam.value.distortion.mode;
+  const currentFov = computed(() => {
+    return currentCam.value.fov;
   });
+
+  const currentDistEnabled = computed(() => {
+    if (currentCamId.value == undefined) {
+      return false;
+    }
+    return currentCam.value.distortion.enabled;
+  });
+
+  const aspectRatio = computed<number>(() => {
+    if (screenSize.width == null || screenSize.height == null) {
+      return 1;
+    }
+    return screenSize.width! / screenSize.height!;
+  });
+
+  const perspectiveCamera = ref<PerspectiveCamera | null>(null);
+  const cubeCamera = ref<CubeCamera | null>(null);
 
   // if (window) {
   //   function setFisheyeStrength(
@@ -188,8 +209,12 @@ export function createBaseSceneStates(
     aspectMarginType,
     localVersion,
     lastSyncedVersion,
-    distortionStrength,
-    distortionMode,
+    currentDistEnabled,
+    currentFov,
+    currentIsFisheye,
+    aspectRatio,
+    perspectiveCamera,
+    cubeCamera,
   } as const;
 
   // websocket.ws.value!.onclose = (_closeEvent: CloseEvent) => {
