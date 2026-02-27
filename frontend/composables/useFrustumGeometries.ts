@@ -19,6 +19,9 @@ export function useFrustumGeometries() {
       old.lines.dispose();
     }
 
+    if (fov > 179) {
+      return null;
+    }
     const pair = createFrustumGeometry(fov, aspect, length);
     frustumRegistry.value[id] = pair;
     return pair;

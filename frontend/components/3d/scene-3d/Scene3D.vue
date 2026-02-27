@@ -100,7 +100,8 @@ onMounted(() => {
     { immediate: true },
   );
 
-  const stopCubeWatch = watch(
+  // Don't stop to allow changing cubeCamera
+  watch(
     cubeCamera,
     (camera) => {
       if (camera != null) {
@@ -143,7 +144,6 @@ onMounted(() => {
             camera.rotation.z = z;
           },
         );
-        stopCubeWatch();
       }
     },
     { immediate: true },
@@ -255,7 +255,7 @@ onMounted(() => {
 
       <div
         id="camera-props"
-        class="absolute top-0 right-0 z-10 text-white flex flex-col p-4 bg-black/20 backdrop-blur-sm rounded-bl-lg"
+        class="absolute select-none top-0 right-0 z-10 text-white flex flex-col p-4 bg-black/20 backdrop-blur-sm rounded-bl-lg"
       >
         <p class="text-center w-full mb-2 font-bold border-b border-white/20">
           Spectator
