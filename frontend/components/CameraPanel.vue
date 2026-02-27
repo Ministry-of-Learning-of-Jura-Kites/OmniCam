@@ -510,7 +510,10 @@ const directionAngles = computed(() => {
                 type="number"
                 min="10"
                 max="180"
-                @change="sceneStates.markedForCheck.add(selectedCamId)"
+                @change="
+                  sceneStates.markedForCheck.add(selectedCamId);
+                  onFovChange();
+                "
               />
             </div>
 
