@@ -265,7 +265,8 @@ function goToMyWorkspace() {
             v-if="
               workspace != null &&
               (sceneStates.markedForCheck.size > 0 ||
-                sceneStates.localVersion === sceneStates.lastSyncedVersion)
+                sceneStates.localVersion.value !==
+                  sceneStates.lastSyncedVersion.value)
             "
           >
             <TooltipTrigger>
@@ -293,10 +294,12 @@ function goToMyWorkspace() {
         </Button>
 
         <Button size="sm" variant="outline">
-          <Tooltip>
-            <TooltipTrigger> <Maximize class="button-icon" /></TooltipTrigger>
-            <TooltipContent> Fullscreen </TooltipContent>
-          </Tooltip>
+          <ClientOnly>
+            <Tooltip>
+              <TooltipTrigger> <Maximize class="button-icon" /></TooltipTrigger>
+              <TooltipContent> Fullscreen </TooltipContent>
+            </Tooltip>
+          </ClientOnly>
         </Button>
 
         <div class="h-6 w-px bg-border mx-2" />

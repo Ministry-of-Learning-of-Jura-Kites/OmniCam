@@ -10,6 +10,9 @@ import {
   Vector2,
   DoubleSide,
   type OrthographicCamera,
+  WebGLCubeRenderTarget,
+  LinearFilter,
+  type CubeCamera,
 } from "three";
 import { IS_MAP_OPEN_KEY, SCENE_STATES_KEY } from "@/constants/state-keys";
 import Stats from "stats.js";
@@ -19,7 +22,8 @@ import type { IUserData } from "~/types/obj-3d-user-data";
 import ModelLoader from "../model-loader/ModelLoader.vue";
 import { usePromptUnsaved } from "./use-prompt-unsaved";
 import FrustumOverlay from "@/components/3d/camera-frustum/FrustumOverlay.vue";
-
+// import Distortion from "@/components/3d/distortion/Distortion.vue";
+import CubeDistortion from "@/components/3d/distortion/CubeDistortion.vue";
 const props = defineProps({
   projectId: { type: String, required: true },
   modelId: { type: String, required: true },
@@ -32,8 +36,9 @@ const { data: modelResp } = sceneStates.modelInfo;
 
 const modelPath = `http://${config.public.externalBackendHost}/api/v1/assets/projects/${modelResp.projectId}/models/${modelResp.modelId}/file/${modelResp.fileExtension.slice(1)}`;
 
-const camera = ref<PerspectiveCamera | null>(null);
+const perspectiveCamera = ref<PerspectiveCamera | null>(null);
 const canvas: Ref<InstanceType<typeof TresCanvas> | null> = ref(null);
+const cubeCamera: Ref<CubeCamera | null> = ref(null);
 
 const minimapCamera = ref<OrthographicCamera | null>(null);
 const isMapOpen = inject(IS_MAP_OPEN_KEY)!;
@@ -54,12 +59,12 @@ const raycaster = new Raycaster();
 const mouse = new Vector2();
 
 function onCanvasPointer(event: PointerEvent) {
-  if (!sceneStates.tresContext.value || !camera.value) return;
+  if (!sceneStates.tresContext.value || !perspectiveCamera.value) return;
   const ele = sceneStates.tresContext.value.renderer.instance.domElement;
   const rect = ele.getBoundingClientRect();
   mouse.x = ((event.clientX - rect.left) / rect.width!) * 2 - 1;
   mouse.y = -((event.clientY - rect.top) / rect.height!) * 2 + 1;
-  raycaster.setFromCamera(mouse, camera.value!);
+  raycaster.setFromCamera(mouse, perspectiveCamera.value!);
   const intersects = raycaster.intersectObjects(
     [...sceneStates.draggableObjects],
     false,
@@ -68,14 +73,82 @@ function onCanvasPointer(event: PointerEvent) {
     const foundObj = intersects[0];
     const userData = foundObj?.object.userData as IUserData;
     userData.handleEvent.call(userData, event.type, event);
-  } else if (event.type === "pointerdown") {
+  } else if (
+    event.type === "pointerdown" &&
+    (sceneStates.currentCamId.value == null || props.workspace != null)
+  ) {
     sceneStates.spectatorRotation.onPointerDown(event);
   }
 }
 
 let stats: Stats | null = null;
 
+const cubeCameraTarget = new WebGLCubeRenderTarget(1024, {
+  generateMipmaps: true,
+  minFilter: LinearFilter,
+});
+
 onMounted(() => {
+  const stopPersWatch = watch(
+    perspectiveCamera,
+    (camera) => {
+      if (camera != undefined) {
+        sceneStates.perspectiveCamera.value = camera;
+        stopPersWatch();
+      }
+    },
+    { immediate: true },
+  );
+
+  // Don't stop to allow changing cubeCamera
+  watch(
+    cubeCamera,
+    (camera) => {
+      if (camera != null) {
+        camera.renderTarget = cubeCameraTarget;
+        sceneStates.cubeCamera.value = camera;
+        camera.rotation.order = "YXZ";
+        watch(
+          () => sceneStates.currentCam.value.position.x,
+          (x) => {
+            camera.position.x = x;
+          },
+        );
+        watch(
+          () => sceneStates.currentCam.value.position.y,
+          (y) => {
+            camera.position.y = y;
+          },
+        );
+        watch(
+          () => sceneStates.currentCam.value.position.z,
+          (z) => {
+            camera.position.z = z;
+          },
+        );
+        watch(
+          () => sceneStates.currentCam.value.rotation.x,
+          (x) => {
+            camera.rotation.x = x;
+          },
+        );
+        watch(
+          () => sceneStates.currentCam.value.rotation.y,
+          (y) => {
+            camera.rotation.y = y;
+          },
+        );
+        watch(
+          () => sceneStates.currentCam.value.rotation.z,
+          (z) => {
+            camera.rotation.z = z;
+          },
+        );
+      }
+    },
+    { immediate: true },
+  );
+
   watch(
     () => canvas.value?.context,
     (context) => {
@@ -182,7 +255,7 @@ onMounted(() => {
 
       <div
         id="camera-props"
-        class="absolute top-0 right-0 z-10 text-white flex flex-col p-4 bg-black/20 backdrop-blur-sm rounded-bl-lg"
+        class="absolute select-none top-0 right-0 z-10 text-white flex flex-col p-4 bg-black/20 backdrop-blur-sm rounded-bl-lg"
       >
         <p class="text-center w-full mb-2 font-bold border-b border-white/20">
           Spectator
@@ -240,7 +313,7 @@ onMounted(() => {
           tabindex="0"
         >
           <TresPerspectiveCamera
-            ref="camera"
+            ref="perspectiveCamera"
             :position="
               sceneStates.transformingInfo.value?.position ??
               sceneStates.currentCam.value?.position
@@ -256,7 +329,20 @@ onMounted(() => {
             :aspect="aspect"
           />
 
+          <TresCubeCamera ref="cubeCamera" />
+
+          <!-- <Distortion /> -->
+          <CubeDistortion />
+
           <TresOrthographicCamera ref="minimapCamera" :manual="true" />
+
+          <!-- <TresMesh>
+            <TresBoxGeometry :args="[2, 2, 2, 32, 32, 32]" />
+            <TresMeshStandardMaterial
+              :wireframe="true"
+              @before-compile="injectFisheye"
+            />
+          </TresMesh> -->
 
           <CameraObject
             v-for="[camId, cam] in Object.entries(sceneStates.cameras)"

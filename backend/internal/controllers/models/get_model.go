@@ -1,7 +1,6 @@
 package controller_model
 
 import (
-	"encoding/json"
 	"net/http"
 	"slices"
 	"strconv"
@@ -84,9 +83,8 @@ func (t *GetModelRoute) getModelById(c *gin.Context) {
 		return
 	}
 
-	cameras := messages_cameras.Cameras{}
+	cameras, err := messages_cameras.UnmarshalCameras(data.Cameras)
 	if data.Cameras != nil {
-		err = json.Unmarshal(data.Cameras, &cameras)
 		if err != nil {
 			t.Logger.Error("cameras jsonb are invalid", zap.Error(err))
 			c.JSON(http.StatusInternalServerError, gin.H{})
