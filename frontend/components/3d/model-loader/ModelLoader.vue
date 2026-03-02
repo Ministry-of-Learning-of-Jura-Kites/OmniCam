@@ -35,27 +35,6 @@ function disposeMaterial(mat: Material) {
   mat.dispose();
 }
 
-// function applyFisheye(obj: Object3D) {
-//   if (isMesh(obj)) {
-//     const mesh = obj as Mesh;
-
-//     mesh.frustumCulled = false;
-
-//     const setupMaterial = (mat: Material) => {
-//       mat.onBeforeCompile = injectFisheye;
-//       mat.needsUpdate = true;
-//       // Unique key prevents shader sharing issues if some meshes shouldn't be fisheyed
-//       mat.customProgramCacheKey = () => "fisheye_v1";
-//     };
-
-//     if (Array.isArray(mesh.material)) {
-//       mesh.material.forEach(setupMaterial);
-//     } else {
-//       setupMaterial(mesh.material);
-//     }
-//   }
-// }
-
 console.log("path", props.path);
 const state = shallowRef<GLTF | null>(null);
 const { data, error, status } = await useFetch<ArrayBuffer>(props.path ?? "", {
@@ -140,7 +119,7 @@ const finalScale = computed(() => {
     ]"
     :scale="[finalScale, finalScale, finalScale]"
   >
-    <GLTFModel v-if="blobUrl != null" :path="blobUrl" />
+    <primitive v-if="state?.scene" :object="state.scene" />
   </TresGroup>
 
   <!-- Block Placeholder  -->
