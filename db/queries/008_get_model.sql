@@ -8,6 +8,8 @@ SELECT
   m.image_extension,
   m.model_extension,
   m.description,
+  m.scale_factor,
+  m.model_height,
   CASE
     WHEN 'cameras' = ANY (COALESCE(SQLC.NARG(fields)::TEXT[], '{}'::TEXT[])) THEN m.cameras::JSONB
     ELSE NULL::JSONB

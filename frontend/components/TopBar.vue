@@ -273,11 +273,13 @@ function goToMyWorkspace() {
               (sceneStates.markedForCheck.size > 0 ||
                 sceneStates.localVersion.value !==
                   sceneStates.lastSyncedVersion.value ||
-                sceneStates.calibrationDirty)
+                sceneStates.calibrationDirty.value)
             "
           >
             <TooltipTrigger>
-              <RefreshCcw class="animate-spin"
+              <RefreshCcw
+                class="animate-spin"
+                style="animation-direction: reverse"
             /></TooltipTrigger>
             <TooltipContent> Saving </TooltipContent>
           </Tooltip>
