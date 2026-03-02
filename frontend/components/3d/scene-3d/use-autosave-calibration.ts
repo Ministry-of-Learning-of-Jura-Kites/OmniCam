@@ -15,6 +15,8 @@ export function useAutosaveCalibration(
 
   const runtimeConfig = useRuntimeConfig();
 
+  const isServerUpdate = ref(false);
+
   const wsUrl = `ws://${runtimeConfig.public.externalBackendHost}/api/v1/projects/${projectId}/models/${modelId}/autosave/calibration`;
 
   const ws = useWebSocket(wsUrl, {
@@ -37,14 +39,13 @@ export function useAutosaveCalibration(
       sceneStates.calibrationHeight.value,
     ],
     ([newScale, newHeight], [oldScale, oldHeight]) => {
-      // Ignore changes coming FROM the server ACK (would cause infinite loop)
+      if (isServerUpdate.value) return;
       if (newScale !== oldScale || newHeight !== oldHeight) {
         sceneStates.calibrationDirty.value = true;
       }
     },
   );
 
-  // Receive: initial values on connect + ACKs after each save
   watch(
     () => ws.data.value,
     async (blob) => {
@@ -52,14 +53,16 @@ export function useAutosaveCalibration(
       const buf = await (blob as Blob).arrayBuffer();
       const resp = CalibrationAutosaveResponse.decode(new Uint8Array(buf));
       if (resp.ack) {
+        isServerUpdate.value = true;
         sceneStates.calibrationScale.value = resp.ack.scaleFactor;
         sceneStates.calibrationHeight.value = resp.ack.modelHeight;
         sceneStates.calibrationVersion.value = resp.ack.lastUpdatedVersion;
+        await nextTick();
+        isServerUpdate.value = false;
       }
     },
   );
 
-  // Send: every 2s if dirty, same pattern as use-autosave.ts
   setInterval(() => {
     if (!sceneStates.calibrationDirty.value) return;
 

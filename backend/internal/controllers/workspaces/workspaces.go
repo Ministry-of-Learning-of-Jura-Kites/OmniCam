@@ -361,6 +361,11 @@ func (t *WorkspaceRoute) postResolveWorkspaceMe(c *gin.Context) {
 		Value:   workspaceData.Cameras,
 		ModelID: modelId,
 	})
+	queries.UpdateModelCalibration(c, db_sqlc_gen.UpdateModelCalibrationParams{
+		ModelID:     modelId,
+		ScaleFactor: workspaceData.ScaleFactor,
+		ModelHeight: workspaceData.ModelHeight,
+	})
 	queries.DeleteWorkspace(c, db_sqlc_gen.DeleteWorkspaceParams{
 		UserID:  userId,
 		ModelID: modelId,
@@ -397,11 +402,6 @@ func (t *WorkspaceRoute) postMergeWorkspace(c *gin.Context) {
 		return
 	}
 
-	if workspaceData.Version == workspaceData.BaseVersion {
-		c.JSON(http.StatusOK, gin.H{"noChanges": true})
-		return
-	}
-
 	modelData, err := t.DB.Queries.GetModelByID(c, db_sqlc_gen.GetModelByIDParams{
 		Fields: []string{"cameras"},
 		ID:     modelId,
@@ -412,16 +412,78 @@ func (t *WorkspaceRoute) postMergeWorkspace(c *gin.Context) {
 		return
 	}
 
+	calibrationChanged := workspaceData.ScaleFactor != modelData.ScaleFactor ||
+		workspaceData.ModelHeight != modelData.ModelHeight
+
+	camerasChanged := workspaceData.Version != workspaceData.BaseVersion
+
+	if !camerasChanged && !calibrationChanged {
+		c.JSON(http.StatusOK, gin.H{"noChanges": true})
+		return
+	}
+
+	saveCalibrationToModel := func() error {
+		if !calibrationChanged {
+			return nil // skip if nothing to save
+		}
+		_, err := t.DB.Queries.UpdateModelCalibration(c, db_sqlc_gen.UpdateModelCalibrationParams{
+			ModelID:     modelId,
+			ScaleFactor: workspaceData.ScaleFactor,
+			ModelHeight: workspaceData.ModelHeight,
+		})
+		return err
+	}
+
+	// Only calibration changed, no camera changes
+	if !camerasChanged && calibrationChanged {
+		if err := saveCalibrationToModel(); err != nil {
+			t.Logger.Error("error saving calibration to model", zap.Error(err))
+			c.JSON(http.StatusInternalServerError, gin.H{})
+			return
+		}
+		c.JSON(http.StatusOK, gin.H{
+			"noChanges":          false,
+			"calibrationChanged": true,
+			"camerasChanged":     false,
+		})
+		return
+	}
+
 	switch cmp.Compare(modelData.Version, workspaceData.BaseVersion) {
-	// equal
 	case 0:
-		t.DB.Queries.UpdateModelCams(c, db_sqlc_gen.UpdateModelCamsParams{
+		newVersion, err := t.DB.Queries.UpdateModelCams(c, db_sqlc_gen.UpdateModelCamsParams{
 			Value:   workspaceData.Cameras,
 			ModelID: modelId,
 		})
-		c.JSON(http.StatusOK, gin.H{"noChanges": false})
+		if err != nil {
+			t.Logger.Error("error while saving cameras to model", zap.Error(err))
+			c.JSON(http.StatusInternalServerError, gin.H{})
+			return
+		}
+		if err := saveCalibrationToModel(); err != nil {
+			t.Logger.Error("error saving calibration to model", zap.Error(err))
+			c.JSON(http.StatusInternalServerError, gin.H{})
+			return
+		}
+		err = t.DB.Queries.UpdateSetWorkspaceCams(c, db_sqlc_gen.UpdateSetWorkspaceCamsParams{
+			Cameras:     workspaceData.Cameras,
+			BaseCameras: workspaceData.Cameras,
+			BaseVersion: newVersion,
+			UserID:      userId,
+			ModelID:     modelId,
+		})
+		if err != nil {
+			t.Logger.Error("error while updating workspace base version", zap.Error(err))
+			c.JSON(http.StatusInternalServerError, gin.H{})
+			return
+		}
+		c.JSON(http.StatusOK, gin.H{
+			"noChanges":          false,
+			"calibrationChanged": calibrationChanged,
+			"camerasChanged":     true,
+		})
 		return
-	// model is grater than workspace
+
 	case 1:
 		var workspaceCameras messages_cameras.Cameras
 		var baseCameras messages_cameras.Cameras
@@ -432,20 +494,18 @@ func (t *WorkspaceRoute) postMergeWorkspace(c *gin.Context) {
 			c.JSON(http.StatusInternalServerError, gin.H{})
 			return
 		}
-
 		if err := json.Unmarshal(workspaceData.BaseCameras, &baseCameras); err != nil {
 			t.Logger.Error("error while unmarshalling workspace base cams", zap.Error(err))
 			c.JSON(http.StatusInternalServerError, gin.H{})
 			return
 		}
-
 		if err := json.Unmarshal(modelData.Cameras, &mainCameras); err != nil {
 			t.Logger.Error("error while unmarshalling model cams", zap.Error(err))
 			c.JSON(http.StatusInternalServerError, gin.H{})
 			return
 		}
-		merged, conflicts := mergeAllCameras(baseCameras, mainCameras, workspaceCameras)
 
+		merged, conflicts := mergeAllCameras(baseCameras, mainCameras, workspaceCameras)
 		mergedEncoded, err := json.Marshal(merged)
 		if err != nil {
 			t.Logger.Error("error while marshalling merged cameras", zap.Error(err))
@@ -458,13 +518,16 @@ func (t *WorkspaceRoute) postMergeWorkspace(c *gin.Context) {
 				Value:   mergedEncoded,
 				ModelID: modelId,
 			})
-
 			if err != nil {
 				t.Logger.Error("error while saving merged workspace into model", zap.Error(err))
 				c.JSON(http.StatusInternalServerError, gin.H{})
 				return
 			}
-
+			if err := saveCalibrationToModel(); err != nil {
+				t.Logger.Error("error saving calibration to model", zap.Error(err))
+				c.JSON(http.StatusInternalServerError, gin.H{})
+				return
+			}
 			err = t.DB.Queries.UpdateSetWorkspaceCams(c, db_sqlc_gen.UpdateSetWorkspaceCamsParams{
 				Cameras:     mergedEncoded,
 				BaseCameras: mergedEncoded,
@@ -472,27 +535,37 @@ func (t *WorkspaceRoute) postMergeWorkspace(c *gin.Context) {
 				UserID:      userId,
 				ModelID:     modelId,
 			})
-
 			if err != nil {
 				t.Logger.Error("error while saving merged workspace into model", zap.Error(err))
 				c.JSON(http.StatusInternalServerError, gin.H{})
 				return
 			}
-
 			c.JSON(http.StatusOK, gin.H{
-				"noChanges": false,
+				"noChanges":          false,
+				"calibrationChanged": calibrationChanged,
+				"camerasChanged":     true,
 			})
 			return
 		}
 
+		// Has camera conflicts — save calibration immediately (last-write-wins)
+		if err := saveCalibrationToModel(); err != nil {
+			t.Logger.Error("error saving calibration to model", zap.Error(err))
+			c.JSON(http.StatusInternalServerError, gin.H{})
+			return
+		}
 		c.JSON(http.StatusOK, gin.H{
-			"merged":    merged,
-			"conflicts": conflicts,
+			"merged":             merged,
+			"conflicts":          conflicts,
+			"calibrationChanged": calibrationChanged,
+			"camerasChanged":     true,
 		})
 		return
-	// workspace is grater than model
+
 	case -1:
-		t.Logger.Error("workspace version is ahead of main", zap.String("modelId", modelId.String()), zap.String("userId", userId.String()))
+		t.Logger.Error("workspace version is ahead of main",
+			zap.String("modelId", modelId.String()),
+			zap.String("userId", userId.String()))
 		c.JSON(http.StatusInternalServerError, gin.H{})
 	}
 }
@@ -572,6 +645,8 @@ func (t *WorkspaceRoute) postWorkspaceMe(c *gin.Context) {
 				BaseVersion: workspace.BaseVersion,
 				CreatedAt:   workspace.CreatedAt.Time.Format(time.RFC3339),
 				UpdatedAt:   workspace.UpdatedAt.Time.Format(time.RFC3339),
+				ScaleFactor: workspace.ScaleFactor,
+				ModelHeight: workspace.ModelHeight,
 			},
 			Cameras:     json.RawMessage(workspace.Cameras),
 			BaseCameras: json.RawMessage(workspace.BaseCameras),
@@ -647,6 +722,8 @@ func (t *WorkspaceRoute) getWorkspaceMe(c *gin.Context) {
 		CreatedAt:      data.CreatedAt.Time.Format(time.RFC3339),
 		UpdatedAt:      data.UpdatedAt.Time.Format(time.RFC3339),
 		Cameras:        &cameras,
+		ScaleFactor:    data.Model.ScaleFactor,
+		ModelHeight:    data.Model.ModelHeight,
 	}})
 }
 

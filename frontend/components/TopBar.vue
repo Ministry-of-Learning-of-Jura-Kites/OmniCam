@@ -269,14 +269,14 @@ function goToMyWorkspace() {
         <div class="flex items-center justify-center">
           <Tooltip
             v-if="
-              workspace != null &&
-              (sceneStates.markedForCheck.size > 0 ||
-                sceneStates.localVersion === sceneStates.lastSyncedVersion ||
-                !sceneStates.calibrationDirty)
+              (workspace != null && sceneStates.markedForCheck.size > 0) ||
+              sceneStates.calibrationDirty.value
             "
           >
             <TooltipTrigger>
-              <RefreshCcw class="animate-spin"
+              <RefreshCcw
+                class="animate-spin"
+                style="animation-direction: reverse"
             /></TooltipTrigger>
             <TooltipContent> Saving </TooltipContent>
           </Tooltip>

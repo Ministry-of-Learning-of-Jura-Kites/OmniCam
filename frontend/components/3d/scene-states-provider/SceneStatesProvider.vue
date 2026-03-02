@@ -37,9 +37,6 @@ const modelWithCamsResp = useState<ModelWithCamsResp | undefined>(
   `${MODEL_INFO_KEY}-${props.modelId}`,
 );
 
-const calibrationScale = inject<Ref<number>>(CALIBRATION_SCALE)!;
-const calibrationHeight = inject<Ref<number>>(CALIBRATION_HEIGHT)!;
-
 const error = ref<unknown | undefined>(undefined);
 
 async function fetchAndCombine(fields: string[]) {
@@ -95,6 +92,16 @@ if (modelWithCamsResp.value == undefined) {
   ) {
     await fetchAndCombine(["cameras"]);
   }
+}
+
+const calibrationScale = inject<Ref<number>>(CALIBRATION_SCALE)!;
+const calibrationHeight = inject<Ref<number>>(CALIBRATION_HEIGHT)!;
+
+if (modelWithCamsResp.value?.data.scaleFactor !== undefined) {
+  calibrationScale.value = modelWithCamsResp.value.data.scaleFactor;
+}
+if (modelWithCamsResp.value?.data.modelHeight !== undefined) {
+  calibrationHeight.value = modelWithCamsResp.value.data.modelHeight;
 }
 
 let websocket: UseWebSocketReturn<unknown> | undefined = undefined;
