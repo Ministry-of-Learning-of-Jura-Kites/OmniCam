@@ -95,13 +95,25 @@ message CalibrationSaveEvent {
   uint32          version     = 2;
 }
 
-message CalibrationAutosaveResponse {
-  oneof payload {
-    CalibrationAutosaveResponseAck ack = 1;
+message AutosaveEvent {
+  oneof event {
+    CameraSaveEventSeries cameras     = 1;
+    CalibrationSaveEvent  calibration = 2;
   }
 }
 
-message CalibrationAutosaveResponseAck {
+message AutosaveResponse {
+  oneof payload {
+    AutosaveResponseCameraAck      camera_ack      = 1;
+    AutosaveResponseCalibrationAck calibration_ack = 2;
+  }
+}
+
+message AutosaveResponseCameraAck {
+  int32 last_updated_version = 1;
+}
+
+message AutosaveResponseCalibrationAck {
   int32  last_updated_version = 1;
   double scale_factor         = 2;
   double model_height         = 3;
