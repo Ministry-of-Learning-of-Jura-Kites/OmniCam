@@ -140,8 +140,6 @@ if (sceneStates.error != null) {
   const sceneStatesWithHelper = createSceneStatesWithHelper(
     sceneStates as SceneStates,
     props.workspace,
-    props.projectId,
-    props.modelId,
   );
 
   provide(SCENE_STATES_KEY, sceneStatesWithHelper);

@@ -17,7 +17,6 @@ import type { UseWebSocketReturn } from "@vueuse/core";
 import type { Camera } from "~/messages/protobufs/autosave_event";
 import { useAspectRatio as useAspectRatioManagement } from "../scene-3d/use-aspect-ratio";
 import { useAutosave } from "../scene-3d/use-autosave";
-import { useAutosaveCalibration } from "../scene-3d/use-autosave-calibration";
 
 export interface ModelWithCamsResp {
   data: {
@@ -243,15 +242,12 @@ export function createBaseSceneStates(
 export function createSceneStatesWithHelper(
   sceneStates: Awaited<BaseSceneStates>,
   workspace: string | null,
-  projectId: string,
-  modelId: string,
 ) {
   const aspectRatioManagement = useAspectRatioManagement(sceneStates);
   useAutosave(sceneStates, workspace);
 
   onMounted(() => {
     useAutosave(sceneStates, workspace);
-    useAutosaveCalibration(sceneStates, workspace, projectId, modelId);
     watch(
       () => [sceneStates.transformingInfo, sceneStates.currentCam],
       ([transform, cam]) => {

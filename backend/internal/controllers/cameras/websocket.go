@@ -24,17 +24,13 @@ type CameraAutosaveRoute struct {
 	Upgrader websocket.Upgrader
 }
 
-func (t *CameraAutosaveRoute) handleEventDelete(c *gin.Context, conn *websocket.Conn, modelId uuid.UUID, deleteId string) {
-	userId, err := utils.GetUuidFromCtx(c, "userId")
+// Camera handlers
+func (t *CameraAutosaveRoute) handleEventDelete(
+	c *gin.Context, conn *websocket.Conn,
+	modelId uuid.UUID, userId uuid.UUID, deleteId string,
+) {
+	_, err := uuid.Parse(deleteId)
 	if err != nil {
-		t.Logger.Error("error while getting userId form", zap.Error(err))
-		c.JSON(http.StatusInternalServerError, gin.H{})
-		return
-	}
-
-	_, err = uuid.Parse(deleteId)
-	if err != nil {
-		// conn.WriteMessage(websocket.TextMessage, []byte("error"))
 		return
 	}
 
@@ -44,34 +40,28 @@ func (t *CameraAutosaveRoute) handleEventDelete(c *gin.Context, conn *websocket.
 		ModelID: modelId,
 	})
 	if err != nil {
-		t.Logger.Error("Error while updating workspace", zap.Error(err))
+		t.Logger.Error("error while updating workspace", zap.Error(err))
 		return
 	}
 
-	resp := &camera.CameraAutosaveResponse{
-		Payload: &camera.CameraAutosaveResponse_Ack{
-			Ack: &camera.CameraAutosaveResponseAck{
+	resp := &camera.AutosaveResponse{
+		Payload: &camera.AutosaveResponse_CameraAck{
+			CameraAck: &camera.AutosaveResponseCameraAck{
 				LastUpdatedVersion: newVersion,
 			},
 		},
 	}
-	respMarshalled, err := proto.Marshal(resp)
-	if err != nil {
-		t.Logger.Error("error while marshelling first response", zap.Error(err))
-		c.JSON(http.StatusInternalServerError, gin.H{})
-		return
-	}
-
-	conn.WriteMessage(websocket.BinaryMessage, respMarshalled)
+	sendResponse(t.Logger, conn, resp)
 }
 
-func (t *CameraAutosaveRoute) handleEventUpsert(c *gin.Context, userId uuid.UUID, conn *websocket.Conn, modelId uuid.UUID, upsert *camera.Camera) {
+func (t *CameraAutosaveRoute) handleEventUpsert(
+	c *gin.Context, conn *websocket.Conn,
+	modelId uuid.UUID, userId uuid.UUID, upsert *camera.Camera,
+) {
 	cam := messages_cameras.ProtoCamToCam(upsert)
-
 	marshalled, err := json.Marshal(cam)
 	if err != nil {
-		t.Logger.Error("Error while marshaling camera", zap.Error(err))
-		// conn.WriteMessage(websocket.TextMessage, []byte("error"))
+		t.Logger.Error("error while marshaling camera", zap.Error(err))
 		return
 	}
 	newVersion, err := t.DB.Queries.UpdateWorkspaceCams(c, db_sqlc_gen.UpdateWorkspaceCamsParams{
@@ -81,26 +71,66 @@ func (t *CameraAutosaveRoute) handleEventUpsert(c *gin.Context, userId uuid.UUID
 		ModelID: modelId,
 	})
 	if err != nil {
-		t.Logger.Error("Error while updating workspace cameras", zap.Error(err))
-		// conn.WriteMessage(websocket.TextMessage, []byte("error"))
+		t.Logger.Error("error while updating workspace cameras", zap.Error(err))
 		return
 	}
-	resp := &camera.CameraAutosaveResponse{
-		Payload: &camera.CameraAutosaveResponse_Ack{
-			Ack: &camera.CameraAutosaveResponseAck{
+
+	resp := &camera.AutosaveResponse{
+		Payload: &camera.AutosaveResponse_CameraAck{
+			CameraAck: &camera.AutosaveResponseCameraAck{
 				LastUpdatedVersion: newVersion,
 			},
 		},
 	}
-	firstRespMarshalled, err := proto.Marshal(resp)
-	if err != nil {
-		t.Logger.Error("error while marshelling first response", zap.Error(err))
-		c.JSON(http.StatusInternalServerError, gin.H{})
-		return
-	}
-	conn.WriteMessage(websocket.BinaryMessage, firstRespMarshalled)
+	sendResponse(t.Logger, conn, resp)
 }
 
+// Calibration handler
+func (t *CameraAutosaveRoute) handleCalibration(
+	c *gin.Context, conn *websocket.Conn,
+	modelId uuid.UUID, userId uuid.UUID,
+	event *camera.CalibrationSaveEvent,
+	currentVersion *int32,
+) {
+	if event.Version <= uint32(*currentVersion) {
+		return // stale/duplicate
+	}
+
+	row, err := t.DB.Queries.UpdateWorkspaceCalibration(c, db_sqlc_gen.UpdateWorkspaceCalibrationParams{
+		UserID:      userId,
+		ModelID:     modelId,
+		ScaleFactor: event.Calibration.ScaleFactor,
+		ModelHeight: event.Calibration.ModelHeight,
+	})
+	if err != nil {
+		t.Logger.Error("error updating calibration", zap.Error(err))
+		return
+	}
+
+	*currentVersion = row.Version
+
+	resp := &camera.AutosaveResponse{
+		Payload: &camera.AutosaveResponse_CalibrationAck{
+			CalibrationAck: &camera.AutosaveResponseCalibrationAck{
+				LastUpdatedVersion: row.Version,
+				ScaleFactor:        row.ScaleFactor,
+				ModelHeight:        row.ModelHeight,
+			},
+		},
+	}
+	sendResponse(t.Logger, conn, resp)
+}
+
+func sendResponse(logger *zap.Logger, conn *websocket.Conn, resp *camera.AutosaveResponse) {
+	bytes, err := proto.Marshal(resp)
+	if err != nil {
+		logger.Error("error marshalling response", zap.Error(err))
+		return
+	}
+	conn.WriteMessage(websocket.BinaryMessage, bytes)
+}
+
+// Main WebSocket handler
 func (t *CameraAutosaveRoute) get(c *gin.Context) {
 	strModelId := c.Param("modelId")
 	modelId, err := utils.ParseUuidBase64(strModelId)
@@ -112,7 +142,7 @@ func (t *CameraAutosaveRoute) get(c *gin.Context) {
 
 	userId, err := utils.GetUuidFromCtx(c, "userId")
 	if err != nil {
-		t.Logger.Error("error while getting userId form", zap.Error(err))
+		t.Logger.Error("error while getting userId", zap.Error(err))
 		c.JSON(http.StatusInternalServerError, gin.H{})
 		return
 	}
@@ -133,49 +163,54 @@ func (t *CameraAutosaveRoute) get(c *gin.Context) {
 	}
 
 	go func() {
-		firstResponse := &camera.CameraAutosaveResponse{
-			Payload: &camera.CameraAutosaveResponse_Ack{
-				Ack: &camera.CameraAutosaveResponseAck{
-					LastUpdatedVersion: workspace.Version,
+		defer conn.Close()
+
+		currentVersion := workspace.Version
+
+		// Send initial state on connect — both camera version + calibration values
+		initResp := &camera.AutosaveResponse{
+			Payload: &camera.AutosaveResponse_CalibrationAck{
+				CalibrationAck: &camera.AutosaveResponseCalibrationAck{
+					LastUpdatedVersion: currentVersion,
+					ScaleFactor:        workspace.ScaleFactor,
+					ModelHeight:        workspace.ModelHeight,
 				},
 			},
 		}
-		firstRespMarshalled, err := proto.Marshal(firstResponse)
-		if err != nil {
-			t.Logger.Error("error while marshelling first response", zap.Error(err))
-			c.JSON(http.StatusInternalServerError, gin.H{})
-			return
-		}
-		conn.WriteMessage(websocket.BinaryMessage, firstRespMarshalled)
-
-		defer conn.Close()
+		sendResponse(t.Logger, conn, initResp)
 
 		for {
-			// Read message from client
 			_, msg, err := conn.ReadMessage()
 			if err != nil {
-				t.Logger.Error("error from reading message from client", zap.Error(err))
+				t.Logger.Error("error reading message", zap.Error(err))
 				break
 			}
 
-			events := &camera.CameraSaveEventSeries{}
-			err = proto.Unmarshal(msg, events)
-			if err != nil {
+			// Decode unified wrapper
+			event := &camera.AutosaveEvent{}
+			if err := proto.Unmarshal(msg, event); err != nil {
+				t.Logger.Error("error unmarshalling event", zap.Error(err))
 				continue
 			}
 
-			if events.Version <= uint32(workspace.Version) {
-				// Repeated event sent (From Websocket reconnect)
-				continue
-			}
+			switch v := event.GetEvent().(type) {
 
-			for _, event := range events.Events {
-				switch v := event.GetEvent().(type) {
-				case *camera.CameraSaveEvent_Delete:
-					t.handleEventDelete(c, conn, modelId, v.Delete.Id)
-				case *camera.CameraSaveEvent_Upsert:
-					t.handleEventUpsert(c, userId, conn, modelId, v.Upsert.Camera)
+			case *camera.AutosaveEvent_Cameras:
+				series := v.Cameras
+				if series.Version <= uint32(currentVersion) {
+					continue // stale
 				}
+				for _, camEvent := range series.Events {
+					switch ce := camEvent.GetEvent().(type) {
+					case *camera.CameraSaveEvent_Delete:
+						t.handleEventDelete(c, conn, modelId, userId, ce.Delete.Id)
+					case *camera.CameraSaveEvent_Upsert:
+						t.handleEventUpsert(c, conn, modelId, userId, ce.Upsert.Camera)
+					}
+				}
+
+			case *camera.AutosaveEvent_Calibration:
+				t.handleCalibration(c, conn, modelId, userId, v.Calibration, &currentVersion)
 			}
 		}
 	}()

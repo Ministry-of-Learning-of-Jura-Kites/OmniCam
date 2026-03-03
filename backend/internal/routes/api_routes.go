@@ -106,20 +106,6 @@ func InitRoutes(deps Dependencies, router gin.IRouter) {
 	}
 	cameraAutosaveRoute.InitRoute(protectedRoute)
 
-	calibrationAutosaveRoute := controller_camera.CalibrationAutosaveRoute{
-		Logger: deps.Logger,
-		Env:    deps.Env,
-		DB:     deps.DB,
-		Upgrader: websocket.Upgrader{
-			ReadBufferSize:  1024,
-			WriteBufferSize: 1024,
-			CheckOrigin: func(r *http.Request) bool {
-				return r.Header.Get("Origin") == deps.Env.FrontendHost
-			},
-		},
-	}
-	calibrationAutosaveRoute.InitRoute(protectedRoute)
-
 	workspaceRoute := controller_workspaces.WorkspaceRoute{
 		Logger: deps.Logger,
 		Env:    deps.Env,
