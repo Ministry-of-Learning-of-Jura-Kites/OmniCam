@@ -13,6 +13,8 @@ type ModelWorkspace struct {
 	CreatedAt      string                    `json:"createdAt"`
 	UpdatedAt      string                    `json:"updatedAt"`
 	Cameras        *messages_cameras.Cameras `json:"cameras"`
+	ScaleFactor    float64                   `json:"scaleFactor"`
+	ModelHeight    float64                   `json:"modelHeight"`
 	ProjectId      uuid.UUID                 `json:"projectId"`
 	FilePath       string                    `json:"filePath"`
 	ModelExtension string                    `json:"fileExtension"`

@@ -12,5 +12,21 @@ export const TOGGLE_MINIMAP_KEY: InjectionKey<() => void> =
 
 export const IS_MAP_OPEN_KEY: InjectionKey<boolean> = Symbol("is_map_open");
 
+export const IS_CALIBRATING_KEY: InjectionKey<boolean> =
+  Symbol("is_calibrating");
+
+export const TOGGLE_CALIBRATION_KEY: InjectionKey<() => void> =
+  Symbol("toggle_calibration");
+
 export const SCENE_STATES_KEY: InjectionKey<SceneStatesWithHelper> =
   Symbol("3d-scene-states");
+
+export const CALIBRATION_GRID_SCALE: InjectionKey<Ref<number>> = Symbol(
+  "calibration_grid_scale",
+);
+
+export const CALIBRATION_SCALE: InjectionKey<Ref<number>> =
+  Symbol("calibration_scale");
+
+export const CALIBRATION_HEIGHT: InjectionKey<Ref<number>> =
+  Symbol("calibration_height");

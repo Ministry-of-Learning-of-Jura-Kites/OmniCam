@@ -1,11 +1,9 @@
 import type { Object3D } from "three";
-import type { ICamera } from "./camera";
 
 export type Obj3DWithUserData = Object3D & { userData: IUserData };
 
-export interface IUserData {
+export interface IUserData<T = unknown> {
   type: string;
-  // obj: ModelRef<THREE.Mesh>;
-  cam: ICamera;
-  handleEvent: (this: IUserData, eventType: string, event: Event) => void;
+  target: T;
+  handleEvent: (eventType: string, event: Event) => void;
 }
