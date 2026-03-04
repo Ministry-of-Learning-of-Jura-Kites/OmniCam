@@ -2,11 +2,19 @@
 import { useGLTF } from "@tresjs/cientos";
 import type { Material, Mesh, Object3D } from "three";
 import type { GLTF } from "three-stdlib";
+import { CALIBRATION_SCALE, CALIBRATION_HEIGHT } from "~/constants/state-keys";
 
-const props = defineProps<{
-  path?: string;
-  position?: [number, number, number];
-}>();
+const props = withDefaults(
+  defineProps<{
+    path: string;
+    position?: [number, number, number];
+    modelScale?: number;
+  }>(),
+  {
+    modelScale: 1,
+    position: () => [0, 0, 0],
+  },
+);
 
 function isMesh(object: Object3D): object is Mesh {
   return (object as Mesh).isMesh === true;
@@ -26,27 +34,6 @@ function disposeMaterial(mat: Material) {
   }
   mat.dispose();
 }
-
-// function applyFisheye(obj: Object3D) {
-//   if (isMesh(obj)) {
-//     const mesh = obj as Mesh;
-
-//     mesh.frustumCulled = false;
-
-//     const setupMaterial = (mat: Material) => {
-//       mat.onBeforeCompile = injectFisheye;
-//       mat.needsUpdate = true;
-//       // Unique key prevents shader sharing issues if some meshes shouldn't be fisheyed
-//       mat.customProgramCacheKey = () => "fisheye_v1";
-//     };
-
-//     if (Array.isArray(mesh.material)) {
-//       mesh.material.forEach(setupMaterial);
-//     } else {
-//       setupMaterial(mesh.material);
-//     }
-//   }
-// }
 
 console.log("path", props.path);
 const state = shallowRef<GLTF | null>(null);
@@ -114,10 +101,26 @@ onUnmounted(() => {
   }
   state.value = null;
 });
+
+const scaleFactor = inject(CALIBRATION_SCALE, ref(1));
+const modelHeight = inject(CALIBRATION_HEIGHT, ref(0));
+
+const finalScale = computed(() => {
+  return props.modelScale * scaleFactor.value;
+});
 </script>
 
 <template>
-  <primitive v-if="state?.scene" :object="state.scene" />
+  <TresGroup
+    :position="[
+      props.position?.[0] ?? 0,
+      (props.position?.[1] ?? 0) + modelHeight,
+      props.position?.[2] ?? 0,
+    ]"
+    :scale="[finalScale, finalScale, finalScale]"
+  >
+    <primitive v-if="state?.scene" :object="state.scene" />
+  </TresGroup>
 
   <!-- Block Placeholder  -->
   <TresMesh v-if="state?.scene == null" :position="props.position ?? [0, 0, 0]">

@@ -33,6 +33,8 @@ export interface ModelWithCamsResp {
     imagePath: string;
     imageExtension: string;
     cameras: Record<string, Camera>;
+    scaleFactor?: number;
+    modelHeight?: number;
   };
 }
 
@@ -78,6 +80,8 @@ function transformCamsData(
 export function createBaseSceneStates(
   websocket: UseWebSocketReturn<unknown> | undefined,
   modelWithCamsResp: ModelWithCamsResp,
+  externalCalibrationScale: Ref<number>,
+  externalCalibrationHeight: Ref<number>,
 ) {
   const tresContext = ref<TresContext | null>(null);
 
@@ -148,6 +152,13 @@ export function createBaseSceneStates(
   const localVersion = ref(modelInfo.data.version);
   const lastSyncedVersion = ref(modelInfo.data.version);
 
+  const calibrationScale =
+    externalCalibrationScale ?? ref(modelWithCamsResp.data.scaleFactor ?? 1.0);
+  const calibrationHeight =
+    externalCalibrationHeight ?? ref(modelWithCamsResp.data.modelHeight ?? 0.0);
+  const calibrationVersion = ref(modelWithCamsResp.data.version);
+  const calibrationDirty = ref(false);
+
   const currentIsFisheye = computed(() => {
     if (currentCamId.value != null) {
       return cameras[currentCamId.value]!.distortion.isFisheye;
@@ -209,6 +220,10 @@ export function createBaseSceneStates(
     aspectMarginType,
     localVersion,
     lastSyncedVersion,
+    calibrationScale,
+    calibrationHeight,
+    calibrationVersion,
+    calibrationDirty,
     currentDistEnabled,
     currentFov,
     currentIsFisheye,
@@ -232,6 +247,7 @@ export function createSceneStatesWithHelper(
   useAutosave(sceneStates, workspace);
 
   onMounted(() => {
+    useAutosave(sceneStates, workspace);
     watch(
       () => [sceneStates.transformingInfo, sceneStates.currentCam],
       ([transform, cam]) => {
