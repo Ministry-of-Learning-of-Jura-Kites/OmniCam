@@ -3,13 +3,10 @@ import math
 import os
 import time
 from scipy.spatial.distance import cdist
-import pyvistaqt
 from cost_functions import angle_cost, total_cost
 from algorithms.differential_evolution import optimize_de
 import numpy as np
 from state import CameraConfiguration, CameraState, State, render_from_state
-import pyvista as pv
-from pyvistaqt import BackgroundPlotter
 import quaternion
 from utils import (
     center_of_face,
@@ -17,13 +14,19 @@ from utils import (
     look_at_quaternion,
     normal_vec_of_face,
 )
+from env import env_settings
 import logging
 import vtk
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-pl = BackgroundPlotter()
+if env_settings.dev_mode:
+    import pyvista as pv
+    from pyvistaqt import BackgroundPlotter
+    import pyvistaqt
+
+    pl = BackgroundPlotter()
 
 
 def create_arbitrary_face(center, width, height, normal):
@@ -273,15 +276,14 @@ def init_3d_scene(pl: pyvistaqt.BackgroundPlotter | None, state: State):
 
 def main():
     global state
-    init_3d_scene(pl, state)
-    render_from_state(pl, state)
-    pl.show()
+    if env_settings.dev_mode:
+        init_3d_scene(pl, state)
+        render_from_state(pl, state)
+        pl.show()
 
     seed = 2000
 
     state = assign_faces(state, seed)
-
-    breakpoint()
 
     start_time = time.perf_counter()
     # from cost_functions import total_cost
@@ -299,7 +301,8 @@ def main():
     elapsed_time = end_time - start_time
     print(f"Elapsed time: {elapsed_time:.4f} seconds")
 
-    render_from_state(pl, final_state)
+    if env_settings.dev_mode:
+        render_from_state(pl, final_state)
 
     total = total_cost(final_state, True)
     print("total cost: ", total)
