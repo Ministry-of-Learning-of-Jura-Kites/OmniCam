@@ -13,10 +13,10 @@ RUN uv sync --locked --no-dev
 
 COPY . .
 
-WORKDIR /app/src
+WORKDIR /app
 
 ENV PATH="/app/.venv/bin:$PATH"
 
 # CMD ["tail", "-f", "/dev/null"]
 
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0","--port", "8081"]
+CMD ["uvicorn", "main:app", "--app-dir", "src", "--host", "0.0.0.0","--port", "8081"]
