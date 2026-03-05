@@ -2,14 +2,14 @@ import type { IUserData } from "~/types/obj-3d-user-data";
 import { MOVING_ARROW_CONFIG } from "~/constants";
 import type { TresContext } from "@tresjs/core";
 import { getAxisVector as createAxisVector } from "~/lib/three";
-import type { MovableObject } from "~/types/movable";
+import type { ICamera } from "~/types/camera";
 
 export const MOVING_TYPE = "moving";
 
-export class MovingUserData implements IUserData<MovableObject> {
+export class MovingUserData implements IUserData {
   type: "x" | "y" | "z";
   // obj: ModelRef<THREE.Mesh>;
-  target: MovableObject;
+  cam: ICamera;
   context: TresContext;
 
   onchange: undefined | (() => void);
@@ -18,12 +18,12 @@ export class MovingUserData implements IUserData<MovableObject> {
 
   constructor(
     type: string,
-    target: MovableObject,
+    cam: ICamera,
     context: TresContext,
     onchange?: () => void,
   ) {
     this.type = type as "x" | "y" | "z";
-    this.target = target;
+    this.cam = cam;
     this.context = context;
     this.onchange = onchange;
   }
@@ -40,7 +40,7 @@ export class MovingUserData implements IUserData<MovableObject> {
 
   handlePointerDownEvent = (_event: PointerEvent) => {
     this.isDragging = true;
-    this.target.controlling = {
+    this.cam.controlling = {
       type: MOVING_TYPE,
       direction: this.type,
     };
@@ -55,24 +55,24 @@ export class MovingUserData implements IUserData<MovableObject> {
 
     const camera = this.context.camera!;
 
-    const point = this.target.position.clone();
+    const point = this.cam.position.clone();
 
     const dirVector = createAxisVector(this.type);
 
     const vectorEnd = dirVector.add(point);
 
-    const pointNDC = point.clone().project(camera.activeCamera.value!);
-    const endNDC = vectorEnd.clone().project(camera.activeCamera.value!);
+    const pointNDC = point.clone().project(camera.value!);
+    const endNDC = vectorEnd.clone().project(camera.value!);
 
     const projectedVector = endNDC.sub(pointNDC).normalize();
 
-    if (this.target.position[this.type] != null) {
+    if (this.cam.position[this.type] != null) {
       const delta = createAxisVector(this.type).multiplyScalar(
         (projectedVector.x * event.movementX -
           projectedVector.y * event.movementY) *
           MOVING_ARROW_CONFIG.DRAGGING_SENTIVITY,
       );
-      this.target.position.add(delta);
+      this.cam.position.add(delta);
       if (this.onchange) {
         this.onchange();
       }
@@ -81,7 +81,7 @@ export class MovingUserData implements IUserData<MovableObject> {
 
   handlePointerUpEvent = (_event: PointerEvent) => {
     this.isDragging = false;
-    this.target.controlling = undefined;
+    this.cam.controlling = undefined;
     document.removeEventListener("pointerup", this.handlePointerUpEvent);
     document.removeEventListener("pointermove", this.handlePointerMoveEvent);
   };

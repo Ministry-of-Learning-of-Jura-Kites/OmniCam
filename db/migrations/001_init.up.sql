@@ -37,9 +37,6 @@ CREATE TABLE "model" (
   description TEXT NOT NULL DEFAULT '',
   -- store cameras as a document
   cameras JSONB NOT NULL DEFAULT '{}'::JSONB,
-  -- storage calibration 
-  scale_factor FLOAT NOT NULL DEFAULT 1.0,
-  model_height FLOAT NOT NULL DEFAULT 0.0,
   -- storage location, mutable
   file_path TEXT NOT NULL,
   image_path TEXT NOT NULL,
@@ -61,9 +58,6 @@ CREATE TABLE "user_model_workspace" (
   cameras JSONB NOT NULL DEFAULT '{}'::JSONB,
   -- store branched-out cameras as a document
   base_cameras JSONB NOT NULL DEFAULT '{}'::JSONB,
-  -- storage calibration 
-  scale_factor FLOAT NOT NULL DEFAULT 1.0,
-  model_height FLOAT NOT NULL DEFAULT 0.0,
   -- version tracking
   version INT NOT NULL DEFAULT 0,
   -- branched-out version
