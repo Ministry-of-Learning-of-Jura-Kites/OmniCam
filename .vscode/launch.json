@@ -4,8 +4,14 @@
       "name": "Predictive Algorithm Debugger",
       "type": "debugpy",
       "request": "launch",
-      "program": "predictive-algorithm/src/main.py",
-      "console": "integratedTerminal"
+      "program": "../.venv/bin/uvicorn",
+      "args": ["main:app", "--reload", "--port", "8081"],
+      "console": "integratedTerminal",
+      "cwd": "${workspaceFolder}/predictive-algorithm/src",
+      "env": {
+        "QT_QPA_PLATFORM": "xcb",
+        "DEV_MODE": "true"
+      }
     },
     {
       "name": "Nuxt: Debug Dev Server",

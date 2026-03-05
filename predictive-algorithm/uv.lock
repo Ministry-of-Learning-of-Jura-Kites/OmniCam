@@ -1049,6 +1049,7 @@ dependencies = [
     { name = "pydantic-settings" },
     { name = "pyvista" },
     { name = "scipy" },
+    { name = "uvicorn" },
     { name = "vtk" },
 ]
 
@@ -1068,6 +1069,7 @@ requires-dist = [
     { name = "pydantic-settings", specifier = ">=2.13.1" },
     { name = "pyvista", specifier = ">=0.46.4" },
     { name = "scipy", specifier = ">=1.16.3" },
+    { name = "uvicorn", specifier = ">=0.41.0" },
     { name = "vtk", specifier = ">=9.5.2" },
 ]
 

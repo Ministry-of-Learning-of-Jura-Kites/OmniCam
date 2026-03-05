@@ -45,11 +45,7 @@ func (t *CameraAutosaveRoute) handleEventDelete(
 	}
 
 	resp := &camera.AutosaveResponse{
-		Payload: &camera.AutosaveResponse_CameraAck{
-			CameraAck: &camera.AutosaveResponseCameraAck{
-				LastUpdatedVersion: newVersion,
-			},
-		},
+		LastUpdatedVersion: newVersion,
 	}
 	sendResponse(t.Logger, conn, resp)
 }
@@ -76,11 +72,7 @@ func (t *CameraAutosaveRoute) handleEventUpsert(
 	}
 
 	resp := &camera.AutosaveResponse{
-		Payload: &camera.AutosaveResponse_CameraAck{
-			CameraAck: &camera.AutosaveResponseCameraAck{
-				LastUpdatedVersion: newVersion,
-			},
-		},
+		LastUpdatedVersion: newVersion,
 	}
 	sendResponse(t.Logger, conn, resp)
 }
@@ -89,18 +81,19 @@ func (t *CameraAutosaveRoute) handleEventUpsert(
 func (t *CameraAutosaveRoute) handleCalibration(
 	c *gin.Context, conn *websocket.Conn,
 	modelId uuid.UUID, userId uuid.UUID,
-	event *camera.CalibrationSaveEvent,
+	event *camera.AutosaveEvent_Calibrate,
+	inputVersion uint32,
 	currentVersion *int32,
 ) {
-	if event.Version <= uint32(*currentVersion) {
+	if inputVersion <= uint32(*currentVersion) {
 		return // stale/duplicate
 	}
 
 	row, err := t.DB.Queries.UpdateWorkspaceCalibration(c, db_sqlc_gen.UpdateWorkspaceCalibrationParams{
 		UserID:      userId,
 		ModelID:     modelId,
-		ScaleFactor: event.Calibration.ScaleFactor,
-		ModelHeight: event.Calibration.ModelHeight,
+		ScaleFactor: event.Calibrate.ScaleFactor,
+		ModelHeight: event.Calibrate.ModelHeight,
 	})
 	if err != nil {
 		t.Logger.Error("error updating calibration", zap.Error(err))
@@ -110,13 +103,7 @@ func (t *CameraAutosaveRoute) handleCalibration(
 	*currentVersion = row.Version
 
 	resp := &camera.AutosaveResponse{
-		Payload: &camera.AutosaveResponse_CalibrationAck{
-			CalibrationAck: &camera.AutosaveResponseCalibrationAck{
-				LastUpdatedVersion: row.Version,
-				ScaleFactor:        row.ScaleFactor,
-				ModelHeight:        row.ModelHeight,
-			},
-		},
+		LastUpdatedVersion: row.Version,
 	}
 	sendResponse(t.Logger, conn, resp)
 }
@@ -169,48 +156,36 @@ func (t *CameraAutosaveRoute) get(c *gin.Context) {
 
 		// Send initial state on connect — both camera version + calibration values
 		initResp := &camera.AutosaveResponse{
-			Payload: &camera.AutosaveResponse_CalibrationAck{
-				CalibrationAck: &camera.AutosaveResponseCalibrationAck{
-					LastUpdatedVersion: currentVersion,
-					ScaleFactor:        workspace.ScaleFactor,
-					ModelHeight:        workspace.ModelHeight,
-				},
-			},
+			LastUpdatedVersion: currentVersion,
 		}
 		sendResponse(t.Logger, conn, initResp)
 
 		for {
-			_, msg, err := conn.ReadMessage()
+			_, rawMsg, err := conn.ReadMessage()
 			if err != nil {
 				t.Logger.Error("error reading message", zap.Error(err))
 				break
 			}
 
 			// Decode unified wrapper
-			event := &camera.AutosaveEvent{}
-			if err := proto.Unmarshal(msg, event); err != nil {
+			msg := &camera.AutosaveMessage{}
+			if err := proto.Unmarshal(rawMsg, msg); err != nil {
 				t.Logger.Error("error unmarshalling event", zap.Error(err))
 				continue
 			}
 
-			switch v := event.GetEvent().(type) {
-
-			case *camera.AutosaveEvent_Cameras:
-				series := v.Cameras
-				if series.Version <= uint32(currentVersion) {
-					continue // stale
+			if msg.Version <= uint32(currentVersion) {
+				continue // stale
+			}
+			for _, camEvent := range msg.Events {
+				switch ce := camEvent.GetEvent().(type) {
+				case *camera.AutosaveEvent_Delete:
+					t.handleEventDelete(c, conn, modelId, userId, ce.Delete.Id)
+				case *camera.AutosaveEvent_Upsert:
+					t.handleEventUpsert(c, conn, modelId, userId, ce.Upsert.Camera)
+				case *camera.AutosaveEvent_Calibrate:
+					t.handleCalibration(c, conn, modelId, userId, ce, msg.Version, &currentVersion)
 				}
-				for _, camEvent := range series.Events {
-					switch ce := camEvent.GetEvent().(type) {
-					case *camera.CameraSaveEvent_Delete:
-						t.handleEventDelete(c, conn, modelId, userId, ce.Delete.Id)
-					case *camera.CameraSaveEvent_Upsert:
-						t.handleEventUpsert(c, conn, modelId, userId, ce.Upsert.Camera)
-					}
-				}
-
-			case *camera.AutosaveEvent_Calibration:
-				t.handleCalibration(c, conn, modelId, userId, v.Calibration, &currentVersion)
 			}
 		}
 	}()

@@ -1,9 +1,7 @@
-import type {
-  Camera,
-  CameraSaveEvent,
-} from "~/messages/protobufs/autosave_event";
 import {
-  AutosaveEvent,
+  type Camera,
+  type AutosaveEvent,
+  AutosaveMessage,
   AutosaveResponse,
 } from "~/messages/protobufs/autosave_event";
 import type { ICamera } from "~/types/camera";
@@ -26,8 +24,8 @@ export function transformCameraToProtoEvent(cam: ICamera): Omit<Camera, "id"> {
     posX: cam.position.x,
     posY: cam.position.y,
     posZ: cam.position.z,
-    aspectWidth: cam.aspectWidth,
-    aspectHeight: cam.aspectHeight,
+    widthRes: cam.aspectWidth,
+    heightRes: cam.aspectHeight,
     fov: cam.fov,
     frustumColor: cam.frustumColor,
     frustumLength: cam.frustumLength,
@@ -70,20 +68,17 @@ export function useAutosave(
         const buf = await (messageBlob as Blob).arrayBuffer();
         const resp = AutosaveResponse.decode(new Uint8Array(buf));
 
-        if (resp.cameraAck) {
-          sceneStates.lastSyncedVersion.value =
-            resp.cameraAck.lastUpdatedVersion;
-        }
+        sceneStates.lastSyncedVersion.value = resp.lastUpdatedVersion;
 
-        if (resp.calibrationAck) {
-          isServerUpdate.value = true;
-          sceneStates.calibrationScale.value = resp.calibrationAck.scaleFactor;
-          sceneStates.calibrationHeight.value = resp.calibrationAck.modelHeight;
-          sceneStates.calibrationVersion.value =
-            resp.calibrationAck.lastUpdatedVersion;
-          await nextTick();
-          isServerUpdate.value = false;
-        }
+        // if (resp.calibrationAck) {
+        //   isServerUpdate.value = true;
+        //   sceneStates.calibrationScale.value = resp.calibrationAck.scaleFactor;
+        //   sceneStates.calibrationHeight.value = resp.calibrationAck.modelHeight;
+        //   sceneStates.calibrationVersion.value =
+        //     resp.calibrationAck.lastUpdatedVersion;
+        //   await nextTick();
+        //   isServerUpdate.value = false;
+        // }
       },
     );
 
@@ -105,7 +100,7 @@ export function useAutosave(
 
       // Cameras
       if (sceneStates.markedForCheck.size > 0) {
-        const changed: CameraSaveEvent[] = [];
+        const changed: AutosaveEvent[] = [];
 
         for (const camId of sceneStates.markedForCheck) {
           const prev = lastSynced.get(camId);
@@ -126,34 +121,27 @@ export function useAutosave(
           }
         }
 
+        // Calibration
+        if (sceneStates.calibrationDirty.value) {
+          changed.push({
+            calibrate: {
+              scaleFactor: sceneStates.calibrationScale.value,
+              modelHeight: sceneStates.calibrationHeight.value,
+            },
+          });
+          sceneStates.calibrationDirty.value = false;
+        }
+
         if (changed.length > 0) {
           sceneStates.localVersion.value += 1;
-          const encoded = AutosaveEvent.encode({
-            cameras: {
-              version: sceneStates.localVersion.value,
-              events: changed,
-            },
+          const encoded = AutosaveMessage.encode({
+            version: sceneStates.localVersion.value,
+            events: changed,
           }).finish();
           sceneStates.websocket.send(encoded.buffer);
         }
 
         sceneStates.markedForCheck.clear();
-      }
-
-      // Calibration
-      if (sceneStates.calibrationDirty.value) {
-        sceneStates.calibrationVersion.value += 1;
-        const encoded = AutosaveEvent.encode({
-          calibration: {
-            version: sceneStates.calibrationVersion.value,
-            calibration: {
-              scaleFactor: sceneStates.calibrationScale.value,
-              modelHeight: sceneStates.calibrationHeight.value,
-            },
-          },
-        }).finish();
-        sceneStates.websocket.send(encoded.buffer);
-        sceneStates.calibrationDirty.value = false;
       }
     }, 2000);
   });
