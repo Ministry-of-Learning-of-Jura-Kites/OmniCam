@@ -1,9 +1,9 @@
 syntax = "proto3";
 
-package autosave;
+package camera;
 
-// Go: generated under go/autosave
-option go_package = "omnicam.com/gen/go/autosave";
+// Go: generated under go/camera
+option go_package = "omnicam.com/gen/go/camera";
 
 enum CameraEventType {
   CAMERA_EVENT_TYPE_DELETE = 0;
@@ -18,43 +18,27 @@ message ColorRGBA {
   double a = 4;
 }
 
-enum DistortionMode{
-  NONE        = 0;
-  PERSPECTIVE = 1;
-  ORTHO       = 2;
-  EQUISOLID   = 3;
-  ATAN        = 4;
-  LINEAR      = 5;
-  QUAD        = 6;
-}
-
-message Distortion{
-  bool enabled    = 1;
-  bool is_fisheye = 2;
-}
-
 // Camera message
 message Camera {
-  string     id                  = 1;
-  string     name                = 2;
-  double     angle_x             = 3;
-  double     angle_y             = 4;
-  double     angle_z             = 5;
-  double     angle_w             = 6;
-  double     pos_x               = 7;
-  double     pos_y               = 8;
-  double     pos_z               = 9;
-  double     fov                 = 10;
-  ColorRGBA  frustum_color       = 11;
-  double     frustum_length      = 12;
-  bool       is_hiding_arrows    = 13;
-  bool       is_hiding_wheels    = 14;
-  bool       is_locking_position = 15;
-  bool       is_locking_rotation = 16;
-  bool       is_hiding_frustum   = 17;
-  double     aspect_width        = 18;
-  double     aspect_height       = 19;
-  Distortion distortion          = 20;
+  string    id                  = 1;
+  string    name                = 2;
+  double    angle_x             = 3;
+  double    angle_y             = 4;
+  double    angle_z             = 5;
+  double    angle_w             = 6;
+  double    pos_x               = 7;
+  double    pos_y               = 8;
+  double    pos_z               = 9;
+  double    fov                 = 10;
+  ColorRGBA frustum_color       = 11;
+  double    frustum_length      = 12;
+  bool      is_hiding_arrows    = 13;
+  bool      is_hiding_wheels    = 14;
+  bool      is_locking_position = 15;
+  bool      is_locking_rotation = 16;
+  bool      is_hiding_frustum   = 17;
+  double    aspect_width        = 18;
+  double    aspect_height       = 19;
 }
 
 message CameraDeleteEvent { string id = 1;  }
@@ -83,38 +67,4 @@ message CameraAutosaveResponse {
 
 message CameraAutosaveResponseAck {
   int32 last_updated_version = 1; // for ACK
-}
-
-message CalibrationData {
-  double scale_factor = 1;
-  double model_height = 2;
-}
-
-message CalibrationSaveEvent {
-  CalibrationData calibration = 1;
-  uint32          version     = 2;
-}
-
-message AutosaveEvent {
-  oneof event {
-    CameraSaveEventSeries cameras     = 1;
-    CalibrationSaveEvent  calibration = 2;
-  }
-}
-
-message AutosaveResponse {
-  oneof payload {
-    AutosaveResponseCameraAck      camera_ack      = 1;
-    AutosaveResponseCalibrationAck calibration_ack = 2;
-  }
-}
-
-message AutosaveResponseCameraAck {
-  int32 last_updated_version = 1;
-}
-
-message AutosaveResponseCalibrationAck {
-  int32  last_updated_version = 1;
-  double scale_factor         = 2;
-  double model_height         = 3;
 }

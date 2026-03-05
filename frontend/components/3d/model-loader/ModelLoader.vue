@@ -1,129 +1,50 @@
 <script setup lang="ts">
 import { useGLTF } from "@tresjs/cientos";
-import type { Material, Mesh, Object3D } from "three";
-import type { GLTF } from "three-stdlib";
-import { CALIBRATION_SCALE, CALIBRATION_HEIGHT } from "~/constants/state-keys";
+import type { TresObject3D } from "@tresjs/core";
 
-const props = withDefaults(
-  defineProps<{
-    path: string;
-    position?: [number, number, number];
-    modelScale?: number;
-  }>(),
-  {
-    modelScale: 1,
-    position: () => [0, 0, 0],
-  },
-);
+const props = defineProps<{
+  path?: string;
+  position?: [number, number, number];
+}>();
 
-function isMesh(object: Object3D): object is Mesh {
-  return (object as Mesh).isMesh === true;
-}
-
-function disposeMaterial(mat: Material) {
-  for (const key in mat) {
-    const value = mat[key as keyof Material];
-    if (
-      value &&
-      typeof value === "object" &&
-      "dispose" in value &&
-      typeof value.dispose === "function"
-    ) {
-      value.dispose();
-    }
-  }
-  mat.dispose();
-}
-
+let nodes: Record<string, TresObject3D>;
 console.log("path", props.path);
-const state = shallowRef<GLTF | null>(null);
-const { data, error, status } = await useFetch<ArrayBuffer>(props.path ?? "", {
-  method: "GET",
-  credentials: "include",
-  responseType: "arrayBuffer",
-  cache: "no-cache",
-});
 
-onMounted(() => {
-  const stopWatch = watch(
-    data,
-    (newData) => {
-      if (newData) {
-        const blob = new Blob([newData], { type: "model/gltf-binary" });
-        const blobUrl = URL.createObjectURL(blob);
-
-        const gltf = useGLTF(blobUrl);
-        const stopInner = watch(
-          () => gltf.state.value,
-          (s) => {
-            if (s != undefined) {
-              // s.scene.traverse(applyFisheye);
-              state.value = s;
-
-              URL.revokeObjectURL(blobUrl!);
-
-              stopInner();
-              stopWatch();
-            }
-          },
-        );
-      }
-    },
-    { immediate: true },
-  );
-
-  watch(error, () => {
-    if (error.value != undefined) {
-      throw new Error(`HTTP ${status.value} ${error.value}`);
-    }
+try {
+  const response = await fetch(props.path ?? "", {
+    method: "GET",
+    credentials: "include", // <-- Important! sends cookies/session
   });
-});
 
-onUnmounted(() => {
-  if (state?.value?.scene) {
-    state.value.scene.traverse((child: Object3D) => {
-      if (isMesh(child)) {
-        const mesh = child as Mesh;
-        // Dispose Geometries
-        mesh.geometry?.dispose();
-
-        // Dispose Materials
-        if (Array.isArray(mesh.material)) {
-          mesh.material.forEach((mat: Material) => disposeMaterial(mat));
-        } else {
-          disposeMaterial(mesh.material);
-        }
-      }
-    });
-
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    state.value.scene = null as any;
+  if (!response.ok) {
+    throw new Error(`HTTP ${response.status} ${response.statusText}`);
   }
-  state.value = null;
-});
 
-const scaleFactor = inject(CALIBRATION_SCALE, ref(1));
-const modelHeight = inject(CALIBRATION_HEIGHT, ref(0));
+  const blob = await response.blob();
+  const blobUrl = URL.createObjectURL(blob);
 
-const finalScale = computed(() => {
-  return props.modelScale * scaleFactor.value;
-});
+  const gltf = await useGLTF(blobUrl);
+  nodes = gltf.nodes;
+  console.log("[Success] load model success:", nodes);
+} catch (err) {
+  console.error("[Fail] load model fail:", err);
+}
 </script>
 
 <template>
-  <TresGroup
+  <primitive
+    v-for="[key, node] of Object.entries(nodes)"
+    :key="key"
+    :object="node"
     :position="[
-      props.position?.[0] ?? 0,
-      (props.position?.[1] ?? 0) + modelHeight,
-      props.position?.[2] ?? 0,
+      (props.position?.[0] ?? 0) + (node.position?.x ?? 0),
+      (props.position?.[1] ?? 0) + (node.position?.y ?? 0),
+      (props.position?.[2] ?? 0) + (node.position?.z ?? 0),
     ]"
-    :scale="[finalScale, finalScale, finalScale]"
-  >
-    <primitive v-if="state?.scene" :object="state.scene" />
-  </TresGroup>
+  />
 
   <!-- Block Placeholder  -->
-  <TresMesh v-if="state?.scene == null" :position="props.position ?? [0, 0, 0]">
+  <TresMesh v-if="nodes == undefined" :position="props.position ?? [0, 0, 0]">
     <TresBoxGeometry />
     <TresMeshStandardMaterial
       :color="'#4a90e2'"

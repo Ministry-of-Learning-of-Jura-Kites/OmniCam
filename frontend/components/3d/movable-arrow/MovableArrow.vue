@@ -6,9 +6,9 @@ import { useTresContext } from "@tresjs/core";
 import type { Obj3DWithUserData } from "~/types/obj-3d-user-data";
 import { SCENE_STATES_KEY } from "@/constants/state-keys";
 
-import type { MovableObject } from "~/types/movable";
+import type { ICamera } from "~/types/camera";
 
-const object = defineModel<MovableObject>({ required: true });
+const cam = defineModel<ICamera>({ required: true });
 
 const emit = defineEmits<{
   (event: "change"): void;
@@ -37,7 +37,7 @@ const arrow = new Group();
 
 const cameraUserData = new MovingUserData(
   props.direction,
-  object.value,
+  cam.value!,
   context!,
   () => {
     emit("change");
@@ -116,9 +116,9 @@ function setMeshDraggable() {
 const isActuallyHiding = computed(() => {
   const shouldHide =
     props.isHiding ||
-    (object.value.controlling != null &&
-      (object.value.controlling.type != MOVING_TYPE ||
-        object.value.controlling.direction != props.direction));
+    (cam.value.controlling != null &&
+      (cam.value.controlling.type != MOVING_TYPE ||
+        cam.value.controlling.direction != props.direction));
 
   return shouldHide;
 });

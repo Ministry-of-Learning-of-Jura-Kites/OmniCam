@@ -39,7 +39,7 @@ function resizeEntriesToSize(entries: ReadonlyArray<ResizeObserverEntry>) {
 function updateAspectFromEleGenerator(sceneStates: SceneStates) {
   return () => {
     const parentOfParent =
-      sceneStates.tresContext.value?.renderer.instance.domElement?.parentElement
+      sceneStates.tresContext.value?.renderer.domElement?.parentElement
         ?.parentElement;
 
     const size = parentOfParent?.getBoundingClientRect();
@@ -61,7 +61,7 @@ export function useAspectRatio(sceneStates: SceneStates) {
 
   onMounted(() => {
     watch(
-      () => sceneStates.tresContext.value?.renderer.instance.domElement,
+      () => sceneStates.tresContext.value?.renderer.domElement,
       (canvas) => {
         const canvasParent = canvas?.parentElement;
         const parentOfParent = canvasParent?.parentElement;
