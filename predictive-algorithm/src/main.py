@@ -11,6 +11,7 @@ from state import CameraConfiguration, CameraState, State
 import quaternion
 from utils import (
     center_of_face,
+    look_at_quaternion,
     normal_vec_of_face,
 )
 from env import env_settings
@@ -164,6 +165,7 @@ def assign_faces(state: State, seed: int):
             cam.center_of_faces = np.mean(
                 [center_of_face(f) for f in assignments[i]], axis=0
             )
+            cam.angle = look_at_quaternion(cam.center_of_faces - cam.pos)
 
     state.face_to_cam = face_to_cam_map
 
@@ -251,8 +253,8 @@ def transform_cameras(raw_cam_configs: List[ReqCameraConfiguration]):
             cameras.append(
                 CameraState(
                     faces=None,
-                    pos=[0, 0, 0],
-                    angle=quaternion.from_vector_part([0, 0, 0, 0]),
+                    pos=[5, 0, 0],
+                    angle=quaternion.from_vector_part([0, 0, 0, 1]),
                     center_of_faces=None,
                     camera_config=cam_config,
                     name=raw_cam_config.name,
@@ -329,6 +331,9 @@ def optimize(req: OptimizeRequest):
 
     total = total_cost(final_state, True)
     print("total cost: ", total)
+
+    if env_settings.dev_mode:
+        pl.close()
 
     return final_state
 

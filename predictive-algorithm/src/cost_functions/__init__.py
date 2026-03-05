@@ -1,12 +1,9 @@
-import logging
 from typing import List
 
 import numpy as np
 from state import CameraState, State
 from . import angle_cost, resolution_cost, occlusion_cost, mounting_cost
 from basic_types import Array3, Array4x3
-from constant import BIG_M
-from utils import center_of_face
 
 
 def prune_faces_by_distance(
@@ -38,7 +35,7 @@ def prune_faces_by_distance(
 
 def total_cost(state: State, verbose: bool = False):
     # We want to know how well every camera sees every face
-    num_faces = len(state.faces)
+    # num_faces = len(state.faces)
     num_cams = len(state.cameras)
     if verbose:
         stats = {

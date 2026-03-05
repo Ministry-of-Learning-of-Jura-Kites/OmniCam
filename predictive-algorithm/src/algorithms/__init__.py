@@ -1,13 +1,9 @@
 from abc import ABC, abstractmethod
-import functools
 from typing import List, Tuple
-from state import CameraState, State
+from state import State
 import numpy as np
 from dataclasses import dataclass, replace
-from utils import center_of_face, center_of_faces, look_at_quaternion
-import quaternion
-from cost_functions import total_cost
-from constant import VectorSerialization, VECTOR_SERIALIZATION
+from utils import center_of_face, look_at_quaternion
 
 
 class AlgorithmSerialization(ABC):
@@ -15,12 +11,6 @@ class AlgorithmSerialization(ABC):
     def init_pop(
         self,
     ) -> np.array:
-        pass
-
-    @abstractmethod
-    def init_bounds(
-        self,
-    ) -> List[Tuple[float, float]]:
         pass
 
     @abstractmethod
