@@ -6,7 +6,6 @@ import quaternion
 from basic_types import Array4x3, Array3
 from astropy.units import Quantity
 import astropy.units as u
-import pyvista as pv
 
 
 def get_seeded_color_rgb(seed_value):

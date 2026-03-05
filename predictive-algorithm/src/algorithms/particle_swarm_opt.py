@@ -1,7 +1,7 @@
 from typing import Union
 from pyvistaqt import BackgroundPlotter
 import numpy as np
-from state import InteractiveOptimizerPlotter, State
+from state import State
 from cost_functions import total_cost
 
 
