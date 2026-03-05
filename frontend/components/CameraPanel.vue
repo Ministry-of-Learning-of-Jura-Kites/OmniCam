@@ -58,7 +58,7 @@ const selectedCam = computed(() =>
 );
 
 watch(
-  [() => selectedCam.value?.aspectWidth, () => selectedCam.value?.aspectHeight],
+  [() => selectedCam.value?.widthRes, () => selectedCam.value?.widthRes],
   () => {
     sceneStates.aspectRatioManagement?.updateAspectFromEle();
   },
@@ -118,7 +118,7 @@ function onToggleLockRotation() {
 function onFovChange() {
   const cam = sceneStates.cameras[selectedCamId.value!]!;
   if (cam.fov > 179) {
-    cam.isHidingFrustum.value = true;
+    cam.isHidingFrustum = true;
   }
 }
 
@@ -145,9 +145,9 @@ const isLockingPosition = computed(() => {
   );
 });
 
-const gcd = (a: number, b: number): number => {
-  return b === 0 ? a : gcd(b, a % b);
-};
+// const gcd = (a: number, b: number): number => {
+//   return b === 0 ? a : gcd(b, a % b);
+// };
 
 const handleSpawnCamera = (preset: Camerapreset) => {
   const camId = sceneStates.cameraManagement.spawnCameraHere();
@@ -160,18 +160,8 @@ const handleSpawnCamera = (preset: Camerapreset) => {
     const w = Number(preset.res_w);
     const h = Number(preset.res_h);
 
-    const ratioMatch = preset.sensor_name.match(
-      /(\d+(?:\.\d+)?):(\d+(?:\.\d+)?)/,
-    );
-
-    if (ratioMatch) {
-      cam.aspectWidth = Number(ratioMatch[1]);
-      cam.aspectHeight = Number(ratioMatch[2]);
-    } else {
-      const divisor = gcd(w, h);
-      cam.aspectWidth = w / divisor;
-      cam.aspectHeight = h / divisor;
-    }
+    cam.widthRes = w;
+    cam.heightRes = h;
 
     cam.frustumLength = Number(preset.focal_length) * 50;
 
@@ -474,13 +464,11 @@ const directionAngles = computed(() => {
             </div>
 
             <div>
-              <Label><p>Aspect Ratio</p></Label>
+              <Label><p>Resolution (Aspect Ratio)</p></Label>
               <div class="flex flex-row gap-2 justify-center items-center">
                 <Input
                   id="aspect-ratio-width"
-                  v-model.number="
-                    sceneStates.cameras[selectedCamId]!.aspectWidth
-                  "
+                  v-model.number="sceneStates.cameras[selectedCamId]!.widthRes"
                   :disabled="props.workspace == null"
                   disabled-class="disabled-input"
                   type="number"
@@ -489,9 +477,7 @@ const directionAngles = computed(() => {
                 <p>:</p>
                 <Input
                   id="aspect-ratio-height"
-                  v-model.number="
-                    sceneStates.cameras[selectedCamId]!.aspectHeight
-                  "
+                  v-model.number="sceneStates.cameras[selectedCamId]!.heightRes"
                   :disabled="props.workspace == null"
                   disabled-class="disabled-input"
                   type="number"

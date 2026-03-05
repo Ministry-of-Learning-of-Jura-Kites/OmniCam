@@ -24,8 +24,8 @@ export function transformCameraToProtoEvent(cam: ICamera): Omit<Camera, "id"> {
     posX: cam.position.x,
     posY: cam.position.y,
     posZ: cam.position.z,
-    widthRes: cam.aspectWidth,
-    heightRes: cam.aspectHeight,
+    widthRes: cam.widthRes,
+    heightRes: cam.heightRes,
     fov: cam.fov,
     frustumColor: cam.frustumColor,
     frustumLength: cam.frustumLength,
@@ -84,13 +84,13 @@ export function useAutosave(
 
     watch(
       () => [
-        sceneStates.calibrationScale.value,
-        sceneStates.calibrationHeight.value,
+        sceneStates.calibration.scale,
+        sceneStates.calibration.heightOffset,
       ],
       ([newScale, newHeight], [oldScale, oldHeight]) => {
         if (isServerUpdate.value) return;
         if (newScale !== oldScale || newHeight !== oldHeight) {
-          sceneStates.calibrationDirty.value = true;
+          sceneStates.calibration.dirty = true;
         }
       },
     );
@@ -98,10 +98,10 @@ export function useAutosave(
     setInterval(() => {
       if (!sceneStates.websocket) return;
 
+      const changed: AutosaveEvent[] = [];
+
       // Cameras
       if (sceneStates.markedForCheck.size > 0) {
-        const changed: AutosaveEvent[] = [];
-
         for (const camId of sceneStates.markedForCheck) {
           const prev = lastSynced.get(camId);
           const cam = sceneStates.cameras[camId];
@@ -120,29 +120,29 @@ export function useAutosave(
             lastSynced.set(camId, formattedCam);
           }
         }
-
-        // Calibration
-        if (sceneStates.calibrationDirty.value) {
-          changed.push({
-            calibrate: {
-              scaleFactor: sceneStates.calibrationScale.value,
-              modelHeight: sceneStates.calibrationHeight.value,
-            },
-          });
-          sceneStates.calibrationDirty.value = false;
-        }
-
-        if (changed.length > 0) {
-          sceneStates.localVersion.value += 1;
-          const encoded = AutosaveMessage.encode({
-            version: sceneStates.localVersion.value,
-            events: changed,
-          }).finish();
-          sceneStates.websocket.send(encoded.buffer);
-        }
-
-        sceneStates.markedForCheck.clear();
       }
+
+      // Calibration
+      if (sceneStates.calibration.dirty) {
+        changed.push({
+          calibrate: {
+            scaleFactor: sceneStates.calibration.scale,
+            modelHeight: sceneStates.calibration.heightOffset,
+          },
+        });
+        sceneStates.calibration.dirty = false;
+      }
+
+      if (changed.length > 0) {
+        sceneStates.localVersion.value += 1;
+        const encoded = AutosaveMessage.encode({
+          version: sceneStates.localVersion.value,
+          events: changed,
+        }).finish();
+        sceneStates.websocket.send(encoded.buffer);
+      }
+
+      sceneStates.markedForCheck.clear();
     }, 2000);
   });
 }
