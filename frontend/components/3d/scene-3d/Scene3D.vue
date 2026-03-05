@@ -45,9 +45,9 @@ const minimapCamera = ref<OrthographicCamera | null>(null);
 const isMapOpen = inject(IS_MAP_OPEN_KEY)!;
 
 const aspect = computed(() => {
-  const width = sceneStates.currentCam.value.aspectHeight;
+  const width = sceneStates.currentCam.value.widthRes;
   if (width == 0) return undefined;
-  const height = sceneStates.currentCam.value.aspectHeight || 1;
+  const height = sceneStates.currentCam.value.heightRes || 1;
   return width / height;
 });
 

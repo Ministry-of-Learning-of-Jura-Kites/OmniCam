@@ -11,8 +11,6 @@ import {
   IS_CALIBRATING_KEY,
   TOGGLE_CALIBRATION_KEY,
   CALIBRATION_GRID_SCALE,
-  CALIBRATION_SCALE,
-  CALIBRATION_HEIGHT,
 } from "~/constants/state-keys";
 
 import FailDialog from "~/components/dialog/FailDialog.vue";
@@ -53,12 +51,6 @@ provide(IS_CALIBRATING_KEY, isCalibrating);
 provide(TOGGLE_CALIBRATION_KEY, toggleCalibration);
 const calibrationGridScale = ref(1);
 provide(CALIBRATION_GRID_SCALE, calibrationGridScale);
-
-const calibrationScale = ref(1.0);
-const calibrationHeight = ref(0.0);
-
-provide(CALIBRATION_SCALE, calibrationScale);
-provide(CALIBRATION_HEIGHT, calibrationHeight);
 
 const workspace = computed(() => route.meta.routeInfo?.workspace);
 </script>

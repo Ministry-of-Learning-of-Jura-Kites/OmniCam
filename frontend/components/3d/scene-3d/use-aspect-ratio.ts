@@ -6,8 +6,8 @@ function updateAspectOnResize(
   origHeight: number,
 ) {
   const aspect =
-    sceneStates.currentCam.value.aspectWidth /
-    sceneStates.currentCam.value.aspectHeight;
+    sceneStates.currentCam.value.widthRes /
+    sceneStates.currentCam.value.heightRes;
 
   let width: number;
   let height: number;
