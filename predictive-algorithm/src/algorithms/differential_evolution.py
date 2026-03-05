@@ -1,11 +1,6 @@
-from pyvistaqt import BackgroundPlotter
 from scipy.optimize import differential_evolution
-from . import (
-    CartesianSerialize,
-    SphericalSerialize,
-)
-import numpy as np
-from state import State, render_from_state
+from . import SphericalSerialize
+from state import State
 from cost_functions import total_cost
 
 

@@ -2,7 +2,6 @@ from typing import Union
 import numpy as np
 import quaternion
 from state import CameraState, State
-from constant import BIG_M
 from basic_types import Array3, Array4x3
 from utils import center_of_face
 import vtk

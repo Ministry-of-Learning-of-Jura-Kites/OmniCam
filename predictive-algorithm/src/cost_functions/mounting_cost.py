@@ -1,12 +1,10 @@
 import math
-import numpy as np
-from traitlets import Float
 from state import CameraState, State
 import vtk
 from basic_types import Array4x3
 
 
-def cost_single_cam(state: State, cam_state: CameraState, face: Array4x3):
+def cost_single_cam(state: State, cam_state: CameraState, _face: Array4x3):
     # Pre-allocate containers to avoid memory churn
     closest_p = [0.0, 0.0, 0.0]
     cell_id = vtk.reference(0)

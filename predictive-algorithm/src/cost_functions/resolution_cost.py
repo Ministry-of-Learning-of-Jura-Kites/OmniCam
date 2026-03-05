@@ -1,10 +1,8 @@
 import math
 import numpy as np
-import quaternion
 from utils import center_of_face
 from state import CameraState, State
 from basic_types import Array4x3, Array3
-from constant import BIG_M
 
 
 def get_pixel_per_meter(cam_state: CameraState, distance_to_plane: float):
