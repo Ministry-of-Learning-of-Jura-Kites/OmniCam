@@ -9,8 +9,7 @@ import { useWebSocket, type UseWebSocketReturn } from "@vueuse/core";
 import {
   MODEL_INFO_KEY,
   SCENE_STATES_KEY,
-  CALIBRATION_SCALE,
-  CALIBRATION_HEIGHT,
+  WORKSPACE,
 } from "~/constants/state-keys";
 
 const props = defineProps({
@@ -22,21 +21,17 @@ const props = defineProps({
     type: String,
     required: true,
   },
-  workspace: {
-    type: String,
-    default: null,
-  },
 });
 
 const runtimeConfig = useRuntimeConfig();
 
-const workspaceSuffix =
-  props.workspace == null ? "" : `/workspaces/${props.workspace}`;
+const workspace = inject(WORKSPACE) as string | null;
+
+const workspaceSuffix = workspace == null ? "" : `/workspaces/${workspace}`;
 
 const modelWithCamsResp = useState<ModelWithCamsResp | undefined>(
-  `${MODEL_INFO_KEY}-${props.modelId}`,
+  MODEL_INFO_KEY,
 );
-
 const error = ref<unknown | undefined>(undefined);
 
 async function fetchAndCombine(fields: string[]) {
@@ -79,33 +74,23 @@ if (modelWithCamsResp.value == undefined) {
 } else {
   // If exit from workspace into model
   if (
-    props.workspace == null &&
+    workspace == null &&
     modelWithCamsResp.value.data.workspaceExists == undefined
   ) {
-    await fetchAndCombine(["cameras", "workspace_exists"]);
+    await fetchAndCombine(["workspace_exists"]);
   }
 
   // If open workspace from model page
   else if (
-    props.workspace != null &&
+    workspace != null &&
     modelWithCamsResp.value.data.workspaceExists != undefined
   ) {
     await fetchAndCombine(["cameras"]);
   }
 }
 
-const calibrationScale = inject<Ref<number>>(CALIBRATION_SCALE)!;
-const calibrationHeight = inject<Ref<number>>(CALIBRATION_HEIGHT)!;
-
-if (modelWithCamsResp.value?.data.scaleFactor !== undefined) {
-  calibrationScale.value = modelWithCamsResp.value.data.scaleFactor;
-}
-if (modelWithCamsResp.value?.data.modelHeight !== undefined) {
-  calibrationHeight.value = modelWithCamsResp.value.data.modelHeight;
-}
-
 let websocket: UseWebSocketReturn<unknown> | undefined = undefined;
-if (props.workspace != undefined && import.meta.client) {
+if (workspace != undefined && import.meta.client) {
   const websocketUrl = `ws://${runtimeConfig.public.externalBackendHost}/api/v1/projects/${props.projectId}/models/${props.modelId}/autosave`;
 
   websocket = useWebSocket(websocketUrl, {
@@ -118,12 +103,7 @@ if (props.workspace != undefined && import.meta.client) {
   });
 }
 
-const sceneStates = createBaseSceneStates(
-  websocket,
-  modelWithCamsResp.value!,
-  calibrationScale,
-  calibrationHeight,
-);
+const sceneStates = createBaseSceneStates(websocket, modelWithCamsResp.value!);
 
 if (sceneStates.error != null) {
   if (
@@ -139,7 +119,7 @@ if (sceneStates.error != null) {
 } else {
   const sceneStatesWithHelper = createSceneStatesWithHelper(
     sceneStates as SceneStates,
-    props.workspace,
+    workspace,
   );
 
   provide(SCENE_STATES_KEY, sceneStatesWithHelper);

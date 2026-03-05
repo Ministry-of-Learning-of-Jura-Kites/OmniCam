@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { SCENE_STATES_KEY } from "@/constants/state-keys";
+import { SCENE_STATES_KEY, WORKSPACE } from "@/constants/state-keys";
 
 import MovableArrow from "../movable-arrow/MovableArrow.vue";
 import TresMesh from "@tresjs/core";
@@ -17,11 +17,9 @@ const props = defineProps({
     type: String,
     default: "",
   },
-  workspace: {
-    type: String,
-    default: null,
-  },
 });
+
+const workspace = inject(WORKSPACE);
 
 const sceneStates = inject(SCENE_STATES_KEY)!;
 
@@ -34,10 +32,7 @@ const camQuat = computed(() => {
 </script>
 
 <template>
-  <TresMesh
-    :visible="sceneStates.currentCamId.value !== props.camId"
-    :position="[cam!.position.x, cam!.position.y, cam!.position.z]"
-  >
+  <TresMesh :position="[cam!.position.x, cam!.position.y, cam!.position.z]">
     <TresObject3D :quaternion="camQuat">
       <!-- Use quaternion for applying on top of local rotation -->
       <TresMesh :rotation="[Math.PI / 2, 0, 0]" :position="[0, 0, 0.25 + 0.06]">
@@ -77,7 +72,7 @@ const camQuat = computed(() => {
         :is-hiding="
           cam.isHidingArrows ||
           sceneStates.currentCamId.value == props.camId ||
-          props.workspace == null
+          workspace == null
         "
         :controlling="cam.controlling"
         direction="x"
@@ -89,7 +84,7 @@ const camQuat = computed(() => {
         :is-hiding="
           cam.isHidingArrows ||
           sceneStates.currentCamId.value == props.camId ||
-          props.workspace == null
+          workspace == null
         "
         :controlling="cam.controlling"
         direction="y"
@@ -101,7 +96,7 @@ const camQuat = computed(() => {
         :is-hiding="
           cam.isHidingArrows ||
           sceneStates.currentCamId.value == props.camId ||
-          props.workspace == null
+          workspace == null
         "
         :controlling="cam.controlling"
         direction="z"
@@ -113,7 +108,7 @@ const camQuat = computed(() => {
         :is-hiding="
           cam.isHidingWheels ||
           sceneStates.currentCamId.value == props.camId ||
-          props.workspace == null
+          workspace == null
         "
         direction="x"
         color="green"
@@ -123,7 +118,7 @@ const camQuat = computed(() => {
         :is-hiding="
           cam.isHidingWheels ||
           sceneStates.currentCamId.value == props.camId ||
-          props.workspace == null
+          workspace == null
         "
         direction="y"
         color="red"
@@ -133,7 +128,7 @@ const camQuat = computed(() => {
         :is-hiding="
           cam.isHidingWheels ||
           sceneStates.currentCamId.value == props.camId ||
-          props.workspace == null
+          workspace == null
         "
         direction="z"
         color="blue"

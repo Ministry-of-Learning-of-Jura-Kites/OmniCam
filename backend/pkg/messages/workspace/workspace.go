@@ -12,8 +12,6 @@ type WorkspaceNoCams struct {
 	UserId      uuid.UUID `json:"userId"`
 	Version     int32     `json:"version"`
 	BaseVersion int32     `json:"baseVersion"`
-	ScaleFactor float64   `json:"scaleFactor"`
-	ModelHeight float64   `json:"modelHeight"`
 	CreatedAt   string    `json:"createdAt"`
 	UpdatedAt   string    `json:"updatedAt"`
 }

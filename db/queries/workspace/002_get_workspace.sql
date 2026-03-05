@@ -9,8 +9,6 @@ SELECT
     WHEN 'base_cameras' = ANY (COALESCE(SQLC.NARG(fields)::TEXT[], '{}'::TEXT[])) THEN base_cameras::JSONB
     ELSE NULL::JSONB
   END AS base_cameras,
-  umw.scale_factor,
-  umw.model_height,
   umw.version,
   base_version,
   umw.created_at,

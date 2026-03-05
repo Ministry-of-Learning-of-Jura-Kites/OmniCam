@@ -2,13 +2,7 @@ import type { TresContext } from "@tresjs/core";
 import type { Reactive } from "vue";
 import type { Obj3DWithUserData } from "~/types/obj-3d-user-data";
 import type { SceneStates as BaseSceneStates } from "~/types/scene-states";
-import {
-  Quaternion,
-  Euler,
-  Vector3,
-  type PerspectiveCamera,
-  type CubeCamera,
-} from "three";
+import { Quaternion, Euler, Vector3 } from "three";
 import { cameraDefault, type ICamera } from "~/types/camera";
 import { useCameraManagement } from "../scene-3d/use-camera-management";
 import { useSpectatorRotation } from "../scene-3d/use-spectator-rotation";
@@ -18,6 +12,15 @@ import type { Camera } from "~/messages/protobufs/autosave_event";
 import { useAspectRatio as useAspectRatioManagement } from "../scene-3d/use-aspect-ratio";
 import { useAutosave } from "../scene-3d/use-autosave";
 
+export interface CoverageFace {
+  id: string;
+  points: [number, number, number][];
+  center: [number, number, number];
+  width: number;
+  height: number;
+  normal?: [number, number, number];
+  planeY?: number;
+}
 export interface ModelWithCamsResp {
   data: {
     workspaceExists: boolean | null;
@@ -33,9 +36,15 @@ export interface ModelWithCamsResp {
     imagePath: string;
     imageExtension: string;
     cameras: Record<string, Camera>;
-    scaleFactor?: number;
-    modelHeight?: number;
   };
+}
+
+export interface OptimizedCamera {
+  id: string;
+  name: string;
+  position: [number, number, number];
+  rotation: [number, number, number];
+  fov: number;
 }
 
 export function transformProtoEventToCamera(rawCam: Camera): ICamera {
@@ -57,7 +66,6 @@ export function transformProtoEventToCamera(rawCam: Camera): ICamera {
     aspectHeight: rawCam.aspectHeight,
     isHidingArrows: rawCam.isHidingArrows,
     isHidingWheels: rawCam.isHidingWheels,
-    distortion: rawCam.distortion ?? structuredClone(cameraDefault.distortion),
     isLockingPosition: rawCam.isLockingPosition,
     isLockingRotation: rawCam.isLockingRotation,
     isHidingFrustum: rawCam.isHidingFrustum,
@@ -80,8 +88,6 @@ function transformCamsData(
 export function createBaseSceneStates(
   websocket: UseWebSocketReturn<unknown> | undefined,
   modelWithCamsResp: ModelWithCamsResp,
-  externalCalibrationScale: Ref<number>,
-  externalCalibrationHeight: Ref<number>,
 ) {
   const tresContext = ref<TresContext | null>(null);
 
@@ -152,52 +158,92 @@ export function createBaseSceneStates(
   const localVersion = ref(modelInfo.data.version);
   const lastSyncedVersion = ref(modelInfo.data.version);
 
-  const calibrationScale =
-    externalCalibrationScale ?? ref(modelWithCamsResp.data.scaleFactor ?? 1.0);
-  const calibrationHeight =
-    externalCalibrationHeight ?? ref(modelWithCamsResp.data.modelHeight ?? 0.0);
-  const calibrationVersion = ref(modelWithCamsResp.data.version);
-  const calibrationDirty = ref(false);
+  const selectionMode = ref<"none" | "coverage-area">("none");
+  const selectedCoverageFaces = ref<CoverageFace[]>([]);
 
-  const currentIsFisheye = computed(() => {
-    if (currentCamId.value != null) {
-      return cameras[currentCamId.value]!.distortion.isFisheye;
-    }
-    return false;
-  });
+  const setSelectionMode = (mode: "none" | "coverage-area") => {
+    selectionMode.value = mode;
+  };
 
-  const currentFov = computed(() => {
-    return currentCam.value.fov;
-  });
+  const addCoverageFace = (face: CoverageFace) => {
+    console.log("ADD FACE", face);
+    selectedCoverageFaces.value.push(face);
+  };
 
-  const currentDistEnabled = computed(() => {
-    if (currentCamId.value == undefined) {
-      return false;
-    }
-    return currentCam.value.distortion.enabled;
-  });
+  const clearCoverageFaces = () => {
+    selectedCoverageFaces.value.splice(0, selectedCoverageFaces.value.length);
+    tresContext.value?.invalidate?.();
+  };
 
-  const aspectRatio = computed<number>(() => {
-    if (screenSize.width == null || screenSize.height == null) {
-      return 1;
-    }
-    return screenSize.width! / screenSize.height!;
-  });
+  const addOptimizedCamera = (cam: OptimizedCamera) => {
+    cameras[cam.id] = {
+      ...cameraDefault,
+      name: cam.name,
+      position: new Vector3(...cam.position),
+      rotation: new Euler(
+        cam.rotation[0],
+        cam.rotation[1],
+        cam.rotation[2],
+        "YXZ",
+      ),
+      fov: cam.fov,
+      aspectWidth: 1920,
+      aspectHeight: 1080,
+      isHidingArrows: false,
+      isHidingWheels: false,
+      isLockingPosition: false,
+      isLockingRotation: false,
+      isHidingFrustum: false,
+      frustumColor: { r: 0, g: 255, b: 100, a: 1 },
+      frustumLength: 10,
+    };
+  };
 
-  const perspectiveCamera = ref<PerspectiveCamera | null>(null);
-  const cubeCamera = ref<CubeCamera | null>(null);
+  const updateCoverageFaceCorner = (
+    faceId: string,
+    cornerIndex: number,
+    point: [number, number, number],
+  ) => {
+    const idx = selectedCoverageFaces.value.findIndex((f) => f.id === faceId);
+    if (idx < 0) return;
 
-  // if (window) {
-  //   function setFisheyeStrength(
-  //     type: DistortionMode,
-  //     intensity: number,
-  //     fov: number,
-  //   ) {
-  //     distortionStrength.value = calcFisheyeStrength(type, intensity, fov);
-  //   }
-  //   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  //   (window as any).setFisheyeStrength = setFisheyeStrength;
-  // }
+    const face = selectedCoverageFaces.value[idx]!;
+    const newPoints = face.points.map((p, i) =>
+      i === cornerIndex ? point : p,
+    ) as [number, number, number][];
+
+    const center: [number, number, number] = [
+      (newPoints[0]![0] +
+        newPoints[1]![0] +
+        newPoints[2]![0] +
+        newPoints[3]![0]) /
+        4,
+      (newPoints[0]![1] +
+        newPoints[1]![1] +
+        newPoints[2]![1] +
+        newPoints[3]![1]) /
+        4,
+      (newPoints[0]![2] +
+        newPoints[1]![2] +
+        newPoints[2]![2] +
+        newPoints[3]![2]) /
+        4,
+    ];
+
+    const dist = (a: [number, number, number], b: [number, number, number]) =>
+      Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2]);
+
+    const next = [...selectedCoverageFaces.value];
+    next[idx] = {
+      ...face,
+      points: newPoints,
+      center,
+      width: dist(newPoints[0]!, newPoints[1]!),
+      height: dist(newPoints[1]!, newPoints[2]!),
+    };
+
+    selectedCoverageFaces.value = next;
+  };
 
   const sceneStates = {
     tresContext,
@@ -220,16 +266,14 @@ export function createBaseSceneStates(
     aspectMarginType,
     localVersion,
     lastSyncedVersion,
-    calibrationScale,
-    calibrationHeight,
-    calibrationVersion,
-    calibrationDirty,
-    currentDistEnabled,
-    currentFov,
-    currentIsFisheye,
-    aspectRatio,
-    perspectiveCamera,
-    cubeCamera,
+    // Predictive Camera Placement
+    selectionMode,
+    selectedCoverageFaces,
+    setSelectionMode,
+    addCoverageFace,
+    clearCoverageFaces,
+    addOptimizedCamera,
+    updateCoverageFaceCorner,
   } as const;
 
   // websocket.ws.value!.onclose = (_closeEvent: CloseEvent) => {
@@ -244,22 +288,9 @@ export function createSceneStatesWithHelper(
   workspace: string | null,
 ) {
   const aspectRatioManagement = useAspectRatioManagement(sceneStates);
-  useAutosave(sceneStates, workspace);
 
   onMounted(() => {
     useAutosave(sceneStates, workspace);
-    watch(
-      () => [sceneStates.transformingInfo, sceneStates.currentCam],
-      ([transform, cam]) => {
-        const newFov = transform?.value?.fov ?? cam?.value?.fov;
-        const actualCamera = sceneStates.tresContext.value?.camera.activeCamera;
-        if (actualCamera && newFov !== undefined) {
-          (actualCamera as PerspectiveCamera).fov = newFov;
-          actualCamera.updateProjectionMatrix();
-        }
-      },
-      { deep: true },
-    );
   });
 
   const sceneStatesWithCam = {
