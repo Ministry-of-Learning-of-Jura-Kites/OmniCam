@@ -8,7 +8,7 @@
     "start": "node frontend/.output/server/index.mjs",
     "generate": "nuxt generate",
     "preview": "nuxt preview",
-    "postinstall": "nuxt prepare && npm run proto && npm run sqlc",
+    "postinstall": "nuxt prepare",
     "style-check": "prettier --check **/*.{vue,ts,json,js,yaml,md,sql}",
     "format": "prettier --write **/*.{vue,ts,json,js,yaml,md,sql}",
     "lint": "eslint .",
