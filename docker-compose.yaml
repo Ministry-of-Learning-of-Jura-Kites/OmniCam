@@ -1,5 +1,4 @@
 name: omnicam-services
-version: "3.8"
 
 services:
   db:
@@ -10,7 +9,7 @@ services:
     ports:
       - "5433:5432"
     networks:
-      - net
+      - dmz_net
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
@@ -29,7 +28,7 @@ services:
     command:
       ["migrate -path /migrations -database $$DATABASE_URL?sslmode=disable up"]
     networks:
-      - net
+      - dmz_net
     depends_on:
       db:
         condition: service_healthy
@@ -51,7 +50,8 @@ services:
       db:
         condition: service_healthy
     networks:
-      - net
+      - dmz_net
+      - private_net
 
   frontend:
     build:
@@ -67,7 +67,20 @@ services:
     depends_on:
       - backend
     networks:
-      - net
+      - dmz_net
+
+  optimization:
+    build:
+      context: predictive-algorithm
+    container_name: omnicam_optimization
+    env_file:
+      - ./predictive-algorithm/.env.prod
+    ports:
+      - "8081:8081"
+    volumes:
+      - ./uploads:/app/uploads
+    networks:
+      - private_net
 
   # redis:
   #   image: redis:8
@@ -76,7 +89,8 @@ services:
   #   command: redis-server --appendonly yes --requirepass your_redis_password
 
 networks:
-  net:
+  dmz_net:
+  private_net:
 
 volumes:
   postgres_data:

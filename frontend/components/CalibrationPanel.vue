@@ -170,7 +170,7 @@ const resetCalibration = () => {
                   <span class="font-mono">{{ modelHeight!.toFixed(2) }} m</span>
                 </div>
                 <input
-                  v-model.number="modelHeight!"
+                  v-model.number="modelHeight"
                   type="range"
                   min="-5"
                   max="5"
@@ -178,7 +178,7 @@ const resetCalibration = () => {
                   class="w-full h-2 bg-secondary rounded-lg appearance-none cursor-pointer accent-red-500"
                 />
                 <Input
-                  v-model.number="modelHeight!"
+                  v-model.number="modelHeight"
                   type="number"
                   step="0.1"
                   class="h-8 text-xs"
