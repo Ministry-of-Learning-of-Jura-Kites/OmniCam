@@ -23,25 +23,29 @@ type DistortionConfig struct {
 }
 
 type CameraStruct struct {
-	Name              string           `json:"name" binding:"required" diff:"name"`
-	AngleX            float64          `json:"angleX" diff:"angleX"`
-	AngleY            float64          `json:"angleY" diff:"angleY"`
-	AngleZ            float64          `json:"angleZ" diff:"angleZ"`
-	AngleW            float64          `json:"angleW" diff:"angleW"`
-	PosX              float64          `json:"posX" diff:"posX"`
-	PosY              float64          `json:"posY" diff:"posY"`
-	PosZ              float64          `json:"posZ" diff:"posZ"`
-	Fov               float64          `json:"fov"  diff:"fov"`
-	FrustumColor      ColorRGBA        `json:"frustumColor" diff:"frustumColor"`
-	FrustumLength     float64          `json:"frustumLength" diff:"frustumLength"`
-	IsHidingArrows    bool             `json:"isHidingArrows" diff:"-"`
-	IsHidingWheels    bool             `json:"isHidingWheels" diff:"-"`
-	IsLockingPosition bool             `json:"isLockingPosition" diff:"-"`
-	IsLockingRotation bool             `json:"isLockingRotation" diff:"-"`
-	IsHidingFrustum   bool             `json:"isHidingFrustum" diff:"-"`
-	AspectWidth       float64          `json:"aspectWidth" binding:"required" diff:"aspectWidth"`
-	AspectHeight      float64          `json:"aspectHeight" binding:"required" diff:"aspectHeight"`
-	Distortion        DistortionConfig `json:"distortion" diff:"distortion"`
+	Name              string    `json:"name" binding:"required" diff:"name"`
+	AngleX            float64   `json:"angleX" diff:"angleX"`
+	AngleY            float64   `json:"angleY" diff:"angleY"`
+	AngleZ            float64   `json:"angleZ" diff:"angleZ"`
+	AngleW            float64   `json:"angleW" diff:"angleW"`
+	PosX              float64   `json:"posX" diff:"posX"`
+	PosY              float64   `json:"posY" diff:"posY"`
+	PosZ              float64   `json:"posZ" diff:"posZ"`
+	Fov               float64   `json:"fov"  diff:"fov"`
+	FrustumColor      ColorRGBA `json:"frustumColor" diff:"frustumColor"`
+	FrustumLength     float64   `json:"frustumLength" diff:"frustumLength"`
+	IsHidingArrows    bool      `json:"isHidingArrows" diff:"-"`
+	IsHidingWheels    bool      `json:"isHidingWheels" diff:"-"`
+	IsLockingPosition bool      `json:"isLockingPosition" diff:"-"`
+	IsLockingRotation bool      `json:"isLockingRotation" diff:"-"`
+	IsHidingFrustum   bool      `json:"isHidingFrustum" diff:"-"`
+	// AspectWidth is deprecated
+	AspectWidth *float64 `json:"aspectWidth" binding:"required" diff:"aspectWidth"`
+	// AspectHeight is deprecated
+	AspectHeight *float64         `json:"aspectHeight" binding:"required" diff:"aspectHeight"`
+	WidthRes     float64          `json:"widthRes" binding:"required" diff:"widthRes"`
+	HeightRes    float64          `json:"heightRes" binding:"required" diff:"heightRes"`
+	Distortion   DistortionConfig `json:"distortion" diff:"distortion"`
 }
 
 func UnmarshalCameras(data []byte) (Cameras, error) {
@@ -60,6 +64,14 @@ func UnmarshalCameras(data []byte) (Cameras, error) {
 			return nil, err
 		}
 
+		if cam.AspectWidth != nil {
+			cam.WidthRes = *cam.AspectWidth
+			cam.AspectWidth = nil
+		}
+		if cam.AspectHeight != nil {
+			cam.HeightRes = *cam.AspectHeight
+			cam.AspectHeight = nil
+		}
 		result[CamId(id)] = cam
 	}
 
@@ -111,8 +123,8 @@ func ProtoCamToCam(protoCam *camera.Camera) CameraStruct {
 	cam.IsLockingPosition = protoCam.IsLockingPosition
 	cam.IsLockingRotation = protoCam.IsLockingRotation
 	cam.IsHidingFrustum = protoCam.IsHidingFrustum
-	cam.AspectWidth = protoCam.AspectWidth
-	cam.AspectHeight = protoCam.AspectHeight
+	cam.WidthRes = protoCam.WidthRes
+	cam.HeightRes = protoCam.HeightRes
 
 	if protoCam.FrustumColor != nil {
 		cam.FrustumColor = ColorRGBA{
@@ -151,8 +163,8 @@ func DefaultCam() CameraStruct {
 		IsLockingPosition: false,
 		IsLockingRotation: false,
 		IsHidingFrustum:   true,
-		AspectWidth:       1,
-		AspectHeight:      1,
+		WidthRes:          1980,
+		HeightRes:         1080,
 		Distortion: DistortionConfig{
 			Enabled:   true,
 			IsFisheye: false,

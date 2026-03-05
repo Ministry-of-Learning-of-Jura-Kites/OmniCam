@@ -6,8 +6,10 @@ export interface ICamera {
   position: Vector3;
   rotation: Euler;
   fov: number;
-  aspectWidth: number;
-  aspectHeight: number;
+  // aspectWidth: number;
+  // aspectHeight: number;
+  widthRes: number;
+  heightRes: number;
   frustumColor: ColorRGBA;
   frustumLength: number;
   distortion: {
@@ -30,8 +32,10 @@ export const cameraDefault: ICamera = {
   rotation: new Euler(),
   position: new Vector3(),
   fov: 60,
-  aspectWidth: 4,
-  aspectHeight: 3,
+  // aspectWidth: 4,
+  // aspectHeight: 3,
+  widthRes: 1980,
+  heightRes: 1020,
   isHidingArrows: false,
   isHidingWheels: false,
   isLockingPosition: false,

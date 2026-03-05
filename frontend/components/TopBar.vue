@@ -273,7 +273,7 @@ function goToMyWorkspace() {
               (sceneStates.markedForCheck.size > 0 ||
                 sceneStates.localVersion.value !==
                   sceneStates.lastSyncedVersion.value ||
-                sceneStates.calibrationDirty.value)
+                sceneStates.calibration.dirty)
             "
           >
             <TooltipTrigger>

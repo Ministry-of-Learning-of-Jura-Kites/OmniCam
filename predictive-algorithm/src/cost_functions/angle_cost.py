@@ -1,13 +1,7 @@
-import math
-
-import numpy as np
-import quaternion
 from state import CameraState, State
-from utils import angle_from_face_normal, angle_from_face_position, center_of_face
-from constant import BIG_M
+from utils import angle_from_face_normal, angle_from_face_position
 from astropy.units import Quantity
 import astropy.units as u
-import logging
 from basic_types import Array4x3
 
 

@@ -2,7 +2,6 @@ from typing import Union
 import numpy as np
 import quaternion
 from state import CameraState, State
-from constant import BIG_M
 from basic_types import Array3, Array4x3
 from utils import center_of_face
 import vtk
@@ -16,23 +15,23 @@ def is_in_view(point, cam_state: CameraState) -> Union[bool, Union[Array3]]:
     # Map variables to axes: X=Forward, Y=Up, Z=Horizontal
     x, y, z = local_point
 
+    depth = -z
+
     # Depth Check (X is Forward)
-    if x <= 0:
+    if depth <= 0:
         return (False, local_point)
 
     aspect_ratio = cam_state.camera_config.pixels[0] / cam_state.camera_config.pixels[1]
     tan_half_vfov = np.tan(np.deg2rad(cam_state.camera_config.vfov) / 2)
 
-    depth = x
-
     # limit_y (Vertical) is determined by VFOV
     limit_y = depth * tan_half_vfov
 
     # limit_z (Horizontal) is vertical limit scaled by aspect ratio
-    limit_z = limit_y * aspect_ratio
+    limit_x = limit_y * aspect_ratio
 
     # NDC Validation
-    is_visible = (-limit_y <= y <= limit_y) and (-limit_z <= z <= limit_z)
+    is_visible = (-limit_y <= y <= limit_y) and (-limit_x <= x <= limit_x)
 
     return (is_visible, local_point)
 

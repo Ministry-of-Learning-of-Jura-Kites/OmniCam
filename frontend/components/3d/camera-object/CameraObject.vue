@@ -63,7 +63,7 @@ const camQuat = computed(() => {
       <CameraFrustum
         :id="camId"
         :fov="cam!.fov"
-        :aspect="safeGetAspectRatio(cam.aspectWidth, cam.aspectHeight)"
+        :aspect="safeGetAspectRatio(cam.widthRes, cam.heightRes)"
         :length="cam!.frustumLength"
         :color="cam!.frustumColor"
         :is-hiding="

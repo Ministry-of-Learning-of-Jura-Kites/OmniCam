@@ -2,9 +2,7 @@
 import {
   IS_CALIBRATING_KEY,
   TOGGLE_CALIBRATION_KEY,
-  CALIBRATION_GRID_SCALE,
-  CALIBRATION_SCALE,
-  CALIBRATION_HEIGHT,
+  SCENE_STATES_KEY,
 } from "~/constants/state-keys";
 import {
   Ruler,
@@ -17,29 +15,29 @@ import {
 const isCalibrating = inject(IS_CALIBRATING_KEY);
 const toggleCalibration = inject(TOGGLE_CALIBRATION_KEY)!;
 const realWorldSizeCm = ref(100);
-const calibrationGridScale = inject(CALIBRATION_GRID_SCALE);
-const scaleFactor = inject<{ value: number }>(CALIBRATION_SCALE);
 const previousScaleFactor = ref(1);
-const previousCalibrationGridScale = ref(1);
-const modelHeight = inject(CALIBRATION_HEIGHT)!; // Default model height in cm
+const previousCalibrationGridScale = ref(1); // Default model height in cm
+const sceneStates = inject(SCENE_STATES_KEY);
+const calibrationGridScale = ref(
+  realWorldSizeCm.value / 100 / sceneStates!.calibration.scale,
+);
 const canCancel = ref(false);
+
 const confirmCalibration = () => {
-  previousScaleFactor.value = scaleFactor!.value;
+  previousScaleFactor.value = sceneStates!.calibration.scale;
   previousCalibrationGridScale.value = calibrationGridScale!.value;
   canCancel.value = true;
   const realWorldSizeMeters = realWorldSizeCm.value / 100;
   const adjustment = realWorldSizeMeters / calibrationGridScale!.value;
-  scaleFactor!.value = scaleFactor!.value * adjustment;
-  calibrationGridScale!.value = 1;
-  realWorldSizeCm.value = 100;
+  sceneStates!.calibration.scale = adjustment;
 };
 const cancelCalibration = () => {
-  scaleFactor!.value = previousScaleFactor.value;
+  sceneStates!.calibration.scale = previousScaleFactor.value;
   calibrationGridScale!.value = previousCalibrationGridScale.value;
   canCancel.value = false;
 };
 const resetCalibration = () => {
-  scaleFactor!.value = 1;
+  sceneStates!.calibration.scale = 1;
   calibrationGridScale!.value = 1;
   canCancel.value = false;
 };
@@ -167,10 +165,15 @@ const resetCalibration = () => {
               <div class="space-y-3">
                 <div class="flex justify-between text-xs">
                   <span>Model's Height</span>
-                  <span class="font-mono">{{ modelHeight!.toFixed(2) }} m</span>
+                  <span class="font-mono"
+                    >{{
+                      sceneStates!.calibration.heightOffset!.toFixed(2)
+                    }}
+                    m</span
+                  >
                 </div>
                 <input
-                  v-model.number="modelHeight!"
+                  v-model.number="sceneStates!.calibration.heightOffset"
                   type="range"
                   min="-5"
                   max="5"
@@ -178,7 +181,7 @@ const resetCalibration = () => {
                   class="w-full h-2 bg-secondary rounded-lg appearance-none cursor-pointer accent-red-500"
                 />
                 <Input
-                  v-model.number="modelHeight!"
+                  v-model.number="sceneStates!.calibration.heightOffset"
                   type="number"
                   step="0.1"
                   class="h-8 text-xs"
