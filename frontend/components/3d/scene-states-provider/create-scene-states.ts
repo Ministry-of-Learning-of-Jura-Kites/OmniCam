@@ -53,8 +53,10 @@ export function transformProtoEventToCamera(rawCam: Camera): ICamera {
     ),
     fov: rawCam.fov,
     // mock aspect for now
-    aspectWidth: rawCam.aspectWidth,
-    aspectHeight: rawCam.aspectHeight,
+    // aspectWidth: rawCam.aspectWidth,
+    // aspectHeight: rawCam.aspectHeight,
+    widthRes: rawCam.widthRes,
+    heightRes: rawCam.heightRes,
     isHidingArrows: rawCam.isHidingArrows,
     isHidingWheels: rawCam.isHidingWheels,
     distortion: rawCam.distortion ?? structuredClone(cameraDefault.distortion),
@@ -80,8 +82,6 @@ function transformCamsData(
 export function createBaseSceneStates(
   websocket: UseWebSocketReturn<unknown> | undefined,
   modelWithCamsResp: ModelWithCamsResp,
-  externalCalibrationScale: Ref<number>,
-  externalCalibrationHeight: Ref<number>,
 ) {
   const tresContext = ref<TresContext | null>(null);
 
@@ -123,8 +123,8 @@ export function createBaseSceneStates(
     fov: spectatorCameraFov,
     position: spectatorCameraPosition,
     rotation: spectatorCameraRotation,
-    aspectWidth: 0,
-    aspectHeight: 1,
+    widthRes: 0,
+    heightRes: 1,
     frustumColor: { r: 0, g: 0, b: 0, a: 0 },
     frustumLength: 0,
   });
@@ -152,12 +152,11 @@ export function createBaseSceneStates(
   const localVersion = ref(modelInfo.data.version);
   const lastSyncedVersion = ref(modelInfo.data.version);
 
-  const calibrationScale =
-    externalCalibrationScale ?? ref(modelWithCamsResp.data.scaleFactor ?? 1.0);
-  const calibrationHeight =
-    externalCalibrationHeight ?? ref(modelWithCamsResp.data.modelHeight ?? 0.0);
-  const calibrationVersion = ref(modelWithCamsResp.data.version);
-  const calibrationDirty = ref(false);
+  const calibration = reactive({
+    scale: modelWithCamsResp.data.scaleFactor ?? 1.0,
+    heightOffset: modelWithCamsResp.data.modelHeight ?? 0.0,
+    dirty: false,
+  });
 
   const currentIsFisheye = computed(() => {
     if (currentCamId.value != null) {
@@ -220,10 +219,7 @@ export function createBaseSceneStates(
     aspectMarginType,
     localVersion,
     lastSyncedVersion,
-    calibrationScale,
-    calibrationHeight,
-    calibrationVersion,
-    calibrationDirty,
+    calibration,
     currentDistEnabled,
     currentFov,
     currentIsFisheye,

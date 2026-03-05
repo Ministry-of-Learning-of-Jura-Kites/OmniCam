@@ -24,9 +24,3 @@ export const SCENE_STATES_KEY: InjectionKey<SceneStatesWithHelper> =
 export const CALIBRATION_GRID_SCALE: InjectionKey<Ref<number>> = Symbol(
   "calibration_grid_scale",
 );
-
-export const CALIBRATION_SCALE: InjectionKey<Ref<number>> =
-  Symbol("calibration_scale");
-
-export const CALIBRATION_HEIGHT: InjectionKey<Ref<number>> =
-  Symbol("calibration_height");

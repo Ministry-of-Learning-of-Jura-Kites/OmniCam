@@ -6,12 +6,7 @@ import {
   type ModelWithCamsResp,
 } from "./create-scene-states";
 import { useWebSocket, type UseWebSocketReturn } from "@vueuse/core";
-import {
-  MODEL_INFO_KEY,
-  SCENE_STATES_KEY,
-  CALIBRATION_SCALE,
-  CALIBRATION_HEIGHT,
-} from "~/constants/state-keys";
+import { MODEL_INFO_KEY, SCENE_STATES_KEY } from "~/constants/state-keys";
 
 const props = defineProps({
   projectId: {
@@ -94,16 +89,6 @@ if (modelWithCamsResp.value == undefined) {
   }
 }
 
-const calibrationScale = inject<Ref<number>>(CALIBRATION_SCALE)!;
-const calibrationHeight = inject<Ref<number>>(CALIBRATION_HEIGHT)!;
-
-if (modelWithCamsResp.value?.data.scaleFactor !== undefined) {
-  calibrationScale.value = modelWithCamsResp.value.data.scaleFactor;
-}
-if (modelWithCamsResp.value?.data.modelHeight !== undefined) {
-  calibrationHeight.value = modelWithCamsResp.value.data.modelHeight;
-}
-
 let websocket: UseWebSocketReturn<unknown> | undefined = undefined;
 if (props.workspace != undefined && import.meta.client) {
   const websocketUrl = `ws://${runtimeConfig.public.externalBackendHost}/api/v1/projects/${props.projectId}/models/${props.modelId}/autosave`;
@@ -118,12 +103,7 @@ if (props.workspace != undefined && import.meta.client) {
   });
 }
 
-const sceneStates = createBaseSceneStates(
-  websocket,
-  modelWithCamsResp.value!,
-  calibrationScale,
-  calibrationHeight,
-);
+const sceneStates = createBaseSceneStates(websocket, modelWithCamsResp.value!);
 
 if (sceneStates.error != null) {
   if (

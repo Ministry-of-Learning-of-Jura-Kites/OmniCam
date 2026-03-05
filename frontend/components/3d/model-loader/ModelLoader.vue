@@ -2,7 +2,7 @@
 import { useGLTF } from "@tresjs/cientos";
 import type { Material, Mesh, Object3D } from "three";
 import type { GLTF } from "three-stdlib";
-import { CALIBRATION_SCALE, CALIBRATION_HEIGHT } from "~/constants/state-keys";
+import { SCENE_STATES_KEY } from "~/constants/state-keys";
 
 const props = withDefaults(
   defineProps<{
@@ -102,11 +102,11 @@ onUnmounted(() => {
   state.value = null;
 });
 
-const scaleFactor = inject(CALIBRATION_SCALE, ref(1));
-const modelHeight = inject(CALIBRATION_HEIGHT, ref(0));
+const sceneStates = inject(SCENE_STATES_KEY);
 
 const finalScale = computed(() => {
-  return props.modelScale * scaleFactor.value;
+  // return props.modelScale * sceneStates!.calibration.scale;
+  return props.modelScale;
 });
 </script>
 
@@ -114,7 +114,7 @@ const finalScale = computed(() => {
   <TresGroup
     :position="[
       props.position?.[0] ?? 0,
-      (props.position?.[1] ?? 0) + modelHeight,
+      (props.position?.[1] ?? 0) + sceneStates!.calibration.heightOffset,
       props.position?.[2] ?? 0,
     ]"
     :scale="[finalScale, finalScale, finalScale]"

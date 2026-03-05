@@ -725,8 +725,8 @@ func (t *WorkspaceRoute) getWorkspaceMe(c *gin.Context) {
 		CreatedAt:      data.CreatedAt.Time.Format(time.RFC3339),
 		UpdatedAt:      data.UpdatedAt.Time.Format(time.RFC3339),
 		Cameras:        &cameras,
-		ScaleFactor:    data.Model.ScaleFactor,
-		ModelHeight:    data.Model.ModelHeight,
+		ScaleFactor:    data.ScaleFactor,
+		ModelHeight:    data.ModelHeight,
 	}})
 }
 

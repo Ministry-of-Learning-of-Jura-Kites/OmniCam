@@ -30,6 +30,8 @@ sqlc-gen
 
 uploads
 
+.venv
+
 frontend/public/models/**
 
 frontend/messages/protobufs

@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { Euler, GridHelper, Vector3, Quaternion } from "three";
 import {
-  IS_CALIBRATING_KEY,
   CALIBRATION_GRID_SCALE,
+  IS_CALIBRATING_KEY,
 } from "~/constants/state-keys";
 import type { MovableObject } from "~/types/movable";
 import MovableArrow from "../movable-arrow/MovableArrow.vue";
