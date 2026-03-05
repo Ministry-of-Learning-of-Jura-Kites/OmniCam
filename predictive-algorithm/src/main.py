@@ -1,6 +1,7 @@
 import math
 import time
 from typing import List, Tuple
+import uuid
 from pydantic import BaseModel
 from scipy.spatial.distance import cdist
 from cost_functions import total_cost
@@ -17,7 +18,7 @@ import logging
 import vtk
 from dev.visualization import init_3d_scene, render_from_state
 import pyvista as pv
-from basic_types import Array2, Array4x3
+from basic_types import Array4x3
 
 from fastapi import FastAPI
 
@@ -26,7 +27,7 @@ logger = logging.getLogger(__name__)
 
 
 class ReqCameraConfiguration(BaseModel):
-    pixels: Array2
+    pixels: Tuple[float, float]
     vfov: float
     name: str
     amount: int
@@ -49,8 +50,8 @@ class CameraResponse(BaseModel):
     pos_y: float
     pos_z: float
     fov: float
-    res_w: int
-    res_h: int
+    width_res: int
+    height_res: int
 
 
 class OptimizeResponse(BaseModel):
@@ -242,11 +243,14 @@ def transform_cameras(raw_cam_configs: List[ReqCameraConfiguration]):
     cameras = []
     for raw_cam_config in raw_cam_configs:
         cam_config = CameraConfiguration(
-            pixels=raw_cam_config.pixels, vfov=raw_cam_config.vfov
+            pixels=raw_cam_config.pixels,
+            vfov=raw_cam_config.vfov,
+            name=raw_cam_config.name,
         )
         for _ in range(raw_cam_config.amount):
             cameras.append(
                 CameraState(
+                    faces=None,
                     pos=[0, 0, 0],
                     angle=quaternion.from_vector_part([0, 0, 0, 0]),
                     center_of_faces=None,
@@ -331,11 +335,38 @@ def optimize(req: OptimizeRequest):
 
 app = FastAPI()
 
+# TODO: Use Redis to support async processing instead
+
 
 @app.get("/")
 async def root(req: OptimizeRequest):
-    state = optimize()
+    state = optimize(req)
 
-    print(state)
+    cameras = []
+    for cam_state in state.cameras:
+        angle_x = cam_state.angle.x
+        angle_y = cam_state.angle.y
+        angle_z = cam_state.angle.z
+        angle_w = cam_state.angle.w
+        pos_x, pos_y, pos_z = cam_state.pos
+        cam = CameraResponse(
+            id=str(uuid.uuid4()),
+            name=cam_state.camera_config.name,
+            angle_x=angle_x,
+            angle_y=angle_y,
+            angle_z=angle_z,
+            angle_w=angle_w,
+            pos_x=pos_x,
+            pos_y=pos_y,
+            pos_z=pos_z,
+            fov=cam_state.camera_config.vfov,
+            width_res=cam_state.camera_config.pixels[0],
+            height_res=cam_state.camera_config.pixels[1],
+        )
 
-    return {"message": "Hello World"}
+        cameras.append(cam)
+
+    return cameras
+
+
+# Running -> OmniCam/predictive-algorithm/src$ uvicorn main:app --reload --port 8081

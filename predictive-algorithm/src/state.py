@@ -50,6 +50,7 @@ class CameraState:
     faces: List[Array4x3] | None
     pos: Array3
     angle: quaternion.quaternion
+    name: str
     # pixels: Array2x2
     # vfov: float
     center_of_faces: Array3 | None
