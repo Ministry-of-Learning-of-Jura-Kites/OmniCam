@@ -1,11 +1,5 @@
 <script setup lang="ts">
-import {
-  LineBasicMaterial,
-  MeshBasicMaterial,
-  Color,
-  DoubleSide,
-  type BufferGeometry,
-} from "three";
+import { LineBasicMaterial, MeshBasicMaterial, Color, DoubleSide } from "three";
 import { useFrustumGeometries } from "~/composables/useFrustumGeometries";
 import type { ColorRGBA } from "~/messages/protobufs/autosave_event";
 
@@ -52,22 +46,9 @@ watch(
   { deep: true, immediate: true },
 );
 
-const frustumGeometries = ref<{
-  mesh: BufferGeometry;
-  lines: BufferGeometry;
-} | null>(null);
-
-watch(
-  [() => props.id, () => props.fov, () => props.aspect, () => props.length],
-  ([id, fov, aspect, length]) => {
-    // This calls your composable logic
-    const result = setFrustumGeometry(id, fov, aspect, length);
-
-    // Update the local ref for the template
-    frustumGeometries.value = result;
-  },
-  { immediate: true },
-);
+const frustumGeometries = computed(() => {
+  return setFrustumGeometry(props.id, props.fov, props.aspect, props.length);
+});
 
 onUnmounted(() => {
   removeFrustumGeometry(props.id);
@@ -77,16 +58,14 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <template v-if="frustumGeometries">
-    <TresLineSegments
-      :geometry="frustumGeometries.lines"
-      :material="lineMaterial"
-      :visible="!isHiding"
-    />
-    <TresMesh
-      :geometry="frustumGeometries.mesh"
-      :material="meshMaterial"
-      :visible="!isHiding"
-    />
-  </template>
+  <TresLineSegments
+    :geometry="frustumGeometries.lines"
+    :material="lineMaterial"
+    :visible="!isHiding"
+  />
+  <TresMesh
+    :geometry="frustumGeometries.mesh"
+    :material="meshMaterial"
+    :visible="!isHiding"
+  />
 </template>

@@ -12,15 +12,11 @@ export interface ICamera {
   heightRes: number;
   frustumColor: ColorRGBA;
   frustumLength: number;
-  distortion: {
-    enabled: boolean;
-    isFisheye: boolean;
-  };
   isHidingArrows: boolean;
   isHidingWheels: boolean;
-  isHidingFrustum: boolean;
   isLockingPosition: boolean;
   isLockingRotation: boolean;
+  isHidingFrustum: boolean;
   controlling?: {
     type: "rotation" | "moving";
     direction: "x" | "y" | "z";
@@ -40,10 +36,6 @@ export const cameraDefault: ICamera = {
   isHidingWheels: false,
   isLockingPosition: false,
   isLockingRotation: false,
-  distortion: {
-    enabled: true,
-    isFisheye: false,
-  },
   isHidingFrustum: true,
   controlling: undefined,
   frustumColor: { r: 1, g: 0.8, b: 0.2, a: 0.5 },

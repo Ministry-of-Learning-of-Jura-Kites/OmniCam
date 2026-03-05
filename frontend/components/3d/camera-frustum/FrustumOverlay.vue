@@ -1,6 +1,6 @@
 <script setup lang="ts">
+import { watchEffect } from "vue";
 import { CSG } from "three-csg-ts";
-import type { BufferGeometry } from "three";
 import {
   Mesh,
   Quaternion,
@@ -8,7 +8,6 @@ import {
   MeshBasicMaterial,
   Group,
   DoubleSide,
-  Box3,
 } from "three";
 import { SCENE_STATES_KEY } from "@/constants/state-keys";
 import { useFrustumGeometries } from "~/composables/useFrustumGeometries";
@@ -34,112 +33,90 @@ const visibleFrustum = computed(() =>
 
 const { getFrustumGeometry } = useFrustumGeometries();
 
-const tempMaterial = new MeshStandardMaterial();
-const tempMeshA = new Mesh(undefined, tempMaterial);
-const tempMeshB = new Mesh(undefined, tempMaterial);
-const boxA = new Box3();
-const boxB = new Box3();
 const overlayGroup = new Group();
-const workingQuaternion = new Quaternion();
 
-function syncMeshToCamera(
-  mesh: Mesh,
-  geometry: BufferGeometry,
-  camState: ICamera,
-) {
-  mesh.geometry = geometry;
-  mesh.position.copy(camState.position);
-  workingQuaternion.setFromEuler(camState.rotation);
-  mesh.quaternion.copy(workingQuaternion);
-  mesh.updateMatrixWorld(true);
-}
+watchEffect(() => {
+  overlayGroup.children.forEach((obj) => {
+    obj.visible = false;
+  });
 
-function updateOrAddMesh(newGeometry: BufferGeometry, index: number) {
-  if (index < overlayGroup.children.length) {
-    const existingMesh = overlayGroup.children[index] as Mesh;
-    existingMesh.geometry.dispose(); // Critical disposal
-    existingMesh.geometry = newGeometry;
-    existingMesh.visible = true;
-  } else {
-    const newMesh = new Mesh(newGeometry, intersectMaterial);
-    overlayGroup.add(newMesh);
-  }
-}
-
-function updateIntersections() {
-  // Hide current pool
-  overlayGroup.children.forEach((child) => (child.visible = false));
-
-  const cameraPairs = visibleFrustum.value;
+  const cameraIds = visibleFrustum.value.map(([id]) => id);
   let poolIndex = 0;
 
-  for (let i = 0; i < cameraPairs.length; i++) {
-    for (let j = i + 1; j < cameraPairs.length; j++) {
-      const [idA, camA] = cameraPairs[i]!;
-      const [idB, camB] = cameraPairs[j]!;
+  for (let i = 0; i < cameraIds.length; i++) {
+    for (let j = i + 1; j < cameraIds.length; j++) {
+      const geometryA = getFrustumGeometry(cameraIds[i]!)?.mesh;
+      const geometryB = getFrustumGeometry(cameraIds[j]!)?.mesh;
 
-      const geomA = getFrustumGeometry(idA)?.mesh;
-      const geomB = getFrustumGeometry(idB)?.mesh;
+      if (!geometryA || !geometryB) continue;
 
-      if (!geomA || !geomB) continue;
+      const meshA = new Mesh(geometryA, new MeshStandardMaterial());
+      const meshB = new Mesh(geometryB, new MeshStandardMaterial());
 
-      // Sync worker meshes
-      syncMeshToCamera(tempMeshA, geomA, camA);
-      syncMeshToCamera(tempMeshB, geomB, camB);
+      const camA = visibleFrustum.value.find(
+        ([key]) => key === cameraIds[i],
+      )?.[1];
+      const camB = visibleFrustum.value.find(
+        ([key]) => key === cameraIds[j],
+      )?.[1];
 
-      boxA.setFromObject(tempMeshA);
-      boxB.setFromObject(tempMeshB);
+      if (camA) {
+        meshA.position.copy(camA.position);
+      }
+      meshA.quaternion.copy(new Quaternion().setFromEuler(camA!.rotation));
+      meshA.updateMatrixWorld(true);
 
-      // Early exit if bounds don't touch
-      if (!boxA.intersectsBox(boxB)) continue;
+      if (camB) {
+        meshB.position.copy(camB.position);
+      }
+      meshB.quaternion.copy(new Quaternion().setFromEuler(camB!.rotation));
+      meshB.updateMatrixWorld(true);
 
-      // Bake transformation (Matches your old working code)
-      const bakedGeomA = geomA.clone().applyMatrix4(tempMeshA.matrixWorld);
-      const bakedGeomB = geomB.clone().applyMatrix4(tempMeshB.matrixWorld);
+      meshA.geometry.computeBoundingBox();
+      meshB.geometry.computeBoundingBox();
 
-      const bakedMeshA = new Mesh(bakedGeomA);
-      const bakedMeshB = new Mesh(bakedGeomB);
+      if (meshA.geometry.boundingBox && meshB.geometry.boundingBox) {
+        const boxA = meshA.geometry.boundingBox
+          .clone()
+          .applyMatrix4(meshA.matrixWorld);
+        const boxB = meshB.geometry.boundingBox
+          .clone()
+          .applyMatrix4(meshB.matrixWorld);
 
-      console.log(bakedMeshA, bakedMeshB);
+        if (!boxA.intersectsBox(boxB)) {
+          continue;
+        }
 
-      const intersectMesh = CSG.intersect(bakedMeshA, bakedMeshB);
+        const tempGeomA = meshA.geometry.clone();
+        const tempGeomB = meshB.geometry.clone();
 
-      bakedGeomA.dispose();
-      bakedGeomB.dispose();
+        tempGeomA.applyMatrix4(meshA.matrixWorld);
+        tempGeomB.applyMatrix4(meshB.matrixWorld);
 
-      const geo = intersectMesh.geometry;
+        const tempMeshA = new Mesh(tempGeomA, meshA.material);
+        const tempMeshB = new Mesh(tempGeomB, meshB.material);
 
-      if (geo.attributes.position && geo.attributes.position.count > 0) {
-        updateOrAddMesh(geo, poolIndex);
-        poolIndex++;
-      } else {
-        geo.dispose(); // Cleanup failed intersection
+        const intersectMesh = CSG.intersect(tempMeshA, tempMeshB);
+
+        tempGeomA.dispose();
+        tempGeomB.dispose();
+
+        if (intersectMesh.geometry.attributes.position!.count > 0) {
+          if (poolIndex < overlayGroup.children.length) {
+            const displayMesh = overlayGroup.children[poolIndex] as Mesh;
+            displayMesh.geometry.dispose();
+            displayMesh.geometry = intersectMesh.geometry;
+            displayMesh.visible = true;
+            displayMesh.renderOrder = 0;
+          } else {
+            intersectMesh.material = intersectMaterial;
+            overlayGroup.add(intersectMesh);
+          }
+          poolIndex++;
+        }
       }
     }
   }
-}
-
-onMounted(() => {
-  watch(
-    () => visibleFrustum.value,
-    () => {
-      nextTick(updateIntersections);
-    },
-    {
-      deep: true,
-      immediate: true,
-    },
-  );
-});
-
-onUnmounted(() => {
-  overlayGroup.children.forEach((child) => {
-    if (child instanceof Mesh) {
-      child.geometry.dispose();
-    }
-  });
-  overlayGroup.clear();
-  tempMaterial.dispose();
 });
 </script>
 
