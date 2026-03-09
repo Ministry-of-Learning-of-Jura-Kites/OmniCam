@@ -158,13 +158,13 @@ const resetCalibration = () => {
             <CardHeader class="pb-1">
               <CardTitle class="text-sm font-medium flex items-center gap-2">
                 <ArrowUpFromLine class="h-4 w-4" />
-                Adjust the Model's Height
+                Adjust the Model's Height Offset
               </CardTitle>
             </CardHeader>
             <CardContent class="space-y-4">
               <div class="space-y-3">
                 <div class="flex justify-between text-xs">
-                  <span>Model's Height</span>
+                  <span>Model's Height Offset</span>
                   <span class="font-mono"
                     >{{
                       sceneStates!.calibration.heightOffset!.toFixed(2)
