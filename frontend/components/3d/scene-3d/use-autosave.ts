@@ -6,7 +6,8 @@ import {
 } from "~/messages/protobufs/autosave_event";
 import type { ICamera } from "~/types/camera";
 import type { SceneStates } from "~/types/scene-states";
-import { Quaternion } from "three";
+import { MeshDepthMaterial, Quaternion } from "three";
+import Color4 from "three/src/renderers/common/Color4.js";
 
 function isEqual(a: Camera, b: Camera): boolean {
   return JSON.stringify(a) === JSON.stringify(b);
@@ -94,6 +95,48 @@ export function useAutosave(
         }
       },
     );
+
+    watch(sceneStates.tresContext, (ctx) => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (window as any)["captureDepthMap"] = () => {
+        const renderer = ctx!.renderer.instance!;
+        // 1. Store the original background/clear color
+        const originalClearColor = new Color4();
+        renderer.getClearColor(originalClearColor);
+        const originalClearAlpha = renderer.getClearAlpha();
+
+        // 2. Create the depth material
+        const depthMaterial = new MeshDepthMaterial();
+
+        const scene = ctx!.scene!;
+
+        // 3. Temporarily override scene material
+        const originalOverrideMaterial = scene.overrideMaterial;
+        scene.overrideMaterial = depthMaterial;
+
+        // 4. Set renderer to white background (to represent max distance)
+        renderer.setClearColor(0xffffff, 1);
+
+        const camera = ctx!.camera.activeCamera;
+
+        // 5. Render to a temporary canvas or the existing one
+        renderer.render(scene, camera);
+
+        // 6. Extract the data URL
+        const dataURL = renderer.domElement.toDataURL("image/png");
+
+        // 7. Restore scene state
+        scene.overrideMaterial = originalOverrideMaterial;
+        renderer.setClearColor(originalClearColor, originalClearAlpha);
+
+        // Re-render the original scene so the canvas isn't stuck on the depth map
+        renderer.render(scene, camera);
+
+        // 8. Return or trigger download
+        console.log("Depth map captured!");
+        return dataURL;
+      };
+    });
 
     setInterval(() => {
       if (!sceneStates.websocket) return;
