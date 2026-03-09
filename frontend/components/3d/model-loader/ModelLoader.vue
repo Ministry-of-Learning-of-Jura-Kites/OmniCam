@@ -2,7 +2,6 @@
 import { useGLTF } from "@tresjs/cientos";
 import type { Material, Mesh, Object3D } from "three";
 import type { GLTF } from "three-stdlib";
-import { SCENE_STATES_KEY } from "~/constants/state-keys";
 
 const props = withDefaults(
   defineProps<{
@@ -101,26 +100,10 @@ onUnmounted(() => {
   }
   state.value = null;
 });
-
-const sceneStates = inject(SCENE_STATES_KEY);
-
-const finalScale = computed(() => {
-  // return props.modelScale * sceneStates!.calibration.scale;
-  return props.modelScale;
-});
 </script>
 
 <template>
-  <TresGroup
-    :position="[
-      props.position?.[0] ?? 0,
-      (props.position?.[1] ?? 0) + sceneStates!.calibration.heightOffset,
-      props.position?.[2] ?? 0,
-    ]"
-    :scale="[finalScale, finalScale, finalScale]"
-  >
-    <primitive v-if="state?.scene" :object="state.scene" />
-  </TresGroup>
+  <primitive v-if="state?.scene" :object="state.scene" />
 
   <!-- Block Placeholder  -->
   <TresMesh v-if="state?.scene == null" :position="props.position ?? [0, 0, 0]">
