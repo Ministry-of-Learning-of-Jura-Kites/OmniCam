@@ -367,6 +367,7 @@ onMounted(() => {
 
           <!-- Grid  1 unit = 1 virtual m -->
           <Grid
+            :position="[0, -sceneStates.calibration.heightOffset, 0]"
             :args="[1, 1]"
             :cell-size="0.2"
             cell-color="#90EE90"

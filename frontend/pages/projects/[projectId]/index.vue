@@ -139,7 +139,7 @@ const createFields = {
   name: { type: "text" as const, required: true },
   description: { type: "textarea" as const, required: false },
   file: { type: "file" as const, required: true },
-  image: { type: "file" as const, required: true },
+  image: { type: "file" as const, required: false },
 } as const;
 
 const formTitles = {
