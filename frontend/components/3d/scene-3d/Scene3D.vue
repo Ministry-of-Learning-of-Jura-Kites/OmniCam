@@ -328,6 +328,7 @@ onMounted(() => {
               sceneStates.currentCam.value?.fov
             "
             :aspect="aspect"
+            :far="50"
           />
 
           <TresCubeCamera ref="cubeCamera" />

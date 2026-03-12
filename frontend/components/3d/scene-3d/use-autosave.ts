@@ -6,7 +6,7 @@ import {
 } from "~/messages/protobufs/autosave_event";
 import type { ICamera } from "~/types/camera";
 import type { SceneStates } from "~/types/scene-states";
-import { MeshDepthMaterial, Quaternion } from "three";
+import { Quaternion, ShaderMaterial } from "three";
 import Color4 from "three/src/renderers/common/Color4.js";
 
 function isEqual(a: Camera, b: Camera): boolean {
@@ -45,6 +45,36 @@ export function transformCameraToProtoEventWithId(
 ): Camera {
   return { ...transformCameraToProtoEvent(cam), id: camId };
 }
+
+const depthMaterial = new ShaderMaterial({
+  uniforms: {
+    uNear: { value: 0.1 },
+    uFar: { value: 50 },
+  },
+  vertexShader: `
+        varying float vViewZ;
+        void main() {
+            vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
+            vViewZ = -mvPosition.z; // Distance from camera
+            gl_Position = projectionMatrix * mvPosition;
+        }
+    `,
+  fragmentShader: `
+        varying float vViewZ;
+        uniform float uNear;
+        uniform float uFar;
+        void main() {
+            // Linear interpolation
+            float depth = (vViewZ - uNear) / (uFar - uNear);
+            depth = clamp(depth, 0.0, 1.0);
+            
+            // Invert so Near is White (1.0) and Far is Black (0.0)
+            float finalDepth = depth;
+            
+            gl_FragColor = vec4(vec3(finalDepth), 1.0);
+        }
+    `,
+});
 
 export function useAutosave(
   sceneStates: SceneStates,
@@ -105,9 +135,6 @@ export function useAutosave(
         renderer.getClearColor(originalClearColor);
         const originalClearAlpha = renderer.getClearAlpha();
 
-        // 2. Create the depth material
-        const depthMaterial = new MeshDepthMaterial();
-
         const scene = ctx!.scene!;
 
         // 3. Temporarily override scene material
@@ -115,7 +142,7 @@ export function useAutosave(
         scene.overrideMaterial = depthMaterial;
 
         // 4. Set renderer to white background (to represent max distance)
-        renderer.setClearColor(0xffffff, 1);
+        renderer.setClearColor(0x000000, 1);
 
         const camera = ctx!.camera.activeCamera;
 
