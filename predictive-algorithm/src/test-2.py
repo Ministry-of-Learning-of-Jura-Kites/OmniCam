@@ -8,7 +8,7 @@ from scipy.spatial.transform import Rotation as R
 # from cost_functions.occlusion_cost import generate_raycast_depth_map
 
 gltf = (
-    pv.read("~/Downloads/omnicam/samsonite.glb")
+    pv.read("~/Downloads/omnicam/oxygenai-office-hallway.glb")
     .combine()
     .extract_surface()
     .triangulate()
@@ -34,16 +34,12 @@ cam_config = CameraConfiguration(
 cameras = [
     CameraState(
         faces=None,
-        pos=np.array([0.3299249858245678, 1.6097518363951373, -11.601477662974407]),
+        pos=np.array([-0.770839711791415, 1.2508888941895868, -2.446445983191274]),
         angle=quaternion.quaternion(
-            0.005761262102837728,  # w
-            -0.0006363073435811718,
-            0.993939400830999,
-            0.10977645670935873,
-            # 0,  # w
-            # 0,
-            # 1,
-            # 0,
+            0.04838919297746729,  # w
+            -0.008805358656745012,
+            -0.982652989534941,
+            -0.17881290171561645,
         ),
         center_of_faces=None,
         camera_config=cam_config,
@@ -189,7 +185,7 @@ def convert_to_depth_with_white_bg(depth_map):
 
 # --- Execution ---
 NEAR = 0.1
-FAR = 50.0
+FAR = 20.0
 
 # Generate the map
 raw_map = generate_raycast_depth_map(
@@ -197,7 +193,7 @@ raw_map = generate_raycast_depth_map(
     cameras[0],
     near=NEAR,
     far=FAR,
-    resolution=(6560, 3100),
+    resolution=(1532, 811),
     # resolution=(500, 500),
 )
 
