@@ -5,6 +5,10 @@ from state import CameraConfiguration, CameraState, State
 import numpy as np
 from scipy.spatial.transform import Rotation as R
 
+from PIL import Image
+
+from tqdm import tqdm
+
 # from cost_functions.occlusion_cost import generate_raycast_depth_map
 
 gltf = (
@@ -100,12 +104,6 @@ state = State(
     gltf=gltf,
     gltf_locator=gltf_locator,
 )
-
-from PIL import Image
-
-import numpy as np
-import vtk
-from tqdm import tqdm
 
 
 def generate_raycast_depth_map(
