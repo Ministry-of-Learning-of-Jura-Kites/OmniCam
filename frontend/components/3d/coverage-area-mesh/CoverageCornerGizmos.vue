@@ -15,6 +15,7 @@ import type { Obj3DWithUserData } from "~/types/obj-3d-user-data";
 import { CornerTranslateUserData } from "./corner-translate-handle";
 
 type Point3 = [number, number, number];
+type Axis = "x" | "y" | "z";
 
 const props = withDefaults(
   defineProps<{
@@ -41,18 +42,18 @@ const arrowLen = props.size;
 const arrowRad = props.size * 0.12;
 
 function makeArrowMaterial(color: string) {
-  const m = new MeshBasicMaterial({
+  return new MeshBasicMaterial({
     color,
     transparent: true,
     opacity: 0.95,
     depthWrite: false,
     depthTest: false,
   });
-  return m;
 }
 
 function makeArrowGeometry() {
   const g = new ConeGeometry(arrowRad, arrowLen, 10);
+  // ทำให้ฐานอยู่ที่ origin แล้วปลายยื่นออกไปตามแกน local +Y
   g.translate(0, arrowLen / 2, 0);
   return g;
 }
@@ -74,48 +75,68 @@ const dotMat = new MeshBasicMaterial({
 const arrows: Obj3DWithUserData[] = [];
 const dots: Mesh[] = [];
 
+function createAxisArrow(
+  axis: Axis,
+  dir: 1 | -1,
+  cornerIndex: number,
+): Obj3DWithUserData {
+  let material: MeshBasicMaterial;
+
+  if (axis === "x") material = matX;
+  else if (axis === "y") material = matY;
+  else material = matZ;
+
+  const arrow = new Mesh(
+    geomBase.clone(),
+    material,
+  ) as unknown as Obj3DWithUserData;
+
+  // geometry เดิมชี้ local +Y
+  // หมุนให้ชี้ตามแกนที่ต้องการ
+  if (axis === "x") {
+    arrow.rotateZ(dir === 1 ? -Math.PI / 2 : Math.PI / 2);
+  } else if (axis === "y") {
+    if (dir === -1) {
+      arrow.rotateZ(Math.PI);
+    }
+  } else if (axis === "z") {
+    arrow.rotateX(dir === 1 ? Math.PI / 2 : -Math.PI / 2);
+  }
+
+  // ใช้ axis เดิมได้เลย เพราะ logic drag เป็นเส้นแกนเต็มอยู่แล้ว
+  arrow.userData = new CornerTranslateUserData(
+    axis,
+    props.faceId,
+    cornerIndex,
+    sceneStates,
+    context,
+    props.yOffset,
+  );
+
+  return arrow;
+}
+
+// 1 จุด = 1 dot + 6 arrows
 for (let ci = 0; ci < 4; ci++) {
   const dot = new Mesh(dotGeom, dotMat);
   dots.push(dot);
   group.add(dot);
 
-  const ax = new Mesh(geomBase.clone(), matX) as unknown as Obj3DWithUserData;
-  ax.rotateZ(-Math.PI / 2);
-  ax.userData = new CornerTranslateUserData(
-    "x",
-    props.faceId,
-    ci,
-    sceneStates,
-    context,
-    props.yOffset,
-  );
-  arrows.push(ax);
-  group.add(ax);
+  const axPos = createAxisArrow("x", 1, ci);
+  const axNeg = createAxisArrow("x", -1, ci);
+  const ayPos = createAxisArrow("y", 1, ci);
+  const ayNeg = createAxisArrow("y", -1, ci);
+  const azPos = createAxisArrow("z", 1, ci);
+  const azNeg = createAxisArrow("z", -1, ci);
 
-  const ay = new Mesh(geomBase.clone(), matY) as unknown as Obj3DWithUserData;
-  ay.userData = new CornerTranslateUserData(
-    "y",
-    props.faceId,
-    ci,
-    sceneStates,
-    context,
-    props.yOffset,
-  );
-  arrows.push(ay);
-  group.add(ay);
+  arrows.push(axPos, axNeg, ayPos, ayNeg, azPos, azNeg);
 
-  const az = new Mesh(geomBase.clone(), matZ) as unknown as Obj3DWithUserData;
-  az.rotateX(Math.PI / 2);
-  az.userData = new CornerTranslateUserData(
-    "z",
-    props.faceId,
-    ci,
-    sceneStates,
-    context,
-    props.yOffset,
-  );
-  arrows.push(az);
-  group.add(az);
+  group.add(axPos);
+  group.add(axNeg);
+  group.add(ayPos);
+  group.add(ayNeg);
+  group.add(azPos);
+  group.add(azNeg);
 }
 
 // register draggable
@@ -136,9 +157,10 @@ watchEffect(() => {
 
     dots[ci]!.position.copy(pos);
 
-    arrows[ci * 3 + 0]!.position.copy(pos);
-    arrows[ci * 3 + 1]!.position.copy(pos);
-    arrows[ci * 3 + 2]!.position.copy(pos);
+    // 1 corner มี 6 arrows
+    for (let k = 0; k < 6; k++) {
+      arrows[ci * 6 + k]!.position.copy(pos);
+    }
   }
 });
 
@@ -148,14 +170,12 @@ onBeforeUnmount(() => {
   dots.forEach((d) => group.remove(d));
   arrows.forEach((a) => group.remove(a));
 
-  // dispose geometries
   dotGeom.dispose();
   geomBase.dispose();
   arrows.forEach((a) =>
     ((a as unknown as Mesh).geometry as BufferGeometry)?.dispose?.(),
   );
 
-  // dispose materials (shared)
   dotMat.dispose();
   matX.dispose();
   matY.dispose();
