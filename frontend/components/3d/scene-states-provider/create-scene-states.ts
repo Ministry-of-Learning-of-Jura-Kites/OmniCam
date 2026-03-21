@@ -2,7 +2,13 @@ import type { TresContext } from "@tresjs/core";
 import type { Reactive } from "vue";
 import type { Obj3DWithUserData } from "~/types/obj-3d-user-data";
 import type { SceneStates as BaseSceneStates } from "~/types/scene-states";
-import { Quaternion, Euler, Vector3 } from "three";
+import {
+  Quaternion,
+  Euler,
+  Vector3,
+  PerspectiveCamera,
+  CubeCamera,
+} from "three";
 import { cameraDefault, type ICamera } from "~/types/camera";
 import { useCameraManagement } from "../scene-3d/use-camera-management";
 import { useSpectatorRotation } from "../scene-3d/use-spectator-rotation";
@@ -70,6 +76,7 @@ export function transformProtoEventToCamera(rawCam: Camera): ICamera {
     heightRes: rawCam.heightRes,
     isHidingArrows: rawCam.isHidingArrows,
     isHidingWheels: rawCam.isHidingWheels,
+    distortion: rawCam.distortion ?? structuredClone(cameraDefault.distortion),
     isLockingPosition: rawCam.isLockingPosition,
     isLockingRotation: rawCam.isLockingRotation,
     isHidingFrustum: rawCam.isHidingFrustum,
@@ -167,6 +174,32 @@ export function createBaseSceneStates(
     heightOffset: modelWithCamsResp.data.modelHeight ?? 0.0,
     dirty: false,
   });
+  const currentIsFisheye = computed(() => {
+    if (currentCamId.value != null) {
+      return cameras[currentCamId.value]!.distortion.isFisheye;
+    }
+    return false;
+  });
+
+  const currentFov = computed(() => {
+    return currentCam.value.fov;
+  });
+
+  const currentDistEnabled = computed(() => {
+    if (currentCamId.value == undefined) {
+      return false;
+    }
+    return currentCam.value.distortion.enabled;
+  });
+  const aspectRatio = computed<number>(() => {
+    if (screenSize.width == null || screenSize.height == null) {
+      return 1;
+    }
+    return screenSize.width! / screenSize.height!;
+  });
+
+  const perspectiveCamera = ref<PerspectiveCamera | null>(null);
+  const cubeCamera = ref<CubeCamera | null>(null);
   const selectionMode = ref<"none" | "coverage-area">("none");
   const selectedCoverageFaces = ref<CoverageFace[]>([]);
 
@@ -249,30 +282,6 @@ export function createBaseSceneStates(
     tresContext.value?.invalidate?.();
   };
 
-  const addOptimizedCamera = (cam: OptimizedCamera) => {
-    cameras[cam.id] = {
-      ...cameraDefault,
-      name: cam.name,
-      position: new Vector3(...cam.position),
-      rotation: new Euler(
-        cam.rotation[0],
-        cam.rotation[1],
-        cam.rotation[2],
-        "YXZ",
-      ),
-      fov: cam.fov,
-      aspectWidth: 1920,
-      aspectHeight: 1080,
-      isHidingArrows: false,
-      isHidingWheels: false,
-      isLockingPosition: false,
-      isLockingRotation: false,
-      isHidingFrustum: false,
-      frustumColor: { r: 0, g: 255, b: 100, a: 1 },
-      frustumLength: 10,
-    };
-  };
-
   const updateCoverageFaceCorner = (
     faceId: string,
     cornerIndex: number,
@@ -352,7 +361,6 @@ export function createBaseSceneStates(
     selectedCoverageFaces,
     setSelectionMode,
     clearCoverageFaces,
-    addOptimizedCamera,
     addCoverageFace,
     updateCoverageFaceCorner,
     removeCoverageFace,

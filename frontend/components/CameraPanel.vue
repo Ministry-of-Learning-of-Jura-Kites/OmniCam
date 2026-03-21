@@ -19,9 +19,8 @@ import {
   Dices,
 } from "lucide-vue-next";
 import { randomVividColor } from "~/utils/randomVividColor";
-import { SCENE_STATES_KEY, WORKSPACE } from "@/constants/state-keys";
+import { SCENE_STATES_KEY } from "@/constants/state-keys";
 import CameraSpawnDialog from "~/components/dialog/CameraSpawnDialog.vue";
-import { gcd } from "~/utils/math";
 
 type Camerapreset = {
   vendor: string;
@@ -38,7 +37,12 @@ type Camerapreset = {
   _id?: string;
 };
 
-const workspace = inject(WORKSPACE);
+const props = defineProps({
+  workspace: {
+    type: String,
+    default: null,
+  },
+});
 
 const sceneStates = inject(SCENE_STATES_KEY)!;
 
@@ -46,6 +50,7 @@ const selectedCamId = ref<string | null>(null);
 
 const isCameraPropertiesOpen = ref(true);
 const isFrustumPropertiesOpen = ref(true);
+const isDistortionPropertiesOpen = ref(true);
 const isCameraSpawnDialogOpen = ref(false);
 
 const selectedCam = computed(() =>
@@ -130,10 +135,14 @@ function getUniqueCameraName(baseName: string) {
 }
 
 const isLockingRotation = computed(() => {
-  return sceneStates.currentCam.value.isLockingRotation || workspace == null;
+  return (
+    sceneStates.currentCam.value.isLockingRotation || props.workspace == null
+  );
 });
 const isLockingPosition = computed(() => {
-  return sceneStates.currentCam.value.isLockingPosition || workspace == null;
+  return (
+    sceneStates.currentCam.value.isLockingPosition || props.workspace == null
+  );
 });
 
 // const gcd = (a: number, b: number): number => {
@@ -226,21 +235,22 @@ const directionAngles = computed(() => {
 </script>
 
 <template>
-  <div class="w-80 bg-card border-l border-border p-4 overflow-y-auto h-full">
-    <div class="flex items-center justify-between mb-4">
-      <h2 class="text-lg font-semibold flex items-center gap-2">
-        <Camera class="h-5 w-5" />
-        Camera Gallery
-      </h2>
-      <!-- <Button
+  <TooltipProvider>
+    <div class="w-80 bg-card border-l border-border p-4 overflow-y-auto h-full">
+      <div class="flex items-center justify-between mb-4">
+        <h2 class="text-lg font-semibold flex items-center gap-2">
+          <Camera class="h-5 w-5" />
+          Camera Gallery
+        </h2>
+        <!-- <Button
         size="sm"
         @click="sceneStates.cameraManagement.switchToSpectator()"
       >
         <RotateCcw class="h-4 w-4" />
       </Button> -->
-      <!-- <Button
+        <!-- <Button
         size="sm"
-        :disabled="workspace == null"
+        :disabled="props.workspace == null"
         @click="
           spawnCamera();
           $event.currentTarget.blur();
@@ -248,71 +258,61 @@ const directionAngles = computed(() => {
       >
         <MapPinPlusInside class="h-4 w-4" />
       </Button> -->
-      <Button
-        size="sm"
-        :disabled="workspace == null"
-        @click="
-          isCameraSpawnDialogOpen = true;
-          $event.currentTarget.blur();
-        "
-      >
-        <MapPinPlusInside class="h-4 w-4" />
-      </Button>
-    </div>
-
-    <!-- Camera Dropdown -->
-    <div class="mb-3">
-      <Label for="camera-select" class="mb-1 block">Select Camera</Label>
-      <select
-        id="camera-select"
-        v-model="selectedCamId"
-        class="w-full border rounded px-3 py-2 bg-background text-foreground"
-      >
-        <option
-          v-for="[camId, camera] of Object.entries(sceneStates.cameras)"
-          :key="camId"
-          :value="camId"
-        >
-          {{ camera.name }} (VFOV: {{ camera.fov }}°)
-        </option>
-      </select>
-      <div class="flex gap-2 mt-2"></div>
-    </div>
-
-    <div class="space-y-3">
-      <!-- Camera Properties -->
-      <Card v-if="selectedCamId && sceneStates.cameras[selectedCamId]">
-        <CardHeader
-          class="cursor-pointer flex items-center justify-between"
+        <Button
+          size="sm"
+          :disabled="props.workspace == null"
           @click="
-            isCameraPropertiesOpen = !isCameraPropertiesOpen;
-            sceneStates.markedForCheck.add(selectedCamId);
+            isCameraSpawnDialogOpen = true;
+            $event.currentTarget.blur();
           "
         >
-          <CardTitle class="text-base flex items-center gap-2">
-            <Settings class="h-4 w-4" />
-            Camera Properties
-          </CardTitle>
-          <span class="text-sm">
-            <ChevronDown v-if="isCameraPropertiesOpen" class="inline h-4 w-4" />
-            <ChevronLeft v-else class="inline h-4 w-4"
-          /></span>
-        </CardHeader>
-        <CardContent v-if="isCameraPropertiesOpen" class="space-y-2">
-          <div>
-            <Label for="camera-name">Name</Label>
-            <Input
-              id="camera-name"
-              v-model="sceneStates.cameras[selectedCamId]!.name"
-              :disabled="workspace == null"
-              disabled-class="disabled-input"
-              @change="sceneStates.markedForCheck.add(selectedCamId)"
-            />
-          </div>
+          <MapPinPlusInside class="h-4 w-4" />
+        </Button>
+      </div>
 
-          <div class="grid grid-cols-3 gap-2">
+      <!-- Camera Dropdown -->
+      <div class="mb-3">
+        <Label for="camera-select" class="mb-1 block">Select Camera</Label>
+        <select
+          id="camera-select"
+          v-model="selectedCamId"
+          class="w-full border rounded px-3 py-2 bg-background text-foreground"
+        >
+          <option
+            v-for="[camId, camera] of Object.entries(sceneStates.cameras)"
+            :key="camId"
+            :value="camId"
+          >
+            {{ camera.name }} (VFOV: {{ camera.fov }}°)
+          </option>
+        </select>
+        <div class="flex gap-2 mt-2"></div>
+      </div>
+
+      <div class="space-y-3">
+        <!-- Camera Properties -->
+        <Card v-if="selectedCamId && sceneStates.cameras[selectedCamId]">
+          <CardHeader
+            class="cursor-pointer flex items-center justify-between"
+            @click="
+              isCameraPropertiesOpen = !isCameraPropertiesOpen;
+              sceneStates.markedForCheck.add(selectedCamId);
+            "
+          >
+            <CardTitle class="text-base flex items-center gap-2">
+              <Settings class="h-4 w-4" />
+              Camera Properties
+            </CardTitle>
+            <span class="text-sm">
+              <ChevronDown
+                v-if="isCameraPropertiesOpen"
+                class="inline h-4 w-4" />
+              <ChevronLeft v-else class="inline h-4 w-4"
+            /></span>
+          </CardHeader>
+          <CardContent v-if="isCameraPropertiesOpen" class="space-y-2">
             <div>
-              <Label for="pos-x">X</Label>
+              <Label for="camera-name">Name</Label>
               <Input
                 id="camera-name"
                 v-model="sceneStates.cameras[selectedCamId]!.name"
@@ -494,408 +494,307 @@ const directionAngles = computed(() => {
                 :disabled="props.workspace == null"
                 disabled-class="disabled-input"
                 type="number"
-                @change="sceneStates.markedForCheck.add(selectedCamId)"
-              />
-            </div>
-            <div>
-              <Label for="pos-y">Y</Label>
-              <Input
-                id="pos-y"
-                v-model.number="sceneStates.cameras[selectedCamId]!.position.y"
-                :disabled="isLockingRotation"
-                disabled-class="disabled-input"
-                type="number"
-                @change="sceneStates.markedForCheck.add(selectedCamId)"
-              />
-            </div>
-            <div>
-              <Label for="pos-z">Z</Label>
-              <Input
-                id="pos-z"
-                v-model.number="sceneStates.cameras[selectedCamId]!.position.z"
-                :disabled="isLockingRotation"
-                disabled-class="disabled-input"
-                type="number"
-                @change="sceneStates.markedForCheck.add(selectedCamId)"
-              />
-            </div>
-          </div>
-
-          <div class="flex items-center gap-2">
-            <input
-              id="lock-position"
-              v-model="isLockingPosition"
-              :disabled="workspace == null"
-              type="checkbox"
-              @change="onToggleLockPosition"
-            />
-            <label for="lock-position">Lock Position</label>
-          </div>
-
-          <div class="grid grid-cols-3 gap-2">
-            <div>
-              <Label for="angle-x"
-                ><p>θ<sub>x</sub></p></Label
-              >
-              <Input
-                id="angle-x"
-                v-model.number="angleX"
-                :disabled="selectedCam?.isLockingRotation || workspace == null"
-                disabled-class="disabled-input"
-                type="number"
-                step="0.1"
-                @change="sceneStates.markedForCheck.add(selectedCamId)"
-              />
-            </div>
-
-            <div>
-              <Label for="angle-y"
-                ><p>θ<sub>y</sub></p></Label
-              >
-              <Input
-                id="angle-y"
-                v-model.number="angleY"
-                :disabled="selectedCam?.isLockingRotation || workspace == null"
-                disabled-class="disabled-input"
-                type="number"
-                step="0.1"
-                @change="sceneStates.markedForCheck.add(selectedCamId)"
-              />
-            </div>
-
-            <div>
-              <Label for="angle-z"
-                ><p>θ<sub>z</sub></p></Label
-              >
-              <Input
-                id="angle-z"
-                v-model.number="angleZ"
-                :disabled="selectedCam?.isLockingRotation || workspace == null"
-                disabled-class="disabled-input"
-                type="number"
-                step="0.1"
-                @change="sceneStates.markedForCheck.add(selectedCamId)"
-              />
-            </div>
-          </div>
-
-          <div v-if="selectedCam" class="mt-2 p-2 rounded text-xs">
-            <Label for="angles-vector">Angles Vector</Label>
-            <div class="grid grid-cols-3 gap-1">
-              <div class="flex flex-col">
-                <span class="text-[10px] mt-1">X-Axis</span>
-                <span class="font-mono text-sm">{{ directionAngles.x }}°</span>
-              </div>
-              <div class="flex flex-col">
-                <span class="text-[10px] mt-1">Y-Axis</span>
-                <span class="font-mono text-sm">{{ directionAngles.y }}°</span>
-              </div>
-              <div class="flex flex-col">
-                <span class="text-[10px] mt-1">Z-Axis</span>
-                <span class="font-mono text-sm">{{ directionAngles.z }}°</span>
-              </div>
-            </div>
-          </div>
-
-          <div class="flex items-center gap-2">
-            <input
-              id="lock-rotation"
-              v-model="sceneStates.cameras[selectedCamId]!.isLockingRotation"
-              :disabled="workspace == null"
-              type="checkbox"
-              @change="onToggleLockRotation"
-            />
-            <label for="lock-rotation">Lock Rotation</label>
-          </div>
-
-          <div>
-            <Label><p>Aspect Ratio</p></Label>
-            <div class="flex flex-row gap-2 justify-center items-center">
-              <Input
-                id="aspect-ratio-width"
-                v-model.number="sceneStates.cameras[selectedCamId]!.aspectWidth"
-                :disabled="workspace == null"
-                disabled-class="disabled-input"
-                type="number"
-                @change="sceneStates.markedForCheck.add(selectedCamId)"
-              />
-              <p>:</p>
-              <Input
-                id="aspect-ratio-height"
-                v-model.number="
-                  sceneStates.cameras[selectedCamId]!.aspectHeight
+                min="10"
+                max="180"
+                @change="
+                  sceneStates.markedForCheck.add(selectedCamId);
+                  onFovChange();
                 "
-                :disabled="workspace == null"
-                disabled-class="disabled-input"
-                type="number"
-                @change="sceneStates.markedForCheck.add(selectedCamId)"
               />
             </div>
-          </div>
 
-          <div>
-            <Label for="fov">Vertical Field of View</Label>
-            <Input
-              id="fov"
-              v-model.number="sceneStates.cameras[selectedCamId]!.fov"
-              :disabled="workspace == null"
-              disabled-class="disabled-input"
-              type="number"
-              min="10"
-              max="180"
-              @change="sceneStates.markedForCheck.add(selectedCamId)"
-            />
-          </div>
-
-          <div class="grid grid-flow-row grid-cols-2 gap-2">
-            <Button
-              size="sm"
-              variant="ghost"
-              :disabled="isLockingPosition"
-              disabled-class="disabled-input"
-              @click="
-                sceneStates.cameras[selectedCamId]!.isHidingArrows =
-                  !sceneStates.cameras[selectedCamId]!.isHidingArrows;
-                sceneStates.markedForCheck.add(selectedCamId);
-              "
-            >
-              <template
-                v-if="sceneStates.cameras[selectedCamId]!.isLockingPosition"
+            <div class="grid grid-flow-row grid-cols-2 gap-2">
+              <Button
+                size="sm"
+                variant="ghost"
+                :disabled="isLockingPosition"
+                disabled-class="disabled-input"
+                @click="
+                  sceneStates.cameras[selectedCamId]!.isHidingArrows =
+                    !sceneStates.cameras[selectedCamId]!.isHidingArrows;
+                  sceneStates.markedForCheck.add(selectedCamId);
+                "
               >
-                <LockKeyhole class="h-3 w-3" />
-              </template>
+                <template
+                  v-if="sceneStates.cameras[selectedCamId]!.isLockingPosition"
+                >
+                  <LockKeyhole class="h-3 w-3" />
+                </template>
 
-              <template v-else>
-                <Eye
-                  v-if="!sceneStates.cameras[selectedCamId]!.isHidingArrows"
-                  class="h-3 w-3"
+                <template v-else>
+                  <Eye
+                    v-if="!sceneStates.cameras[selectedCamId]!.isHidingArrows"
+                    class="h-3 w-3"
+                  />
+                  <EyeOff v-else class="h-3 w-3" />
+                </template>
+                Arrows
+              </Button>
+
+              <Button
+                size="sm"
+                variant="ghost"
+                :disabled="
+                  sceneStates.cameras[selectedCamId]!.isLockingRotation ||
+                  props.workspace == null
+                "
+                disabled-class="disabled-input"
+                @click="
+                  sceneStates.cameras[selectedCamId]!.isHidingWheels =
+                    !sceneStates.cameras[selectedCamId]!.isHidingWheels;
+                  sceneStates.markedForCheck.add(selectedCamId);
+                "
+              >
+                <template
+                  v-if="sceneStates.cameras[selectedCamId]!.isLockingRotation"
+                >
+                  <LockKeyhole class="h-3 w-3" />
+                </template>
+
+                <template v-else>
+                  <Eye
+                    v-if="!sceneStates.cameras[selectedCamId]!.isHidingWheels"
+                    class="h-3 w-3"
+                  />
+                  <EyeOff v-else class="h-3 w-3" />
+                </template>
+                Wheels
+              </Button>
+
+              <Button
+                size="sm"
+                variant="ghost"
+                :disabled="sceneStates.currentCamId.value == selectedCamId"
+                @click="sceneStates.cameraManagement.switchToCam(selectedCamId)"
+              >
+                <Eye class="h-3 w-3" />
+                Preview
+              </Button>
+
+              <Button
+                size="sm"
+                variant="ghost"
+                :disabled="
+                  sceneStates.currentCamId.value == selectedCamId ||
+                  props.workspace == null
+                "
+                @click="
+                  deleteCamera(selectedCamId);
+                  sceneStates.markedForCheck.add(selectedCamId);
+                "
+              >
+                <Trash2 class="h-3 w-3" />
+                Delete
+              </Button>
+
+              <Button
+                size="sm"
+                variant="outline"
+                class="flex-1"
+                :disabled="
+                  sceneStates.cameras[selectedCamId]!.isLockingPosition ||
+                  sceneStates.cameras[selectedCamId]!.isLockingRotation ||
+                  props.workspace == null
+                "
+                disabled-class="disabled-input"
+                @click="
+                  moveCameraHere(selectedCamId!);
+                  sceneStates.markedForCheck.add(selectedCamId);
+                "
+              >
+                Move Here
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+
+        <!-- Frustum Properties -->
+        <Card v-if="selectedCamId && sceneStates.cameras[selectedCamId]">
+          <CardHeader
+            class="cursor-pointer flex items-center justify-between"
+            @click="isFrustumPropertiesOpen = !isFrustumPropertiesOpen"
+            @change="sceneStates.markedForCheck.add(selectedCamId)"
+          >
+            <CardTitle class="text-base flex items-center gap-2">
+              <Pyramid class="h-4 w-4" />
+              Frustum Properties
+            </CardTitle>
+            <span class="text-sm">
+              <ChevronDown
+                v-if="isFrustumPropertiesOpen"
+                class="inline h-4 w-4" />
+              <ChevronLeft v-else class="inline h-4 w-4"
+            /></span>
+          </CardHeader>
+          <CardContent v-if="isFrustumPropertiesOpen" class="space-y-2">
+            <div class="flex flex-row gap-2">
+              <Tooltip>
+                <TooltipTrigger>
+                  <Button
+                    size="sm"
+                    class="flex-1 w-full"
+                    :disabled="sceneStates.cameras[selectedCamId]!.fov > 179"
+                    @click="
+                      sceneStates.cameras[selectedCamId]!.isHidingFrustum =
+                        !sceneStates.cameras[selectedCamId]!.isHidingFrustum;
+                      sceneStates.markedForCheck.add(selectedCamId);
+                    "
+                  >
+                    <Eye
+                      v-if="
+                        !sceneStates.cameras[selectedCamId]!.isHidingFrustum
+                      "
+                      class="h-3 w-3"
+                    />
+                    <EyeOff v-else class="h-3 w-3" />
+                    Frustum
+                  </Button></TooltipTrigger
+                >
+                <TooltipContent
+                  v-if="sceneStates.cameras[selectedCamId]!.fov > 179"
+                >
+                  Fov is too high for frustum visualization
+                </TooltipContent>
+              </Tooltip>
+
+              <Button
+                size="sm"
+                class="flex-1"
+                variant="outline"
+                @click="randomNewFrustumColor()"
+              >
+                <Dices class="h-3 w-3" />
+                Random Color
+              </Button>
+            </div>
+            <div class="grid grid-cols-3 gap-2">
+              <div>
+                <Label for="color-r"><p>R</p></Label>
+                <Input
+                  id="color-r"
+                  v-model.number="
+                    sceneStates.cameras[selectedCamId]!.frustumColor.r
+                  "
+                  type="number"
+                  min="0"
+                  max="1"
+                  @change="sceneStates.markedForCheck.add(selectedCamId)"
                 />
-                <EyeOff v-else class="h-3 w-3" />
-              </template>
-              Arrows
-            </Button>
-
-            <Button
-              size="sm"
-              variant="ghost"
-              :disabled="
-                sceneStates.cameras[selectedCamId]!.isLockingRotation ||
-                workspace == null
-              "
-              disabled-class="disabled-input"
-              @click="
-                sceneStates.cameras[selectedCamId]!.isHidingWheels =
-                  !sceneStates.cameras[selectedCamId]!.isHidingWheels;
-                sceneStates.markedForCheck.add(selectedCamId);
-              "
-            >
-              <template
-                v-if="sceneStates.cameras[selectedCamId]!.isLockingRotation"
-              >
-                <LockKeyhole class="h-3 w-3" />
-              </template>
-
-              <template v-else>
-                <Eye
-                  v-if="!sceneStates.cameras[selectedCamId]!.isHidingWheels"
-                  class="h-3 w-3"
+              </div>
+              <div>
+                <Label for="color-g"><p>G</p></Label>
+                <Input
+                  id="color-g"
+                  v-model.number="
+                    sceneStates.cameras[selectedCamId]!.frustumColor.g
+                  "
+                  type="number"
+                  min="0"
+                  max="1"
+                  @change="sceneStates.markedForCheck.add(selectedCamId)"
                 />
-                <EyeOff v-else class="h-3 w-3" />
-              </template>
-              Wheels
-            </Button>
+              </div>
+              <div>
+                <Label for="color-b"><p>B</p></Label>
+                <Input
+                  id="color-b"
+                  v-model.number="
+                    sceneStates.cameras[selectedCamId]!.frustumColor.b
+                  "
+                  type="number"
+                  min="0"
+                  max="1"
+                  @change="sceneStates.markedForCheck.add(selectedCamId)"
+                />
+              </div>
+            </div>
+            <div class="grid grid-cols-2 gap-2">
+              <div>
+                <Label for="opacity">Opacity</Label>
+                <Input
+                  id="opacity"
+                  v-model.number="
+                    sceneStates.cameras[selectedCamId]!.frustumColor.a
+                  "
+                  type="number"
+                  min="0"
+                  max="1"
+                  @change="sceneStates.markedForCheck.add(selectedCamId)"
+                />
+              </div>
+              <div>
+                <Label for="length">Length</Label>
+                <Input
+                  id="length"
+                  v-model.number="
+                    sceneStates.cameras[selectedCamId]!.frustumLength
+                  "
+                  type="number"
+                  min="0"
+                  max="1e6"
+                  @change="sceneStates.markedForCheck.add(selectedCamId)"
+                />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
 
-            <Button
-              size="sm"
-              variant="ghost"
-              :disabled="sceneStates.currentCamId.value == selectedCamId"
-              @click="sceneStates.cameraManagement.switchToCam(selectedCamId)"
-            >
-              <Eye class="h-3 w-3" />
-              Preview
-            </Button>
-
-            <Button
-              size="sm"
-              variant="ghost"
-              :disabled="
-                sceneStates.currentCamId.value == selectedCamId ||
-                workspace == null
-              "
-              @click="
-                deleteCamera(selectedCamId);
-                sceneStates.markedForCheck.add(selectedCamId);
-              "
-            >
-              <Trash2 class="h-3 w-3" />
-              Delete
-            </Button>
-
-            <Button
-              size="sm"
-              variant="outline"
-              class="flex-1"
-              :disabled="
-                sceneStates.cameras[selectedCamId]!.isLockingPosition ||
-                sceneStates.cameras[selectedCamId]!.isLockingRotation ||
-                workspace == null
-              "
-              disabled-class="disabled-input"
-              @click="
-                moveCameraHere(selectedCamId!);
-                sceneStates.markedForCheck.add(selectedCamId);
-              "
-            >
-              Move Here
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
-
-      <!-- Frustum Properties -->
-      <Card v-if="selectedCamId && sceneStates.cameras[selectedCamId]">
-        <CardHeader
-          class="cursor-pointer flex items-center justify-between"
-          @click="isFrustumPropertiesOpen = !isFrustumPropertiesOpen"
-          @change="sceneStates.markedForCheck.add(selectedCamId)"
-        >
-          <CardTitle class="text-base flex items-center gap-2">
-            <Pyramid class="h-4 w-4" />
-            Frustum Properties
-          </CardTitle>
-          <span class="text-sm">
-            <ChevronDown
-              v-if="isFrustumPropertiesOpen"
-              class="inline h-4 w-4" />
-            <ChevronLeft v-else class="inline h-4 w-4"
-          /></span>
-        </CardHeader>
-        <CardContent v-if="isFrustumPropertiesOpen" class="space-y-2">
-          <div class="grid grid-cols-2 gap-2">
-            <Button
-              size="sm"
-              class="flex-1"
-              @click="
-                sceneStates.cameras[selectedCamId]!.isHidingFrustum =
-                  !sceneStates.cameras[selectedCamId]!.isHidingFrustum;
-                sceneStates.markedForCheck.add(selectedCamId);
-              "
-            >
-              <Eye
-                v-if="!sceneStates.cameras[selectedCamId]!.isHidingFrustum"
-                class="h-3 w-3"
-              />
-              <EyeOff v-else class="h-3 w-3" />
-              Frustum
-            </Button>
-            <Button
-              size="sm"
-              class="flex-1"
-              variant="outline"
-              @click="randomNewFrustumColor()"
-            >
-              <Dices class="h-3 w-3" />
-              Random Color
-            </Button>
-          </div>
-          <div class="grid grid-cols-3 gap-2">
-            <div>
-              <Label for="color-r"><p>R</p></Label>
-              <Input
-                id="color-r"
-                v-model.number="
-                  sceneStates.cameras[selectedCamId]!.frustumColor.r
-                "
-                :disabled="workspace == null"
+        <Card v-if="selectedCamId && sceneStates.cameras[selectedCamId]">
+          <CardHeader
+            class="cursor-pointer flex items-center justify-between"
+            @click="isDistortionPropertiesOpen = !isDistortionPropertiesOpen"
+            @change="sceneStates.markedForCheck.add(selectedCamId)"
+          >
+            <CardTitle class="text-base flex items-center gap-2">
+              <Pyramid class="h-4 w-4" />
+              Distortion
+            </CardTitle>
+            <span class="text-sm">
+              <ChevronDown
+                v-if="isDistortionPropertiesOpen"
+                class="inline h-4 w-4" />
+              <ChevronLeft v-else class="inline h-4 w-4"
+            /></span>
+          </CardHeader>
+          <CardContent v-if="isDistortionPropertiesOpen" class="space-y-2">
+            <div class="flex items-center gap-2">
+              <input
+                id="distortion-enabled"
+                v-model="sceneStates.cameras[selectedCamId]!.distortion.enabled"
+                type="checkbox"
+                :disabled="props.workspace == null"
                 disabled-class="disabled-input"
-                type="number"
-                min="0"
-                max="1"
                 @change="sceneStates.markedForCheck.add(selectedCamId)"
               />
+              <label for="distortion-enabled">Enable Distortion</label>
             </div>
-            <div>
-              <Label for="color-g"><p>G</p></Label>
-              <Input
-                id="color-g"
-                v-model.number="
-                  sceneStates.cameras[selectedCamId]!.frustumColor.g
+            <div class="flex items-center gap-2">
+              <input
+                id="is-fisheye"
+                v-model="
+                  sceneStates.cameras[selectedCamId]!.distortion.isFisheye
                 "
-                :disabled="workspace == null"
+                type="checkbox"
+                :disabled="props.workspace == null"
                 disabled-class="disabled-input"
-                type="number"
-                min="0"
-                max="1"
                 @change="sceneStates.markedForCheck.add(selectedCamId)"
               />
+              <label for="is-fisheye">Is Fisheye</label>
             </div>
-            <div>
-              <Label for="color-b"><p>B</p></Label>
-              <Input
-                id="color-b"
-                v-model.number="
-                  sceneStates.cameras[selectedCamId]!.frustumColor.b
-                "
-                :disabled="workspace == null"
-                disabled-class="disabled-input"
-                type="number"
-                min="0"
-                max="1"
-                @change="sceneStates.markedForCheck.add(selectedCamId)"
-              />
-            </div>
-          </div>
-          <div class="grid grid-cols-2 gap-2">
-            <div>
-              <Label for="opacity">Opacity</Label>
-              <Input
-                id="opacity"
-                v-model.number="
-                  sceneStates.cameras[selectedCamId]!.frustumColor.a
-                "
-                :disabled="workspace == null"
-                disabled-class="disabled-input"
-                type="number"
-                min="0"
-                max="1"
-                @change="sceneStates.markedForCheck.add(selectedCamId)"
-              />
-            </div>
-            <div>
-              <Label for="length">Length</Label>
-              <Input
-                id="length"
-                v-model.number="
-                  sceneStates.cameras[selectedCamId]!.frustumLength
-                "
-                :disabled="workspace == null"
-                disabled-class="disabled-input"
-                type="number"
-                min="0"
-                max="1e6"
-                @change="sceneStates.markedForCheck.add(selectedCamId)"
-              />
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+      </div>
+      <CameraSpawnDialog
+        v-model="isCameraSpawnDialogOpen"
+        :on-confirm="handleSpawnCamera"
+      />
     </div>
-    <CameraSpawnDialog
-      v-model="isCameraSpawnDialogOpen"
-      :on-confirm="handleSpawnCamera"
-    />
-  </div>
+  </TooltipProvider>
 </template>
 
 <style lang="scss" scoped>
 input {
   field-sizing: content;
-  border-radius: 5px;
-  border: 1px solid black;
-  outline: 1px solid white;
-  box-sizing: border-box;
-
-  margin-top: 4px;
 }
 
 /* For WebKit browsers (Chrome, Safari) */
@@ -911,9 +810,17 @@ input[type="number"] {
   -moz-appearance: textfield;
 }
 
+input[type="number"] {
+  border-radius: 5px;
+  border: 1px solid black;
+  outline: 1px solid white;
+  box-sizing: border-box;
+
+  margin-top: 4px;
+}
+
 .disabled-input {
   background-color: var(--color-gray-200);
-  color: oklch(0.145 0 0);
   cursor: not-allowed;
 }
 
