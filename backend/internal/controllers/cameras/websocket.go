@@ -24,13 +24,17 @@ type CameraAutosaveRoute struct {
 	Upgrader websocket.Upgrader
 }
 
-// Camera handlers
-func (t *CameraAutosaveRoute) handleEventDelete(
-	c *gin.Context, conn *websocket.Conn,
-	modelId uuid.UUID, userId uuid.UUID, deleteId string,
-) {
-	_, err := uuid.Parse(deleteId)
+func (t *CameraAutosaveRoute) handleEventDelete(c *gin.Context, conn *websocket.Conn, modelId uuid.UUID, deleteId string) {
+	userId, err := utils.GetUuidFromCtx(c, "userId")
 	if err != nil {
+		t.Logger.Error("error while getting userId form", zap.Error(err))
+		c.JSON(http.StatusInternalServerError, gin.H{})
+		return
+	}
+
+	_, err = uuid.Parse(deleteId)
+	if err != nil {
+		// conn.WriteMessage(websocket.TextMessage, []byte("error"))
 		return
 	}
 
@@ -40,24 +44,30 @@ func (t *CameraAutosaveRoute) handleEventDelete(
 		ModelID: modelId,
 	})
 	if err != nil {
-		t.Logger.Error("error while updating workspace", zap.Error(err))
+		t.Logger.Error("Error while updating workspace", zap.Error(err))
 		return
 	}
 
 	resp := &camera.AutosaveResponse{
 		LastUpdatedVersion: newVersion,
 	}
-	sendResponse(t.Logger, conn, resp)
+	respMarshalled, err := proto.Marshal(resp)
+	if err != nil {
+		t.Logger.Error("error while marshelling first response", zap.Error(err))
+		c.JSON(http.StatusInternalServerError, gin.H{})
+		return
+	}
+
+	conn.WriteMessage(websocket.BinaryMessage, respMarshalled)
 }
 
-func (t *CameraAutosaveRoute) handleEventUpsert(
-	c *gin.Context, conn *websocket.Conn,
-	modelId uuid.UUID, userId uuid.UUID, upsert *camera.Camera,
-) {
+func (t *CameraAutosaveRoute) handleEventUpsert(c *gin.Context, userId uuid.UUID, conn *websocket.Conn, modelId uuid.UUID, upsert *camera.Camera) {
 	cam := messages_cameras.ProtoCamToCam(upsert)
+
 	marshalled, err := json.Marshal(cam)
 	if err != nil {
-		t.Logger.Error("error while marshaling camera", zap.Error(err))
+		t.Logger.Error("Error while marshaling camera", zap.Error(err))
+		// conn.WriteMessage(websocket.TextMessage, []byte("error"))
 		return
 	}
 	newVersion, err := t.DB.Queries.UpdateWorkspaceCams(c, db_sqlc_gen.UpdateWorkspaceCamsParams{
@@ -67,7 +77,8 @@ func (t *CameraAutosaveRoute) handleEventUpsert(
 		ModelID: modelId,
 	})
 	if err != nil {
-		t.Logger.Error("error while updating workspace cameras", zap.Error(err))
+		t.Logger.Error("Error while updating workspace cameras", zap.Error(err))
+		// conn.WriteMessage(websocket.TextMessage, []byte("error"))
 		return
 	}
 
@@ -96,7 +107,8 @@ func (t *CameraAutosaveRoute) handleCalibration(
 		ModelHeight: event.Calibrate.ModelHeight,
 	})
 	if err != nil {
-		t.Logger.Error("error updating calibration", zap.Error(err))
+		t.Logger.Error("error while marshelling first response", zap.Error(err))
+		c.JSON(http.StatusInternalServerError, gin.H{})
 		return
 	}
 
@@ -108,16 +120,6 @@ func (t *CameraAutosaveRoute) handleCalibration(
 	sendResponse(t.Logger, conn, resp)
 }
 
-func sendResponse(logger *zap.Logger, conn *websocket.Conn, resp *camera.AutosaveResponse) {
-	bytes, err := proto.Marshal(resp)
-	if err != nil {
-		logger.Error("error marshalling response", zap.Error(err))
-		return
-	}
-	conn.WriteMessage(websocket.BinaryMessage, bytes)
-}
-
-// Main WebSocket handler
 func (t *CameraAutosaveRoute) get(c *gin.Context) {
 	strModelId := c.Param("modelId")
 	modelId, err := utils.ParseUuidBase64(strModelId)
@@ -129,7 +131,7 @@ func (t *CameraAutosaveRoute) get(c *gin.Context) {
 
 	userId, err := utils.GetUuidFromCtx(c, "userId")
 	if err != nil {
-		t.Logger.Error("error while getting userId", zap.Error(err))
+		t.Logger.Error("error while getting userId form", zap.Error(err))
 		c.JSON(http.StatusInternalServerError, gin.H{})
 		return
 	}
@@ -158,12 +160,20 @@ func (t *CameraAutosaveRoute) get(c *gin.Context) {
 		initResp := &camera.AutosaveResponse{
 			LastUpdatedVersion: currentVersion,
 		}
-		sendResponse(t.Logger, conn, initResp)
+		firstRespMarshalled, err := proto.Marshal(firstResponse)
+		if err != nil {
+			t.Logger.Error("error while marshelling first response", zap.Error(err))
+			c.JSON(http.StatusInternalServerError, gin.H{})
+			return
+		}
+		conn.WriteMessage(websocket.BinaryMessage, firstRespMarshalled)
+
+		defer conn.Close()
 
 		for {
 			_, rawMsg, err := conn.ReadMessage()
 			if err != nil {
-				t.Logger.Error("error reading message", zap.Error(err))
+				t.Logger.Error("error from reading message from client", zap.Error(err))
 				break
 			}
 
