@@ -13,7 +13,6 @@ import {
   WebGLRenderer,
   type Scene,
   Vector3,
-  Plane,
 } from "three";
 import { IS_MAP_OPEN_KEY, SCENE_STATES_KEY } from "@/constants/state-keys";
 
@@ -22,21 +21,23 @@ import type { IUserData } from "~/types/obj-3d-user-data";
 import ModelLoader from "../model-loader/ModelLoader.vue";
 import { onBeforeRouteLeave } from "vue-router";
 import CoverageAreaMesh from "../coverage-area-mesh/CoverageAreaMesh.vue";
-import type { CoverageFace } from "../scene-states-provider/create-scene-states"; // ปรับ path ให้ตรงโปรเจกต์
+import type { CoverageFace } from "../scene-states-provider/create-scene-states";
 import CoverageCornerGizmos from "../coverage-area-mesh/CoverageCornerGizmos.vue";
 
-const selectedFaces = computed<CoverageFace[]>(() => {
-  return sceneStates.selectedCoverageFaces.value;
-});
-type SelectPlane = {
-  origin: Vector3;
-  normal: Vector3;
-  u: Vector3;
-  v: Vector3;
-};
+const selectedFaces = computed(() =>
+  sceneStates.selectedCoverageFaces.value.filter(
+    (face) => !sceneStates.isAllCoverageHidden.value && !face.hidden,
+  ),
+);
+// type SelectPlane = {
+//   origin: Vector3;
+//   normal: Vector3;
+//   u: Vector3;
+//   v: Vector3;
+// };
 
-const selectPlane = ref<SelectPlane | null>(null);
-const COVERAGE_Y_OFFSET = 0.01;
+// const selectPlane = ref<SelectPlane | null>(null);
+// const COVERAGE_Y_OFFSET = 0.01;
 
 const _props = defineProps({
   projectId: { type: String, required: true },
@@ -59,16 +60,28 @@ const minimapCamera = ref<OrthographicCamera | null>(null);
 const canvas = ref<InstanceType<typeof TresCanvas> | null>(null);
 const minimapCanvas = ref<HTMLCanvasElement | null>(null);
 
-const planeSelectionAnchor = ref<Vector3 | null>(null);
-const planeSelectionPreview = ref<[number, number, number][] | null>(null);
 type Point3 = [number, number, number];
 
-const isPreviewing = computed(() => planeSelectionPreview.value?.length === 4);
+const COVERAGE_Y_OFFSET = 0.01;
+
+const draftCoveragePoints = ref<Vector3[]>([]);
+const draftCoverageNormals = ref<Vector3[]>([]);
 
 const previewPoints = computed<Point3[]>(() => {
-  return isPreviewing.value
-    ? (planeSelectionPreview.value as Point3[])
-    : ([] as Point3[]);
+  if (sceneStates.selectionMode.value !== "coverage-area") return [];
+
+  return buildDraftCoveragePreview(
+    draftCoveragePoints.value,
+    draftCoverageNormals.value,
+  );
+});
+
+const isPreviewing = computed(() => previewPoints.value.length === 4);
+
+const draftPointMarkers = computed<Point3[]>(() => {
+  if (sceneStates.selectionMode.value !== "coverage-area") return [];
+
+  return draftCoveragePoints.value.map((p) => [p.x, p.y, p.z] as Point3);
 });
 
 const aspect = computed(() => {
@@ -186,51 +199,6 @@ const mouse = new Vector2();
 
 const WORLD_UP = new Vector3(0, 1, 0);
 
-const draggingCorner = ref<{
-  faceId: string;
-  cornerIndex: number;
-  plane: Plane;
-  pointerId: number;
-} | null>(null);
-
-function buildSnappedSelectPlane(
-  hitPoint: Vector3,
-  hitNormal: Vector3,
-): SelectPlane {
-  const cam = camera.value!;
-  const camDir = new Vector3();
-  cam.getWorldDirection(camDir);
-
-  const absDotUpCam = Math.abs(camDir.dot(WORLD_UP));
-  const isHorizontal = absDotUpCam > 0.75;
-
-  if (isHorizontal) {
-    const normal = WORLD_UP.clone();
-    const camRight = new Vector3(1, 0, 0).applyQuaternion(cam.quaternion);
-    camRight.y = 0;
-    if (camRight.lengthSq() < 1e-8) camRight.set(1, 0, 0);
-
-    const u = camRight.normalize();
-    const v = new Vector3().crossVectors(normal, u).normalize();
-
-    return { origin: hitPoint.clone(), normal, u, v };
-  }
-
-  const normal = camDir.clone();
-  normal.y = 0;
-  if (normal.lengthSq() < 1e-8) {
-    normal.copy(hitNormal);
-    normal.y = 0;
-    if (normal.lengthSq() < 1e-8) normal.set(0, 0, -1);
-  }
-  normal.normalize();
-
-  const v = new Vector3().crossVectors(WORLD_UP, normal).normalize();
-  const u = new Vector3().crossVectors(normal, v).normalize();
-
-  return { origin: hitPoint.clone(), normal, u, v };
-}
-
 function getPointerNDC(event: PointerEvent) {
   const ele = event.currentTarget as HTMLElement | null;
   if (!ele) return null;
@@ -276,253 +244,189 @@ function getSurfaceHit(
   return { point: hit.point.clone(), normal: worldNormal };
 }
 
-function intersectRayWithPlane(
-  event: PointerEvent,
-  plane: Plane,
-): Vector3 | null {
-  if (!sceneStates.tresContext.value || !camera.value) return null;
-
-  const ndc = getPointerNDC(event);
-  if (!ndc) return null;
-
-  mouse.x = ndc.x;
-  mouse.y = ndc.y;
-  raycaster.setFromCamera(mouse, camera.value);
-
-  const ray = raycaster.ray;
-  const denom = plane.normal.dot(ray.direction);
-  if (Math.abs(denom) < 1e-8) return null;
-
-  const t = -(ray.origin.dot(plane.normal) + plane.constant) / denom;
-  const hit = new Vector3();
-  ray.at(t, hit);
-  return hit;
+function clearDraftCoverageSelection() {
+  draftCoveragePoints.value = [];
+  draftCoverageNormals.value = [];
+  sceneStates.tresContext.value?.invalidate?.();
 }
 
-function makeRectOnPlane(
-  anchor: Vector3,
-  current: Vector3,
-  sp: SelectPlane,
-): [number, number, number][] {
-  const d = current.clone().sub(anchor);
-  const du = d.dot(sp.u);
-  const dv = d.dot(sp.v);
+function makeBasisFromNormal(normal: Vector3) {
+  const n = normal.clone().normalize();
 
-  const u0 = Math.min(0, du),
-    u1 = Math.max(0, du);
-  const v0 = Math.min(0, dv),
-    v1 = Math.max(0, dv);
+  let u = new Vector3().crossVectors(WORLD_UP, n);
+  if (u.lengthSq() < 1e-8) {
+    u = new Vector3(1, 0, 0).cross(n);
+  }
+  if (u.lengthSq() < 1e-8) {
+    u = new Vector3(0, 0, 1);
+  }
+  u.normalize();
 
-  const p00 = anchor
-    .clone()
-    .addScaledVector(sp.u, u0)
-    .addScaledVector(sp.v, v0);
-  const p10 = anchor
-    .clone()
-    .addScaledVector(sp.u, u1)
-    .addScaledVector(sp.v, v0);
-  const p11 = anchor
-    .clone()
-    .addScaledVector(sp.u, u1)
-    .addScaledVector(sp.v, v1);
-  const p01 = anchor
-    .clone()
-    .addScaledVector(sp.u, u0)
-    .addScaledVector(sp.v, v1);
-  return [
-    [p00.x, p00.y, p00.z],
-    [p10.x, p10.y, p10.z],
-    [p11.x, p11.y, p11.z],
-    [p01.x, p01.y, p01.z],
-  ];
+  const v = new Vector3().crossVectors(n, u).normalize();
+  return { u, v };
 }
 
-function computeMetricsOnPlane(
-  anchor: Vector3,
-  current: Vector3,
-  sp: SelectPlane,
-) {
-  const d = current.clone().sub(anchor);
-  const du = d.dot(sp.u);
-  const dv = d.dot(sp.v);
+function averageVector(vs: Vector3[]) {
+  const out = new Vector3();
+  if (vs.length === 0) return out;
+  vs.forEach((v) => out.add(v));
+  out.multiplyScalar(1 / vs.length);
+  return out;
+}
 
-  const width = Math.abs(du);
-  const height = Math.abs(dv);
+function computeStableNormal(points: Vector3[], normals: Vector3[]) {
+  const avgNormal = averageVector(normals);
+  if (avgNormal.lengthSq() > 1e-8) return avgNormal.normalize();
 
-  // center = anchor + u*(du/2) + v*(dv/2)
-  const centerV = anchor
-    .clone()
-    .addScaledVector(sp.u, du * 0.5)
-    .addScaledVector(sp.v, dv * 0.5);
+  if (points.length >= 3) {
+    const a = points[0]!;
+    const b = points[1]!;
+    const c = points[2]!;
+    const n = new Vector3()
+      .subVectors(b, a)
+      .cross(new Vector3().subVectors(c, a));
+
+    if (n.lengthSq() > 1e-8) return n.normalize();
+  }
+
+  return WORLD_UP.clone();
+}
+
+function orderPointsOnPlane(points: Vector3[], normal: Vector3) {
+  const center = averageVector(points);
+  const { u, v } = makeBasisFromNormal(normal);
+
+  const projected = points.map((p) => {
+    const d = p.clone().sub(center);
+    const du = d.dot(u);
+    const dv = d.dot(v);
+    return center.clone().addScaledVector(u, du).addScaledVector(v, dv);
+  });
+
+  return projected
+    .map((p) => {
+      const d = p.clone().sub(center);
+      return {
+        p,
+        angle: Math.atan2(d.dot(v), d.dot(u)),
+      };
+    })
+    .sort((a, b) => a.angle - b.angle)
+    .map((x) => x.p);
+}
+
+function buildDraftCoveragePreview(
+  points: Vector3[],
+  normals: Vector3[],
+): Point3[] {
+  if (points.length < 3) return [];
+
+  const normal = computeStableNormal(points, normals);
+  const ordered = orderPointsOnPlane(points, normal);
+
+  const padded =
+    ordered.length === 3
+      ? [...ordered, ordered[2]!.clone()]
+      : ordered.slice(0, 4);
+
+  return padded.map((p) => [p.x, p.y, p.z] as Point3);
+}
+
+function buildCoverageFaceFromPickedPoints(
+  points: Vector3[],
+  normals: Vector3[],
+): CoverageFace | null {
+  if (points.length !== 4) return null;
+
+  const normal = computeStableNormal(points, normals);
+  const ordered = orderPointsOnPlane(points, normal);
+
+  const p0 = ordered[0]!;
+  const p1 = ordered[1]!;
+  const p2 = ordered[2]!;
+  const p3 = ordered[3]!;
+
+  const centerV = averageVector(ordered);
+
+  const width = (p0.distanceTo(p1) + p2.distanceTo(p3)) / 2;
+
+  const height = (p1.distanceTo(p2) + p3.distanceTo(p0)) / 2;
+
+  if (width < 0.05 || height < 0.05) return null;
 
   return {
+    id: `area_${Date.now()}`,
+    points: [
+      [p0.x, p0.y, p0.z],
+      [p1.x, p1.y, p1.z],
+      [p2.x, p2.y, p2.z],
+      [p3.x, p3.y, p3.z],
+    ],
+    center: [centerV.x, centerV.y, centerV.z],
     width,
     height,
-    center: [centerV.x, centerV.y, centerV.z] as [number, number, number],
-    normal: [sp.normal.x, sp.normal.y, sp.normal.z] as [number, number, number],
+    normal: [normal.x, normal.y, normal.z],
   };
 }
 
 function handleCoverageAreaPointer(event: PointerEvent) {
-  if (sceneStates.selectionMode.value !== "coverage-area") return;
+  if (sceneStates.selectionMode.value !== "coverage-area") return false;
 
-  if (event.type === "pointermove") {
-    if (planeSelectionAnchor.value && selectPlane.value) {
-      const plane = new Plane(
-        selectPlane.value.normal,
-        -selectPlane.value.normal.dot(selectPlane.value.origin),
-      );
-      const p = intersectRayWithPlane(event, plane);
-      if (!p) return;
+  if (event.type !== "pointerdown" || !event.ctrlKey) {
+    return false;
+  }
 
-      planeSelectionPreview.value = makeRectOnPlane(
-        planeSelectionAnchor.value,
-        p,
-        selectPlane.value,
-      );
-      sceneStates.tresContext.value?.invalidate?.();
+  if (draftCoveragePoints.value.length >= 4) {
+    clearDraftCoverageSelection();
+  }
+
+  const hit = getSurfaceHit(event);
+
+  if (!hit) return true;
+
+  draftCoveragePoints.value = [...draftCoveragePoints.value, hit.point.clone()];
+  draftCoverageNormals.value = [
+    ...draftCoverageNormals.value,
+    hit.normal.clone(),
+  ];
+
+  if (draftCoveragePoints.value.length === 4) {
+    const face = buildCoverageFaceFromPickedPoints(
+      draftCoveragePoints.value,
+      draftCoverageNormals.value,
+    );
+
+    if (face) {
+      sceneStates.addCoverageFace(face);
     }
-    return;
-  }
 
-  if (event.type !== "pointerdown") return;
-
-  // ---- click #1 ----
-  if (!planeSelectionAnchor.value) {
-    const hit = getSurfaceHit(event);
-    if (!hit) return;
-    const sp = buildSnappedSelectPlane(hit.point, hit.normal);
-    selectPlane.value = sp;
-
-    planeSelectionAnchor.value = sp.origin.clone();
-    planeSelectionPreview.value = makeRectOnPlane(sp.origin, sp.origin, sp);
-    sceneStates.tresContext.value?.invalidate?.();
-    return;
-  }
-
-  // ---- click #2 ----
-  if (!selectPlane.value) return;
-
-  const plane = new Plane(
-    selectPlane.value.normal,
-    -selectPlane.value.normal.dot(selectPlane.value.origin),
-  );
-  const current = intersectRayWithPlane(event, plane);
-  if (!current) return;
-
-  const quad = makeRectOnPlane(
-    planeSelectionAnchor.value,
-    current,
-    selectPlane.value,
-  );
-  const { center, width, height, normal } = computeMetricsOnPlane(
-    planeSelectionAnchor.value,
-    current,
-    selectPlane.value,
-  );
-
-  if (width >= 0.05 && height >= 0.05) {
-    sceneStates.addCoverageFace({
-      id: `area_${Date.now()}`,
-      points: quad,
-      center,
-      width,
-      height,
-      normal,
+    requestAnimationFrame(() => {
+      clearDraftCoverageSelection();
     });
+
+    sceneStates.tresContext.value?.invalidate?.();
+    return true;
   }
 
-  planeSelectionAnchor.value = null;
-  planeSelectionPreview.value = null;
-  selectPlane.value = null;
   sceneStates.tresContext.value?.invalidate?.();
+  return true;
 }
 
 function onCanvasPointer(event: PointerEvent) {
   if (!sceneStates.tresContext.value) return;
+
   if (sceneStates.selectionMode.value === "coverage-area") {
-    handleCoverageAreaPointer(event);
-    return;
-  }
-  if (draggingCorner.value) {
-    if (event.type === "pointermove") {
-      const pElev = intersectRayWithPlane(event, draggingCorner.value.plane);
-      if (!pElev) return;
-      const p = pElev.clone();
-      p.y -= COVERAGE_Y_OFFSET;
-
-      sceneStates.updateCoverageFaceCorner(
-        draggingCorner.value.faceId,
-        draggingCorner.value.cornerIndex,
-        [p.x, p.y, p.z],
-      );
-      sceneStates.tresContext.value?.invalidate?.();
-      return;
-    }
-
-    if (event.type === "pointerup" || event.type === "pointercancel") {
-      draggingCorner.value = null;
-      return;
-    }
+    const handled = handleCoverageAreaPointer(event);
+    if (handled) return;
   }
 
   const ndc = getPointerNDC(event);
   if (!ndc) return;
   if (!camera.value) return;
+
   mouse.x = ndc.x;
   mouse.y = ndc.y;
   raycaster.setFromCamera(mouse, camera.value);
-
-  if (event.type === "pointerdown") {
-    const scene = sceneStates.tresContext.value.scene as Scene;
-    const hits = raycaster.intersectObjects(scene.children, true);
-    const cornerHit = hits.find(
-      (h) => h.object?.userData?.kind === "coverage-corner",
-    );
-
-    if (cornerHit) {
-      const { faceId, cornerIndex } = cornerHit.object.userData as {
-        faceId: string;
-        cornerIndex: number;
-      };
-      const face = sceneStates.selectedCoverageFaces.value.find(
-        (f) => f.id === faceId,
-      );
-      if (!face) return;
-
-      const point = face.points[cornerIndex];
-      if (!point) return;
-      const baseP = new Vector3(...point);
-      const elevatedY = baseP.y + COVERAGE_Y_OFFSET;
-      const plane = new Plane(WORLD_UP.clone(), -elevatedY);
-
-      (event.currentTarget as HTMLElement)?.setPointerCapture(event.pointerId);
-
-      draggingCorner.value = {
-        faceId,
-        cornerIndex,
-        plane,
-        pointerId: event.pointerId,
-      };
-
-      sceneStates.tresContext.value?.invalidate?.();
-      return;
-    }
-  }
-  if (event.type === "pointerup" || event.type === "pointercancel") {
-    const t = event.currentTarget as HTMLElement | null;
-    if (draggingCorner.value) {
-      t?.releasePointerCapture?.(draggingCorner.value.pointerId);
-    }
-    draggingCorner.value = null;
-    return;
-  }
-
-  const ele = sceneStates.tresContext.value.renderer.domElement;
-  const rect = ele.getBoundingClientRect();
-  mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
-  mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
-  raycaster.setFromCamera(mouse, camera.value!);
 
   const intersects = raycaster.intersectObjects(
     [...sceneStates.draggableObjects],
@@ -542,9 +446,7 @@ watch(
   () => sceneStates.selectionMode.value,
   (mode) => {
     if (mode !== "coverage-area") {
-      planeSelectionAnchor.value = null;
-      planeSelectionPreview.value = null;
-      selectPlane.value = null;
+      clearDraftCoverageSelection();
     }
   },
 );
@@ -553,11 +455,7 @@ watch(
   () => sceneStates.selectedCoverageFaces.value.length,
   (len) => {
     if (len === 0) {
-      draggingCorner.value = null;
-      planeSelectionAnchor.value = null;
-      planeSelectionPreview.value = null;
-      selectPlane.value = null;
-      sceneStates.tresContext.value?.invalidate?.();
+      clearDraftCoverageSelection();
     }
   },
 );
@@ -812,11 +710,29 @@ onBeforeRouteLeave((to, from, next) => {
             :y-offset="COVERAGE_Y_OFFSET"
           />
 
+          <template v-if="sceneStates.selectionMode.value === 'coverage-area'">
+            <TresMesh
+              v-for="(point, i) in draftPointMarkers"
+              :key="`draft-point-${i}`"
+              :position="point"
+              :render-order="1002"
+            >
+              <TresSphereGeometry :args="[0.025, 16, 16]" />
+              <TresMeshBasicMaterial
+                color="#ffffff"
+                :transparent="true"
+                :opacity="0.95"
+                :depth-test="false"
+                :depth-write="false"
+              />
+            </TresMesh>
+          </template>
+
           <template v-for="face in selectedFaces" :key="face.id">
             <CoverageAreaMesh
               :face-id="face.id"
               :points="face.points"
-              color="#22ff88"
+              :color="face.color ?? '#22ff88'"
               :selected="true"
               :show-corners="false"
               :y-offset="COVERAGE_Y_OFFSET"
