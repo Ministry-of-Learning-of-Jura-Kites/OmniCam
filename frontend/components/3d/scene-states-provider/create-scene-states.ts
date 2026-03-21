@@ -20,6 +20,8 @@ export interface CoverageFace {
   height: number;
   normal?: [number, number, number];
   planeY?: number;
+  color?: string;
+  hidden?: boolean;
 }
 export interface ModelWithCamsResp {
   data: {
@@ -172,9 +174,74 @@ export function createBaseSceneStates(
     selectionMode.value = mode;
   };
 
+  const isAllCoverageHidden = ref(false);
+
+  const toggleAllCoverageHidden = () => {
+    isAllCoverageHidden.value = !isAllCoverageHidden.value;
+    tresContext.value?.invalidate?.();
+  };
+
+  const setAllCoverageHidden = (hidden: boolean) => {
+    isAllCoverageHidden.value = hidden;
+    tresContext.value?.invalidate?.();
+  };
+
+  const toggleCoverageFaceHidden = (faceId: string) => {
+    const idx = selectedCoverageFaces.value.findIndex((f) => f.id === faceId);
+    if (idx < 0) return;
+
+    const next = [...selectedCoverageFaces.value];
+    next[idx] = {
+      ...next[idx]!,
+      hidden: !next[idx]!.hidden,
+    };
+
+    selectedCoverageFaces.value = next;
+    tresContext.value?.invalidate?.();
+  };
+
+  const setCoverageFaceHidden = (faceId: string, hidden: boolean) => {
+    const idx = selectedCoverageFaces.value.findIndex((f) => f.id === faceId);
+    if (idx < 0) return;
+
+    const next = [...selectedCoverageFaces.value];
+    next[idx] = {
+      ...next[idx]!,
+      hidden,
+    };
+
+    selectedCoverageFaces.value = next;
+    tresContext.value?.invalidate?.();
+  };
+
   const addCoverageFace = (face: CoverageFace) => {
-    console.log("ADD FACE", face);
-    selectedCoverageFaces.value.push(face);
+    selectedCoverageFaces.value.push({
+      ...face,
+      color: face.color ?? "#22ff88",
+      hidden: face.hidden ?? false,
+    });
+    tresContext.value?.invalidate?.();
+  };
+
+  const removeCoverageFace = (faceId: string) => {
+    selectedCoverageFaces.value = selectedCoverageFaces.value.filter(
+      (f) => f.id !== faceId,
+    );
+    tresContext.value?.invalidate?.();
+  };
+
+  const updateCoverageFaceColor = (faceId: string, color: string) => {
+    const idx = selectedCoverageFaces.value.findIndex((f) => f.id === faceId);
+    if (idx < 0) return;
+
+    const next = [...selectedCoverageFaces.value];
+    next[idx] = {
+      ...next[idx]!,
+      color,
+    };
+
+    selectedCoverageFaces.value = next;
+    tresContext.value?.invalidate?.();
   };
 
   const clearCoverageFaces = () => {
@@ -284,10 +351,17 @@ export function createBaseSceneStates(
     selectionMode,
     selectedCoverageFaces,
     setSelectionMode,
-    addCoverageFace,
     clearCoverageFaces,
     addOptimizedCamera,
+    addCoverageFace,
     updateCoverageFaceCorner,
+    removeCoverageFace,
+    updateCoverageFaceColor,
+    isAllCoverageHidden,
+    toggleAllCoverageHidden,
+    setAllCoverageHidden,
+    toggleCoverageFaceHidden,
+    setCoverageFaceHidden,
   } as const;
 
   // websocket.ws.value!.onclose = (_closeEvent: CloseEvent) => {
