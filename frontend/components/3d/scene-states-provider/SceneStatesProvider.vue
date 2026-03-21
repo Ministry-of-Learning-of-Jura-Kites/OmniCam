@@ -30,9 +30,8 @@ const workspace = inject(WORKSPACE) as string | null;
 const workspaceSuffix = workspace == null ? "" : `/workspaces/${workspace}`;
 
 const modelWithCamsResp = useState<ModelWithCamsResp | undefined>(
-  `${MODEL_INFO_KEY}-${props.modelId}`,
+  MODEL_INFO_KEY,
 );
-
 const error = ref<unknown | undefined>(undefined);
 
 async function fetchAndCombine(fields: string[]) {
@@ -78,7 +77,7 @@ if (modelWithCamsResp.value == undefined) {
     workspace == null &&
     modelWithCamsResp.value.data.workspaceExists == undefined
   ) {
-    await fetchAndCombine(["cameras", "workspace_exists"]);
+    await fetchAndCombine(["workspace_exists"]);
   }
 
   // If open workspace from model page
