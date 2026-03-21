@@ -22,37 +22,42 @@ import {
   Sun,
   Map,
   Settings2,
+  RulerDimensionLine,
 } from "lucide-vue-next";
 
 import { exportCamerasToJson } from "@/utils/exportScene";
 import { importJsonToCameras } from "@/utils/importScene";
-import {
-  CURRENT_PANEL,
-  SCENE_STATES_KEY,
-  TOGGLE_ALGO_PANEL_KEY,
-  WORKSPACE,
-} from "@/constants/state-keys";
+import { SCENE_STATES_KEY } from "@/constants/state-keys";
 
 import Tooltip from "./ui/tooltip/Tooltip.vue";
 import TooltipTrigger from "./ui/tooltip/TooltipTrigger.vue";
 import TooltipContent from "./ui/tooltip/TooltipContent.vue";
 import TooltipProvider from "./ui/tooltip/TooltipProvider.vue";
 import {
+  IS_PANEL_OPEN_KEY,
   MODEL_INFO_KEY,
-  TOGGLE_CAM_PANEL_KEY,
+  TOGGLE_PANEL_KEY,
   TOGGLE_MINIMAP_KEY,
+  IS_CALIBRATING_KEY,
+  TOGGLE_CALIBRATION_KEY,
 } from "~/constants/state-keys";
 import Setting3dDialog from "./dialog/Setting3dDialog.vue";
 
-const workspace = inject(WORKSPACE);
+const props = defineProps({
+  workspace: {
+    type: String,
+    default: null,
+  },
+});
 
 const sceneStates = inject(SCENE_STATES_KEY)!;
 
-const currentPanel = inject(CURRENT_PANEL);
-const toggleAlgoPanel = inject(TOGGLE_ALGO_PANEL_KEY)!;
-const togglePanel = inject(TOGGLE_CAM_PANEL_KEY)!;
-
+const isPanelOpen = inject(IS_PANEL_OPEN_KEY);
+const togglePanel = inject(TOGGLE_PANEL_KEY)!;
 const toggleMinimap = inject(TOGGLE_MINIMAP_KEY)!;
+
+const isCalibrating = inject(IS_CALIBRATING_KEY);
+const toggleCalibration = inject(TOGGLE_CALIBRATION_KEY)!;
 
 const route = useRoute();
 
@@ -180,7 +185,7 @@ async function createWorkspace() {
         credentials: "include",
       },
     );
-    useState(MODEL_INFO_KEY, () => data);
+    useState(`${MODEL_INFO_KEY}-${route.params.modelId}`, () => data);
     goToMyWorkspace();
   } catch (err) {
     console.error(err);
@@ -202,7 +207,7 @@ async function deleteWorkspace() {
       },
     );
 
-    useState(MODEL_INFO_KEY, () => undefined);
+    useState(`${MODEL_INFO_KEY}-${route.params.modelId}`, () => undefined);
     goToModel();
   } catch (err) {
     console.error(err);
@@ -257,7 +262,7 @@ function goToMyWorkspace() {
               sceneStates.modelInfo.data.name
             }}</span>
             <Badge variant="secondary" class="ml-2">
-              {{ workspace == null ? "Public" : "Workspace" }}
+              {{ props.workspace == null ? "Public" : "Workspace" }}
             </Badge>
           </div>
         </Card>
@@ -272,7 +277,9 @@ function goToMyWorkspace() {
             "
           >
             <TooltipTrigger>
-              <RefreshCcw class="animate-spin"
+              <RefreshCcw
+                class="animate-spin"
+                style="animation-direction: reverse"
             /></TooltipTrigger>
             <TooltipContent> Saving </TooltipContent>
           </Tooltip>
@@ -296,10 +303,12 @@ function goToMyWorkspace() {
         </Button>
 
         <Button size="sm" variant="outline">
-          <Tooltip>
-            <TooltipTrigger> <Maximize class="button-icon" /></TooltipTrigger>
-            <TooltipContent> Fullscreen </TooltipContent>
-          </Tooltip>
+          <ClientOnly>
+            <Tooltip>
+              <TooltipTrigger> <Maximize class="button-icon" /></TooltipTrigger>
+              <TooltipContent> Fullscreen </TooltipContent>
+            </Tooltip>
+          </ClientOnly>
         </Button>
 
         <div class="h-6 w-px bg-border mx-2" />
@@ -318,7 +327,10 @@ function goToMyWorkspace() {
           v-if="workspace != null"
           size="sm"
           variant="outline"
-          @click="goToModel()"
+          @click="
+            goToModel();
+            isCalibrating = false;
+          "
         >
           <LogOut class="button-icon" />
           <span class="button-span-text"> Exit Workspace </span>
@@ -340,18 +352,19 @@ function goToMyWorkspace() {
           </Button>
         </template>
 
-        <Button size="sm" variant="outline" @click="() => togglePanel()">
-          <IndentIncrease v-if="currentPanel == 'camera'" class="button-icon" />
-          <IndentDecrease v-else class="button-icon" />
-          <span class="ml-2 button-span-text"> Panel </span>
+        <Button
+          v-if="workspace != null"
+          size="sm"
+          variant="outline"
+          :class="{ 'btn-calibrating': isCalibrating }"
+          @click="() => toggleCalibration()"
+        >
+          <RulerDimensionLine class="button-icon" />
+          <span v-if="!isCalibrating" class="ml-2 button-span-text">
+            Calibration</span
+          >
+          <span v-else class="ml-2 button-span-text"> Calibrating...</span>
         </Button>
-
-        <Button size="sm" variant="outline" @click="() => toggleAlgoPanel()">
-          <IndentIncrease v-if="currentPanel == 'algo'" class="button-icon" />
-          <IndentDecrease v-else class="button-icon" />
-          <span class="ml-2 button-span-text"> Algo </span>
-        </Button>
-
         <Button size="sm" variant="outline" @click="() => toggleMap()">
           <Map class="h-4 w-4" />
           Map
@@ -362,6 +375,10 @@ function goToMyWorkspace() {
         id="right-menu"
         class="flex flex-row justify-center items-center gap-2"
       >
+        <Button size="sm" variant="outline" @click="() => togglePanel()">
+          <IndentIncrease v-if="isPanelOpen" class="button-icon" />
+          <IndentDecrease v-else class="button-icon" />
+        </Button>
         <DropdownMenu>
           <DropdownMenuTrigger as-child>
             <Button size="sm" variant="outline">
@@ -441,5 +458,14 @@ Button {
     color, background-color, border-color, text-decoration-color, fill, stroke;
   transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
   transition-duration: 150ms;
+}
+.btn-calibrating {
+  background-color: #ef4444 !important; /* สีแดง (Tailwind red-500) */
+  color: white !important;
+  border-color: #dc2626 !important;
+}
+.btn-calibrating:hover {
+  background-color: #dc2626 !important;
+  opacity: 0.9;
 }
 </style>
