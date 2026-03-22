@@ -12,13 +12,11 @@ type CoverageFaceLite = {
 };
 
 type SceneStatesLike = {
-  selectedCoverageFaces: { value: CoverageFaceLite[] };
-  updateCoverageFaceCorner: (
-    faceId: string,
-    cornerIndex: number,
-    p: Point3,
-  ) => void;
-  tresContext: { value: { invalidate?: () => void } | null };
+  facesManagement: {
+    faces: { value: CoverageFaceLite[] };
+    updateCorner: (faceId: string, cornerIndex: number, p: Point3) => void;
+  };
+  tresContext: { value: TresContext | null };
 };
 
 function axisVector(axis: Axis) {
@@ -65,6 +63,7 @@ export class CornerTranslateUserData implements IUserData {
     this.context = context;
     this.yOffset = yOffset;
   }
+
   target: unknown;
   cam!: ICamera;
 
@@ -76,7 +75,6 @@ export class CornerTranslateUserData implements IUserData {
 
   private getRay(event: PointerEvent) {
     const domElement = this.context.renderer?.instance?.domElement;
-
     const camera = this.context.camera?.activeCamera?.value;
 
     if (!domElement || !camera) return null;
@@ -112,7 +110,7 @@ export class CornerTranslateUserData implements IUserData {
   }
 
   private onPointerDown(event: PointerEvent) {
-    const face = this.sceneStates.selectedCoverageFaces.value.find(
+    const face = this.sceneStates.facesManagement.faces.value.find(
       (f) => f.id === this.faceId,
     );
     if (!face) return;
@@ -136,8 +134,6 @@ export class CornerTranslateUserData implements IUserData {
     this.isDragging = true;
     document.addEventListener("pointermove", this.onPointerMove);
     document.addEventListener("pointerup", this.onPointerUp);
-
-    this.sceneStates.tresContext.value?.invalidate?.();
   }
 
   private onPointerMove = (event: PointerEvent) => {
@@ -159,20 +155,16 @@ export class CornerTranslateUserData implements IUserData {
     const newBase = newElev.clone();
     newBase.y -= this.yOffset;
 
-    this.sceneStates.updateCoverageFaceCorner(this.faceId, this.cornerIndex, [
-      newBase.x,
-      newBase.y,
-      newBase.z,
-    ]);
-
-    this.sceneStates.tresContext.value?.invalidate?.();
+    this.sceneStates.facesManagement.updateCorner(
+      this.faceId,
+      this.cornerIndex,
+      [newBase.x, newBase.y, newBase.z],
+    );
   };
 
   private onPointerUp = () => {
     this.isDragging = false;
     document.removeEventListener("pointermove", this.onPointerMove);
     document.removeEventListener("pointerup", this.onPointerUp);
-
-    this.sceneStates.tresContext.value?.invalidate?.();
   };
 }
