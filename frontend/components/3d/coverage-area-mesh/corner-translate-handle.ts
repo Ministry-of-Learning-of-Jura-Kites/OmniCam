@@ -65,6 +65,7 @@ export class CornerTranslateUserData implements IUserData {
     this.context = context;
     this.yOffset = yOffset;
   }
+  target: unknown;
   cam!: ICamera;
 
   handleEvent(eventType: string, event: Event) {
@@ -74,13 +75,18 @@ export class CornerTranslateUserData implements IUserData {
   }
 
   private getRay(event: PointerEvent) {
-    const ele = this.context.renderer.value.domElement;
-    const rect = ele.getBoundingClientRect();
+    const domElement = this.context.renderer?.instance?.domElement;
+
+    const camera = this.context.camera?.activeCamera?.value;
+
+    if (!domElement || !camera) return null;
+
+    const rect = domElement.getBoundingClientRect();
 
     this.mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
     this.mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
 
-    this.raycaster.setFromCamera(this.mouse, this.context.camera.value!);
+    this.raycaster.setFromCamera(this.mouse, camera);
     return this.raycaster.ray;
   }
 
@@ -118,6 +124,8 @@ export class CornerTranslateUserData implements IUserData {
     this.axisDir = axisVector(this.axis).clone().normalize();
 
     const ray = this.getRay(event);
+    if (!ray) return;
+
     this.t0 = this.closestTOnAxisLine(
       ray.origin,
       ray.direction,
@@ -136,6 +144,8 @@ export class CornerTranslateUserData implements IUserData {
     if (!this.isDragging) return;
 
     const ray = this.getRay(event);
+    if (!ray) return;
+
     const t = this.closestTOnAxisLine(
       ray.origin,
       ray.direction,
