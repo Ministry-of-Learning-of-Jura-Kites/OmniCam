@@ -76,9 +76,10 @@ func (t *PostModelRoutes) post(c *gin.Context) {
 
 	// --- Handle optional image ---
 	var imageWebPath string
+	var imageExt string
 	imageFile, err := c.FormFile("image")
 	if err == nil {
-		imageExt := filepath.Ext(imageFile.Filename)
+		imageExt = filepath.Ext(imageFile.Filename)
 		if imageExt != ".jpg" && imageExt != ".png" {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "image must be .jpg or .png"})
 			return
@@ -111,6 +112,7 @@ func (t *PostModelRoutes) post(c *gin.Context) {
 		FilePath:       webFilePath,  // web path
 		ImagePath:      imageWebPath, // web path
 		ModelExtension: fileExt,
+		ImageExtension: imageExt,
 	})
 	if err != nil {
 		t.Logger.Error("error while creating model", zap.Error(err))
