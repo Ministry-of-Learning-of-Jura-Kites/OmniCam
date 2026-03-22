@@ -6,8 +6,8 @@ import {
   Quaternion,
   Euler,
   Vector3,
-  type PerspectiveCamera,
-  type CubeCamera,
+  PerspectiveCamera,
+  CubeCamera,
 } from "three";
 import { cameraDefault, type ICamera } from "~/types/camera";
 import { useCameraManagement } from "../scene-3d/use-camera-management";
@@ -18,6 +18,17 @@ import type { Camera } from "~/messages/protobufs/autosave_event";
 import { useAspectRatio as useAspectRatioManagement } from "../scene-3d/use-aspect-ratio";
 import { useAutosave } from "../scene-3d/use-autosave";
 
+export interface CoverageFace {
+  id: string;
+  points: [number, number, number][];
+  center: [number, number, number];
+  width: number;
+  height: number;
+  normal?: [number, number, number];
+  planeY?: number;
+  color?: string;
+  hidden?: boolean;
+}
 export interface ModelWithCamsResp {
   data: {
     workspaceExists: boolean | null;
@@ -33,9 +44,15 @@ export interface ModelWithCamsResp {
     imagePath: string;
     imageExtension: string;
     cameras: Record<string, Camera>;
-    scaleFactor?: number;
-    modelHeight?: number;
   };
+}
+
+export interface OptimizedCamera {
+  id: string;
+  name: string;
+  position: [number, number, number];
+  rotation: [number, number, number];
+  fov: number;
 }
 
 export function transformProtoEventToCamera(rawCam: Camera): ICamera {
@@ -157,7 +174,6 @@ export function createBaseSceneStates(
     heightOffset: modelWithCamsResp.data.modelHeight ?? 0.0,
     dirty: false,
   });
-
   const currentIsFisheye = computed(() => {
     if (currentCamId.value != null) {
       return cameras[currentCamId.value]!.distortion.isFisheye;
@@ -175,7 +191,6 @@ export function createBaseSceneStates(
     }
     return currentCam.value.distortion.enabled;
   });
-
   const aspectRatio = computed<number>(() => {
     if (screenSize.width == null || screenSize.height == null) {
       return 1;
@@ -185,18 +200,133 @@ export function createBaseSceneStates(
 
   const perspectiveCamera = ref<PerspectiveCamera | null>(null);
   const cubeCamera = ref<CubeCamera | null>(null);
+  const selectionMode = ref<"none" | "coverage-area">("none");
+  const selectedCoverageFaces = ref<CoverageFace[]>([]);
 
-  // if (window) {
-  //   function setFisheyeStrength(
-  //     type: DistortionMode,
-  //     intensity: number,
-  //     fov: number,
-  //   ) {
-  //     distortionStrength.value = calcFisheyeStrength(type, intensity, fov);
-  //   }
-  //   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  //   (window as any).setFisheyeStrength = setFisheyeStrength;
-  // }
+  const setSelectionMode = (mode: "none" | "coverage-area") => {
+    selectionMode.value = mode;
+  };
+
+  const isAllCoverageHidden = ref(false);
+
+  const toggleAllCoverageHidden = () => {
+    isAllCoverageHidden.value = !isAllCoverageHidden.value;
+    tresContext.value?.invalidate?.();
+  };
+
+  const setAllCoverageHidden = (hidden: boolean) => {
+    isAllCoverageHidden.value = hidden;
+    tresContext.value?.invalidate?.();
+  };
+
+  const toggleCoverageFaceHidden = (faceId: string) => {
+    const idx = selectedCoverageFaces.value.findIndex((f) => f.id === faceId);
+    if (idx < 0) return;
+
+    const next = [...selectedCoverageFaces.value];
+    next[idx] = {
+      ...next[idx]!,
+      hidden: !next[idx]!.hidden,
+    };
+
+    selectedCoverageFaces.value = next;
+    tresContext.value?.invalidate?.();
+  };
+
+  const setCoverageFaceHidden = (faceId: string, hidden: boolean) => {
+    const idx = selectedCoverageFaces.value.findIndex((f) => f.id === faceId);
+    if (idx < 0) return;
+
+    const next = [...selectedCoverageFaces.value];
+    next[idx] = {
+      ...next[idx]!,
+      hidden,
+    };
+
+    selectedCoverageFaces.value = next;
+    tresContext.value?.invalidate?.();
+  };
+
+  const addCoverageFace = (face: CoverageFace) => {
+    selectedCoverageFaces.value.push({
+      ...face,
+      color: face.color ?? "#22ff88",
+      hidden: face.hidden ?? false,
+    });
+    tresContext.value?.invalidate?.();
+  };
+
+  const removeCoverageFace = (faceId: string) => {
+    selectedCoverageFaces.value = selectedCoverageFaces.value.filter(
+      (f) => f.id !== faceId,
+    );
+    tresContext.value?.invalidate?.();
+  };
+
+  const updateCoverageFaceColor = (faceId: string, color: string) => {
+    const idx = selectedCoverageFaces.value.findIndex((f) => f.id === faceId);
+    if (idx < 0) return;
+
+    const next = [...selectedCoverageFaces.value];
+    next[idx] = {
+      ...next[idx]!,
+      color,
+    };
+
+    selectedCoverageFaces.value = next;
+    tresContext.value?.invalidate?.();
+  };
+
+  const clearCoverageFaces = () => {
+    selectedCoverageFaces.value.splice(0, selectedCoverageFaces.value.length);
+    tresContext.value?.invalidate?.();
+  };
+
+  const updateCoverageFaceCorner = (
+    faceId: string,
+    cornerIndex: number,
+    point: [number, number, number],
+  ) => {
+    const idx = selectedCoverageFaces.value.findIndex((f) => f.id === faceId);
+    if (idx < 0) return;
+
+    const face = selectedCoverageFaces.value[idx]!;
+    const newPoints = face.points.map((p, i) =>
+      i === cornerIndex ? point : p,
+    ) as [number, number, number][];
+
+    const center: [number, number, number] = [
+      (newPoints[0]![0] +
+        newPoints[1]![0] +
+        newPoints[2]![0] +
+        newPoints[3]![0]) /
+        4,
+      (newPoints[0]![1] +
+        newPoints[1]![1] +
+        newPoints[2]![1] +
+        newPoints[3]![1]) /
+        4,
+      (newPoints[0]![2] +
+        newPoints[1]![2] +
+        newPoints[2]![2] +
+        newPoints[3]![2]) /
+        4,
+    ];
+
+    const dist = (a: [number, number, number], b: [number, number, number]) =>
+      Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2]);
+
+    const next = [...selectedCoverageFaces.value];
+    next[idx] = {
+      ...face,
+      points: newPoints,
+      center,
+      width: dist(newPoints[0]!, newPoints[1]!),
+      height: dist(newPoints[1]!, newPoints[2]!),
+    };
+
+    selectedCoverageFaces.value = next;
+  };
 
   const sceneStates = {
     tresContext,
@@ -226,6 +356,20 @@ export function createBaseSceneStates(
     aspectRatio,
     perspectiveCamera,
     cubeCamera,
+    // Predictive Camera Placement
+    selectionMode,
+    selectedCoverageFaces,
+    setSelectionMode,
+    clearCoverageFaces,
+    addCoverageFace,
+    updateCoverageFaceCorner,
+    removeCoverageFace,
+    updateCoverageFaceColor,
+    isAllCoverageHidden,
+    toggleAllCoverageHidden,
+    setAllCoverageHidden,
+    toggleCoverageFaceHidden,
+    setCoverageFaceHidden,
   } as const;
 
   // websocket.ws.value!.onclose = (_closeEvent: CloseEvent) => {
@@ -240,22 +384,9 @@ export function createSceneStatesWithHelper(
   workspace: string | null,
 ) {
   const aspectRatioManagement = useAspectRatioManagement(sceneStates);
-  useAutosave(sceneStates, workspace);
 
   onMounted(() => {
     useAutosave(sceneStates, workspace);
-    watch(
-      () => [sceneStates.transformingInfo, sceneStates.currentCam],
-      ([transform, cam]) => {
-        const newFov = transform?.value?.fov ?? cam?.value?.fov;
-        const actualCamera = sceneStates.tresContext.value?.camera.activeCamera;
-        if (actualCamera && newFov !== undefined) {
-          (actualCamera as PerspectiveCamera).fov = newFov;
-          actualCamera.updateProjectionMatrix();
-        }
-      },
-      { deep: true },
-    );
   });
 
   const sceneStatesWithCam = {
