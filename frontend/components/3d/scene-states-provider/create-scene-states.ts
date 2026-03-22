@@ -44,6 +44,8 @@ export interface ModelWithCamsResp {
     imagePath: string;
     imageExtension: string;
     cameras: Record<string, Camera>;
+    scaleFactor?: number;
+    modelHeight?: number;
   };
 }
 
