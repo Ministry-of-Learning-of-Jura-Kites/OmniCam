@@ -27,7 +27,11 @@ import {
 
 import { exportCamerasToJson } from "@/utils/exportScene";
 import { importJsonToCameras } from "@/utils/importScene";
-import { SCENE_STATES_KEY } from "@/constants/state-keys";
+import {
+  CURRENT_PANEL,
+  SCENE_STATES_KEY,
+  TOGGLE_ALGO_PANEL_KEY,
+} from "@/constants/state-keys";
 
 import Tooltip from "./ui/tooltip/Tooltip.vue";
 import TooltipTrigger from "./ui/tooltip/TooltipTrigger.vue";
@@ -49,6 +53,8 @@ const props = defineProps({
     default: null,
   },
 });
+const currentPanel = inject(CURRENT_PANEL);
+const toggleAlgoPanel = inject(TOGGLE_ALGO_PANEL_KEY)!;
 
 const sceneStates = inject(SCENE_STATES_KEY)!;
 
@@ -369,6 +375,11 @@ function goToMyWorkspace() {
           <Map class="h-4 w-4" />
           Map
         </Button>
+        <Button size="sm" variant="outline" @click="() => toggleAlgoPanel()">
+          <IndentIncrease v-if="currentPanel == 'algo'" class="button-icon" />
+          <IndentDecrease v-else class="button-icon" />
+          <span class="ml-2 button-span-text"> Algo </span>
+        </Button>
       </div>
 
       <div
@@ -376,7 +387,10 @@ function goToMyWorkspace() {
         class="flex flex-row justify-center items-center gap-2"
       >
         <Button size="sm" variant="outline" @click="() => togglePanel()">
-          <IndentIncrease v-if="isPanelOpen" class="button-icon" />
+          <IndentIncrease
+            v-if="isPanelOpen && currentPanel === 'camera'"
+            class="button-icon"
+          />
           <IndentDecrease v-else class="button-icon" />
         </Button>
         <DropdownMenu>

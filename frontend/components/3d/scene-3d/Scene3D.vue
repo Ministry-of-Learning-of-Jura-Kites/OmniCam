@@ -13,6 +13,7 @@ import {
   WebGLCubeRenderTarget,
   LinearFilter,
   type CubeCamera,
+  Vector3,
 } from "three";
 import { IS_MAP_OPEN_KEY, SCENE_STATES_KEY } from "@/constants/state-keys";
 import Stats from "stats.js";
@@ -25,6 +26,17 @@ import { usePromptUnsaved } from "./use-prompt-unsaved";
 import FrustumOverlay from "@/components/3d/camera-frustum/FrustumOverlay.vue";
 // import Distortion from "@/components/3d/distortion/Distortion.vue";
 import CubeDistortion from "@/components/3d/distortion/CubeDistortion.vue";
+import CoverageAreaMesh from "../coverage-area-mesh/CoverageAreaMesh.vue";
+import type { CoverageFace } from "../scene-states-provider/create-scene-states";
+import CoverageCornerGizmos from "../coverage-area-mesh/CoverageCornerGizmos.vue";
+
+const selectedFaces = computed(() =>
+  sceneStates.facesManagement.faces.value.filter(
+    (face) => !sceneStates.facesManagement.isAllHidden.value && !face.hidden,
+  ),
+);
+type Point3 = [number, number, number];
+const WORLD_UP = new Vector3(0, 1, 0);
 const props = defineProps({
   projectId: { type: String, required: true },
   modelId: { type: String, required: true },
@@ -40,15 +52,38 @@ const modelPath = `http://${config.public.externalBackendHost}/api/v1/assets/pro
 const perspectiveCamera = ref<PerspectiveCamera | null>(null);
 const canvas: Ref<InstanceType<typeof TresCanvas> | null> = ref(null);
 const cubeCamera: Ref<CubeCamera | null> = ref(null);
+// const camera = ref<PerspectiveCamera | null>(null);
 
 const minimapCamera = ref<OrthographicCamera | null>(null);
 const isMapOpen = inject(IS_MAP_OPEN_KEY)!;
+
+const COVERAGE_Y_OFFSET = 0.01;
+
+const draftCoveragePoints = ref<Vector3[]>([]);
+const draftCoverageNormals = ref<Vector3[]>([]);
 
 const aspect = computed(() => {
   const width = sceneStates.currentCam.value.widthRes;
   if (width == 0) return undefined;
   const height = sceneStates.currentCam.value.heightRes || 1;
   return width / height;
+});
+
+const previewPoints = computed<Point3[]>(() => {
+  if (sceneStates.facesManagement.mode.value !== "coverage-area") return [];
+
+  return buildDraftCoveragePreview(
+    draftCoveragePoints.value,
+    draftCoverageNormals.value,
+  );
+});
+
+const isPreviewing = computed(() => previewPoints.value.length === 4);
+
+const draftPointMarkers = computed<Point3[]>(() => {
+  if (sceneStates.facesManagement.mode.value !== "coverage-area") return [];
+
+  return draftCoveragePoints.value.map((p) => [p.x, p.y, p.z] as Point3);
 });
 
 usePromptUnsaved(sceneStates);
@@ -59,8 +94,215 @@ useCameraUpdate(sceneStates);
 const raycaster = new Raycaster();
 const mouse = new Vector2();
 
+function clearDraftCoverageSelection() {
+  draftCoveragePoints.value = [];
+  draftCoverageNormals.value = [];
+  // sceneStates.tresContext.value?.invalidate?.();
+}
+
+function makeBasisFromNormal(normal: Vector3) {
+  const n = normal.clone().normalize();
+
+  let u = new Vector3().crossVectors(WORLD_UP, n);
+  if (u.lengthSq() < 1e-8) {
+    u = new Vector3(1, 0, 0).cross(n);
+  }
+  if (u.lengthSq() < 1e-8) {
+    u = new Vector3(0, 0, 1);
+  }
+  u.normalize();
+
+  const v = new Vector3().crossVectors(n, u).normalize();
+  return { u, v };
+}
+
+function averageVector(vs: Vector3[]) {
+  const out = new Vector3();
+  if (vs.length === 0) return out;
+  vs.forEach((v) => out.add(v));
+  out.multiplyScalar(1 / vs.length);
+  return out;
+}
+
+function computeStableNormal(points: Vector3[], normals: Vector3[]) {
+  const avgNormal = averageVector(normals);
+  if (avgNormal.lengthSq() > 1e-8) return avgNormal.normalize();
+
+  if (points.length >= 3) {
+    const a = points[0]!;
+    const b = points[1]!;
+    const c = points[2]!;
+    const n = new Vector3()
+      .subVectors(b, a)
+      .cross(new Vector3().subVectors(c, a));
+
+    if (n.lengthSq() > 1e-8) return n.normalize();
+  }
+
+  return WORLD_UP.clone();
+}
+
+function orderPointsOnPlane(points: Vector3[], normal: Vector3) {
+  const center = averageVector(points);
+  const { u, v } = makeBasisFromNormal(normal);
+
+  const projected = points.map((p) => {
+    const d = p.clone().sub(center);
+    const du = d.dot(u);
+    const dv = d.dot(v);
+    return center.clone().addScaledVector(u, du).addScaledVector(v, dv);
+  });
+
+  return projected
+    .map((p) => {
+      const d = p.clone().sub(center);
+      return {
+        p,
+        angle: Math.atan2(d.dot(v), d.dot(u)),
+      };
+    })
+    .sort((a, b) => a.angle - b.angle)
+    .map((x) => x.p);
+}
+
+function buildDraftCoveragePreview(
+  points: Vector3[],
+  normals: Vector3[],
+): Point3[] {
+  if (points.length < 3) return [];
+
+  const normal = computeStableNormal(points, normals);
+  const ordered = orderPointsOnPlane(points, normal);
+
+  const padded =
+    ordered.length === 3
+      ? [...ordered, ordered[2]!.clone()]
+      : ordered.slice(0, 4);
+
+  return padded.map((p) => [p.x, p.y, p.z] as Point3);
+}
+
+function buildCoverageFaceFromPickedPoints(
+  points: Vector3[],
+  normals: Vector3[],
+): CoverageFace | null {
+  if (points.length !== 4) return null;
+
+  const normal = computeStableNormal(points, normals);
+  const ordered = orderPointsOnPlane(points, normal);
+
+  const p0 = ordered[0]!;
+  const p1 = ordered[1]!;
+  const p2 = ordered[2]!;
+  const p3 = ordered[3]!;
+
+  const centerV = averageVector(ordered);
+
+  const width = (p0.distanceTo(p1) + p2.distanceTo(p3)) / 2;
+
+  const height = (p1.distanceTo(p2) + p3.distanceTo(p0)) / 2;
+
+  if (width < 0.05 || height < 0.05) return null;
+
+  return {
+    id: `area_${Date.now()}`,
+    points: [
+      [p0.x, p0.y, p0.z],
+      [p1.x, p1.y, p1.z],
+      [p2.x, p2.y, p2.z],
+      [p3.x, p3.y, p3.z],
+    ],
+    center: [centerV.x, centerV.y, centerV.z],
+    normal: [normal.x, normal.y, normal.z],
+  };
+}
+
+function handleCoverageAreaPointer(event: PointerEvent) {
+  if (sceneStates.facesManagement.mode.value !== "coverage-area") return false;
+
+  if (event.type !== "pointerdown" || !event.ctrlKey) {
+    return false;
+  }
+
+  if (draftCoveragePoints.value.length >= 4) {
+    clearDraftCoverageSelection();
+  }
+
+  const hit = getSurfaceHit(event);
+
+  if (!hit) return true;
+
+  draftCoveragePoints.value = [...draftCoveragePoints.value, hit.point.clone()];
+  draftCoverageNormals.value = [
+    ...draftCoverageNormals.value,
+    hit.normal.clone(),
+  ];
+
+  if (draftCoveragePoints.value.length === 4) {
+    const face = buildCoverageFaceFromPickedPoints(
+      draftCoveragePoints.value,
+      draftCoverageNormals.value,
+    );
+
+    if (face) {
+      console.log("Adding coverage face", face);
+      sceneStates.facesManagement.add(face);
+    }
+
+    requestAnimationFrame(() => {
+      clearDraftCoverageSelection();
+    });
+
+    // sceneStates.tresContext.value?.invalidate?.();
+    return true;
+  }
+
+  // sceneStates.tresContext.value?.invalidate?.();
+  return true;
+}
+
+function getSurfaceHit(
+  event: PointerEvent,
+): { point: Vector3; normal: Vector3 } | null {
+  if (!sceneStates.tresContext.value || !perspectiveCamera.value) return null;
+
+  const ele = sceneStates.tresContext.value.renderer.instance.domElement;
+  const rect = ele.getBoundingClientRect();
+
+  mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+  mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+
+  raycaster.setFromCamera(mouse, perspectiveCamera.value);
+
+  const scene = sceneStates.tresContext.value.scene;
+  const hits = raycaster.intersectObjects(scene.children, true);
+
+  const hit = hits.find((h) => {
+    const object = h.object as unknown as {
+      isMesh?: boolean;
+      userData?: Record<string, unknown>;
+    };
+    const isMesh = object.isMesh && !!h.face;
+    const kind = String(object.userData?.kind ?? "");
+    return isMesh && !kind.startsWith("coverage-");
+  });
+
+  if (!hit || !hit.face) return null;
+
+  const worldNormal = hit.face.normal
+    .clone()
+    .transformDirection(hit.object.matrixWorld)
+    .normalize();
+
+  return { point: hit.point.clone(), normal: worldNormal };
+}
+
 function onCanvasPointer(event: PointerEvent) {
   if (!sceneStates.tresContext.value || !perspectiveCamera.value) return;
+  if (sceneStates.facesManagement.mode.value === "coverage-area") {
+    const handled = handleCoverageAreaPointer(event);
+    if (handled) return;
+  }
   const ele = sceneStates.tresContext.value.renderer.instance.domElement;
   const rect = ele.getBoundingClientRect();
   mouse.x = ((event.clientX - rect.left) / rect.width!) * 2 - 1;
@@ -101,7 +343,6 @@ onMounted(() => {
     { immediate: true },
   );
 
-  // Don't stop to allow changing cubeCamera
   watch(
     cubeCamera,
     (camera) => {
@@ -223,6 +464,23 @@ onMounted(() => {
     document.body.appendChild(stats.dom);
   }
 });
+watch(
+  () => sceneStates.facesManagement.mode.value,
+  (mode) => {
+    if (mode !== "coverage-area") {
+      clearDraftCoverageSelection();
+    }
+  },
+);
+
+watch(
+  () => sceneStates.facesManagement.faces.value.length,
+  (len) => {
+    if (len === 0) {
+      clearDraftCoverageSelection();
+    }
+  },
+);
 </script>
 
 <template>
@@ -344,6 +602,36 @@ onMounted(() => {
               @before-compile="injectFisheye"
             />
           </TresMesh> -->
+          <CoverageAreaMesh
+            v-if="isPreviewing"
+            face-id="__preview__"
+            :points="previewPoints"
+            color="#22ff88"
+            :selected="true"
+            :show-corners="false"
+            :opacity="0.12"
+            :y-offset="COVERAGE_Y_OFFSET"
+          />
+
+          <template
+            v-if="sceneStates.facesManagement.mode.value === 'coverage-area'"
+          >
+            <TresMesh
+              v-for="(point, i) in draftPointMarkers"
+              :key="`draft-point-${i}`"
+              :position="point"
+              :render-order="1002"
+            >
+              <TresSphereGeometry :args="[0.025, 16, 16]" />
+              <TresMeshBasicMaterial
+                color="#ffffff"
+                :transparent="true"
+                :opacity="0.95"
+                :depth-test="false"
+                :depth-write="false"
+              />
+            </TresMesh>
+          </template>
 
           <CameraObject
             v-for="[camId, cam] in Object.entries(sceneStates.cameras)"
@@ -375,6 +663,27 @@ onMounted(() => {
             :infinite-grid="true"
             :side="DoubleSide"
           />
+
+          <template v-for="face in selectedFaces" :key="face.id">
+            <CoverageAreaMesh
+              :face-id="face.id"
+              :points="face.points"
+              :color="face.color ?? '#22ff88'"
+              :selected="true"
+              :show-corners="false"
+              :y-offset="COVERAGE_Y_OFFSET"
+            />
+
+            <CoverageCornerGizmos
+              :face-id="face.id"
+              :points="face.points"
+              :size="0.14"
+              :y-offset="COVERAGE_Y_OFFSET"
+              :visible="
+                sceneStates.facesManagement.mode.value !== 'coverage-area'
+              "
+            />
+          </template>
         </TresCanvas>
       </div>
     </div>
