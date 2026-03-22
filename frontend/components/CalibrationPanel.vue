@@ -3,6 +3,7 @@ import {
   IS_CALIBRATING_KEY,
   TOGGLE_CALIBRATION_KEY,
   SCENE_STATES_KEY,
+  CALIBRATION_GRID_SCALE,
 } from "~/constants/state-keys";
 import {
   Ruler,
@@ -18,10 +19,16 @@ const realWorldSizeCm = ref(100);
 const previousScaleFactor = ref(1);
 const previousCalibrationGridScale = ref(1); // Default model height in cm
 const sceneStates = inject(SCENE_STATES_KEY);
-const calibrationGridScale = ref(
-  realWorldSizeCm.value / 100 / sceneStates!.calibration.scale,
-);
 const canCancel = ref(false);
+
+const calibrationGridScale = inject(CALIBRATION_GRID_SCALE);
+
+onMounted(() => {
+  if (calibrationGridScale && calibrationGridScale.value === 1) {
+    calibrationGridScale.value =
+      realWorldSizeCm.value / 100 / sceneStates!.calibration.scale;
+  }
+});
 
 const confirmCalibration = () => {
   previousScaleFactor.value = sceneStates!.calibration.scale;

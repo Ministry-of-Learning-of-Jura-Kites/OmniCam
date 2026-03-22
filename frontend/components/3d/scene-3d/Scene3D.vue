@@ -374,6 +374,11 @@ onMounted(() => {
             section-color="white"
             :infinite-grid="true"
             :side="DoubleSide"
+            :scale="[
+              1 / sceneStates!.calibration.scale,
+              1,
+              1 / sceneStates!.calibration.scale,
+            ]"
           />
         </TresCanvas>
       </div>
