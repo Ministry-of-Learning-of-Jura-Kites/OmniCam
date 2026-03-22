@@ -1,4 +1,4 @@
-<!-- eslint-disable vue/valid-template-root -->
+<!-- eslint-disable vue/valid-template-root
 <script setup lang="ts">
 import type { WebGLRenderer } from "three";
 import { EffectComposer } from "three/addons/postprocessing/EffectComposer.js";
@@ -174,4 +174,4 @@ onMounted(() => {
     { immediate: true, once: true },
   );
 });
-</script>
+</script> -->

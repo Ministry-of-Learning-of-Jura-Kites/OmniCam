@@ -1,8 +1,16 @@
+import type { InjectionKey, Ref } from "vue";
 import type { SceneStatesWithHelper } from "~/types/scene-states";
 
 export const MODEL_INFO_KEY = "model_info";
 
-export const IS_PANEL_OPEN_KEY: InjectionKey<boolean> = Symbol("is_panel_open");
+export const IS_PANEL_OPEN_KEY: InjectionKey<Ref<boolean>> =
+  Symbol("is_panel_open");
+
+export const CURRENT_PANEL: InjectionKey<Ref<"camera" | "algo" | null>> =
+  Symbol("current_panel");
+
+export const TOGGLE_ALGO_PANEL_KEY: InjectionKey<() => void> =
+  Symbol("toggle_algo_panel");
 
 export const TOGGLE_PANEL_KEY: InjectionKey<() => void> =
   Symbol("toggle_panel");
