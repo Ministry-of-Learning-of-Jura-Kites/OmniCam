@@ -31,8 +31,8 @@ import type { CoverageFace } from "../scene-states-provider/create-scene-states"
 import CoverageCornerGizmos from "../coverage-area-mesh/CoverageCornerGizmos.vue";
 
 const selectedFaces = computed(() =>
-  sceneStates.selectedCoverageFaces.value.filter(
-    (face) => !sceneStates.isAllCoverageHidden.value && !face.hidden,
+  sceneStates.facesManagement.faces.value.filter(
+    (face) => !sceneStates.facesManagement.isAllHidden.value && !face.hidden,
   ),
 );
 type Point3 = [number, number, number];
@@ -70,7 +70,7 @@ const aspect = computed(() => {
 });
 
 const previewPoints = computed<Point3[]>(() => {
-  if (sceneStates.selectionMode.value !== "coverage-area") return [];
+  if (sceneStates.facesManagement.mode.value !== "coverage-area") return [];
 
   return buildDraftCoveragePreview(
     draftCoveragePoints.value,
@@ -81,7 +81,7 @@ const previewPoints = computed<Point3[]>(() => {
 const isPreviewing = computed(() => previewPoints.value.length === 4);
 
 const draftPointMarkers = computed<Point3[]>(() => {
-  if (sceneStates.selectionMode.value !== "coverage-area") return [];
+  if (sceneStates.facesManagement.mode.value !== "coverage-area") return [];
 
   return draftCoveragePoints.value.map((p) => [p.x, p.y, p.z] as Point3);
 });
@@ -213,14 +213,12 @@ function buildCoverageFaceFromPickedPoints(
       [p3.x, p3.y, p3.z],
     ],
     center: [centerV.x, centerV.y, centerV.z],
-    width,
-    height,
     normal: [normal.x, normal.y, normal.z],
   };
 }
 
 function handleCoverageAreaPointer(event: PointerEvent) {
-  if (sceneStates.selectionMode.value !== "coverage-area") return false;
+  if (sceneStates.facesManagement.mode.value !== "coverage-area") return false;
 
   if (event.type !== "pointerdown" || !event.ctrlKey) {
     return false;
@@ -248,7 +246,7 @@ function handleCoverageAreaPointer(event: PointerEvent) {
 
     if (face) {
       console.log("Adding coverage face", face);
-      sceneStates.addCoverageFace(face);
+      sceneStates.facesManagement.add(face);
     }
 
     requestAnimationFrame(() => {
@@ -301,7 +299,7 @@ function getSurfaceHit(
 
 function onCanvasPointer(event: PointerEvent) {
   if (!sceneStates.tresContext.value || !perspectiveCamera.value) return;
-  if (sceneStates.selectionMode.value === "coverage-area") {
+  if (sceneStates.facesManagement.mode.value === "coverage-area") {
     const handled = handleCoverageAreaPointer(event);
     if (handled) return;
   }
@@ -318,7 +316,10 @@ function onCanvasPointer(event: PointerEvent) {
     const foundObj = intersects[0];
     const userData = foundObj?.object.userData as IUserData;
     userData.handleEvent.call(userData, event.type, event);
-  } else if (event.type === "pointerdown") {
+  } else if (
+    event.type === "pointerdown" &&
+    (sceneStates.currentCamId.value == null || props.workspace != null)
+  ) {
     sceneStates.spectatorRotation.onPointerDown(event);
   }
 }
@@ -464,7 +465,7 @@ onMounted(() => {
   }
 });
 watch(
-  () => sceneStates.selectionMode.value,
+  () => sceneStates.facesManagement.mode.value,
   (mode) => {
     if (mode !== "coverage-area") {
       clearDraftCoverageSelection();
@@ -473,7 +474,7 @@ watch(
 );
 
 watch(
-  () => sceneStates.selectedCoverageFaces.value.length,
+  () => sceneStates.facesManagement.faces.value.length,
   (len) => {
     if (len === 0) {
       clearDraftCoverageSelection();
@@ -612,7 +613,9 @@ watch(
             :y-offset="COVERAGE_Y_OFFSET"
           />
 
-          <template v-if="sceneStates.selectionMode.value === 'coverage-area'">
+          <template
+            v-if="sceneStates.facesManagement.mode.value === 'coverage-area'"
+          >
             <TresMesh
               v-for="(point, i) in draftPointMarkers"
               :key="`draft-point-${i}`"
@@ -676,7 +679,9 @@ watch(
               :points="face.points"
               :size="0.14"
               :y-offset="COVERAGE_Y_OFFSET"
-              :visible="sceneStates.selectionMode.value !== 'coverage-area'"
+              :visible="
+                sceneStates.facesManagement.mode.value !== 'coverage-area'
+              "
             />
           </template>
         </TresCanvas>

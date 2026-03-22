@@ -8,42 +8,42 @@ const numCameras = ref(3);
 const isOptimizing = ref(false);
 
 const selectedCount = computed(
-  () => sceneStates.selectedCoverageFaces.value.length,
+  () => sceneStates.facesManagement.faces.value.length,
 );
 
 const startAreaSelection = () => {
-  sceneStates.setSelectionMode("coverage-area");
+  sceneStates.facesManagement.setMode("coverage-area");
 };
 
 const stopAreaSelection = () => {
-  sceneStates.setSelectionMode("none");
+  sceneStates.facesManagement.setMode("none");
 };
 
 const clearAreas = () => {
-  sceneStates.clearCoverageFaces();
+  sceneStates.facesManagement.clear();
 };
 
 const deleteArea = (faceId: string) => {
-  sceneStates.removeCoverageFace(faceId);
+  sceneStates.facesManagement.remove(faceId);
 };
 
 const updateAreaColor = (faceId: string, event: Event) => {
   const color = (event.target as HTMLInputElement | null)?.value;
   if (!color) return;
-  sceneStates.updateCoverageFaceColor(faceId, color);
+  sceneStates.facesManagement.updateColor(faceId, color);
 };
 
 const getAreaColor = (color?: string) => color ?? "#22ff88";
 const isAllCoverageHidden = computed(
-  () => sceneStates.isAllCoverageHidden.value,
+  () => sceneStates.facesManagement.isAllHidden.value,
 );
 
 const toggleAllAreasVisibility = () => {
-  sceneStates.toggleAllCoverageHidden();
+  sceneStates.facesManagement.toggleAllHidden();
 };
 
 const toggleAreaVisibility = (faceId: string) => {
-  sceneStates.toggleCoverageFaceHidden(faceId);
+  sceneStates.facesManagement.toggleFaceHidden(faceId);
 };
 </script>
 
@@ -105,7 +105,7 @@ const toggleAreaVisibility = (faceId: string) => {
       </p>
 
       <div
-        v-for="(face, i) in sceneStates.selectedCoverageFaces.value"
+        v-for="(face, i) in sceneStates.facesManagement.faces.value"
         :key="face.id"
         class="mb-3 rounded-lg border border-border bg-muted/20 p-3"
       >
