@@ -53,7 +53,6 @@ function makeArrowMaterial(color: string) {
 
 function makeArrowGeometry() {
   const g = new ConeGeometry(arrowRad, arrowLen, 10);
-  // ทำให้ฐานอยู่ที่ origin แล้วปลายยื่นออกไปตามแกน local +Y
   g.translate(0, arrowLen / 2, 0);
   return g;
 }
@@ -91,8 +90,6 @@ function createAxisArrow(
     material,
   ) as unknown as Obj3DWithUserData;
 
-  // geometry เดิมชี้ local +Y
-  // หมุนให้ชี้ตามแกนที่ต้องการ
   if (axis === "x") {
     arrow.rotateZ(dir === 1 ? -Math.PI / 2 : Math.PI / 2);
   } else if (axis === "y") {
@@ -103,7 +100,6 @@ function createAxisArrow(
     arrow.rotateX(dir === 1 ? Math.PI / 2 : -Math.PI / 2);
   }
 
-  // ใช้ axis เดิมได้เลย เพราะ logic drag เป็นเส้นแกนเต็มอยู่แล้ว
   arrow.userData = new CornerTranslateUserData(
     axis,
     props.faceId,
@@ -116,7 +112,6 @@ function createAxisArrow(
   return arrow;
 }
 
-// 1 จุด = 1 dot + 6 arrows
 for (let ci = 0; ci < 4; ci++) {
   const dot = new Mesh(dotGeom, dotMat);
   dots.push(dot);
@@ -139,7 +134,6 @@ for (let ci = 0; ci < 4; ci++) {
   group.add(azNeg);
 }
 
-// register draggable
 arrows.forEach((m) => sceneStates.draggableObjects.add(m));
 
 watchEffect(() => {
@@ -157,7 +151,6 @@ watchEffect(() => {
 
     dots[ci]!.position.copy(pos);
 
-    // 1 corner มี 6 arrows
     for (let k = 0; k < 6; k++) {
       arrows[ci * 6 + k]!.position.copy(pos);
     }

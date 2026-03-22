@@ -6,8 +6,8 @@ import {
   Quaternion,
   Euler,
   Vector3,
-  PerspectiveCamera,
-  CubeCamera,
+  type PerspectiveCamera,
+  type CubeCamera,
 } from "three";
 import { cameraDefault, type ICamera } from "~/types/camera";
 import { useCameraManagement } from "../scene-3d/use-camera-management";
@@ -211,12 +211,10 @@ export function createBaseSceneStates(
 
   const toggleAllCoverageHidden = () => {
     isAllCoverageHidden.value = !isAllCoverageHidden.value;
-    tresContext.value?.invalidate?.();
   };
 
   const setAllCoverageHidden = (hidden: boolean) => {
     isAllCoverageHidden.value = hidden;
-    tresContext.value?.invalidate?.();
   };
 
   const toggleCoverageFaceHidden = (faceId: string) => {
@@ -230,7 +228,6 @@ export function createBaseSceneStates(
     };
 
     selectedCoverageFaces.value = next;
-    tresContext.value?.invalidate?.();
   };
 
   const setCoverageFaceHidden = (faceId: string, hidden: boolean) => {
@@ -244,7 +241,6 @@ export function createBaseSceneStates(
     };
 
     selectedCoverageFaces.value = next;
-    tresContext.value?.invalidate?.();
   };
 
   const addCoverageFace = (face: CoverageFace) => {
@@ -253,14 +249,12 @@ export function createBaseSceneStates(
       color: face.color ?? "#22ff88",
       hidden: face.hidden ?? false,
     });
-    tresContext.value?.invalidate?.();
   };
 
   const removeCoverageFace = (faceId: string) => {
     selectedCoverageFaces.value = selectedCoverageFaces.value.filter(
       (f) => f.id !== faceId,
     );
-    tresContext.value?.invalidate?.();
   };
 
   const updateCoverageFaceColor = (faceId: string, color: string) => {
@@ -274,12 +268,10 @@ export function createBaseSceneStates(
     };
 
     selectedCoverageFaces.value = next;
-    tresContext.value?.invalidate?.();
   };
 
   const clearCoverageFaces = () => {
     selectedCoverageFaces.value.splice(0, selectedCoverageFaces.value.length);
-    tresContext.value?.invalidate?.();
   };
 
   const updateCoverageFaceCorner = (
@@ -384,9 +376,22 @@ export function createSceneStatesWithHelper(
   workspace: string | null,
 ) {
   const aspectRatioManagement = useAspectRatioManagement(sceneStates);
+  useAutosave(sceneStates, workspace);
 
   onMounted(() => {
     useAutosave(sceneStates, workspace);
+    watch(
+      () => [sceneStates.transformingInfo, sceneStates.currentCam],
+      ([transform, cam]) => {
+        const newFov = transform?.value?.fov ?? cam?.value?.fov;
+        const actualCamera = sceneStates.tresContext.value?.camera.activeCamera;
+        if (actualCamera && newFov !== undefined) {
+          (actualCamera as PerspectiveCamera).fov = newFov;
+          actualCamera.updateProjectionMatrix();
+        }
+      },
+      { deep: true },
+    );
   });
 
   const sceneStatesWithCam = {
