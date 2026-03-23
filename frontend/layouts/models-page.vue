@@ -1,19 +1,14 @@
-<script setup>
+<script setup lang="ts">
 import LazyTopBar from "@/components/TopBar.vue";
 import LazyCameraPanel from "@/components/CameraPanel.vue";
 import LazyAlgoPanel from "@/components/AlgoPanel.vue";
 import LazyCalibrationPanel from "@/components/CalibrationPanel.vue";
 import SceneStatesProvider from "~/components/3d/scene-states-provider/SceneStatesProvider.vue";
 import {
-  IS_PANEL_OPEN_KEY,
-  TOGGLE_PANEL_KEY,
-  TOGGLE_MINIMAP_KEY,
-  IS_MAP_OPEN_KEY,
-  IS_CALIBRATING_KEY,
-  TOGGLE_CALIBRATION_KEY,
-  CALIBRATION_GRID_SCALE,
-  CURRENT_PANEL,
-  TOGGLE_ALGO_PANEL_KEY,
+  type CamPanelInfo,
+  MAP_KEY,
+  PANEL_KEY as PANEL_KEY,
+  type PanelInfo,
 } from "~/constants/state-keys";
 
 import FailDialog from "~/components/dialog/FailDialog.vue";
@@ -22,11 +17,22 @@ import { useFailDialog } from "~/composables/useFailDialog";
 const { open, message } = useFailDialog();
 const route = useRoute();
 
+const isMapOpen = ref(false);
+
+function toggleMap() {
+  isMapOpen.value = !isMapOpen.value;
+}
+
+provide(MAP_KEY, {
+  isMapOpen,
+  toggleMap,
+});
+
 // Panel Key
 const isPanelOpen = ref(true);
 const slotWidth = ref("100%");
-const isMapOpen = ref(false);
-const currentPanel = ref("camera");
+const currentPanel: PanelInfo["currentPanel"] = ref("camera");
+const camPanelSelectedCamId: CamPanelInfo["selectedCamId"] = ref(null);
 
 onMounted(() => {
   slotWidth.value = isPanelOpen.value ? "calc(100% - 20rem)" : "100%";
@@ -44,7 +50,6 @@ function closePanel() {
 
 function togglePanel() {
   if (currentPanel.value === "camera" && isPanelOpen.value) {
-    currentPanel.value = null;
     closePanel();
     return;
   }
@@ -55,7 +60,6 @@ function togglePanel() {
 
 function toggleAlgoPanel() {
   if (currentPanel.value === "algo" && isPanelOpen.value) {
-    currentPanel.value = null;
     closePanel();
     return;
   }
@@ -64,27 +68,25 @@ function toggleAlgoPanel() {
   openPanel();
 }
 
-function toggleMiniMap() {
-  isMapOpen.value = !isMapOpen.value;
-}
-
-provide(IS_PANEL_OPEN_KEY, isPanelOpen);
-provide(TOGGLE_PANEL_KEY, togglePanel);
-provide(TOGGLE_ALGO_PANEL_KEY, toggleAlgoPanel);
-provide(CURRENT_PANEL, currentPanel);
-provide(IS_MAP_OPEN_KEY, isMapOpen);
-provide(TOGGLE_MINIMAP_KEY, toggleMiniMap);
-
-// Calibration Key
-const isCalibrating = ref(false);
 function toggleCalibration() {
   isCalibrating.value = !isCalibrating.value;
 }
-provide(IS_CALIBRATING_KEY, isCalibrating);
-provide(TOGGLE_CALIBRATION_KEY, toggleCalibration);
 
 const calibrationGridScale = ref(1);
-provide(CALIBRATION_GRID_SCALE, calibrationGridScale);
+const isCalibrating = ref(false);
+
+provide(PANEL_KEY, {
+  currentPanel,
+  togglePanel,
+  isPanelOpen,
+  toggleAlgoPanel,
+  camPanelInfo: { selectedCamId: camPanelSelectedCamId },
+  calibrationPanelInfo: {
+    isCalibrating,
+    toggleCalibration,
+    calibrationGridScale,
+  },
+});
 
 const workspace = computed(() => route.meta.routeInfo?.workspace);
 </script>
@@ -93,8 +95,8 @@ const workspace = computed(() => route.meta.routeInfo?.workspace);
   <div class="flex flex-col h-screen">
     <SceneStatesProvider
       :key="`${route.params.projectId}-${route.params.modelId}-${workspace}`"
-      :project-id="route.params.projectId"
-      :model-id="route.params.modelId"
+      :project-id="route.params.projectId as string"
+      :model-id="route.params.modelId as string"
       :workspace="workspace"
     >
       <LazyTopBar :workspace="workspace" />

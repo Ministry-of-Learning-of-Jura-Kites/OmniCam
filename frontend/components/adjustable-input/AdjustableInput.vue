@@ -102,7 +102,7 @@ function setClamp(input: number) {
   if (props.min != null) {
     newVal = Math.max(props.min, newVal);
   }
-  if (model.value) {
+  if (model.value != null) {
     model.value = newVal;
     emit("change", model.value);
   }
