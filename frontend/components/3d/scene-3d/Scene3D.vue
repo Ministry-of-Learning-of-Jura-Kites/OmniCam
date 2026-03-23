@@ -15,7 +15,7 @@ import {
   type CubeCamera,
   Vector3,
 } from "three";
-import { IS_MAP_OPEN_KEY, SCENE_STATES_KEY } from "@/constants/state-keys";
+import { MAP_KEY, PANEL_KEY, SCENE_STATES_KEY } from "@/constants/state-keys";
 import Stats from "stats.js";
 import LazyMinimap from "@/components/3d/minimap/Minimap.vue";
 import { useCameraUpdate } from "./use-camera-update";
@@ -29,6 +29,9 @@ import CubeDistortion from "@/components/3d/distortion/CubeDistortion.vue";
 import CoverageAreaMesh from "../coverage-area-mesh/CoverageAreaMesh.vue";
 import type { CoverageFace } from "../scene-states-provider/create-scene-states";
 import CoverageCornerGizmos from "../coverage-area-mesh/CoverageCornerGizmos.vue";
+
+const { isPanelOpen, currentPanel, camPanelInfo } = inject(PANEL_KEY)!;
+const { selectedCamId } = camPanelInfo;
 
 const selectedFaces = computed(() =>
   sceneStates.facesManagement.faces.value.filter(
@@ -55,7 +58,7 @@ const cubeCamera: Ref<CubeCamera | null> = ref(null);
 // const camera = ref<PerspectiveCamera | null>(null);
 
 const minimapCamera = ref<OrthographicCamera | null>(null);
-const isMapOpen = inject(IS_MAP_OPEN_KEY)!;
+const { isMapOpen } = inject(MAP_KEY)!;
 
 const COVERAGE_Y_OFFSET = 0.01;
 
@@ -442,19 +445,6 @@ onMounted(() => {
   );
 });
 
-const spectatorRefs = {
-  position: {
-    x: toRef(sceneStates.spectatorCameraPosition, "x"),
-    y: toRef(sceneStates.spectatorCameraPosition, "y"),
-    z: toRef(sceneStates.spectatorCameraPosition, "z"),
-  },
-  rotation: {
-    x: toRef(sceneStates.spectatorCameraRotation, "x"),
-    y: toRef(sceneStates.spectatorCameraRotation, "y"),
-    z: toRef(sceneStates.spectatorCameraRotation, "z"),
-  },
-};
-
 onMounted(() => {
   stats = new Stats();
   stats.showPanel(0);
@@ -481,6 +471,15 @@ watch(
     }
   },
 );
+
+function selectCurrentCamShortcut() {
+  const currentCamId = sceneStates.currentCamId.value;
+  if (currentCamId) {
+    selectedCamId.value = sceneStates.currentCamId.value;
+    isPanelOpen.value = true;
+    currentPanel.value = "camera";
+  }
+}
 </script>
 
 <template>
@@ -514,10 +513,17 @@ watch(
 
       <div
         id="camera-props"
-        class="absolute select-none top-0 right-0 z-10 text-white flex flex-col p-4 bg-black/20 backdrop-blur-sm rounded-bl-lg"
+        class="absolute select-none max-w-50 top-0 right-0 z-10 text-white flex flex-col p-4 bg-black/20 backdrop-blur-sm rounded-bl-lg"
       >
-        <p class="text-center w-full mb-2 font-bold border-b border-white/20">
-          Spectator
+        <p
+          class="text-center w-full mb-2 font-bold border-b border-white/20 truncate"
+          @click="selectCurrentCamShortcut"
+        >
+          {{
+            sceneStates.currentCamId.value == null
+              ? "Spectator"
+              : sceneStates.currentCam.value.name
+          }}
         </p>
 
         <div
@@ -527,7 +533,7 @@ watch(
         >
           <p class="w-4">{{ axis }}:</p>
           <AdjustableInput
-            v-model="spectatorRefs.position[axis].value"
+            v-model="sceneStates.currentCam.value.position[axis]"
             class="right-adjustable-input"
             :sliding-sensitivity="SPECTATOR_ADJ_INPUT_SENTIVITY"
           />
@@ -545,7 +551,7 @@ watch(
             >:
           </p>
           <AdjustableInput
-            v-model="spectatorRefs.rotation[axis].value"
+            v-model="sceneStates.currentCam.value.rotation[axis]"
             class="right-adjustable-input"
             :sliding-sensitivity="SPECTATOR_ADJ_INPUT_SENTIVITY"
             :max="axis === 'x' ? Math.PI / 2 - 0.01 : undefined"

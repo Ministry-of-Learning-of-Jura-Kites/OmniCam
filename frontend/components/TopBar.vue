@@ -4,7 +4,6 @@ import Badge from "./ui/badge/Badge.vue";
 import Card from "./ui/card/Card.vue";
 
 import {
-  RotateCcw,
   PackageOpen,
   RefreshCcw,
   Maximize,
@@ -27,24 +26,13 @@ import {
 
 import { exportCamerasToJson } from "@/utils/exportScene";
 import { importJsonToCameras } from "@/utils/importScene";
-import {
-  CURRENT_PANEL,
-  SCENE_STATES_KEY,
-  TOGGLE_ALGO_PANEL_KEY,
-} from "@/constants/state-keys";
+import { PANEL_KEY, SCENE_STATES_KEY } from "@/constants/state-keys";
 
 import Tooltip from "./ui/tooltip/Tooltip.vue";
 import TooltipTrigger from "./ui/tooltip/TooltipTrigger.vue";
 import TooltipContent from "./ui/tooltip/TooltipContent.vue";
 import TooltipProvider from "./ui/tooltip/TooltipProvider.vue";
-import {
-  IS_PANEL_OPEN_KEY,
-  MODEL_INFO_KEY,
-  TOGGLE_PANEL_KEY,
-  TOGGLE_MINIMAP_KEY,
-  IS_CALIBRATING_KEY,
-  TOGGLE_CALIBRATION_KEY,
-} from "~/constants/state-keys";
+import { MODEL_INFO_KEY, MAP_KEY } from "~/constants/state-keys";
 import Setting3dDialog from "./dialog/Setting3dDialog.vue";
 
 const props = defineProps({
@@ -53,17 +41,19 @@ const props = defineProps({
     default: null,
   },
 });
-const currentPanel = inject(CURRENT_PANEL);
-const toggleAlgoPanel = inject(TOGGLE_ALGO_PANEL_KEY)!;
+const {
+  currentPanel,
+  toggleAlgoPanel,
+  togglePanel,
+  calibrationPanelInfo,
+  isPanelOpen,
+} = inject(PANEL_KEY)!;
+
+const { toggleCalibration, isCalibrating } = calibrationPanelInfo;
 
 const sceneStates = inject(SCENE_STATES_KEY)!;
 
-const isPanelOpen = inject(IS_PANEL_OPEN_KEY);
-const togglePanel = inject(TOGGLE_PANEL_KEY)!;
-const toggleMinimap = inject(TOGGLE_MINIMAP_KEY)!;
-
-const isCalibrating = inject(IS_CALIBRATING_KEY);
-const toggleCalibration = inject(TOGGLE_CALIBRATION_KEY)!;
+const { isMapOpen, toggleMap } = inject(MAP_KEY)!;
 
 const route = useRoute();
 
@@ -78,6 +68,8 @@ const openResolver = ref(false);
 const conflicts = ref({});
 
 const isSettingDialogOpen = ref<boolean>(false);
+
+const isCameraActive = computed(() => sceneStates.currentCamId.value !== null);
 
 async function saveModelToPublic() {
   // Mocked data
@@ -174,10 +166,6 @@ function openFileDialog() {
 function toggleSettingDialog() {
   isSettingDialogOpen.value = true;
   console.log(isSettingDialogOpen);
-}
-
-function toggleMap() {
-  toggleMinimap();
 }
 
 async function createWorkspace() {
@@ -301,11 +289,11 @@ function goToMyWorkspace() {
         <Button
           size="sm"
           variant="outline"
-          :disabled="sceneStates.currentCamId.value == null"
+          :disabled="!isCameraActive"
+          :class="isCameraActive ? 'bg-red-500! hover:bg-red-700!' : ''"
           @click="sceneStates.cameraManagement.switchToSpectator()"
-        >
-          <RotateCcw class="button-icon" />
-          <span class="ml-2 button-span-text"> Reset View </span>
+          ><LogOut class="button-icon" />
+          <span class="ml-2 button-span-text">Exit Camera</span>
         </Button>
 
         <Button size="sm" variant="outline">
@@ -371,7 +359,12 @@ function goToMyWorkspace() {
           >
           <span v-else class="ml-2 button-span-text"> Calibrating...</span>
         </Button>
-        <Button size="sm" variant="outline" @click="() => toggleMap()">
+        <Button
+          size="sm"
+          variant="outline"
+          :class="isMapOpen ? 'bg-green-400! hover:bg-green-500!' : ''"
+          @click="() => toggleMap()"
+        >
           <Map class="h-4 w-4" />
           Map
         </Button>

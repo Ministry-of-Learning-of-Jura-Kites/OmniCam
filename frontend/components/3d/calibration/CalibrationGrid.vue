@@ -1,9 +1,6 @@
 <script setup lang="ts">
 import { Euler, GridHelper, Vector3, Quaternion } from "three";
-import {
-  CALIBRATION_GRID_SCALE,
-  IS_CALIBRATING_KEY,
-} from "~/constants/state-keys";
+import { PANEL_KEY } from "~/constants/state-keys";
 import type { MovableObject } from "~/types/movable";
 import MovableArrow from "../movable-arrow/MovableArrow.vue";
 import RotationWheel from "../rotation-wheel/RotationWheel.vue";
@@ -13,8 +10,8 @@ const props = defineProps({
     default: null,
   },
 });
-const isCalibrating = inject(IS_CALIBRATING_KEY);
-const calibrationGridScale = inject(CALIBRATION_GRID_SCALE);
+const { calibrationPanelInfo } = inject(PANEL_KEY)!;
+const { isCalibrating, calibrationGridScale } = calibrationPanelInfo;
 const movableObject = reactive<MovableObject>({
   position: new Vector3(0, 0, 0),
   rotation: new Euler(0, 0, 0),
