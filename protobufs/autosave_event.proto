@@ -61,16 +61,51 @@ message CameraDeleteEvent { string id = 1;  }
 
 message CameraUpsertEvent { Camera camera = 1; }
 
+message FacesDeleteEvent { string id = 1;  }
+
+message FacesUpsertEvent {
+  CoverageFace coverage_face = 1;
+}
+
 message CalibrationUpdateEvent {
   double scale_factor = 1;
   double model_height = 2;
 }
 
+message Vector3 {
+  double x = 1;
+  double y = 2;
+  double z = 3;
+}
+
+message CoverageFace {
+  string           id     = 1;
+  repeated Vector3 points = 2;
+  optional string  color  = 5;
+  bool             hidden = 6;
+}
+
+message CameraConfig {
+  string id         = 1;
+  string name       = 2;
+  double fov        = 3;
+  double width_res  = 11 ;
+  double height_res = 12;
+}
+
+message OptimizationReqEvent {
+  repeated CoverageFace coverage_face = 1;
+  repeated CameraConfig camera_config = 2;
+}
+
 message AutosaveEvent {
   oneof event {
-    CameraDeleteEvent      delete    = 1;
-    CameraUpsertEvent      upsert    = 2;
-    CalibrationUpdateEvent calibrate = 3;
+    CameraDeleteEvent      delete       = 1;
+    CameraUpsertEvent      upsert       = 2;
+    CalibrationUpdateEvent calibrate    = 3;
+    FacesDeleteEvent       faces_delete = 4;
+    FacesUpsertEvent       faces_upsert = 5;
+    OptimizationReqEvent   optimize     = 6;
   }
 }
 

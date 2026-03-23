@@ -17,15 +17,15 @@ import type { UseWebSocketReturn } from "@vueuse/core";
 import type { Camera } from "~/messages/protobufs/autosave_event";
 import { useAspectRatio as useAspectRatioManagement } from "../scene-3d/use-aspect-ratio";
 import { useAutosave } from "../scene-3d/use-autosave";
+import type { GLTF } from "three-stdlib";
 
-export interface CoverageFace {
+export interface ProcessedCoverageFace {
   id: string;
   points: [number, number, number][];
-  center: [number, number, number];
-  normal?: [number, number, number];
-  planeY?: number;
-  color?: string;
-  hidden?: boolean;
+  color: string | undefined;
+  hidden: boolean;
+  // Derived field
+  center?: [number, number, number];
 }
 export interface ModelWithCamsResp {
   data: {
@@ -202,7 +202,7 @@ export function createBaseSceneStates(
   const cubeCamera = ref<CubeCamera | null>(null);
 
   const coverageMode = ref<"none" | "coverage-area">("none");
-  const coverageFaces = ref<CoverageFace[]>([]);
+  const coverageFaces = reactive<Record<string, ProcessedCoverageFace>>({});
   const coverageAllHidden = ref(false);
 
   const setCoverageMode = (mode: "none" | "coverage-area") => {
@@ -218,58 +218,43 @@ export function createBaseSceneStates(
   };
 
   const toggleCoverageFaceHidden = (faceId: string) => {
-    const idx = coverageFaces.value.findIndex((f) => f.id === faceId);
-    if (idx < 0) return;
+    const found = coverageFaces[faceId];
+    if (found == undefined) return;
 
-    const next = [...coverageFaces.value];
-    next[idx] = {
-      ...next[idx]!,
-      hidden: !next[idx]!.hidden,
-    };
-
-    coverageFaces.value = next;
+    found.hidden = !found.hidden;
   };
 
   const setCoverageFaceHidden = (faceId: string, hidden: boolean) => {
-    const idx = coverageFaces.value.findIndex((f) => f.id === faceId);
-    if (idx < 0) return;
+    const found = coverageFaces[faceId];
+    if (found == undefined) return;
 
-    const next = [...coverageFaces.value];
-    next[idx] = {
-      ...next[idx]!,
-      hidden,
-    };
-
-    coverageFaces.value = next;
+    found.hidden = hidden;
   };
 
-  const addCoverageFace = (face: CoverageFace) => {
-    coverageFaces.value.push({
+  const addCoverageFace = (face: ProcessedCoverageFace) => {
+    coverageFaces[face.id] = {
       ...face,
       color: face.color ?? "#22ff88",
       hidden: face.hidden ?? false,
-    });
+    };
   };
 
   const removeCoverageFace = (faceId: string) => {
-    coverageFaces.value = coverageFaces.value.filter((f) => f.id !== faceId);
+    delete coverageFaces[faceId];
   };
 
   const updateCoverageFaceColor = (faceId: string, color: string) => {
-    const idx = coverageFaces.value.findIndex((f) => f.id === faceId);
-    if (idx < 0) return;
+    const found = coverageFaces[faceId];
+    if (found == undefined) return;
 
-    const next = [...coverageFaces.value];
-    next[idx] = {
-      ...next[idx]!,
-      color,
-    };
-
-    coverageFaces.value = next;
+    found.color = color;
   };
 
   const clearCoverageFaces = () => {
-    coverageFaces.value = [];
+    // Remove this function later
+    for (const face of Object.keys(coverageFaces)) {
+      delete coverageFaces[face];
+    }
   };
 
   const updateCoverageFaceCorner = (
@@ -277,11 +262,10 @@ export function createBaseSceneStates(
     cornerIndex: number,
     point: [number, number, number],
   ) => {
-    const idx = coverageFaces.value.findIndex((f) => f.id === faceId);
-    if (idx < 0) return;
+    const found = coverageFaces[faceId];
+    if (found == undefined) return;
 
-    const face = coverageFaces.value[idx]!;
-    const newPoints = face.points.map((p, i) =>
+    const newPoints = found.points.map((p, i) =>
       i === cornerIndex ? point : p,
     ) as [number, number, number][];
 
@@ -303,14 +287,8 @@ export function createBaseSceneStates(
         4,
     ];
 
-    const next = [...coverageFaces.value];
-    next[idx] = {
-      ...face,
-      points: newPoints,
-      center,
-    };
-
-    coverageFaces.value = next;
+    found.points = newPoints;
+    found.center = center;
   };
 
   const facesManagement = {
@@ -329,8 +307,11 @@ export function createBaseSceneStates(
     setFaceHidden: setCoverageFaceHidden,
   } as const;
 
+  const modelRef = ref<GLTF | null>(null);
+
   const sceneStates = {
     tresContext,
+    modelRef,
     draggableObjects,
     isDraggingObject,
     currentCamId,

@@ -2,22 +2,9 @@ import type { TresContext } from "@tresjs/core";
 import type { IUserData } from "~/types/obj-3d-user-data";
 import { Raycaster, Vector2, Vector3 } from "three";
 import type { ICamera } from "~/types/camera";
+import type { SceneStates } from "~/types/scene-states";
 
 type Axis = "x" | "y" | "z";
-type Point3 = [number, number, number];
-
-type CoverageFaceLite = {
-  id: string;
-  points: Point3[];
-};
-
-type SceneStatesLike = {
-  facesManagement: {
-    faces: { value: CoverageFaceLite[] };
-    updateCorner: (faceId: string, cornerIndex: number, p: Point3) => void;
-  };
-  tresContext: { value: TresContext | null };
-};
 
 function axisVector(axis: Axis) {
   switch (axis) {
@@ -37,7 +24,7 @@ export class CornerTranslateUserData implements IUserData {
   faceId: string;
   cornerIndex: number;
   context: TresContext;
-  sceneStates: SceneStatesLike;
+  sceneStates: SceneStates;
   yOffset: number;
 
   private raycaster = new Raycaster();
@@ -52,7 +39,7 @@ export class CornerTranslateUserData implements IUserData {
     axis: Axis,
     faceId: string,
     cornerIndex: number,
-    sceneStates: SceneStatesLike,
+    sceneStates: SceneStates,
     context: TresContext,
     yOffset: number,
   ) {
@@ -110,9 +97,7 @@ export class CornerTranslateUserData implements IUserData {
   }
 
   private onPointerDown(event: PointerEvent) {
-    const face = this.sceneStates.facesManagement.faces.value.find(
-      (f) => f.id === this.faceId,
-    );
+    const face = this.sceneStates.facesManagement.faces[this.faceId];
     if (!face) return;
 
     const p = face.points?.[this.cornerIndex];

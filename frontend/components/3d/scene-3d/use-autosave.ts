@@ -1,14 +1,16 @@
 import {
   type Camera,
   type AutosaveEvent,
+  type CoverageFace,
   AutosaveMessage,
   AutosaveResponse,
 } from "~/messages/protobufs/autosave_event";
 import type { ICamera } from "~/types/camera";
 import type { SceneStates } from "~/types/scene-states";
 import { Quaternion } from "three";
+import type { ProcessedCoverageFace } from "../scene-states-provider/create-scene-states";
 
-function isEqual(a: Camera, b: Camera): boolean {
+function isEqual<T>(a: T, b: T): boolean {
   return JSON.stringify(a) === JSON.stringify(b);
 }
 
@@ -45,13 +47,25 @@ export function transformCameraToProtoEventWithId(
   return { ...transformCameraToProtoEvent(cam), id: camId };
 }
 
+export function transformFaceToProto(
+  id: string,
+  face: ProcessedCoverageFace,
+): CoverageFace {
+  return {
+    id: id,
+    points: face.points.map(numbersToVector3),
+    color: face.color,
+    hidden: face.hidden,
+  };
+}
+
 export function useAutosave(
   sceneStates: SceneStates,
   workspace: string | null,
 ) {
   if (workspace == null) return;
 
-  const lastSynced: Map<string, Camera> = new Map(
+  const lastSyncedCams: Map<string, Camera> = new Map(
     Object.entries(sceneStates.cameras!).map(([camId, cam]) => [
       camId,
       transformCameraToProtoEventWithId(camId, cam),
@@ -59,6 +73,30 @@ export function useAutosave(
   );
 
   const isServerUpdate = ref(false);
+
+  const lastSyncedFaces: Map<string, CoverageFace> = new Map(
+    Object.entries(sceneStates.facesManagement.faces).map(([id, face]) => [
+      id,
+      transformFaceToProto(id, face),
+    ]),
+  );
+
+  const markedFacesForCheck = new Set<string>();
+
+  watch(
+    () => sceneStates.facesManagement.faces,
+    (newFaces, oldFaces) => {
+      // Track additions and updates
+      Object.keys(newFaces).forEach((id) => markedFacesForCheck.add(id));
+      // Track deletions (keys present in old but not in new)
+      if (oldFaces) {
+        Object.keys(oldFaces).forEach((id) => {
+          if (!newFaces[id]) markedFacesForCheck.add(id);
+        });
+      }
+    },
+    { deep: true },
+  );
 
   onMounted(() => {
     watch(
@@ -95,33 +133,36 @@ export function useAutosave(
       },
     );
 
-    setInterval(() => {
-      if (!sceneStates.websocket) return;
-
-      const changed: AutosaveEvent[] = [];
+    function updateCams(changed: AutosaveEvent[]) {
+      if (!sceneStates.markedForCheck.value) {
+        return;
+      }
 
       // Cameras
       if (sceneStates.markedForCheck.value) {
         for (const [camId, cam] of Object.entries(sceneStates.cameras)) {
-          const prev = lastSynced.get(camId);
+          const prev = lastSyncedCams.get(camId);
           const formattedCam = transformCameraToProtoEventWithId(camId, cam);
 
           if (prev == undefined || !isEqual(prev, formattedCam)) {
             changed.push({ upsert: { camera: formattedCam } });
-            lastSynced.set(camId, formattedCam);
+            lastSyncedCams.set(camId, formattedCam);
           }
         }
 
         // Check for deleted cameras
-        for (const camId of lastSynced.keys()) {
+        for (const camId of lastSyncedCams.keys()) {
           if (!sceneStates.cameras[camId]) {
-            lastSynced.delete(camId);
+            lastSyncedCams.delete(camId);
             changed.push({ delete: { id: camId } });
           }
         }
       }
 
-      // Calibration
+      sceneStates.markedForCheck.value = false;
+    }
+
+    function updateCalibration(changed: AutosaveEvent[]) {
       if (sceneStates.calibration.dirty) {
         changed.push({
           calibrate: {
@@ -131,6 +172,47 @@ export function useAutosave(
         });
         sceneStates.calibration.dirty = false;
       }
+    }
+
+    function updateFaces(changed: AutosaveEvent[]) {
+      if (markedFacesForCheck.size == 0) {
+        return;
+      }
+      for (const faceId of markedFacesForCheck) {
+        const prev = lastSyncedFaces.get(faceId);
+        const face = sceneStates.facesManagement.faces[faceId];
+
+        // 1. Handle Deletion
+        if (face === undefined) {
+          if (prev !== undefined) {
+            lastSyncedFaces.delete(faceId);
+            changed.push({ facesDelete: { id: faceId } });
+          }
+          continue;
+        }
+
+        // 2. Handle Upsert (New or Changed)
+        const formattedFace = transformFaceToProto(faceId, face);
+
+        // Use isEqual (from lodash or similar) to avoid redundant network traffic
+        if (prev === undefined || !isEqual(prev, formattedFace)) {
+          changed.push({ facesUpsert: { coverageFace: formattedFace } });
+          lastSyncedFaces.set(faceId, formattedFace);
+        }
+      }
+      markedFacesForCheck.clear();
+    }
+
+    setInterval(() => {
+      if (!sceneStates.websocket) return;
+
+      const changed: AutosaveEvent[] = [];
+
+      updateCams(changed);
+
+      updateCalibration(changed);
+
+      updateFaces(changed);
 
       if (changed.length > 0) {
         sceneStates.localVersion.value += 1;
@@ -140,8 +222,13 @@ export function useAutosave(
         }).finish();
         sceneStates.websocket.send(encoded.buffer);
       }
-
-      sceneStates.markedForCheck.value = false;
     }, 2000);
   });
+
+  // function requestOptimize(
+  //   faceIds: string[],
+  //   cameras: { cam: ICamera; amount: number }[],
+  // ) {
+  //   sceneStates.facesManagement.faces.value;
+  // }
 }

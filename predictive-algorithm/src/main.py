@@ -1,8 +1,11 @@
+import asyncio
+import json
 import math
 import time
 from typing import List, Tuple
 import uuid
-from pydantic import BaseModel
+from pydantic import BaseModel, ValidationError
+import redis.asyncio as redis
 from scipy.spatial.distance import cdist
 from cost_functions import total_cost
 from algorithms.differential_evolution import optimize_de
@@ -21,8 +24,6 @@ from dev.visualization import init_3d_scene, render_from_state
 import pyvista as pv
 from basic_types import Array4x3
 
-from fastapi import FastAPI
-
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
@@ -38,6 +39,7 @@ class OptimizeRequest(BaseModel):
     faces: List[List[Tuple[float, float, float]]]
     cam_configs: List[ReqCameraConfiguration]
     scale: float
+    job_id: uuid.UUID
 
 
 class CameraResponse(BaseModel):
@@ -264,7 +266,7 @@ def transform_cameras(raw_cam_configs: List[ReqCameraConfiguration]):
     return cameras
 
 
-def optimize(req: OptimizeRequest):
+def optimize(req: OptimizeRequest) -> State:
     pl = None
     if env_settings.dev_mode:
         from pyvistaqt import BackgroundPlotter
@@ -338,15 +340,7 @@ def optimize(req: OptimizeRequest):
     return final_state
 
 
-app = FastAPI()
-
-# TODO: Use Redis to support async processing instead
-
-
-@app.get("/")
-async def root(req: OptimizeRequest):
-    state = optimize(req)
-
+def serialize_response(state: State):
     cameras = []
     for cam_state in state.cameras:
         angle_x = cam_state.angle.x
@@ -373,5 +367,61 @@ async def root(req: OptimizeRequest):
 
     return cameras
 
+
+r = redis.Redis(
+    host=env_settings.redis_host, port=env_settings.redis_port, decode_responses=True
+)
+
+
+async def worker():
+    print("Starting worker...")
+
+    while True:
+        # Read from the task stream (Blocking read)
+        # 0 means wait indefinitely for a new message
+        messages = await r.xread({env_settings.redis_req_topic: "0"}, count=1, block=0)
+
+        for _stream, msgs in messages:
+            for msg_id, data in msgs:
+                try:
+                    payload = OptimizeRequest.model_validate_json(data)
+
+                    result_state = optimize(payload)
+
+                    resp = serialize_response(result_state)
+
+                    # Publish back to a result topic/stream
+                    await r.xadd(
+                        env_settings.redis_res_topic,
+                        {
+                            "job_id": payload.job_id,
+                            "status": "error",
+                            "data": json.dumps(resp),
+                        },
+                    )
+                except ValidationError as e:
+                    await r.xadd(
+                        env_settings.redis_res_topic,
+                        {
+                            "job_id": payload.job_id,
+                            "status": "error",
+                            "error": f"Bad request {e}",
+                        },
+                    )
+                except Exception:
+                    await r.xadd(
+                        env_settings.redis_res_topic,
+                        {
+                            "job_id": payload.job_id,
+                            "status": "error",
+                            "error": "Internal error",
+                        },
+                    )
+                finally:
+                    await r.xdel(env_settings.redis_req_topic, msg_id)
+
+
+if __name__ == "__main__":
+    asyncio.run(worker())
 
 # Running -> OmniCam/predictive-algorithm/src$ uvicorn main:app --reload --port 8081
