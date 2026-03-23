@@ -6,5 +6,13 @@ class Settings(BaseSettings):
 
     dev_mode: bool = False
 
+    redis_host: str
+
+    redis_port: str
+
+    redis_req_topic: str
+
+    redis_res_topic: str
+
 
 env_settings = Settings()

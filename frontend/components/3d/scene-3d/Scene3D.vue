@@ -14,6 +14,7 @@ import {
   LinearFilter,
   type CubeCamera,
   Vector3,
+  Matrix3,
 } from "three";
 import { MAP_KEY, PANEL_KEY, SCENE_STATES_KEY } from "@/constants/state-keys";
 import Stats from "stats.js";
@@ -27,15 +28,18 @@ import FrustumOverlay from "@/components/3d/camera-frustum/FrustumOverlay.vue";
 // import Distortion from "@/components/3d/distortion/Distortion.vue";
 import CubeDistortion from "@/components/3d/distortion/CubeDistortion.vue";
 import CoverageAreaMesh from "../coverage-area-mesh/CoverageAreaMesh.vue";
-import type { CoverageFace } from "../scene-states-provider/create-scene-states";
+import type { ProcessedCoverageFace } from "../scene-states-provider/create-scene-states";
 import CoverageCornerGizmos from "../coverage-area-mesh/CoverageCornerGizmos.vue";
 
 const { isPanelOpen, currentPanel, camPanelInfo } = inject(PANEL_KEY)!;
 const { selectedCamId } = camPanelInfo;
 
 const selectedFaces = computed(() =>
-  sceneStates.facesManagement.faces.value.filter(
-    (face) => !sceneStates.facesManagement.isAllHidden.value && !face.hidden,
+  Object.entries(
+    sceneStates.facesManagement.faces ?? ({} as ProcessedCoverageFace),
+  ).filter(
+    ([_id, face]) =>
+      !sceneStates.facesManagement.isAllHidden.value && !face.hidden,
   ),
 );
 type Point3 = [number, number, number];
@@ -185,10 +189,17 @@ function buildDraftCoveragePreview(
   return padded.map((p) => [p.x, p.y, p.z] as Point3);
 }
 
+const defaultCoverageFace: ProcessedCoverageFace = {
+  id: "",
+  points: [],
+  color: "#22ff88",
+  hidden: false,
+};
+
 function buildCoverageFaceFromPickedPoints(
   points: Vector3[],
   normals: Vector3[],
-): CoverageFace | null {
+): ProcessedCoverageFace | null {
   if (points.length !== 4) return null;
 
   const normal = computeStableNormal(points, normals);
@@ -208,6 +219,7 @@ function buildCoverageFaceFromPickedPoints(
   if (width < 0.05 || height < 0.05) return null;
 
   return {
+    ...defaultCoverageFace,
     id: `area_${Date.now()}`,
     points: [
       [p0.x, p0.y, p0.z],
@@ -216,7 +228,6 @@ function buildCoverageFaceFromPickedPoints(
       [p3.x, p3.y, p3.z],
     ],
     center: [centerV.x, centerV.y, centerV.z],
-    normal: [normal.x, normal.y, normal.z],
   };
 }
 
@@ -263,41 +274,53 @@ function handleCoverageAreaPointer(event: PointerEvent) {
   // sceneStates.tresContext.value?.invalidate?.();
   return true;
 }
-
 function getSurfaceHit(
   event: PointerEvent,
 ): { point: Vector3; normal: Vector3 } | null {
-  if (!sceneStates.tresContext.value || !perspectiveCamera.value) return null;
+  const context = sceneStates.tresContext.value;
+  const camera = perspectiveCamera.value;
 
-  const ele = sceneStates.tresContext.value.renderer.instance.domElement;
-  const rect = ele.getBoundingClientRect();
+  if (!context?.renderer?.instance || !camera) return null;
 
-  mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
-  mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+  const canvas = context.renderer.instance.domElement;
+  const rect = canvas.getBoundingClientRect();
 
-  raycaster.setFromCamera(mouse, perspectiveCamera.value);
+  const x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+  const y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
 
-  const scene = sceneStates.tresContext.value.scene;
-  const hits = raycaster.intersectObjects(scene.children, true);
+  mouse.set(x, y);
+  raycaster.setFromCamera(mouse, camera);
 
-  const hit = hits.find((h) => {
-    const object = h.object as unknown as {
-      isMesh?: boolean;
-      userData?: Record<string, unknown>;
-    };
-    const isMesh = object.isMesh && !!h.face;
-    const kind = String(object.userData?.kind ?? "");
-    return isMesh && !kind.startsWith("coverage-");
-  });
+  const hits = raycaster.intersectObjects(
+    [sceneStates.modelRef.value!.scene!],
+    true,
+  );
+  const hit = hits[0];
 
   if (!hit || !hit.face) return null;
 
   const worldNormal = hit.face.normal
     .clone()
-    .transformDirection(hit.object.matrixWorld)
+    .applyMatrix3(new Matrix3().getNormalMatrix(hit.object.matrixWorld))
     .normalize();
 
-  return { point: hit.point.clone(), normal: worldNormal };
+  return {
+    point: hit.point.clone(),
+    normal: worldNormal,
+  };
+}
+
+function onCanvasKeydown(event: KeyboardEvent) {
+  if (
+    event.code == "Escape" &&
+    sceneStates.facesManagement.mode.value === "coverage-area"
+  ) {
+    requestAnimationFrame(() => {
+      clearDraftCoverageSelection();
+    });
+    return;
+  }
+  sceneStates.spectatorPosition.onKeyDown(event);
 }
 
 function onCanvasPointer(event: PointerEvent) {
@@ -418,10 +441,7 @@ onMounted(() => {
         "pointerup",
         onCanvasPointer,
       );
-      renderer.instance.domElement.addEventListener(
-        "keydown",
-        sceneStates.spectatorPosition.onKeyDown,
-      );
+      renderer.instance.domElement.addEventListener("keydown", onCanvasKeydown);
       renderer.instance.domElement.addEventListener(
         "keyup",
         sceneStates.spectatorPosition.onKeyUp,
@@ -464,7 +484,7 @@ watch(
 );
 
 watch(
-  () => sceneStates.facesManagement.faces.value.length,
+  () => Object.keys(sceneStates.facesManagement.faces.value ?? {}).length,
   (len) => {
     if (len === 0) {
       clearDraftCoverageSelection();
@@ -675,7 +695,7 @@ function selectCurrentCamShortcut() {
             ]"
           />
 
-          <template v-for="face in selectedFaces" :key="face.id">
+          <template v-for="[id, face] of selectedFaces" :key="id">
             <CoverageAreaMesh
               :face-id="face.id"
               :points="face.points"

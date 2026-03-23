@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, inject, ref } from "vue";
 import { SCENE_STATES_KEY } from "@/constants/state-keys";
+import type { ProcessedCoverageFace } from "./3d/scene-states-provider/create-scene-states";
 
 const sceneStates = inject(SCENE_STATES_KEY)!;
 
@@ -8,7 +9,7 @@ const numCameras = ref(3);
 const isOptimizing = ref(false);
 
 const selectedCount = computed(
-  () => sceneStates.facesManagement.faces.value.length,
+  () => Object.keys(sceneStates.facesManagement.faces.value ?? {}).length,
 );
 
 const startAreaSelection = () => {
@@ -105,7 +106,10 @@ const toggleAreaVisibility = (faceId: string) => {
       </p>
 
       <div
-        v-for="(face, i) in sceneStates.facesManagement.faces.value"
+        v-for="[i, face] of Object.entries(
+          sceneStates.facesManagement.faces.value ??
+            ({} as Record<string, ProcessedCoverageFace>),
+        )"
         :key="face.id"
         class="mb-3 rounded-lg border border-border bg-muted/20 p-3"
       >
