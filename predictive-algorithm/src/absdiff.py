@@ -2,8 +2,12 @@ import cv2
 import numpy as np
 
 # Load images in grayscale for simplicity (color also works but requires handling 3 channels)
-img1 = cv2.imread("/home/frook/Downloads/from_algo_service.png", cv2.IMREAD_GRAYSCALE)
-img2 = cv2.imread("/home/frook/Downloads/from_frontend.png", cv2.IMREAD_GRAYSCALE)
+img1 = cv2.imread(
+    "/home/frook/Downloads/morphed_reverted_from_algo.png", cv2.IMREAD_GRAYSCALE
+)
+img2 = cv2.imread(
+    "/home/frook/Downloads/reverted_from_frontend.png", cv2.IMREAD_GRAYSCALE
+)
 
 # Ensure images have the same dimensions before comparison
 if img1.shape != img2.shape:

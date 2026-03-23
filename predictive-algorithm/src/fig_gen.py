@@ -14,7 +14,7 @@ titles = ["(a) Frontend Viewport", "(b) Algorithmic Result", "(c) Residual Map"]
 images = [fe, algo, absdiff]
 
 for i, ax in enumerate(axes):
-    ax.imshow(images[i], cmap="gray")
+    ax.imshow(images[i], cmap="gray", vmin=0, vmax=255)
     ax.set_title(titles[i], fontsize=12)
     ax.axis("off")  # Hide axis ticks for clean view
 

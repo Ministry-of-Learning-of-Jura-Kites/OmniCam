@@ -4,9 +4,11 @@ import vtk
 from state import CameraConfiguration, CameraState, State
 import numpy as np
 from scipy.spatial.transform import Rotation as R
-
+import cv2
 from PIL import Image
 
+import matplotlib.pyplot as plt
+import imageio.v3 as iio
 from tqdm import tqdm
 
 # from cost_functions.occlusion_cost import generate_raycast_depth_map
@@ -161,9 +163,11 @@ def generate_raycast_depth_map(
             if hit > 0:
                 hit_point = np.array(points.GetPoint(0))
                 depth = np.linalg.norm(hit_point - pos)
+                # hit_vector = hit_point - pos
+                # depth = np.dot(hit_vector, forward)
                 depth_map[v, u] = (depth - near) / (far - near)
             else:
-                depth_map[v, u] = 0
+                depth_map[v, u] = 1.0
 
     return depth_map
 
@@ -176,7 +180,7 @@ def convert_to_depth_with_white_bg(depth_map):
     """
 
     # 3. Invert so Near is 255 and Far (1000) is 0
-    inverted_depth = depth_map * 255
+    inverted_depth = 255 - depth_map * 255
 
     return inverted_depth.astype(np.uint8)
 
@@ -191,7 +195,7 @@ raw_map = generate_raycast_depth_map(
     cameras[0],
     near=NEAR,
     far=FAR,
-    resolution=(1532, 811),
+    resolution=(1167, 618),
     # resolution=(500, 500),
 )
 
@@ -200,4 +204,53 @@ final_image_array = convert_to_depth_with_white_bg(raw_map)
 
 # Save/Show
 im = Image.fromarray(final_image_array, "L")
-im.save("/home/frook/Downloads/gg1.png")
+im.save("/home/frook/Downloads/reverted_from_algo.png")
+
+# ---------------
+
+# img = cv2.imread("/home/frook/Downloads/reverted_from_algo.png", cv2.IMREAD_GRAYSCALE)
+
+# kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (5, 5))
+
+# # Apply Opening to remove speckle noise
+# noise_reduced = cv2.morphologyEx(img, cv2.MORPH_OPEN, kernel)
+
+# cv2.imwrite("/home/frook/Downloads/morphed_reverted_from_algo.png", noise_reduced)
+
+# -------------------
+
+img1 = cv2.imread("/home/frook/Downloads/reverted_from_algo.png", cv2.IMREAD_GRAYSCALE)
+img2 = cv2.imread(
+    "/home/frook/Downloads/reverted_from_frontend.png", cv2.IMREAD_GRAYSCALE
+)
+
+if img1.shape != img2.shape:
+    print("Images must have the same dimensions")
+
+# Calculate the absolute difference between the two images
+# cv2.absdiff handles normalization so no negative values are returned
+diff = 255 - cv2.absdiff(img1, img2)
+
+cv2.imwrite("/home/frook/Downloads/reverted_absdiff.png", diff)
+
+# --------------
+
+# Load your three images
+fe = iio.imread("/home/frook/Downloads/reverted_from_frontend.png")
+algo = iio.imread("/home/frook/Downloads/reverted_from_algo.png")
+absdiff = iio.imread("/home/frook/Downloads/reverted_absdiff.png")
+
+# Create figure with 3 subplots
+fig, axes = plt.subplots(1, 3, figsize=(15, 5))
+
+# Plotting
+titles = ["(a) Frontend Viewport", "(b) Algorithmic Result", "(c) Residual Map"]
+images = [fe, algo, absdiff]
+
+for i, ax in enumerate(axes):
+    ax.imshow(images[i], cmap="gray", vmin=0, vmax=255)
+    ax.set_title(titles[i], fontsize=12)
+    ax.axis("off")  # Hide axis ticks for clean view
+
+plt.tight_layout()
+plt.savefig("synchronization_figure.pdf", dpi=300)

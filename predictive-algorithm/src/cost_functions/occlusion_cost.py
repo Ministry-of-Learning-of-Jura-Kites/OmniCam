@@ -9,56 +9,6 @@ import vtk
 import numpy as np
 
 
-def generate_raycast_depth_map(state, cam_state, resolution=(100, 100)):
-    """
-    Generates a depth map via ray casting.
-    Result is a 2D array where each value is the distance from the camera.
-    """
-    depth_map = np.zeros(resolution)
-    h_res, v_res = resolution
-
-    # Extract camera parameters
-    pos = cam_state.pos
-    # Create normalized direction vectors for the camera
-    # We assume 'forward', 'up', and 'right' vectors are derived from cam_state.angle
-    forward = np.array([0, 0, -1])
-    up = np.array([0, 1, 0])
-    right = forward.cross(up)
-
-    # Calculate FOV-based focal length
-    fov_rad = np.deg2rad(cam_state.camera_config.vfov)
-    focal_length = 1.0 / np.tan(fov_rad / 2)
-
-    for v in range(v_res):
-        for u in range(h_res):
-            # Map pixel (u,v) to [-1, 1] range
-            ndc_u = 2 * u / h_res - 1
-            ndc_v = (2 * v / v_res - 1) * (v_res / h_res)  # Adjust for aspect
-
-            # Compute ray direction
-            ray_dir = forward * focal_length + right * ndc_u + up * ndc_v
-            ray_dir /= np.linalg.norm(ray_dir)
-
-            # Use the same VTK locator as your optimization code
-            points = vtk.vtkPoints()
-            cellIds = vtk.vtkIdList()
-
-            # Cast ray
-            hit = state.gltf_locator.IntersectWithLine(
-                pos, pos + ray_dir * 1000, 0.001, points, cellIds
-            )
-
-            if hit:
-                # Store distance to intersection
-                hit_point = np.array(points.GetPoint(0))
-                depth_map[v, u] = np.linalg.norm(hit_point - pos)
-            else:
-                # Far plane default
-                depth_map[v, u] = 1000.0
-
-    return depth_map
-
-
 def is_in_view(point, cam_state: CameraState) -> Union[bool, Union[Array3]]:
     # Transform point to Camera Local Space
     rel_point = point - cam_state.pos

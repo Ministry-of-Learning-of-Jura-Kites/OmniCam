@@ -201,19 +201,6 @@ onMounted(() => {
   );
 });
 
-const spectatorRefs = {
-  position: {
-    x: toRef(sceneStates.spectatorCameraPosition, "x"),
-    y: toRef(sceneStates.spectatorCameraPosition, "y"),
-    z: toRef(sceneStates.spectatorCameraPosition, "z"),
-  },
-  rotation: {
-    x: toRef(sceneStates.spectatorCameraRotation, "x"),
-    y: toRef(sceneStates.spectatorCameraRotation, "y"),
-    z: toRef(sceneStates.spectatorCameraRotation, "z"),
-  },
-};
-
 onMounted(() => {
   stats = new Stats();
   stats.showPanel(0);
@@ -269,7 +256,7 @@ onMounted(() => {
         >
           <p class="w-4">{{ axis }}:</p>
           <AdjustableInput
-            v-model="spectatorRefs.position[axis].value"
+            v-model="sceneStates.currentCam.value.position[axis]"
             class="right-adjustable-input"
             :sliding-sensitivity="SPECTATOR_ADJ_INPUT_SENTIVITY"
           />
@@ -287,7 +274,7 @@ onMounted(() => {
             >:
           </p>
           <AdjustableInput
-            v-model="spectatorRefs.rotation[axis].value"
+            v-model="sceneStates.currentCam.value.rotation[axis]"
             class="right-adjustable-input"
             :sliding-sensitivity="SPECTATOR_ADJ_INPUT_SENTIVITY"
             :max="axis === 'x' ? Math.PI / 2 - 0.01 : undefined"
@@ -304,8 +291,12 @@ onMounted(() => {
           width: (sceneStates.screenSize.width ?? 0) + 'px',
           height: (sceneStates.screenSize.height ?? 0) + 'px',
         }"
-        class="relative"
+        class="relative flex align-center justify-center items-center"
       >
+        <!-- <img
+          src="localhost:3000/public/3-real.png"
+          class="absolute h-full z-99 opacity-50 pointer-events-none"
+        /> -->
         <TresCanvas
           id="canvas"
           ref="canvas"
@@ -357,8 +348,8 @@ onMounted(() => {
           <FrustumOverlay />
 
           <Suspense><Environment preset="city" /></Suspense>
-          <TresAmbientLight :intensity="0.4" />
-          <TresDirectionalLight :position="[10, 10, 5]" :intensity="1" />
+          <TresAmbientLight :intensity="0.02" />
+          <TresDirectionalLight :position="[10, 10, 5]" :intensity="0.2" />
 
           <CalibrationGrid :workspace="props.workspace" />
 

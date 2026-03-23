@@ -6,7 +6,14 @@ import {
 } from "~/messages/protobufs/autosave_event";
 import type { ICamera } from "~/types/camera";
 import type { SceneStates } from "~/types/scene-states";
-import { Quaternion, ShaderMaterial } from "three";
+import type { WebGLRenderer } from "three";
+import {
+  LinearFilter,
+  Quaternion,
+  RGBAFormat,
+  ShaderMaterial,
+  WebGLRenderTarget,
+} from "three";
 import Color4 from "three/src/renderers/common/Color4.js";
 
 function isEqual(a: Camera, b: Camera): boolean {
@@ -49,30 +56,38 @@ export function transformCameraToProtoEventWithId(
 const depthMaterial = new ShaderMaterial({
   uniforms: {
     uNear: { value: 0.1 },
-    uFar: { value: 50 },
+    uFar: { value: 20 },
   },
   vertexShader: `
-        varying float vViewZ;
-        void main() {
-            vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
-            vViewZ = -mvPosition.z; // Distance from camera
-            gl_Position = projectionMatrix * mvPosition;
-        }
-    `,
+    varying float vDist;
+    void main() {
+        // mvPosition is the position relative to the camera
+        vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
+        
+        // The distance from (0,0,0) in view space is the true Euclidean distance
+        vDist = length(mvPosition.xyz);
+        
+        gl_Position = projectionMatrix * mvPosition;
+    }
+  `,
   fragmentShader: `
-        varying float vViewZ;
-        uniform float uNear;
-        uniform float uFar;
-        void main() {
-            // Linear interpolation
-            float depth = (vViewZ - uNear) / (uFar - uNear);
-            depth = clamp(depth, 0.0, 1.0);
-            
-            // Invert so Near is White (1.0) and Far is Black (0.0)
-            float finalDepth = depth;
-            
-            gl_FragColor = vec4(vec3(finalDepth), 1.0);
-        }
+    varying float vDist;
+    uniform float uNear;
+    uniform float uFar;
+
+    void main() {
+        // 1. Use the pre-calculated Euclidean distance
+        float dist = vDist;
+
+        // 2. Linear normalization [0.0 - 1.0]
+        float depth = (dist - uNear) / (uFar - uNear);
+        
+        // 3. Clamp and Invert
+        depth = clamp(depth, 0.0, 1.0);
+        float finalDepth = 1.0 - depth;
+
+        gl_FragColor = vec4(vec3(finalDepth), 1.0);
+    }
     `,
 });
 
@@ -163,7 +178,6 @@ export function useAutosave(
         console.log("Depth map captured!");
         return dataURL;
       };
-    });
 
     setInterval(() => {
       if (!sceneStates.websocket) return;
