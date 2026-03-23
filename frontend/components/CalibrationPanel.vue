@@ -1,10 +1,5 @@
 <script setup lang="ts">
-import {
-  IS_CALIBRATING_KEY,
-  TOGGLE_CALIBRATION_KEY,
-  SCENE_STATES_KEY,
-  CALIBRATION_GRID_SCALE,
-} from "~/constants/state-keys";
+import { PANEL_KEY, SCENE_STATES_KEY } from "~/constants/state-keys";
 import {
   Ruler,
   X,
@@ -13,15 +8,15 @@ import {
   Pyramid,
   ArrowUpFromLine,
 } from "lucide-vue-next";
-const isCalibrating = inject(IS_CALIBRATING_KEY);
-const toggleCalibration = inject(TOGGLE_CALIBRATION_KEY)!;
+const { calibrationPanelInfo } = inject(PANEL_KEY)!;
+const { isCalibrating, calibrationGridScale, toggleCalibration } =
+  calibrationPanelInfo;
+
 const realWorldSizeCm = ref(100);
 const previousScaleFactor = ref(1);
 const previousCalibrationGridScale = ref(1); // Default model height in cm
 const sceneStates = inject(SCENE_STATES_KEY);
 const canCancel = ref(false);
-
-const calibrationGridScale = inject(CALIBRATION_GRID_SCALE);
 
 onMounted(() => {
   if (calibrationGridScale && calibrationGridScale.value === 1) {
