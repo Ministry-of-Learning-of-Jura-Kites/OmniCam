@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 import Button from "./ui/button/Button.vue";
 import Input from "./ui/input/Input.vue";
 import Label from "./ui/label/Label.vue";
+
 import {
   Camera,
   Trash2,
@@ -17,9 +18,11 @@ import {
   LockKeyhole,
   Pyramid,
   Dices,
+  LogOut,
+  Video,
 } from "lucide-vue-next";
 import { randomVividColor } from "~/utils/randomVividColor";
-import { SCENE_STATES_KEY } from "@/constants/state-keys";
+import { PANEL_KEY, SCENE_STATES_KEY } from "@/constants/state-keys";
 import CameraSpawnDialog from "~/components/dialog/CameraSpawnDialog.vue";
 
 type Camerapreset = {
@@ -46,7 +49,8 @@ const props = defineProps({
 
 const sceneStates = inject(SCENE_STATES_KEY)!;
 
-const selectedCamId = ref<string | null>(null);
+const { camPanelInfo } = inject(PANEL_KEY)!;
+const { selectedCamId } = camPanelInfo;
 
 const isCameraPropertiesOpen = ref(true);
 const isFrustumPropertiesOpen = ref(true);
@@ -55,6 +59,10 @@ const isCameraSpawnDialogOpen = ref(false);
 
 const selectedCam = computed(() =>
   selectedCamId.value ? sceneStates.cameras[selectedCamId.value] : null,
+);
+
+const isSelectedActive = computed(
+  () => sceneStates.currentCamId.value === selectedCamId.value,
 );
 
 watch(
@@ -232,6 +240,14 @@ const directionAngles = computed(() => {
       ) / 100,
   };
 });
+
+function toggleCamera(camId: string) {
+  if (isSelectedActive.value) {
+    sceneStates.cameraManagement.switchToSpectator();
+  } else {
+    sceneStates.cameraManagement.switchToCam(camId);
+  }
+}
 </script>
 
 <template>
@@ -563,12 +579,18 @@ const directionAngles = computed(() => {
 
               <Button
                 size="sm"
-                variant="ghost"
-                :disabled="sceneStates.currentCamId.value == selectedCamId"
-                @click="sceneStates.cameraManagement.switchToCam(selectedCamId)"
+                :variant="isSelectedActive ? 'secondary' : 'outline'"
+                :class="isSelectedActive ? 'bg-red-500 hover:bg-red-700' : ''"
+                @click="toggleCamera(selectedCamId)"
               >
-                <Eye class="h-3 w-3" />
-                Preview
+                <template v-if="isSelectedActive">
+                  <LogOut class="h-3 w-3" />
+                  Exit Camera
+                </template>
+                <template v-else>
+                  <Video class="h-3 w-3" />
+                  View Camera
+                </template>
               </Button>
 
               <Button
