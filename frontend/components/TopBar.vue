@@ -264,7 +264,7 @@ function goToMyWorkspace() {
           <Tooltip
             v-if="
               workspace != null &&
-              (sceneStates.markedForCheck.size > 0 ||
+              (sceneStates.markedForCheck.value ||
                 sceneStates.localVersion.value !==
                   sceneStates.lastSyncedVersion.value ||
                 sceneStates.calibration.dirty)
