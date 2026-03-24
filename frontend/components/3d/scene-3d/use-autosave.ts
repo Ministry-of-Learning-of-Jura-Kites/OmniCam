@@ -103,6 +103,7 @@ export function useAutosave(
       // Cameras
       if (sceneStates.markedForCheck.size > 0) {
         for (const camId of sceneStates.markedForCheck) {
+          console.log(sceneStates.markedForCheck);
           const prev = lastSynced.get(camId);
           const cam = sceneStates.cameras[camId];
 
@@ -115,6 +116,7 @@ export function useAutosave(
           }
 
           const formattedCam = transformCameraToProtoEventWithId(camId, cam);
+
           if (prev == undefined || !isEqual(prev, formattedCam)) {
             changed.push({ upsert: { camera: formattedCam } });
             lastSynced.set(camId, formattedCam);
