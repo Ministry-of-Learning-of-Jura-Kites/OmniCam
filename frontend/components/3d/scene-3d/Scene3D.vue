@@ -33,6 +33,7 @@ import CoverageCornerGizmos from "../coverage-area-mesh/CoverageCornerGizmos.vue
 import { orderPointsOnPlane } from "~/utils/face-helper/order-points-plane";
 import { computeStableNormal } from "~/utils/face-helper/stable-normal";
 import { averageVector } from "~/utils/face-helper/avg-vec";
+import { useOptimize } from "./use-optimize";
 
 const { isPanelOpen, currentPanel, camPanelInfo } = inject(PANEL_KEY)!;
 const { selectedCamId } = camPanelInfo;
@@ -98,6 +99,8 @@ const draftPointMarkers = computed<Point3[]>(() => {
 usePromptUnsaved(sceneStates);
 
 useCameraUpdate(sceneStates);
+
+useOptimize(sceneStates, props.workspace);
 
 // ── Raycasting & Input Events (Omitted same logic for brevity) ───────
 const raycaster = new Raycaster();

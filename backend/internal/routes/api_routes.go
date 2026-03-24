@@ -5,6 +5,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
+	"github.com/redis/go-redis/v9"
 	"go.uber.org/zap"
 	config_env "omnicam.com/backend/config"
 
@@ -22,9 +23,10 @@ import (
 )
 
 type Dependencies struct {
-	Logger *zap.Logger
-	Env    *config_env.AppEnv
-	DB     *db_client.DB
+	Logger      *zap.Logger
+	Env         *config_env.AppEnv
+	DB          *db_client.DB
+	RedisClient *redis.Client
 }
 
 func InitRoutes(deps Dependencies, router gin.IRouter) {
@@ -92,7 +94,7 @@ func InitRoutes(deps Dependencies, router gin.IRouter) {
 	}
 	deleteModelRoute.InitDeleteModelRoute(protectedRoute)
 
-	cameraAutosaveRoute := controller_camera.CameraAutosaveRoute{
+	cameraAutosaveRoute := controller_camera.UpdateEventRoute{
 		Logger: deps.Logger,
 		Env:    deps.Env,
 		DB:     deps.DB,

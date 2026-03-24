@@ -5,15 +5,7 @@ import { Eye, EyeOff, Plus, Trash } from "lucide-vue-next";
 import type { Camerapreset } from "./CameraPanel.vue";
 import LazyCameraSpawnDialog from "./dialog/CameraSpawnDialog.vue";
 import Card from "./ui/card/Card.vue";
-
-interface CameraConfig {
-  id: string;
-  name: string;
-  fov: number;
-  widthRes: number;
-  heightRes: number;
-  amount: number;
-}
+import type { CameraConfig } from "~/messages/protobufs/backend_frontend_event";
 
 const isCameraSpawnDialogOpen = ref(false);
 
@@ -21,11 +13,32 @@ const sceneStates = inject(SCENE_STATES_KEY)!;
 
 const cameraConfigs = reactive<CameraConfig[]>([]);
 
+const submitStatus = ref<"idle" | "sending" | "optimizing">("idle");
 const isOptimizing = ref(false);
 
-const selectedCount = computed(
+const faceEntries = computed(() =>
+  Object.entries(sceneStates.facesManagement.faces),
+);
+
+const isAllSelected = computed(() => {
+  return (
+    faceEntries.value.length > 0 &&
+    selectedIds.size === faceEntries.value.length
+  );
+});
+
+const selectedIds = reactive(new Set<string>());
+
+const facesCount = computed(
   () => Object.keys(sceneStates.facesManagement.faces).length,
 );
+
+const selectedSize = computed(() => {
+  if (isAllSelected.value) {
+    return facesCount.value;
+  }
+  return selectedIds.size;
+});
 
 const toggleAreaSelection = () => {
   if (sceneStates.selectionMode.value == "none") {
@@ -41,6 +54,7 @@ const clearAreas = () => {
 
 const deleteArea = (faceId: string) => {
   sceneStates.facesManagement.remove(faceId);
+  selectedIds.delete(faceId);
 };
 
 const updateAreaColor = (faceId: string, event: Event) => {
@@ -77,6 +91,30 @@ function removeCamConfig(camConfig: CameraConfig) {
   const index = cameraConfigs.indexOf(camConfig);
   if (index > -1) {
     cameraConfigs.splice(index, 1);
+  }
+}
+
+function toggleIdSelection(id: string) {
+  if (selectedIds.has(id)) {
+    selectedIds.delete(id);
+  } else {
+    selectedIds.add(id);
+  }
+}
+function bulkDelete() {
+  selectedIds.forEach((id) => deleteArea(id));
+  selectedIds.clear(); // Clear selection after deletion
+}
+
+function bulkToggleVisibility() {
+  selectedIds.forEach((id) => toggleAreaVisibility(id));
+}
+
+function toggleSelectAll(checked: boolean | "indetermediate") {
+  if (checked) {
+    faceEntries.value.forEach(([id]) => selectedIds.add(id));
+  } else {
+    selectedIds.clear();
   }
 }
 </script>
@@ -170,10 +208,55 @@ function removeCamConfig(camConfig: CameraConfig) {
         </div>
       </div>
 
-      <Card v-if="selectedCount > 0" class="mb-6 px-2 gap-2">
-        <p class="text-sm text-gray-400 mb-2">
-          Selected Target Areas ({{ selectedCount }})
-        </p>
+      <Card v-if="facesCount > 0" class="mb-6 px-2 gap-2">
+        <div class="flex items-center justify-between mb-4 px-2">
+          <div class="flex items-center gap-2">
+            <Checkbox
+              :model-value="isAllSelected"
+              @update:model-value="(v) => toggleSelectAll(v === true)"
+            />
+            <p class="text-sm text-gray-400">
+              Selected Target Areas ({{ selectedSize }} / {{ facesCount }})
+            </p>
+          </div>
+
+          <div
+            v-if="selectedIds.size > 0"
+            class="flex gap-2 animate-in fade-in zoom-in duration-200"
+          >
+            <Tooltip>
+              <TooltipTrigger as-child>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  class="px-2"
+                  @click="bulkToggleVisibility"
+                >
+                  <Eye class="h-4 w-4" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                Toggle Visibility ({{ selectedIds.size }})
+              </TooltipContent>
+            </Tooltip>
+
+            <Tooltip>
+              <TooltipTrigger as-child>
+                <Button
+                  size="sm"
+                  variant="destructive"
+                  class="px-2"
+                  @click="bulkDelete"
+                >
+                  <Trash class="h-4 w-4" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                Delete Selected ({{ selectedIds.size }})
+              </TooltipContent>
+            </Tooltip>
+          </div>
+        </div>
 
         <div
           v-for="[id, face] of Object.entries(
@@ -184,7 +267,11 @@ function removeCamConfig(camConfig: CameraConfig) {
         >
           <div class="flex items-start justify-between gap-2">
             <div class="font-medium min-w-0 wrap-break-words">
-              Area {{ id }}
+              <Checkbox
+                :model-value="selectedIds.has(id)"
+                @update:model-value="toggleIdSelection(id)"
+              />
+              Name: {{ face.name }}
               <span
                 v-if="face.hidden"
                 class="ml-2 text-xs px-2 py-0.5 rounded bg-zinc-700 text-zinc-200"
@@ -250,12 +337,18 @@ function removeCamConfig(camConfig: CameraConfig) {
 
       <Button
         :disabled="
-          selectedCount === 0 || cameraConfigs.length == 0 || isOptimizing
+          facesCount === 0 || cameraConfigs.length == 0 || isOptimizing
         "
         variant="default"
         class="w-full text-white bg-emerald-400! hover:bg-emerald-500! disabled:bg-red-800 text-lg transition"
       >
-        {{ isOptimizing ? "Optimizing..." : "Run Optimization" }}
+        {{
+          {
+            idle: "Run Optimization",
+            sending: "Sending..",
+            optimizing: "Optimizing..",
+          }[submitStatus]
+        }}
       </Button>
     </div>
   </TooltipProvider>

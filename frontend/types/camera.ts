@@ -1,5 +1,5 @@
 import { Vector3, Euler } from "three";
-import type { ColorRGBA } from "~/messages/protobufs/autosave_event";
+import type { ColorRGBA } from "~/messages/protobufs/backend_frontend_event";
 
 export interface ICamera {
   name: string;

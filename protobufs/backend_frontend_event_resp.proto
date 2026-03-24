@@ -1,0 +1,21 @@
+syntax = "proto3";
+
+package protobufs;
+
+// Go: generated under go/autosave
+option go_package = "omnicam.com/gen/go/protobufs";
+
+message AutosaveResponse {
+  int32 last_updated_version = 1;
+}
+
+message OptimizationResponse {
+  int32 last_updated_version = 1;
+}
+
+message ProtoEventResponse{
+  oneof resp{
+    AutosaveResponse     autosave = 1;
+    OptimizationResponse optimize = 2;
+  }
+}

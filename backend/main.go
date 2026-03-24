@@ -5,6 +5,7 @@ import (
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
+	"github.com/redis/go-redis/v9"
 	config_env "omnicam.com/backend/config"
 	api_routes "omnicam.com/backend/internal/routes"
 	"omnicam.com/backend/internal/utils"
@@ -21,6 +22,12 @@ func main() {
 	env := config_env.InitAppEnv(logger)
 
 	client_db := db_client.InitDatabase(env)
+
+	redisClient := redis.NewClient(&redis.Options{
+		Addr:     "localhost:6379",
+		Password: "", // no password set
+		DB:       0,  // use default DB
+	})
 
 	router := gin.Default()
 
@@ -42,9 +49,10 @@ func main() {
 
 	apiV1 := router.Group("/api/v1")
 	api_routes.InitRoutes(api_routes.Dependencies{
-		Logger: logger,
-		Env:    env,
-		DB:     client_db,
+		Logger:      logger,
+		Env:         env,
+		DB:          client_db,
+		RedisClient: redisClient,
 	}, apiV1)
 
 	router.Run()
