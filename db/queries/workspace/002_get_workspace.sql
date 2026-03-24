@@ -9,6 +9,10 @@ SELECT
     WHEN 'base_cameras' = ANY (COALESCE(SQLC.NARG(fields)::TEXT[], '{}'::TEXT[])) THEN base_cameras::JSONB
     ELSE NULL::JSONB
   END AS base_cameras,
+  CASE
+    WHEN 'target_area_trapezoids' = ANY (COALESCE(SQLC.NARG(fields)::TEXT[], '{}'::TEXT[])) THEN umw.target_area_trapezoids::JSONB
+    ELSE NULL::JSONB
+  END AS target_area_trapezoids,
   umw.scale_factor,
   umw.model_height,
   umw.version,

@@ -25,7 +25,7 @@ import { randomVividColor } from "~/utils/randomVividColor";
 import { PANEL_KEY, SCENE_STATES_KEY } from "@/constants/state-keys";
 import CameraSpawnDialog from "~/components/dialog/CameraSpawnDialog.vue";
 
-type Camerapreset = {
+export type Camerapreset = {
   vendor: string;
   camera: string;
   sensor_name: string;

@@ -80,9 +80,10 @@ message ProtoVector3 {
 
 message CoverageFace {
   string                id     = 1;
-  repeated ProtoVector3 points = 2;
-  optional string       color  = 5;
-  bool                  hidden = 6;
+  string                name   = 2;
+  repeated ProtoVector3 points = 3;
+  optional string       color  = 4;
+  bool                  hidden = 5;
 }
 
 message CameraConfig {
@@ -100,12 +101,12 @@ message OptimizationReqEvent {
 
 message AutosaveEvent {
   oneof event {
-    CameraDeleteEvent      delete       = 1;
-    CameraUpsertEvent      upsert       = 2;
-    CalibrationUpdateEvent calibrate    = 3;
-    FacesDeleteEvent       faces_delete = 4;
-    FacesUpsertEvent       faces_upsert = 5;
-    OptimizationReqEvent   optimize     = 6;
+    CameraDeleteEvent      delete      = 1;
+    CameraUpsertEvent      upsert      = 2;
+    CalibrationUpdateEvent calibrate   = 3;
+    FacesDeleteEvent       face_delete = 4;
+    FacesUpsertEvent       face_upsert = 5;
+    OptimizationReqEvent   optimize    = 6;
   }
 }
 

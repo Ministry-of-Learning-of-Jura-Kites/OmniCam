@@ -127,7 +127,7 @@ function buildDraftCoveragePreview(
 }
 
 const defaultCoverageFace: ProcessedCoverageFace = {
-  id: "",
+  name: "",
   points: [
     [0, 0, 0],
     [0, 0, 0],
@@ -163,7 +163,6 @@ function buildCoverageFaceFromPickedPoints(
 
   return {
     ...defaultCoverageFace,
-    id: `area_${Date.now()}`,
     points: [
       [p0.x, p0.y, p0.z],
       [p1.x, p1.y, p1.z],
@@ -202,8 +201,7 @@ function handleCoverageAreaPointer(event: PointerEvent) {
     );
 
     if (face) {
-      console.log("Adding coverage face", face);
-      sceneStates.facesManagement.add(face);
+      sceneStates.facesManagement.add(crypto.randomUUID(), face);
     }
 
     requestAnimationFrame(() => {
@@ -639,7 +637,7 @@ function selectCurrentCamShortcut() {
 
           <template v-for="[id, face] of selectedFaces" :key="id">
             <CoverageAreaMesh
-              :face-id="face.id"
+              :face-id="id"
               :points="face.points"
               :color="face.color ?? '#22ff88'"
               :selected="true"
@@ -648,7 +646,7 @@ function selectCurrentCamShortcut() {
             />
 
             <CoverageCornerGizmos
-              :face-id="face.id"
+              :face-id="id"
               :points="face.points"
               :size="0.14"
               :y-offset="COVERAGE_Y_OFFSET"

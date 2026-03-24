@@ -14,18 +14,22 @@ import { useCameraManagement } from "../scene-3d/use-camera-management";
 import { useSpectatorRotation } from "../scene-3d/use-spectator-rotation";
 import { useSpectatorPosition } from "../scene-3d/use-spectator-position";
 import type { UseWebSocketReturn } from "@vueuse/core";
-import type { Camera } from "~/messages/protobufs/autosave_event";
+import type {
+  Camera,
+  CoverageFace,
+  ProtoVector3,
+} from "~/messages/protobufs/autosave_event";
 import { useAspectRatio as useAspectRatioManagement } from "../scene-3d/use-aspect-ratio";
 import { useAutosave } from "../scene-3d/use-autosave";
 import type { GLTF } from "three-stdlib";
-import type { Trapezoid } from "~/types/trapezoid";
+import type { Trapezoid as TrapezoidPoints } from "~/types/trapezoid";
 
 export interface ProcessedCoverageFace {
-  id: string;
-  points: Trapezoid;
+  name: string;
+  points: TrapezoidPoints;
   color: string | undefined;
   hidden: boolean;
-  normal: [number, number, number];
+  normal?: [number, number, number];
   // Derived field
   center?: [number, number, number];
 }
@@ -44,6 +48,7 @@ export interface ModelWithCamsResp {
     imagePath: string;
     imageExtension: string;
     cameras: Record<string, Camera>;
+    targetTrapezoids?: Record<string, CoverageFace>;
     scaleFactor?: number;
     modelHeight?: number;
   };
@@ -98,6 +103,38 @@ function transformCamsData(
   );
 }
 
+function protoVecToNumbers(vec: ProtoVector3): [number, number, number] {
+  return [vec.x, vec.y, vec.z];
+}
+
+function transformProtoEventToTrapezoid(
+  rawTrapezoid: CoverageFace,
+): ProcessedCoverageFace {
+  return {
+    name: rawTrapezoid.name,
+    points: rawTrapezoid.points.map(protoVecToNumbers) as TrapezoidPoints,
+    color: rawTrapezoid.color,
+    hidden: rawTrapezoid.hidden,
+    normal: undefined,
+  };
+}
+
+function transformFacesData(
+  modelWithCamsResp: ModelWithCamsResp,
+): Record<string, ProcessedCoverageFace> {
+  if (modelWithCamsResp.data.targetTrapezoids == undefined) {
+    return {};
+  }
+  return Object.fromEntries(
+    Object.entries(modelWithCamsResp.data.targetTrapezoids).map(
+      ([id, trapezoid]) => {
+        const transTrapezoid = transformProtoEventToTrapezoid(trapezoid);
+        return [id, transTrapezoid];
+      },
+    ),
+  );
+}
+
 export function createBaseSceneStates(
   websocket: UseWebSocketReturn<unknown> | undefined,
   modelWithCamsResp: ModelWithCamsResp,
@@ -136,6 +173,8 @@ export function createBaseSceneStates(
   const camsData = transformCamsData(modelWithCamsResp);
 
   const cameras = reactive<Record<string, ICamera>>(camsData!);
+
+  const markedFacesForCheck = ref(false);
 
   const spectatorCam: Reactive<ICamera> = reactive({
     ...structuredClone(cameraDefault),
@@ -204,7 +243,9 @@ export function createBaseSceneStates(
   const cubeCamera = ref<CubeCamera | null>(null);
 
   const selectionMode = ref<"none" | "coverage-area">("none");
-  const coverageFaces = reactive<Record<string, ProcessedCoverageFace>>({});
+  const initialCoverageFaces = transformFacesData(modelWithCamsResp);
+  const coverageFaces =
+    reactive<Record<string, ProcessedCoverageFace>>(initialCoverageFaces);
   const coverageAllHidden = ref(false);
 
   const setCoverageMode = (mode: "none" | "coverage-area") => {
@@ -233,8 +274,8 @@ export function createBaseSceneStates(
     found.hidden = hidden;
   };
 
-  const addCoverageFace = (face: ProcessedCoverageFace) => {
-    coverageFaces[face.id] = {
+  const addCoverageFace = (id: string, face: ProcessedCoverageFace) => {
+    coverageFaces[id] = {
       ...face,
       color: face.color ?? "#22ff88",
       hidden: face.hidden ?? false,
@@ -269,7 +310,7 @@ export function createBaseSceneStates(
 
     const newPoints = found.points.map((p, i) =>
       i === cornerIndex ? point : p,
-    ) as Trapezoid;
+    ) as TrapezoidPoints;
 
     const center: [number, number, number] = [
       (newPoints[0]![0] +
@@ -327,6 +368,7 @@ export function createBaseSceneStates(
     cameras,
     error: null,
     markedForCheck,
+    markedFacesForCheck,
     modelInfo,
     screenSize,
     aspectMargin,
