@@ -2,13 +2,13 @@ import {
   type Camera,
   type AutosaveEvent,
   type CoverageFace,
-  AutosaveMessage,
-  AutosaveResponse,
-} from "~/messages/protobufs/autosave_event";
+  ProtoEventMessage,
+} from "~/messages/protobufs/backend_frontend_event";
 import type { ICamera } from "~/types/camera";
 import type { SceneStates } from "~/types/scene-states";
 import { Quaternion } from "three";
 import type { ProcessedCoverageFace } from "../scene-states-provider/create-scene-states";
+import { ProtoEventResponse } from "~/messages/protobufs/backend_frontend_event_resp";
 
 function isEqual<T>(a: T, b: T): boolean {
   return JSON.stringify(a) === JSON.stringify(b);
@@ -96,19 +96,12 @@ export function useAutosave(
       async (messageBlob) => {
         if (!messageBlob) return;
         const buf = await (messageBlob as Blob).arrayBuffer();
-        const resp = AutosaveResponse.decode(new Uint8Array(buf));
+        const resp = ProtoEventResponse.decode(new Uint8Array(buf));
 
-        sceneStates.lastSyncedVersion.value = resp.lastUpdatedVersion;
-
-        // if (resp.calibrationAck) {
-        //   isServerUpdate.value = true;
-        //   sceneStates.calibrationScale.value = resp.calibrationAck.scaleFactor;
-        //   sceneStates.calibrationHeight.value = resp.calibrationAck.modelHeight;
-        //   sceneStates.calibrationVersion.value =
-        //     resp.calibrationAck.lastUpdatedVersion;
-        //   await nextTick();
-        //   isServerUpdate.value = false;
-        // }
+        if (resp.autosave) {
+          sceneStates.lastSyncedVersion.value =
+            resp.autosave.lastUpdatedVersion;
+        }
       },
     );
 
@@ -207,19 +200,14 @@ export function useAutosave(
 
       if (changed.length > 0) {
         sceneStates.localVersion.value += 1;
-        const encoded = AutosaveMessage.encode({
-          version: sceneStates.localVersion.value,
-          events: changed,
+        const encoded = ProtoEventMessage.encode({
+          autosave: {
+            version: sceneStates.localVersion.value,
+            events: changed,
+          },
         }).finish();
         sceneStates.websocket.send(encoded.buffer);
       }
     }, 2000);
   });
-
-  // function requestOptimize(
-  //   faceIds: string[],
-  //   cameras: { cam: ICamera; amount: number }[],
-  // ) {
-  //   sceneStates.facesManagement.faces.value;
-  // }
 }

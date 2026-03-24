@@ -18,7 +18,7 @@ import type {
   Camera,
   CoverageFace,
   ProtoVector3,
-} from "~/messages/protobufs/autosave_event";
+} from "~/messages/protobufs/backend_frontend_event";
 import { useAspectRatio as useAspectRatioManagement } from "../scene-3d/use-aspect-ratio";
 import { useAutosave } from "../scene-3d/use-autosave";
 import type { GLTF } from "three-stdlib";

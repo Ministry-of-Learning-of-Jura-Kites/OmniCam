@@ -1,7 +1,7 @@
 package target_trapezoids
 
 import (
-	protobufs "omnicam.com/backend/pkg/messages/protobufs"
+	"omnicam.com/backend/pkg/messages/protobufs"
 )
 
 type TrapezoidId string

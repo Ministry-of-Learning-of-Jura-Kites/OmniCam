@@ -28,6 +28,7 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
+# TODO: Use protobufs(?)
 class ReqCameraConfiguration(BaseModel):
     pixels: Tuple[float, float]
     vfov: float

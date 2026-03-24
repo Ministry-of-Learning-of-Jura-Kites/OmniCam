@@ -12,13 +12,25 @@ import (
 )
 
 type AppEnv struct {
-	Mode             string `env:"MODE"`
-	DatabaseUrl      string `env:"DATABASE_URL"`
-	ModelFilePath    string `env:"MODEL_FILE_PATH"`
-	FrontendHost     string `env:"FRONTEND_HOST"`
+	Mode          string `env:"MODE"`
+	DatabaseUrl   string `env:"DATABASE_URL"`
+	ModelFilePath string `env:"MODEL_FILE_PATH"`
+	FrontendHost  string `env:"FRONTEND_HOST"`
+
+	// JWT
 	JWTSecret        string `env:"JWT_SECRET"`
 	RawJWTExpireTime string `env:"JWT_EXPIRE_TIME"`
 	JWTExpireTime    time.Duration
+
+	// Redis Configuration
+	RedisHost     string `env:"REDIS_HOST"`
+	RedisPort     string `env:"REDIS_PORT"`
+	RedisPassword string `env:"REDIS_PASSWORD"`
+	RedisDB       int    `env:"REDIS_DB"`
+
+	// Optimization Topics (Redis Streams)
+	OptiReqTopic string `env:"OPTI_REQ_TOPIC"`
+	OptiResTopic string `env:"OPTI_RES_TOPIC"`
 }
 
 func transformAppEnv(logger *zap.Logger, cfg *AppEnv, isTest bool) {
