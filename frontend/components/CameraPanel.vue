@@ -152,12 +152,12 @@ function getUniqueCameraName(baseName: string) {
 
 const isLockingRotation = computed(() => {
   return (
-    sceneStates.currentCam.value.isLockingRotation || props.workspace == null
+    sceneStates.currentCam.value.isLockingRotation || props.workspace != "me"
   );
 });
 const isLockingPosition = computed(() => {
   return (
-    sceneStates.currentCam.value.isLockingPosition || props.workspace == null
+    sceneStates.currentCam.value.isLockingPosition || props.workspace != "me"
   );
 });
 
@@ -275,7 +275,7 @@ function toggleCamera(camId: string) {
       </Button> -->
         <!-- <Button
         size="sm"
-        :disabled="props.workspace == null"
+        :disabled="props.workspace != 'me'"
         @click="
           spawnCamera();
           $event.currentTarget.blur();
@@ -285,7 +285,7 @@ function toggleCamera(camId: string) {
       </Button> -->
         <Button
           size="sm"
-          :disabled="props.workspace == null"
+          :disabled="props.workspace != 'me'"
           @click="
             isCameraSpawnDialogOpen = true;
             $event.currentTarget.blur();
@@ -338,7 +338,7 @@ function toggleCamera(camId: string) {
               <Input
                 id="camera-name"
                 v-model="sceneStates.cameras[selectedCamId]!.name"
-                :disabled="props.workspace == null"
+                :disabled="props.workspace != 'me'"
                 disabled-class="disabled-input"
               />
             </div>
@@ -386,7 +386,7 @@ function toggleCamera(camId: string) {
               <input
                 id="lock-position"
                 v-model="isLockingPosition"
-                :disabled="props.workspace == null"
+                :disabled="props.workspace != 'me'"
                 type="checkbox"
                 @change="onToggleLockPosition"
               />
@@ -402,7 +402,7 @@ function toggleCamera(camId: string) {
                   id="angle-x"
                   v-model.number="angleX"
                   :disabled="
-                    selectedCam?.isLockingRotation || props.workspace == null
+                    selectedCam?.isLockingRotation || props.workspace != 'me'
                   "
                   disabled-class="disabled-input"
                   type="number"
@@ -418,7 +418,7 @@ function toggleCamera(camId: string) {
                   id="angle-y"
                   v-model.number="angleY"
                   :disabled="
-                    selectedCam?.isLockingRotation || props.workspace == null
+                    selectedCam?.isLockingRotation || props.workspace != 'me'
                   "
                   disabled-class="disabled-input"
                   type="number"
@@ -434,7 +434,7 @@ function toggleCamera(camId: string) {
                   id="angle-z"
                   v-model.number="angleZ"
                   :disabled="
-                    selectedCam?.isLockingRotation || props.workspace == null
+                    selectedCam?.isLockingRotation || props.workspace != 'me'
                   "
                   disabled-class="disabled-input"
                   type="number"
@@ -471,7 +471,7 @@ function toggleCamera(camId: string) {
               <input
                 id="lock-rotation"
                 v-model="sceneStates.cameras[selectedCamId]!.isLockingRotation"
-                :disabled="props.workspace == null"
+                :disabled="props.workspace != 'me'"
                 type="checkbox"
                 @change="onToggleLockRotation"
               />
@@ -484,7 +484,7 @@ function toggleCamera(camId: string) {
                 <Input
                   id="aspect-ratio-width"
                   v-model.number="sceneStates.cameras[selectedCamId]!.widthRes"
-                  :disabled="props.workspace == null"
+                  :disabled="props.workspace != 'me'"
                   disabled-class="disabled-input"
                   type="number"
                 />
@@ -492,7 +492,7 @@ function toggleCamera(camId: string) {
                 <Input
                   id="aspect-ratio-height"
                   v-model.number="sceneStates.cameras[selectedCamId]!.heightRes"
-                  :disabled="props.workspace == null"
+                  :disabled="props.workspace != 'me'"
                   disabled-class="disabled-input"
                   type="number"
                 />
@@ -504,7 +504,7 @@ function toggleCamera(camId: string) {
               <Input
                 id="fov"
                 v-model.number="sceneStates.cameras[selectedCamId]!.fov"
-                :disabled="props.workspace == null"
+                :disabled="props.workspace != 'me'"
                 disabled-class="disabled-input"
                 type="number"
                 min="10"
@@ -545,7 +545,7 @@ function toggleCamera(camId: string) {
                 variant="ghost"
                 :disabled="
                   sceneStates.cameras[selectedCamId]!.isLockingRotation ||
-                  props.workspace == null
+                  props.workspace != 'me'
                 "
                 disabled-class="disabled-input"
                 @click="
@@ -590,7 +590,7 @@ function toggleCamera(camId: string) {
                 variant="ghost"
                 :disabled="
                   sceneStates.currentCamId.value == selectedCamId ||
-                  props.workspace == null
+                  props.workspace != 'me'
                 "
                 @click="deleteCamera(selectedCamId)"
               >
@@ -605,7 +605,7 @@ function toggleCamera(camId: string) {
                 :disabled="
                   sceneStates.cameras[selectedCamId]!.isLockingPosition ||
                   sceneStates.cameras[selectedCamId]!.isLockingRotation ||
-                  props.workspace == null
+                  props.workspace != 'me'
                 "
                 disabled-class="disabled-input"
                 @click="moveCameraHere(selectedCamId!)"
@@ -762,7 +762,7 @@ function toggleCamera(camId: string) {
                 id="distortion-enabled"
                 v-model="sceneStates.cameras[selectedCamId]!.distortion.enabled"
                 type="checkbox"
-                :disabled="props.workspace == null"
+                :disabled="props.workspace != 'me'"
                 disabled-class="disabled-input"
               />
               <label for="distortion-enabled">Enable Distortion</label>
@@ -774,7 +774,7 @@ function toggleCamera(camId: string) {
                   sceneStates.cameras[selectedCamId]!.distortion.isFisheye
                 "
                 type="checkbox"
-                :disabled="props.workspace == null"
+                :disabled="props.workspace != 'me'"
                 disabled-class="disabled-input"
               />
               <label for="is-fisheye">Is Fisheye</label>
@@ -818,7 +818,7 @@ input[type="number"] {
 }
 
 .disabled-input {
-  background-color: var(--color-gray-200);
+  background-color: var(--background);
   cursor: not-allowed;
 }
 

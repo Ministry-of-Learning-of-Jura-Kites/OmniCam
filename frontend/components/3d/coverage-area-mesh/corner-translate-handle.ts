@@ -3,6 +3,7 @@ import type { IUserData } from "~/types/obj-3d-user-data";
 import { Raycaster, Vector2, Vector3 } from "three";
 import type { ICamera } from "~/types/camera";
 import type { SceneStates } from "~/types/scene-states";
+import { orderPointsOnPlane } from "~/utils/face-helper/order-points-plane";
 
 type Axis = "x" | "y" | "z";
 
@@ -149,6 +150,24 @@ export class CornerTranslateUserData implements IUserData {
 
   private onPointerUp = () => {
     this.isDragging = false;
+
+    const face = this.sceneStates.facesManagement.faces[this.faceId];
+    if (face != undefined) {
+      const allPoints = face.points.map((p) => new Vector3(...p));
+      const sortedPoints = orderPointsOnPlane(
+        allPoints,
+        numbersToThreeVector3(face.normal),
+      );
+
+      for (let idx = 0; idx < 4; idx++) {
+        this.sceneStates.facesManagement.updateCorner(
+          this.faceId,
+          idx,
+          threeVector3ToNumbers(sortedPoints[idx]!),
+        );
+      }
+    }
+
     document.removeEventListener("pointermove", this.onPointerMove);
     document.removeEventListener("pointerup", this.onPointerUp);
   };

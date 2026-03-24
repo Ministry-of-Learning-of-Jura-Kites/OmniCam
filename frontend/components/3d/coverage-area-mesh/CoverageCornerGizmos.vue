@@ -57,6 +57,7 @@ function makeArrowGeometry() {
   return g;
 }
 
+// TODO: Make geometry & Material singleton to save unnecessary space
 const geomBase = makeArrowGeometry();
 const matX = makeArrowMaterial("green");
 const matY = makeArrowMaterial("red");

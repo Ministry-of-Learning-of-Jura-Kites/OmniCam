@@ -72,17 +72,17 @@ message CalibrationUpdateEvent {
   double model_height = 2;
 }
 
-message Vector3 {
+message ProtoVector3 {
   double x = 1;
   double y = 2;
   double z = 3;
 }
 
 message CoverageFace {
-  string           id     = 1;
-  repeated Vector3 points = 2;
-  optional string  color  = 5;
-  bool             hidden = 6;
+  string                id     = 1;
+  repeated ProtoVector3 points = 2;
+  optional string       color  = 5;
+  bool                  hidden = 6;
 }
 
 message CameraConfig {

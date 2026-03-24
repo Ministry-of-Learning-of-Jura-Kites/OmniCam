@@ -18,12 +18,14 @@ import type { Camera } from "~/messages/protobufs/autosave_event";
 import { useAspectRatio as useAspectRatioManagement } from "../scene-3d/use-aspect-ratio";
 import { useAutosave } from "../scene-3d/use-autosave";
 import type { GLTF } from "three-stdlib";
+import type { Trapezoid } from "~/types/trapezoid";
 
 export interface ProcessedCoverageFace {
   id: string;
-  points: [number, number, number][];
+  points: Trapezoid;
   color: string | undefined;
   hidden: boolean;
+  normal: [number, number, number];
   // Derived field
   center?: [number, number, number];
 }
@@ -201,12 +203,12 @@ export function createBaseSceneStates(
   const perspectiveCamera = ref<PerspectiveCamera | null>(null);
   const cubeCamera = ref<CubeCamera | null>(null);
 
-  const coverageMode = ref<"none" | "coverage-area">("none");
+  const selectionMode = ref<"none" | "coverage-area">("none");
   const coverageFaces = reactive<Record<string, ProcessedCoverageFace>>({});
   const coverageAllHidden = ref(false);
 
   const setCoverageMode = (mode: "none" | "coverage-area") => {
-    coverageMode.value = mode;
+    selectionMode.value = mode;
   };
 
   const toggleAllCoverageHidden = () => {
@@ -267,7 +269,7 @@ export function createBaseSceneStates(
 
     const newPoints = found.points.map((p, i) =>
       i === cornerIndex ? point : p,
-    ) as [number, number, number][];
+    ) as Trapezoid;
 
     const center: [number, number, number] = [
       (newPoints[0]![0] +
@@ -292,7 +294,6 @@ export function createBaseSceneStates(
   };
 
   const facesManagement = {
-    mode: coverageMode,
     faces: coverageFaces,
     isAllHidden: coverageAllHidden,
     setMode: setCoverageMode,
@@ -312,6 +313,7 @@ export function createBaseSceneStates(
   const sceneStates = {
     tresContext,
     modelRef,
+    selectionMode,
     draggableObjects,
     isDraggingObject,
     currentCamId,
@@ -375,8 +377,8 @@ export function createSceneStatesWithHelper(
     ...sceneStates,
     aspectRatioManagement: aspectRatioManagement,
     cameraManagement: useCameraManagement(sceneStates),
-    spectatorPosition: useSpectatorPosition(sceneStates),
-    spectatorRotation: useSpectatorRotation(sceneStates),
+    spectatorPosition: useSpectatorPosition(sceneStates, workspace),
+    spectatorRotation: useSpectatorRotation(sceneStates, workspace),
   };
   return sceneStatesWithCam;
 }
