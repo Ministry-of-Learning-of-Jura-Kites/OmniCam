@@ -15,6 +15,7 @@ import (
 	db_sqlc_gen "omnicam.com/backend/pkg/db/sqlc-gen"
 	messages_cameras "omnicam.com/backend/pkg/messages/cameras"
 	camera "omnicam.com/backend/pkg/messages/protobufs"
+	messsages_trapezoids "omnicam.com/backend/pkg/messages/trapezoids"
 )
 
 type CameraAutosaveRoute struct {
@@ -108,6 +109,67 @@ func (t *CameraAutosaveRoute) handleCalibration(
 	sendResponse(t.Logger, conn, resp)
 }
 
+func (t *CameraAutosaveRoute) handleFaceUpsert(
+	c *gin.Context, conn *websocket.Conn,
+	modelId uuid.UUID, userId uuid.UUID,
+	event *camera.AutosaveEvent_FaceUpsert,
+	inputVersion uint32,
+	currentVersion *int32) {
+	if inputVersion <= uint32(*currentVersion) {
+		return // stale/duplicate
+	}
+
+	trapezoid := messsages_trapezoids.ProtoTrapezoidToTrapezoid(event.FaceUpsert.CoverageFace)
+	marshalled, err := json.Marshal(trapezoid)
+	if err != nil {
+		t.Logger.Error("error while marshaling camera", zap.Error(err))
+		return
+	}
+
+	newVersion, err := t.DB.Queries.UpdateWorkspaceTargetTrapezoids(c, db_sqlc_gen.UpdateWorkspaceTargetTrapezoidsParams{
+		Key:     []string{event.FaceUpsert.CoverageFace.Id},
+		Value:   marshalled,
+		UserID:  userId,
+		ModelID: modelId,
+	})
+	if err != nil {
+		t.Logger.Error("error updating face", zap.Error(err))
+		return
+	}
+
+	resp := &camera.AutosaveResponse{
+		LastUpdatedVersion: newVersion,
+	}
+	sendResponse(t.Logger, conn, resp)
+}
+
+func (t *CameraAutosaveRoute) handleFaceDelete(
+	c *gin.Context, conn *websocket.Conn,
+	modelId uuid.UUID, userId uuid.UUID,
+	event *camera.AutosaveEvent_FaceDelete,
+	inputVersion uint32,
+	currentVersion *int32) {
+	if inputVersion <= uint32(*currentVersion) {
+		return // stale/duplicate
+	}
+
+	newVersion, err := t.DB.Queries.UpdateWorkspaceTargetTrapezoids(c, db_sqlc_gen.UpdateWorkspaceTargetTrapezoidsParams{
+		Key:     []string{event.FaceDelete.Id},
+		Value:   nil,
+		UserID:  userId,
+		ModelID: modelId,
+	})
+	if err != nil {
+		t.Logger.Error("error updating face", zap.Error(err))
+		return
+	}
+
+	resp := &camera.AutosaveResponse{
+		LastUpdatedVersion: newVersion,
+	}
+	sendResponse(t.Logger, conn, resp)
+}
+
 func sendResponse(logger *zap.Logger, conn *websocket.Conn, resp *camera.AutosaveResponse) {
 	bytes, err := proto.Marshal(resp)
 	if err != nil {
@@ -185,6 +247,10 @@ func (t *CameraAutosaveRoute) get(c *gin.Context) {
 					t.handleEventUpsert(c, conn, modelId, userId, ce.Upsert.Camera)
 				case *camera.AutosaveEvent_Calibrate:
 					t.handleCalibration(c, conn, modelId, userId, ce, msg.Version, &currentVersion)
+				case *camera.AutosaveEvent_FaceDelete:
+					t.handleFaceDelete(c, conn, modelId, userId, ce, msg.Version, &currentVersion)
+				case *camera.AutosaveEvent_FaceUpsert:
+					t.handleFaceUpsert(c, conn, modelId, userId, ce, msg.Version, &currentVersion)
 				}
 			}
 		}

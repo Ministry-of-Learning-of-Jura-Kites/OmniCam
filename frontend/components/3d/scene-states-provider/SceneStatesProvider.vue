@@ -70,14 +70,22 @@ async function fetchAndCombine(fields: string[]) {
 }
 
 if (modelWithCamsResp.value == undefined) {
-  await fetchAndCombine(["cameras", "workspace_exists"]);
+  await fetchAndCombine([
+    "cameras",
+    "workspace_exists",
+    "target_area_trapezoids",
+  ]);
 } else {
   // If exit from workspace into model
   if (
     props.workspace == null &&
     modelWithCamsResp.value.data.workspaceExists == undefined
   ) {
-    await fetchAndCombine(["cameras", "workspace_exists"]);
+    await fetchAndCombine([
+      "cameras",
+      "workspace_exists",
+      "target_area_trapezoids",
+    ]);
   }
 
   // If open workspace from model page
@@ -85,7 +93,7 @@ if (modelWithCamsResp.value == undefined) {
     props.workspace == "me" &&
     modelWithCamsResp.value.data.workspaceExists != undefined
   ) {
-    await fetchAndCombine(["cameras"]);
+    await fetchAndCombine(["cameras", "target_area_trapezoids"]);
   }
 }
 

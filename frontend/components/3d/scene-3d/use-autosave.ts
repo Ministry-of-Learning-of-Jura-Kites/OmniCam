@@ -53,6 +53,7 @@ export function transformFaceToProto(
 ): CoverageFace {
   return {
     id: id,
+    name: face.name,
     points: face.points.map(numbersToThreeVector3),
     color: face.color,
     hidden: face.hidden,
@@ -81,19 +82,10 @@ export function useAutosave(
     ]),
   );
 
-  const markedFacesForCheck = new Set<string>();
-
   watch(
     () => sceneStates.facesManagement.faces,
-    (newFaces, oldFaces) => {
-      // Track additions and updates
-      Object.keys(newFaces).forEach((id) => markedFacesForCheck.add(id));
-      // Track deletions (keys present in old but not in new)
-      if (oldFaces) {
-        Object.keys(oldFaces).forEach((id) => {
-          if (!newFaces[id]) markedFacesForCheck.add(id);
-        });
-      }
+    () => {
+      sceneStates.markedFacesForCheck.value = true;
     },
     { deep: true },
   );
@@ -175,32 +167,31 @@ export function useAutosave(
     }
 
     function updateFaces(changed: AutosaveEvent[]) {
-      if (markedFacesForCheck.size == 0) {
+      if (Object.keys(sceneStates.facesManagement.faces).length == 0) {
         return;
       }
-      for (const faceId of markedFacesForCheck) {
+      for (const faceId in sceneStates.facesManagement.faces) {
         const prev = lastSyncedFaces.get(faceId);
         const face = sceneStates.facesManagement.faces[faceId];
 
-        // 1. Handle Deletion
+        // Handle Deletion
         if (face === undefined) {
           if (prev !== undefined) {
             lastSyncedFaces.delete(faceId);
-            changed.push({ facesDelete: { id: faceId } });
+            changed.push({ faceDelete: { id: faceId } });
           }
           continue;
         }
 
-        // 2. Handle Upsert (New or Changed)
+        // Handle Upsert (New or Changed)
         const formattedFace = transformFaceToProto(faceId, face);
 
-        // Use isEqual (from lodash or similar) to avoid redundant network traffic
         if (prev === undefined || !isEqual(prev, formattedFace)) {
-          changed.push({ facesUpsert: { coverageFace: formattedFace } });
+          changed.push({ faceUpsert: { coverageFace: formattedFace } });
           lastSyncedFaces.set(faceId, formattedFace);
         }
       }
-      markedFacesForCheck.clear();
+      sceneStates.markedFacesForCheck.value = false;
     }
 
     setInterval(() => {

@@ -40,6 +40,7 @@ class OptimizeRequest(BaseModel):
     cam_configs: List[ReqCameraConfiguration]
     scale: float
     job_id: uuid.UUID
+    model_id: uuid.UUID
 
 
 class CameraResponse(BaseModel):

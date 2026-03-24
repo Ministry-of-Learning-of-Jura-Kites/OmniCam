@@ -165,7 +165,6 @@ function openFileDialog() {
 
 function toggleSettingDialog() {
   isSettingDialogOpen.value = true;
-  console.log(isSettingDialogOpen);
 }
 
 async function createWorkspace() {
@@ -267,7 +266,8 @@ function goToMyWorkspace() {
               (sceneStates.markedForCheck.value ||
                 sceneStates.localVersion.value !==
                   sceneStates.lastSyncedVersion.value ||
-                sceneStates.calibration.dirty)
+                sceneStates.calibration.dirty ||
+                sceneStates.markedFacesForCheck.value)
             "
           >
             <TooltipTrigger>
