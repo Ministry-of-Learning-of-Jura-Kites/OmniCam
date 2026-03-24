@@ -152,7 +152,7 @@ export function createBaseSceneStates(
       : cameras![currentCamId.value]!;
   });
 
-  const markedForCheck = reactive(new Set<string>());
+  const markedForCheck = ref<boolean>(false);
 
   const screenSize = reactive({
     width: undefined as number | undefined,

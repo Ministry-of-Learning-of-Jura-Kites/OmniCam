@@ -61,6 +61,14 @@ const selectedCam = computed(() =>
   selectedCamId.value ? sceneStates.cameras[selectedCamId.value] : null,
 );
 
+watch(
+  () => sceneStates.cameras,
+  () => {
+    sceneStates.markedForCheck.value = true;
+  },
+  { deep: true },
+);
+
 const isSelectedActive = computed(
   () => sceneStates.currentCamId.value === selectedCamId.value,
 );
@@ -173,7 +181,7 @@ const handleSpawnCamera = (preset: Camerapreset) => {
 
     cam.frustumLength = Number(preset.focal_length) * 50;
 
-    sceneStates.markedForCheck.add(camId);
+    sceneStates.markedForCheck.value = true;
 
     if (selectedCamId.value !== undefined) {
       selectedCamId.value = camId;
@@ -193,7 +201,7 @@ const createRotationRef = (axis: "x" | "y" | "z") => {
     set(value: number) {
       if (!selectedCam.value) return;
       selectedCam.value.rotation[axis] = MathUtils.degToRad(value);
-      sceneStates.markedForCheck.add(selectedCamId.value!);
+      sceneStates.markedForCheck.value = true;
     },
   });
 };
@@ -248,6 +256,7 @@ function toggleCamera(camId: string) {
     sceneStates.cameraManagement.switchToCam(camId);
   }
 }
+// cloud point -> glb -> using point to make surface (triangle)
 </script>
 
 <template>
@@ -310,10 +319,7 @@ function toggleCamera(camId: string) {
         <Card v-if="selectedCamId && sceneStates.cameras[selectedCamId]">
           <CardHeader
             class="cursor-pointer flex items-center justify-between"
-            @click="
-              isCameraPropertiesOpen = !isCameraPropertiesOpen;
-              sceneStates.markedForCheck.add(selectedCamId);
-            "
+            @click="isCameraPropertiesOpen = !isCameraPropertiesOpen"
           >
             <CardTitle class="text-base flex items-center gap-2">
               <Settings class="h-4 w-4" />
@@ -334,7 +340,6 @@ function toggleCamera(camId: string) {
                 v-model="sceneStates.cameras[selectedCamId]!.name"
                 :disabled="props.workspace == null"
                 disabled-class="disabled-input"
-                @change="sceneStates.markedForCheck.add(selectedCamId)"
               />
             </div>
 
@@ -349,7 +354,6 @@ function toggleCamera(camId: string) {
                   :disabled="isLockingRotation"
                   disabled-class="disabled-input"
                   type="number"
-                  @change="sceneStates.markedForCheck.add(selectedCamId)"
                 />
               </div>
               <div>
@@ -362,7 +366,6 @@ function toggleCamera(camId: string) {
                   :disabled="isLockingRotation"
                   disabled-class="disabled-input"
                   type="number"
-                  @change="sceneStates.markedForCheck.add(selectedCamId)"
                 />
               </div>
               <div>
@@ -375,7 +378,6 @@ function toggleCamera(camId: string) {
                   :disabled="isLockingRotation"
                   disabled-class="disabled-input"
                   type="number"
-                  @change="sceneStates.markedForCheck.add(selectedCamId)"
                 />
               </div>
             </div>
@@ -405,7 +407,6 @@ function toggleCamera(camId: string) {
                   disabled-class="disabled-input"
                   type="number"
                   step="0.1"
-                  @change="sceneStates.markedForCheck.add(selectedCamId)"
                 />
               </div>
 
@@ -422,7 +423,6 @@ function toggleCamera(camId: string) {
                   disabled-class="disabled-input"
                   type="number"
                   step="0.1"
-                  @change="sceneStates.markedForCheck.add(selectedCamId)"
                 />
               </div>
 
@@ -439,7 +439,6 @@ function toggleCamera(camId: string) {
                   disabled-class="disabled-input"
                   type="number"
                   step="0.1"
-                  @change="sceneStates.markedForCheck.add(selectedCamId)"
                 />
               </div>
             </div>
@@ -488,7 +487,6 @@ function toggleCamera(camId: string) {
                   :disabled="props.workspace == null"
                   disabled-class="disabled-input"
                   type="number"
-                  @change="sceneStates.markedForCheck.add(selectedCamId)"
                 />
                 <p>:</p>
                 <Input
@@ -497,7 +495,6 @@ function toggleCamera(camId: string) {
                   :disabled="props.workspace == null"
                   disabled-class="disabled-input"
                   type="number"
-                  @change="sceneStates.markedForCheck.add(selectedCamId)"
                 />
               </div>
             </div>
@@ -512,10 +509,7 @@ function toggleCamera(camId: string) {
                 type="number"
                 min="10"
                 max="180"
-                @change="
-                  sceneStates.markedForCheck.add(selectedCamId);
-                  onFovChange();
-                "
+                @change="onFovChange()"
               />
             </div>
 
@@ -527,8 +521,7 @@ function toggleCamera(camId: string) {
                 disabled-class="disabled-input"
                 @click="
                   sceneStates.cameras[selectedCamId]!.isHidingArrows =
-                    !sceneStates.cameras[selectedCamId]!.isHidingArrows;
-                  sceneStates.markedForCheck.add(selectedCamId);
+                    !sceneStates.cameras[selectedCamId]!.isHidingArrows
                 "
               >
                 <template
@@ -557,8 +550,7 @@ function toggleCamera(camId: string) {
                 disabled-class="disabled-input"
                 @click="
                   sceneStates.cameras[selectedCamId]!.isHidingWheels =
-                    !sceneStates.cameras[selectedCamId]!.isHidingWheels;
-                  sceneStates.markedForCheck.add(selectedCamId);
+                    !sceneStates.cameras[selectedCamId]!.isHidingWheels
                 "
               >
                 <template
@@ -600,10 +592,7 @@ function toggleCamera(camId: string) {
                   sceneStates.currentCamId.value == selectedCamId ||
                   props.workspace == null
                 "
-                @click="
-                  deleteCamera(selectedCamId);
-                  sceneStates.markedForCheck.add(selectedCamId);
-                "
+                @click="deleteCamera(selectedCamId)"
               >
                 <Trash2 class="h-3 w-3" />
                 Delete
@@ -619,10 +608,7 @@ function toggleCamera(camId: string) {
                   props.workspace == null
                 "
                 disabled-class="disabled-input"
-                @click="
-                  moveCameraHere(selectedCamId!);
-                  sceneStates.markedForCheck.add(selectedCamId);
-                "
+                @click="moveCameraHere(selectedCamId!)"
               >
                 Move Here
               </Button>
@@ -635,7 +621,6 @@ function toggleCamera(camId: string) {
           <CardHeader
             class="cursor-pointer flex items-center justify-between"
             @click="isFrustumPropertiesOpen = !isFrustumPropertiesOpen"
-            @change="sceneStates.markedForCheck.add(selectedCamId)"
           >
             <CardTitle class="text-base flex items-center gap-2">
               <Pyramid class="h-4 w-4" />
@@ -658,8 +643,7 @@ function toggleCamera(camId: string) {
                     :disabled="sceneStates.cameras[selectedCamId]!.fov > 179"
                     @click="
                       sceneStates.cameras[selectedCamId]!.isHidingFrustum =
-                        !sceneStates.cameras[selectedCamId]!.isHidingFrustum;
-                      sceneStates.markedForCheck.add(selectedCamId);
+                        !sceneStates.cameras[selectedCamId]!.isHidingFrustum
                     "
                   >
                     <Eye
@@ -700,7 +684,6 @@ function toggleCamera(camId: string) {
                   type="number"
                   min="0"
                   max="1"
-                  @change="sceneStates.markedForCheck.add(selectedCamId)"
                 />
               </div>
               <div>
@@ -713,7 +696,6 @@ function toggleCamera(camId: string) {
                   type="number"
                   min="0"
                   max="1"
-                  @change="sceneStates.markedForCheck.add(selectedCamId)"
                 />
               </div>
               <div>
@@ -726,7 +708,6 @@ function toggleCamera(camId: string) {
                   type="number"
                   min="0"
                   max="1"
-                  @change="sceneStates.markedForCheck.add(selectedCamId)"
                 />
               </div>
             </div>
@@ -741,7 +722,6 @@ function toggleCamera(camId: string) {
                   type="number"
                   min="0"
                   max="1"
-                  @change="sceneStates.markedForCheck.add(selectedCamId)"
                 />
               </div>
               <div>
@@ -754,7 +734,6 @@ function toggleCamera(camId: string) {
                   type="number"
                   min="0"
                   max="1e6"
-                  @change="sceneStates.markedForCheck.add(selectedCamId)"
                 />
               </div>
             </div>
@@ -765,7 +744,6 @@ function toggleCamera(camId: string) {
           <CardHeader
             class="cursor-pointer flex items-center justify-between"
             @click="isDistortionPropertiesOpen = !isDistortionPropertiesOpen"
-            @change="sceneStates.markedForCheck.add(selectedCamId)"
           >
             <CardTitle class="text-base flex items-center gap-2">
               <Pyramid class="h-4 w-4" />
@@ -786,7 +764,6 @@ function toggleCamera(camId: string) {
                 type="checkbox"
                 :disabled="props.workspace == null"
                 disabled-class="disabled-input"
-                @change="sceneStates.markedForCheck.add(selectedCamId)"
               />
               <label for="distortion-enabled">Enable Distortion</label>
             </div>
@@ -799,7 +776,6 @@ function toggleCamera(camId: string) {
                 type="checkbox"
                 :disabled="props.workspace == null"
                 disabled-class="disabled-input"
-                @change="sceneStates.markedForCheck.add(selectedCamId)"
               />
               <label for="is-fisheye">Is Fisheye</label>
             </div>
