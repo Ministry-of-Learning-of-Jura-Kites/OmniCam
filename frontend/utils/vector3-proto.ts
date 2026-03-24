@@ -1,13 +1,9 @@
-import type { Vector3 } from "~/messages/protobufs/autosave_event";
+import { Vector3 } from "three";
 
-export function vector3ToNumbers(vec: Vector3) {
-  return [vec.x, vec.y, vec.z];
+export function threeVector3ToNumbers(vec: Vector3) {
+  return [vec.x, vec.y, vec.z] as [number, number, number];
 }
 
-export function numbersToVector3(vec: [number, number, number]) {
-  return {
-    x: vec[0],
-    y: vec[1],
-    z: vec[2],
-  };
+export function numbersToThreeVector3(vec: [number, number, number]) {
+  return new Vector3(vec[0], vec[1], vec[2]);
 }

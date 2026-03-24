@@ -263,7 +263,7 @@ function goToMyWorkspace() {
         <div class="flex items-center justify-center">
           <Tooltip
             v-if="
-              workspace != null &&
+              workspace == 'me' &&
               (sceneStates.markedForCheck.value ||
                 sceneStates.localVersion.value !==
                   sceneStates.lastSyncedVersion.value ||
@@ -308,7 +308,7 @@ function goToMyWorkspace() {
         <div class="h-6 w-px bg-border mx-2" />
 
         <Button
-          v-if="workspace != null"
+          v-if="workspace == 'me'"
           size="sm"
           variant="outline"
           @click="saveModelToPublic()"
@@ -318,7 +318,7 @@ function goToMyWorkspace() {
         </Button>
 
         <Button
-          v-if="workspace != null"
+          v-if="workspace == 'me'"
           size="sm"
           variant="outline"
           @click="
@@ -347,7 +347,7 @@ function goToMyWorkspace() {
         </template>
 
         <Button
-          v-if="workspace != null"
+          v-if="workspace == 'me'"
           size="sm"
           variant="outline"
           :class="{ 'btn-calibrating': isCalibrating }"
@@ -368,7 +368,12 @@ function goToMyWorkspace() {
           <Map class="h-4 w-4" />
           Map
         </Button>
-        <Button size="sm" variant="outline" @click="() => toggleAlgoPanel()">
+        <Button
+          v-if="workspace == 'me'"
+          size="sm"
+          variant="outline"
+          @click="() => toggleAlgoPanel()"
+        >
           <IndentIncrease v-if="currentPanel == 'algo'" class="button-icon" />
           <IndentDecrease v-else class="button-icon" />
           <span class="ml-2 button-span-text"> Algo </span>

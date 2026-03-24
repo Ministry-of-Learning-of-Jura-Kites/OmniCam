@@ -77,7 +77,7 @@ const camQuat = computed(() => {
         :is-hiding="
           cam.isHidingArrows ||
           sceneStates.currentCamId.value == props.camId ||
-          props.workspace == null
+          props.workspace != 'me'
         "
         :controlling="cam.controlling"
         direction="x"
@@ -89,7 +89,7 @@ const camQuat = computed(() => {
         :is-hiding="
           cam.isHidingArrows ||
           sceneStates.currentCamId.value == props.camId ||
-          props.workspace == null
+          props.workspace != 'me'
         "
         :controlling="cam.controlling"
         direction="y"
@@ -101,7 +101,7 @@ const camQuat = computed(() => {
         :is-hiding="
           cam.isHidingArrows ||
           sceneStates.currentCamId.value == props.camId ||
-          props.workspace == null
+          props.workspace != 'me'
         "
         :controlling="cam.controlling"
         direction="z"
@@ -113,7 +113,7 @@ const camQuat = computed(() => {
         :is-hiding="
           cam.isHidingWheels ||
           sceneStates.currentCamId.value == props.camId ||
-          props.workspace == null
+          props.workspace != 'me'
         "
         direction="x"
         color="green"
@@ -123,7 +123,7 @@ const camQuat = computed(() => {
         :is-hiding="
           cam.isHidingWheels ||
           sceneStates.currentCamId.value == props.camId ||
-          props.workspace == null
+          props.workspace != 'me'
         "
         direction="y"
         color="red"
@@ -133,7 +133,7 @@ const camQuat = computed(() => {
         :is-hiding="
           cam.isHidingWheels ||
           sceneStates.currentCamId.value == props.camId ||
-          props.workspace == null
+          props.workspace != 'me'
         "
         direction="z"
         color="blue"

@@ -53,7 +53,7 @@ export function transformFaceToProto(
 ): CoverageFace {
   return {
     id: id,
-    points: face.points.map(numbersToVector3),
+    points: face.points.map(numbersToThreeVector3),
     color: face.color,
     hidden: face.hidden,
   };
@@ -63,7 +63,7 @@ export function useAutosave(
   sceneStates: SceneStates,
   workspace: string | null,
 ) {
-  if (workspace == null) return;
+  if (workspace !== "me") return;
 
   const lastSyncedCams: Map<string, Camera> = new Map(
     Object.entries(sceneStates.cameras!).map(([camId, cam]) => [
