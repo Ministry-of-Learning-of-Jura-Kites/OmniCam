@@ -101,25 +101,22 @@ export function useAutosave(
       const changed: AutosaveEvent[] = [];
 
       // Cameras
-      if (sceneStates.markedForCheck.size > 0) {
-        for (const camId of sceneStates.markedForCheck) {
-          console.log(sceneStates.markedForCheck);
+      if (sceneStates.markedForCheck.value) {
+        for (const [camId, cam] of Object.entries(sceneStates.cameras)) {
           const prev = lastSynced.get(camId);
-          const cam = sceneStates.cameras[camId];
-
-          if (cam == undefined && prev == undefined) continue;
-
-          if (cam == undefined) {
-            lastSynced.delete(camId);
-            changed.push({ delete: { id: camId } });
-            continue;
-          }
-
           const formattedCam = transformCameraToProtoEventWithId(camId, cam);
 
           if (prev == undefined || !isEqual(prev, formattedCam)) {
             changed.push({ upsert: { camera: formattedCam } });
             lastSynced.set(camId, formattedCam);
+          }
+        }
+
+        // Check for deleted cameras
+        for (const camId of lastSynced.keys()) {
+          if (!sceneStates.cameras[camId]) {
+            lastSynced.delete(camId);
+            changed.push({ delete: { id: camId } });
           }
         }
       }
@@ -144,7 +141,7 @@ export function useAutosave(
         sceneStates.websocket.send(encoded.buffer);
       }
 
-      sceneStates.markedForCheck.clear();
+      sceneStates.markedForCheck.value = false;
     }, 2000);
   });
 }

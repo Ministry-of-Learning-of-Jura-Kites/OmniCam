@@ -63,10 +63,8 @@ const selectedCam = computed(() =>
 
 watch(
   () => sceneStates.cameras,
-  (cameras) => {
-    for (const camId of Object.keys(cameras)) {
-      sceneStates.markedForCheck.add(camId);
-    }
+  () => {
+    sceneStates.markedForCheck.value = true;
   },
   { deep: true },
 );
@@ -183,7 +181,7 @@ const handleSpawnCamera = (preset: Camerapreset) => {
 
     cam.frustumLength = Number(preset.focal_length) * 50;
 
-    sceneStates.markedForCheck.add(camId);
+    sceneStates.markedForCheck.value = true;
 
     if (selectedCamId.value !== undefined) {
       selectedCamId.value = camId;
@@ -203,7 +201,7 @@ const createRotationRef = (axis: "x" | "y" | "z") => {
     set(value: number) {
       if (!selectedCam.value) return;
       selectedCam.value.rotation[axis] = MathUtils.degToRad(value);
-      sceneStates.markedForCheck.add(selectedCamId.value!);
+      sceneStates.markedForCheck.value = true;
     },
   });
 };
