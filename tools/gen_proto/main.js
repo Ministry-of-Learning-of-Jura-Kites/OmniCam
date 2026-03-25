@@ -32,9 +32,9 @@ async function cleanDirOrCreate(dirPath) {
 }
 
 // Helper to run a shell command
-function run(cmd, label) {
+function run(cmd, label, targetDir) {
   console.log(`> Running ${label}...`);
-  execSync(cmd, { stdio: "inherit", shell: true });
+  execSync(cmd, { stdio: "inherit", shell: true, cwd: targetDir });
   console.log(`✅ ${label} done`);
 }
 
@@ -43,11 +43,16 @@ try {
     const backendDir = join("backend", "pkg", "messages", "protobufs");
     await cleanDirOrCreate(backendDir);
 
-    const backendCmd =
-      "protoc --go_out=backend/pkg/messages " +
-      "--go_opt=paths=source_relative protobufs/*.proto";
+    const backendDirInProto = join("..", backendDir);
 
-    run(backendCmd, "backend proto build");
+    const backendCmd = [
+      `protoc`,
+      `--go_out=${backendDirInProto}`,
+      `--go_opt=paths=source_relative`,
+      `*.proto`,
+    ].join(" ");
+
+    run(backendCmd, "backend proto build", "protobufs");
   }
 
   if (target === "front" || target === "all") {
@@ -57,16 +62,19 @@ try {
     await cleanDirOrCreate(frontendDir);
 
     const pluginPath = isWin
-      ? ".\\node_modules\\.bin\\protoc-gen-ts_proto.cmd"
-      : "./node_modules/.bin/protoc-gen-ts_proto";
+      ? "..\\node_modules\\.bin\\protoc-gen-ts_proto.cmd"
+      : "../node_modules/.bin/protoc-gen-ts_proto";
 
-    const frontendCmd =
-      `protoc --plugin=protoc-gen-ts_proto=${pluginPath} ` +
-      "--ts_proto_opt=esModuleInterop=true,forceLong=string " +
-      "--ts_proto_out=frontend/messages " +
-      "protobufs/*.proto";
+    const frontendDirInProto = join("..", frontendDir);
 
-    run(frontendCmd, "frontend proto build");
+    const frontendCmd = [
+      `protoc --plugin=protoc-gen-ts_proto=${pluginPath}`,
+      `--ts_proto_opt=esModuleInterop=true,forceLong=string`,
+      `--ts_proto_out=${frontendDirInProto}`,
+      "*.proto",
+    ].join(" ");
+
+    run(frontendCmd, "frontend proto build", "protobufs");
   }
 
   if (target === "front" || target === "all") {
@@ -80,11 +88,16 @@ try {
     );
     await cleanDirOrCreate(algoDir);
 
-    const algoCmd =
-      `protoc --python_out=predictive-algorithm/src/messages ` +
-      "protobufs/*.proto";
+    const algoDirInProto = join("..", algoDir);
 
-    run(algoCmd, "algo proto build");
+    const algoCmd = [
+      `protoc`,
+      `--python_out=${algoDirInProto}`,
+      `--pyi_out=${algoDirInProto}`,
+      "*.proto",
+    ].join(" ");
+
+    run(algoCmd, "algo proto build", "protobufs");
   }
 } catch (err) {
   console.error("❌ Build failed:", err.message);

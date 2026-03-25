@@ -14,16 +14,14 @@ import { useCameraManagement } from "../scene-3d/use-camera-management";
 import { useSpectatorRotation } from "../scene-3d/use-spectator-rotation";
 import { useSpectatorPosition } from "../scene-3d/use-spectator-position";
 import type { UseWebSocketReturn } from "@vueuse/core";
-import type {
-  Camera,
-  CoverageFace,
-  ProtoVector3,
-} from "~/messages/protobufs/backend_frontend_event";
 import { useAspectRatio as useAspectRatioManagement } from "../scene-3d/use-aspect-ratio";
-import { useAutosave } from "../scene-3d/use-autosave";
 import type { GLTF } from "three-stdlib";
 import type { Trapezoid as TrapezoidPoints } from "~/types/trapezoid";
 import { useOptimize } from "../scene-3d/use-optimize";
+import type { Camera } from "~/messages/protobufs/camera";
+import type { CoverageFace } from "~/messages/protobufs/optimization";
+import type { ProtoVector3 } from "~/messages/protobufs/vector";
+import { useAutosave } from "~/components/3d/scene-3d/use-autosave";
 
 export interface ProcessedCoverageFace {
   name: string;
@@ -399,8 +397,9 @@ export function createSceneStatesWithHelper(
 ) {
   const aspectRatioManagement = useAspectRatioManagement(sceneStates);
 
+  useAutosave(sceneStates, workspace);
+
   onMounted(() => {
-    useAutosave(sceneStates, workspace);
     watch(
       () => [sceneStates.transformingInfo, sceneStates.currentCam],
       ([transform, cam]) => {

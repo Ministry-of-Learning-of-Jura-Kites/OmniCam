@@ -1,11 +1,11 @@
-import {
-  ProtoEventMessage,
-  type CameraConfig,
-} from "~/messages/protobufs/backend_frontend_event";
 import type { SceneStates } from "~/types/scene-states";
 import type { ProcessedCoverageFace } from "../scene-states-provider/create-scene-states";
 import { transformFaceToProto } from "./use-autosave";
-import { ProtoEventResponse } from "~/messages/protobufs/backend_frontend_event_resp";
+import type { CameraConfig } from "~/messages/protobufs/optimization";
+import {
+  WorkspaceEventResponse,
+  WorkspaceEventRequest,
+} from "~/messages/protobufs/workspace_event";
 
 export function useOptimize(
   sceneStates: SceneStates,
@@ -21,7 +21,7 @@ export function useOptimize(
       async (messageBlob) => {
         if (!messageBlob) return;
         const buf = await (messageBlob as Blob).arrayBuffer();
-        const resp = ProtoEventResponse.decode(new Uint8Array(buf));
+        const resp = WorkspaceEventResponse.decode(new Uint8Array(buf));
 
         if (resp.optimize) {
           console.log(resp.optimize);
@@ -37,7 +37,7 @@ export function useOptimize(
   ): boolean {
     if (!sceneStates.websocket) return false;
 
-    const encoded = ProtoEventMessage.encode({
+    const encoded = WorkspaceEventRequest.encode({
       optimize: {
         coverageFace: targetAreaEntries.map(([id, face]) =>
           transformFaceToProto(id, face),

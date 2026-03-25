@@ -33,11 +33,16 @@ func StartResponseListener(redisClient *redis.Client, env *config_env.AppEnv, re
 
 			for _, stream := range entries {
 				for _, msg := range stream.Messages {
-					rawJSON := msg.Values["data"].(string)
+					rawJSON, ok := msg.Values["data"].(string)
+
+					if !ok {
+						// TODO: Error handling
+						continue
+					}
 
 					// Peek at the Job ID in the JSON
 					var temp struct {
-						JobID string `json:"job_id"`
+						JobID string `json:"jobId"`
 					}
 					json.Unmarshal([]byte(rawJSON), &temp)
 

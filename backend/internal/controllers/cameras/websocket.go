@@ -12,6 +12,7 @@ import (
 	"github.com/gorilla/websocket"
 	"github.com/redis/go-redis/v9"
 	"go.uber.org/zap"
+	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
 	config_env "omnicam.com/backend/config"
 	"omnicam.com/backend/internal/utils"
@@ -51,10 +52,10 @@ func (t *UpdateEventRoute) handleEventDelete(
 		return
 	}
 
-	resp := &protobufs.AutosaveResponse{
+	resp := &protobufs.AutosaveEventResponse{
 		LastUpdatedVersion: newVersion,
 	}
-	sendAutosaveResponse(t.Logger, conn, resp)
+	sendAutosaveEventResponse(t.Logger, conn, resp)
 }
 
 func (t *UpdateEventRoute) handleEventUpsert(
@@ -78,10 +79,10 @@ func (t *UpdateEventRoute) handleEventUpsert(
 		return
 	}
 
-	resp := &protobufs.AutosaveResponse{
+	resp := &protobufs.AutosaveEventResponse{
 		LastUpdatedVersion: newVersion,
 	}
-	sendAutosaveResponse(t.Logger, conn, resp)
+	sendAutosaveEventResponse(t.Logger, conn, resp)
 }
 
 // Calibration handler
@@ -109,10 +110,10 @@ func (t *UpdateEventRoute) handleCalibration(
 
 	*currentVersion = row.Version
 
-	resp := &protobufs.AutosaveResponse{
+	resp := &protobufs.AutosaveEventResponse{
 		LastUpdatedVersion: row.Version,
 	}
-	sendAutosaveResponse(t.Logger, conn, resp)
+	sendAutosaveEventResponse(t.Logger, conn, resp)
 }
 
 func (t *UpdateEventRoute) handleFaceUpsert(
@@ -143,10 +144,10 @@ func (t *UpdateEventRoute) handleFaceUpsert(
 		return
 	}
 
-	resp := &protobufs.AutosaveResponse{
+	resp := &protobufs.AutosaveEventResponse{
 		LastUpdatedVersion: newVersion,
 	}
-	sendAutosaveResponse(t.Logger, conn, resp)
+	sendAutosaveEventResponse(t.Logger, conn, resp)
 }
 
 func (t *UpdateEventRoute) handleFaceDelete(
@@ -170,15 +171,15 @@ func (t *UpdateEventRoute) handleFaceDelete(
 		return
 	}
 
-	resp := &protobufs.AutosaveResponse{
+	resp := &protobufs.AutosaveEventResponse{
 		LastUpdatedVersion: newVersion,
 	}
-	sendAutosaveResponse(t.Logger, conn, resp)
+	sendAutosaveEventResponse(t.Logger, conn, resp)
 }
 
-func sendAutosaveResponse(logger *zap.Logger, conn *websocket.Conn, resp *protobufs.AutosaveResponse) {
-	bytes, err := proto.Marshal(&protobufs.ProtoEventResponse{
-		Resp: &protobufs.ProtoEventResponse_Autosave{
+func sendAutosaveEventResponse(logger *zap.Logger, conn *websocket.Conn, resp *protobufs.AutosaveEventResponse) {
+	bytes, err := proto.Marshal(&protobufs.WorkspaceEventResponse{
+		Resp: &protobufs.WorkspaceEventResponse_Autosave{
 			Autosave: resp,
 		},
 	})
@@ -191,7 +192,7 @@ func sendAutosaveResponse(logger *zap.Logger, conn *websocket.Conn, resp *protob
 
 func (t *UpdateEventRoute) handleAutosaveEvent(
 	c *gin.Context, conn *websocket.Conn,
-	modelId uuid.UUID, userId uuid.UUID, currentVersion *int32, casted *protobufs.AutosaveMessage) {
+	modelId uuid.UUID, userId uuid.UUID, currentVersion *int32, casted *protobufs.AutosaveEventRequest) {
 	if casted.Version <= uint32(*currentVersion) {
 		return // stale
 	}
@@ -211,7 +212,23 @@ func (t *UpdateEventRoute) handleAutosaveEvent(
 	}
 }
 
-func (t *UpdateEventRoute) handleOptimizeEvent(modelId uuid.UUID, conn *websocket.Conn, casted *protobufs.OptimizationReqEvent) {
+func (t *UpdateEventRoute) sendOptimizationEventResp(conn *websocket.Conn, optiResp *protobufs.OptimizationEventResp) {
+	// 3. Wrap it in the top-level WorkspaceEventResponse (the oneof)
+	eventResp := &protobufs.WorkspaceEventResponse{
+		Resp: &protobufs.WorkspaceEventResponse_Optimize{
+			Optimize: optiResp,
+		},
+	}
+
+	bytes, err := proto.Marshal(eventResp)
+	if err != nil {
+		t.Logger.Error("error marshalling response", zap.Error(err))
+		return
+	}
+	conn.WriteMessage(websocket.BinaryMessage, bytes)
+}
+
+func (t *UpdateEventRoute) handleOptimizeEvent(modelId uuid.UUID, conn *websocket.Conn, casted *protobufs.OptimizationEventReq) {
 	ctx := context.Background()
 
 	if len(casted.GetCoverageFace()) == 0 {
@@ -243,7 +260,6 @@ func (t *UpdateEventRoute) handleOptimizeEvent(modelId uuid.UUID, conn *websocke
 
 	resChan := make(chan string, 1)
 	t.OptimizeRespMap.Store(jobId, resChan)
-	defer t.OptimizeRespMap.Delete(jobId)
 
 	payload := map[string]interface{}{
 		"faces":       faces,
@@ -277,13 +293,23 @@ func (t *UpdateEventRoute) handleOptimizeEvent(modelId uuid.UUID, conn *websocke
 		return
 	}
 
-	select {
-	case rawJSON := <-resChan:
-		// Found our specific result!
-		// t.sendOptimizationResponse(conn, rawJSON)
-	case <-time.After(1 * time.Minute):
-		t.Logger.Warn("optimization timed out", zap.String("job_id", jobId))
-	}
+	go func() {
+		defer t.OptimizeRespMap.Delete(jobId)
+		select {
+		case rawJSON := <-resChan:
+			optiResp := &protobufs.OptimizationEventResp{}
+
+			err := protojson.Unmarshal([]byte(rawJSON), optiResp)
+			if err != nil {
+				t.Logger.Error("failed to unmarshal proto-json", zap.Error(err))
+				return
+			}
+
+			t.sendOptimizationEventResp(conn, optiResp)
+		case <-time.After(10 * time.Minute):
+			t.Logger.Warn("optimization timed out", zap.String("job_id", jobId))
+		}
+	}()
 }
 
 // Main WebSocket handler
@@ -324,10 +350,10 @@ func (t *UpdateEventRoute) get(c *gin.Context) {
 		currentVersion := workspace.Version
 
 		// Send initial state on connect — both camera version + calibration values
-		initResp := &protobufs.AutosaveResponse{
+		initResp := &protobufs.AutosaveEventResponse{
 			LastUpdatedVersion: currentVersion,
 		}
-		sendAutosaveResponse(t.Logger, conn, initResp)
+		sendAutosaveEventResponse(t.Logger, conn, initResp)
 
 		for {
 			_, rawMsg, err := conn.ReadMessage()
@@ -337,16 +363,16 @@ func (t *UpdateEventRoute) get(c *gin.Context) {
 			}
 
 			// Decode unified wrapper
-			msg := &protobufs.ProtoEventMessage{}
+			msg := &protobufs.WorkspaceEventRequest{}
 			if err := proto.Unmarshal(rawMsg, msg); err != nil {
 				t.Logger.Error("error unmarshalling event", zap.Error(err))
 				continue
 			}
 
 			switch casted := msg.Event.(type) {
-			case *protobufs.ProtoEventMessage_Autosave:
+			case *protobufs.WorkspaceEventRequest_Autosave:
 				t.handleAutosaveEvent(c, conn, modelId, userId, &currentVersion, casted.Autosave)
-			case *protobufs.ProtoEventMessage_Optimize:
+			case *protobufs.WorkspaceEventRequest_Optimize:
 				t.handleOptimizeEvent(modelId, conn, casted.Optimize)
 			}
 		}
