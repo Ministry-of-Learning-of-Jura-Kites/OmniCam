@@ -1,6 +1,9 @@
 package main
 
 import (
+	"context"
+	"encoding/json"
+	"sync"
 	"time"
 
 	"github.com/gin-contrib/cors"
@@ -12,6 +15,44 @@ import (
 	db_client "omnicam.com/backend/pkg/db"
 	"omnicam.com/backend/pkg/logger"
 )
+
+func StartResponseListener(redisClient *redis.Client, env *config_env.AppEnv, responseRegistry *sync.Map) {
+	go func() {
+		ctx := context.Background()
+		for {
+			// Read from the single response stream
+			entries, err := redisClient.XRead(ctx, &redis.XReadArgs{
+				Streams: []string{env.OptiResTopic, "$"},
+				Block:   0, // Block indefinitely for new results
+				Count:   10,
+			}).Result()
+
+			if err != nil {
+				continue
+			}
+
+			for _, stream := range entries {
+				for _, msg := range stream.Messages {
+					rawJSON := msg.Values["data"].(string)
+
+					// Peek at the Job ID in the JSON
+					var temp struct {
+						JobID string `json:"job_id"`
+					}
+					json.Unmarshal([]byte(rawJSON), &temp)
+
+					// Find the waiting handler
+					if ch, ok := responseRegistry.Load(temp.JobID); ok {
+						// Send the raw data to that specific handler's channel
+						ch.(chan string) <- rawJSON
+						// Cleanup the registry
+						responseRegistry.Delete(temp.JobID)
+					}
+				}
+			}
+		}
+	}()
+}
 
 func main() {
 	utils.RegisterCustomValidations()
@@ -28,6 +69,10 @@ func main() {
 		Password: "", // no password set
 		DB:       0,  // use default DB
 	})
+
+	var optimizeRespMap sync.Map
+
+	StartResponseListener(redisClient, env, &optimizeRespMap)
 
 	router := gin.Default()
 
@@ -49,10 +94,11 @@ func main() {
 
 	apiV1 := router.Group("/api/v1")
 	api_routes.InitRoutes(api_routes.Dependencies{
-		Logger:      logger,
-		Env:         env,
-		DB:          client_db,
-		RedisClient: redisClient,
+		Logger:          logger,
+		Env:             env,
+		DB:              client_db,
+		RedisClient:     redisClient,
+		OptimizeRespMap: &optimizeRespMap,
 	}, apiV1)
 
 	router.Run()

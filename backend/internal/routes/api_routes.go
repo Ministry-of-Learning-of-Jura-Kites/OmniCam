@@ -2,6 +2,7 @@ package api_routes
 
 import (
 	"net/http"
+	"sync"
 
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
@@ -23,10 +24,11 @@ import (
 )
 
 type Dependencies struct {
-	Logger      *zap.Logger
-	Env         *config_env.AppEnv
-	DB          *db_client.DB
-	RedisClient *redis.Client
+	Logger          *zap.Logger
+	Env             *config_env.AppEnv
+	DB              *db_client.DB
+	RedisClient     *redis.Client
+	OptimizeRespMap *sync.Map
 }
 
 func InitRoutes(deps Dependencies, router gin.IRouter) {
@@ -95,10 +97,11 @@ func InitRoutes(deps Dependencies, router gin.IRouter) {
 	deleteModelRoute.InitDeleteModelRoute(protectedRoute)
 
 	cameraAutosaveRoute := controller_camera.UpdateEventRoute{
-		Logger:      deps.Logger,
-		Env:         deps.Env,
-		DB:          deps.DB,
-		RedisClient: deps.RedisClient,
+		Logger:          deps.Logger,
+		Env:             deps.Env,
+		DB:              deps.DB,
+		RedisClient:     deps.RedisClient,
+		OptimizeRespMap: deps.OptimizeRespMap,
 		Upgrader: websocket.Upgrader{
 			ReadBufferSize:  1024,
 			WriteBufferSize: 1024,

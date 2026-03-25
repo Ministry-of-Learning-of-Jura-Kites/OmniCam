@@ -1,6 +1,9 @@
 syntax = "proto3";
 
 package protobufs;
+import "protobufs/camera.proto";
+import "protobufs/backend_algo_event.proto";
+import "protobufs/optimization.proto";
 
 // Go: generated under go/autosave
 option go_package = "omnicam.com/gen/go/protobufs";
@@ -9,13 +12,9 @@ message AutosaveResponse {
   int32 last_updated_version = 1;
 }
 
-message OptimizationResponse {
-  int32 last_updated_version = 1;
-}
-
 message ProtoEventResponse{
   oneof resp{
-    AutosaveResponse     autosave = 1;
-    OptimizationResponse optimize = 2;
+    AutosaveResponse               autosave = 1;
+    protobufs.OptimizationResponse optimize = 2;
   }
 }

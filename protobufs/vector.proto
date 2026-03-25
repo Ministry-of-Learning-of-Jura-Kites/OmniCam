@@ -1,0 +1,12 @@
+syntax = "proto3";
+
+package protobufs;
+
+// Go: generated under go/autosave
+option go_package = "omnicam.com/gen/go/protobufs";
+
+message ProtoVector3 {
+  double x = 1;
+  double y = 2;
+  double z = 3;
+}
