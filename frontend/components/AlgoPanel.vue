@@ -117,6 +117,14 @@ function toggleSelectAll(checked: boolean | "indetermediate") {
     selectedIds.clear();
   }
 }
+
+function submit() {
+  sceneStates.optimization?.requestOptimize(
+    faceEntries.value.filter(([id, _face]) => selectedIds.has(id)),
+    sceneStates.calibration.scale,
+    cameraConfigs,
+  );
+}
 </script>
 
 <template>
@@ -337,10 +345,14 @@ function toggleSelectAll(checked: boolean | "indetermediate") {
 
       <Button
         :disabled="
-          facesCount === 0 || cameraConfigs.length == 0 || isOptimizing
+          facesCount === 0 ||
+          cameraConfigs.length == 0 ||
+          selectedIds.size == 0 ||
+          isOptimizing
         "
         variant="default"
         class="w-full text-white bg-emerald-400! hover:bg-emerald-500! disabled:bg-red-800 text-lg transition"
+        @click="submit()"
       >
         {{
           {

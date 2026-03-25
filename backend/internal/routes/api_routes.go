@@ -95,9 +95,10 @@ func InitRoutes(deps Dependencies, router gin.IRouter) {
 	deleteModelRoute.InitDeleteModelRoute(protectedRoute)
 
 	cameraAutosaveRoute := controller_camera.UpdateEventRoute{
-		Logger: deps.Logger,
-		Env:    deps.Env,
-		DB:     deps.DB,
+		Logger:      deps.Logger,
+		Env:         deps.Env,
+		DB:          deps.DB,
+		RedisClient: deps.RedisClient,
 		Upgrader: websocket.Upgrader{
 			ReadBufferSize:  1024,
 			WriteBufferSize: 1024,

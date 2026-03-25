@@ -23,6 +23,7 @@ import { useAspectRatio as useAspectRatioManagement } from "../scene-3d/use-aspe
 import { useAutosave } from "../scene-3d/use-autosave";
 import type { GLTF } from "three-stdlib";
 import type { Trapezoid as TrapezoidPoints } from "~/types/trapezoid";
+import { useOptimize } from "../scene-3d/use-optimize";
 
 export interface ProcessedCoverageFace {
   name: string;
@@ -397,7 +398,6 @@ export function createSceneStatesWithHelper(
   workspace: string | null,
 ) {
   const aspectRatioManagement = useAspectRatioManagement(sceneStates);
-  useAutosave(sceneStates, workspace);
 
   onMounted(() => {
     useAutosave(sceneStates, workspace);
@@ -421,6 +421,7 @@ export function createSceneStatesWithHelper(
     cameraManagement: useCameraManagement(sceneStates),
     spectatorPosition: useSpectatorPosition(sceneStates, workspace),
     spectatorRotation: useSpectatorRotation(sceneStates, workspace),
+    optimization: useOptimize(sceneStates, workspace),
   };
   return sceneStatesWithCam;
 }

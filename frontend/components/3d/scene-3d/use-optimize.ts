@@ -24,13 +24,14 @@ export function useOptimize(
         const resp = ProtoEventResponse.decode(new Uint8Array(buf));
 
         if (resp.optimize) {
+          console.log(resp.optimize);
         }
       },
     );
   });
 
   function requestOptimize(
-    targetArea: Record<string, ProcessedCoverageFace>,
+    targetAreaEntries: [string, ProcessedCoverageFace][],
     scale: number,
     cameraConfigs: CameraConfig[],
   ): boolean {
@@ -38,7 +39,7 @@ export function useOptimize(
 
     const encoded = ProtoEventMessage.encode({
       optimize: {
-        coverageFace: Object.entries(targetArea).map(([id, face]) =>
+        coverageFace: targetAreaEntries.map(([id, face]) =>
           transformFaceToProto(id, face),
         ),
         cameraConfig: cameraConfigs,

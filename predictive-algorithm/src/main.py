@@ -2,7 +2,7 @@ import asyncio
 import json
 import math
 import time
-from typing import List, Tuple
+from typing import Any, Dict, List, Tuple
 import uuid
 from pydantic import BaseModel, ValidationError
 import redis.asyncio as redis
@@ -40,8 +40,8 @@ class OptimizeRequest(BaseModel):
     faces: List[List[Tuple[float, float, float]]]
     cam_configs: List[ReqCameraConfiguration]
     scale: float
-    job_id: uuid.UUID
-    model_id: uuid.UUID
+    job_id: str
+    model_id: str
 
 
 class CameraResponse(BaseModel):
@@ -61,6 +61,7 @@ class CameraResponse(BaseModel):
 
 class OptimizeResponse(BaseModel):
     cameras: List[CameraResponse]
+    job_id: str
 
 
 def create_arbitrary_face(center, width, height, normal):
@@ -376,41 +377,58 @@ r = redis.Redis(
 
 
 async def worker():
-    print("Starting worker...")
+    print("Work started")
 
     while True:
         # Read from the task stream (Blocking read)
         # 0 means wait indefinitely for a new message
-        messages = await r.xread({env_settings.redis_req_topic: "0"}, count=1, block=0)
+        messages: List[Tuple[str, List[Tuple[str, Dict[str, Any]]]]] = await r.xread(
+            {env_settings.redis_req_topic: "0"}, count=1, block=0
+        )
 
         for _stream, msgs in messages:
             for msg_id, data in msgs:
+                print("Received message", data)
                 try:
-                    payload = OptimizeRequest.model_validate_json(data)
+                    req: str = data.get("data")
+
+                    payload = OptimizeRequest.model_validate_json(req)
 
                     result_state = optimize(payload)
 
                     resp = serialize_response(result_state)
+
+                    json_str = OptimizeResponse(
+                        cameras=resp, job_id=payload.job_id
+                    ).model_dump_json()
 
                     # Publish back to a result topic/stream
                     await r.xadd(
                         env_settings.redis_res_topic,
                         {
                             "job_id": payload.job_id,
-                            "status": "error",
-                            "data": json.dumps(resp),
+                            "status": "ok",
+                            "data": json_str,
                         },
                     )
                 except ValidationError as e:
+                    raw_data_field: str = data.get("data", "{}")
+
+                    try:
+                        parsed_inner_data: Dict[str, Any] = json.loads(raw_data_field)
+                    except (json.JSONDecodeError, TypeError):
+                        parsed_inner_data = {}
+
                     await r.xadd(
                         env_settings.redis_res_topic,
                         {
-                            "job_id": payload.job_id,
+                            "job_id": parsed_inner_data.get("job_id", ""),
                             "status": "error",
                             "error": f"Bad request {e}",
                         },
                     )
-                except Exception:
+                except Exception as e:
+                    print(e)
                     await r.xadd(
                         env_settings.redis_res_topic,
                         {
