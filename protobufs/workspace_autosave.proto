@@ -1,11 +1,11 @@
 syntax = "proto3";
 
 package protobufs;
-import "protobufs/optimization.proto";
-import "protobufs/camera.proto";
+import "optimization.proto";
+import "camera.proto";
 
 // Go: generated under go/autosave
-option go_package = "omnicam.com/gen/go/protobufs";
+option go_package = "omnicam.com/pkg/messages/protobufs";
 
 enum CameraEventType {
   CAMERA_EVENT_TYPE_DELETE = 0;
@@ -37,26 +37,23 @@ message AutosaveEvent {
   }
 }
 
-enum CameraAutosaveResponseType {
+enum CameraAutosaveEventResponseType {
   ACK = 0;
 }
 
-message CameraAutosaveResponse {
-  oneof payload { CameraAutosaveResponseAck ack = 1; }
+message CameraAutosaveEventResponse {
+  oneof payload { CameraAutosaveEventResponseAck ack = 1; }
 }
 
-message CameraAutosaveResponseAck {
+message CameraAutosaveEventResponseAck {
   int32 last_updated_version = 1; // for ACK
 }
 
-message AutosaveMessage {
+message AutosaveEventRequest {
   repeated AutosaveEvent events  = 1;
   uint32                 version = 2;
 }
 
-message ProtoEventMessage{
-  oneof event {
-    AutosaveMessage      autosave = 1;
-    OptimizationReqEvent optimize = 2;
-  }
+message AutosaveEventResponse {
+  int32 last_updated_version = 1;
 }

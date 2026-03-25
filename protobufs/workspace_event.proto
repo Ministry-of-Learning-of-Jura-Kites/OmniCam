@@ -1,0 +1,22 @@
+syntax = "proto3";
+
+package protobufs;
+import "optimization.proto";
+import "workspace_autosave.proto";
+
+// Go: generated under go/autosave
+option go_package = "omnicam.com/pkg/messages/protobufs";
+
+message WorkspaceEventRequest{
+  oneof event {
+    AutosaveEventRequest autosave = 1;
+    OptimizationEventReq optimize = 2;
+  }
+}
+
+message WorkspaceEventResponse{
+  oneof resp{
+    AutosaveEventResponse autosave = 1;
+    OptimizationEventResp optimize = 2;
+  }
+}

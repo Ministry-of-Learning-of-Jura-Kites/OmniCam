@@ -1,11 +1,11 @@
 syntax = "proto3";
 
 package protobufs;
-import "protobufs/camera.proto";
-import "protobufs/vector.proto";
+import "camera.proto";
+import "vector.proto";
 
 // Go: generated under go/autosave
-option go_package = "omnicam.com/gen/go/protobufs";
+option go_package = "omnicam.com/pkg/messages/protobufs";
 
 message CoverageFace {
   string                id     = 1;
@@ -24,13 +24,13 @@ message CameraConfig {
   uint32 amount     = 6;
 }
 
-message OptimizationReqEvent {
+message OptimizationEventReq {
   repeated CoverageFace coverage_face = 1;
   repeated CameraConfig camera_config = 2;
   double                scale         = 3;
 }
 
-message OptimizationResponse {
+message OptimizationEventResp {
   repeated Camera cameras = 1;
   string          job_id  = 2;
 }

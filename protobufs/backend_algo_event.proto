@@ -1,8 +1,0 @@
-syntax = "proto3";
-
-package protobufs;
-import "protobufs/backend_frontend_event.proto";
-import "protobufs/camera.proto";
-
-// Go: generated under go/autosave
-option go_package = "omnicam.com/gen/go/protobufs";

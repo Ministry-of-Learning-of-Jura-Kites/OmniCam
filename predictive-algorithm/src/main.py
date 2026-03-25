@@ -9,7 +9,8 @@ import redis.asyncio as redis
 from scipy.spatial.distance import cdist
 from cost_functions import total_cost
 from google.protobuf.json_format import MessageToJson
-import messages.protobufs as pb
+import messages.protobufs.camera_pb2 as cam_pb
+import messages.protobufs.optimization_pb2 as opt_pb
 from algorithms.differential_evolution import optimize_de
 import numpy as np
 from state import CameraConfiguration, CameraState, State
@@ -333,7 +334,7 @@ def serialize_response(state: State):
         angle_z = cam_state.angle.z
         angle_w = cam_state.angle.w
         pos_x, pos_y, pos_z = cam_state.pos
-        cam = CameraResponse(
+        cam = cam_pb.Camera(
             id=str(uuid.uuid4()),
             name=cam_state.camera_config.name,
             angle_x=angle_x,
@@ -358,6 +359,54 @@ r = redis.Redis(
 )
 
 
+def cam_state_to_proto(cam_state: CameraState) -> cam_pb.Camera:
+    # Initialize the proto message
+    camera = cam_pb.Camera()
+
+    # 1. Basic Metadata
+    camera.name = cam_state.name
+    # If your dataclass doesn't have an ID, you might use name or a UUID
+    camera.id = cam_state.name
+
+    # 2. Position Mapping (Direct mapping from Array3)
+    # Assuming pos is an indexable array-like [x, y, z]
+    camera.pos_x = cam_state.pos[0]
+    camera.pos_y = cam_state.pos[1]
+    camera.pos_z = cam_state.pos[2]
+
+    # 3. Rotation Mapping (Quaternion)
+    # Mapping components based on your Z-up vertical axis preference
+    camera.angle_w = cam_state.angle.w
+    camera.angle_x = cam_state.angle.x
+    camera.angle_y = cam_state.angle.y
+    camera.angle_z = cam_state.angle.z
+
+    # 4. Configuration & Optics
+    # Mapping from nested camera_config
+    config = cam_state.camera_config
+    camera.fov = config.vfov
+    camera.width_res = config.pixels[0]
+    camera.height_res = config.pixels[1]
+    camera.frustum_length = 10
+
+    # 5. Booleans (Visibility & Locks)
+    camera.is_hiding_arrows = False
+    camera.is_hiding_wheels = False
+    camera.is_locking_position = False
+    camera.is_locking_rotation = False
+    camera.is_hiding_frustum = True
+
+    camera.frustum_color.r = 0.5
+    camera.frustum_color.g = 0.5
+    camera.frustum_color.b = 0.5
+    camera.frustum_color.a = 0.5
+
+    camera.distortion.enabled = True
+    camera.distortion.is_fisheye = False
+
+    return camera
+
+
 async def worker():
     print("Work started")
 
@@ -378,11 +427,14 @@ async def worker():
 
                     result_state = optimize(payload)
 
-                    opti_res = pb.OptimizationResponse()
-
-                    json_str = OptimizeResponse(
-                        cameras=resp, job_id=payload.job_id
-                    ).model_dump_json()
+                    opti_res = MessageToJson(
+                        opt_pb.OptimizationEventResp(
+                            cameras=[
+                                cam_state_to_proto(cam) for cam in result_state.cameras
+                            ],
+                            job_id=payload.job_id,
+                        )
+                    )
 
                     # Publish back to a result topic/stream
                     await r.xadd(
@@ -390,7 +442,7 @@ async def worker():
                         {
                             "job_id": payload.job_id,
                             "status": "ok",
-                            "data": json_str,
+                            "data": opti_res,
                         },
                     )
                 except ValidationError as e:
