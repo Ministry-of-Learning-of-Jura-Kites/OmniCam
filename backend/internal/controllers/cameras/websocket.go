@@ -4,6 +4,8 @@ import (
 	"context"
 	"encoding/json"
 	"net/http"
+	"sync"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
@@ -21,11 +23,12 @@ import (
 )
 
 type UpdateEventRoute struct {
-	Logger      *zap.Logger
-	Env         *config_env.AppEnv
-	DB          *db_client.DB
-	RedisClient *redis.Client
-	Upgrader    websocket.Upgrader
+	Logger          *zap.Logger
+	Env             *config_env.AppEnv
+	DB              *db_client.DB
+	RedisClient     *redis.Client
+	Upgrader        websocket.Upgrader
+	OptimizeRespMap *sync.Map
 }
 
 // Camera handlers
@@ -208,7 +211,7 @@ func (t *UpdateEventRoute) handleAutosaveEvent(
 	}
 }
 
-func (t *UpdateEventRoute) handleOptimizeEvent(modelId uuid.UUID, userId uuid.UUID, casted *protobufs.OptimizationReqEvent) {
+func (t *UpdateEventRoute) handleOptimizeEvent(modelId uuid.UUID, conn *websocket.Conn, casted *protobufs.OptimizationReqEvent) {
 	ctx := context.Background()
 
 	if len(casted.GetCoverageFace()) == 0 {
@@ -237,6 +240,11 @@ func (t *UpdateEventRoute) handleOptimizeEvent(modelId uuid.UUID, userId uuid.UU
 	}
 
 	jobId := uuid.New().String()
+
+	resChan := make(chan string, 1)
+	t.OptimizeRespMap.Store(jobId, resChan)
+	defer t.OptimizeRespMap.Delete(jobId)
+
 	payload := map[string]interface{}{
 		"faces":       faces,
 		"cam_configs": camConfigs,
@@ -269,10 +277,13 @@ func (t *UpdateEventRoute) handleOptimizeEvent(modelId uuid.UUID, userId uuid.UU
 		return
 	}
 
-	t.Logger.Info("optimization request dispatched",
-		zap.String("job_id", jobId),
-		zap.String("stream", t.Env.OptiReqTopic),
-	)
+	select {
+	case rawJSON := <-resChan:
+		// Found our specific result!
+		// t.sendOptimizationResponse(conn, rawJSON)
+	case <-time.After(1 * time.Minute):
+		t.Logger.Warn("optimization timed out", zap.String("job_id", jobId))
+	}
 }
 
 // Main WebSocket handler
@@ -336,7 +347,7 @@ func (t *UpdateEventRoute) get(c *gin.Context) {
 			case *protobufs.ProtoEventMessage_Autosave:
 				t.handleAutosaveEvent(c, conn, modelId, userId, &currentVersion, casted.Autosave)
 			case *protobufs.ProtoEventMessage_Optimize:
-				t.handleOptimizeEvent(modelId, userId, casted.Optimize)
+				t.handleOptimizeEvent(modelId, conn, casted.Optimize)
 			}
 		}
 	}()

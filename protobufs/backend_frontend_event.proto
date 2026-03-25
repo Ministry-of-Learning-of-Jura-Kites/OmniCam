@@ -1,6 +1,8 @@
 syntax = "proto3";
 
 package protobufs;
+import "protobufs/optimization.proto";
+import "protobufs/camera.proto";
 
 // Go: generated under go/autosave
 option go_package = "omnicam.com/gen/go/protobufs";
@@ -8,53 +10,6 @@ option go_package = "omnicam.com/gen/go/protobufs";
 enum CameraEventType {
   CAMERA_EVENT_TYPE_DELETE = 0;
   CAMERA_EVENT_TYPE_UPSERT = 1;
-}
-
-// RGBA color message
-message ColorRGBA {
-  double r = 1;
-  double g = 2;
-  double b = 3;
-  double a = 4;
-}
-
-enum DistortionMode{
-  NONE        = 0;
-  PERSPECTIVE = 1;
-  ORTHO       = 2;
-  EQUISOLID   = 3;
-  ATAN        = 4;
-  LINEAR      = 5;
-  QUAD        = 6;
-}
-
-message Distortion{
-  bool enabled    = 1;
-  bool is_fisheye = 2;
-}
-
-// Camera message
-message Camera {
-  string     id                  = 1;
-  string     name                = 2;
-  double     angle_x             = 3;
-  double     angle_y             = 4;
-  double     angle_z             = 5;
-  double     angle_w             = 6;
-  double     pos_x               = 7;
-  double     pos_y               = 8;
-  double     pos_z               = 9;
-  double     fov                 = 10;
-  ColorRGBA  frustum_color       = 11;
-  double     frustum_length      = 12;
-  bool       is_hiding_arrows    = 13;
-  bool       is_hiding_wheels    = 14;
-  bool       is_locking_position = 15;
-  bool       is_locking_rotation = 16;
-  bool       is_hiding_frustum   = 17;
-  double     width_res           = 18;
-  double     height_res          = 19;
-  Distortion distortion          = 20;
 }
 
 message CameraDeleteEvent { string id = 1;  }
@@ -70,35 +25,6 @@ message FacesUpsertEvent {
 message CalibrationUpdateEvent {
   double scale_factor = 1;
   double model_height = 2;
-}
-
-message ProtoVector3 {
-  double x = 1;
-  double y = 2;
-  double z = 3;
-}
-
-message CoverageFace {
-  string                id     = 1;
-  string                name   = 2;
-  repeated ProtoVector3 points = 3;
-  optional string       color  = 4;
-  bool                  hidden = 5;
-}
-
-message CameraConfig {
-  string id         = 1;
-  string name       = 2;
-  double fov        = 3;
-  double width_res  = 4;
-  double height_res = 5;
-  uint32 amount     = 6;
-}
-
-message OptimizationReqEvent {
-  repeated CoverageFace coverage_face = 1;
-  repeated CameraConfig camera_config = 2;
-  double                scale         = 3;
 }
 
 message AutosaveEvent {

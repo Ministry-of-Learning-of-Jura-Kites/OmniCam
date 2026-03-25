@@ -8,6 +8,8 @@ from pydantic import BaseModel, ValidationError
 import redis.asyncio as redis
 from scipy.spatial.distance import cdist
 from cost_functions import total_cost
+from google.protobuf.json_format import MessageToJson
+import messages.protobufs as pb
 from algorithms.differential_evolution import optimize_de
 import numpy as np
 from state import CameraConfiguration, CameraState, State
@@ -42,26 +44,6 @@ class OptimizeRequest(BaseModel):
     scale: float
     job_id: str
     model_id: str
-
-
-class CameraResponse(BaseModel):
-    id: str
-    name: str
-    angle_x: float
-    angle_y: float
-    angle_z: float
-    angle_w: float
-    pos_x: float
-    pos_y: float
-    pos_z: float
-    fov: float
-    width_res: int
-    height_res: int
-
-
-class OptimizeResponse(BaseModel):
-    cameras: List[CameraResponse]
-    job_id: str
 
 
 def create_arbitrary_face(center, width, height, normal):
@@ -396,7 +378,7 @@ async def worker():
 
                     result_state = optimize(payload)
 
-                    resp = serialize_response(result_state)
+                    opti_res = pb.OptimizationResponse()
 
                     json_str = OptimizeResponse(
                         cameras=resp, job_id=payload.job_id

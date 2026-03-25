@@ -68,6 +68,24 @@ try {
 
     run(frontendCmd, "frontend proto build");
   }
+
+  if (target === "front" || target === "all") {
+    console.log();
+
+    const algoDir = join(
+      "predictive-algorithm",
+      "src",
+      "messages",
+      "protobufs",
+    );
+    await cleanDirOrCreate(algoDir);
+
+    const algoCmd =
+      `protoc --python_out=predictive-algorithm/src/messages ` +
+      "protobufs/*.proto";
+
+    run(algoCmd, "algo proto build");
+  }
 } catch (err) {
   console.error("❌ Build failed:", err.message);
   process.exit(1);
