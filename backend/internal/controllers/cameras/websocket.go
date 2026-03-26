@@ -228,7 +228,7 @@ func (t *UpdateEventRoute) sendOptimizationEventResp(conn *websocket.Conn, optiR
 	conn.WriteMessage(websocket.BinaryMessage, bytes)
 }
 
-func (t *UpdateEventRoute) handleOptimizeEvent(modelId uuid.UUID, conn *websocket.Conn, casted *protobufs.OptimizationEventReq) {
+func (t *UpdateEventRoute) handleOptimizeEvent(projectId uuid.UUID, modelId uuid.UUID, conn *websocket.Conn, casted *protobufs.OptimizationEventReq) {
 	ctx := context.Background()
 
 	if len(casted.GetCoverageFace()) == 0 {
@@ -266,6 +266,7 @@ func (t *UpdateEventRoute) handleOptimizeEvent(modelId uuid.UUID, conn *websocke
 		"cam_configs": camConfigs,
 		"scale":       casted.Scale,
 		"job_id":      jobId,
+		"project_id":  projectId.String(),
 		"model_id":    modelId.String(),
 	}
 
@@ -314,6 +315,14 @@ func (t *UpdateEventRoute) handleOptimizeEvent(modelId uuid.UUID, conn *websocke
 
 // Main WebSocket handler
 func (t *UpdateEventRoute) get(c *gin.Context) {
+	strProjectId := c.Param("projectId")
+	projectId, err := utils.ParseUuidBase64(strProjectId)
+	if err != nil {
+		t.Logger.Error("error while converting str id to uuid", zap.Error(err))
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid model ID"})
+		return
+	}
+
 	strModelId := c.Param("modelId")
 	modelId, err := utils.ParseUuidBase64(strModelId)
 	if err != nil {
@@ -373,7 +382,7 @@ func (t *UpdateEventRoute) get(c *gin.Context) {
 			case *protobufs.WorkspaceEventRequest_Autosave:
 				t.handleAutosaveEvent(c, conn, modelId, userId, &currentVersion, casted.Autosave)
 			case *protobufs.WorkspaceEventRequest_Optimize:
-				t.handleOptimizeEvent(modelId, conn, casted.Optimize)
+				t.handleOptimizeEvent(projectId, modelId, conn, casted.Optimize)
 			}
 		}
 	}()
