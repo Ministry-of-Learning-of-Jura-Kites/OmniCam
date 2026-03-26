@@ -3,7 +3,6 @@ FROM node:22.18.0 AS builder
 
 WORKDIR /app
 
-RUN mkdir -p ./frontend/messages
 RUN apt update \
  && apt install -y --no-install-recommends protobuf-compiler
 
@@ -18,10 +17,13 @@ COPY components.json ./
 RUN npm ci
 
 COPY protobufs/ ./protobufs/
-RUN protoc --plugin=protoc-gen-ts_proto=./node_modules/.bin/protoc-gen-ts_proto \
+
+RUN mkdir -p /app/frontend/messages/protobufs \
+  && cd protobufs \
+  && protoc --plugin=protoc-gen-ts_proto=/app/node_modules/.bin/protoc-gen-ts_proto \
   --ts_proto_opt=esModuleInterop=true,forceLong=string \
-  --ts_proto_out=frontend/messages \
-  protobufs/*.proto
+  --ts_proto_out=/app/frontend/messages/protobufs \
+  *.proto
 
 # Copy the frontend source code
 COPY frontend/ ./frontend/
