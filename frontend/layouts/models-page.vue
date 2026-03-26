@@ -118,10 +118,7 @@ const workspace = computed(() => route.meta.routeInfo?.workspace);
             v-else-if="currentPanel === 'camera'"
             :workspace="workspace"
           />
-          <LazyAlgoPanel
-            v-else-if="currentPanel === 'algo'"
-            :workspace="workspace"
-          />
+          <LazyAlgoPanel v-else-if="currentPanel === 'algo'" />
         </div>
       </div>
 
