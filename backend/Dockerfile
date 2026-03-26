@@ -12,8 +12,10 @@ COPY go.mod go.sum ./
 RUN go mod download
 
 COPY protobufs/ ./protobufs/
-RUN protoc --go_out=backend/pkg/messages \
-    --go_opt=paths=source_relative protobufs/*.proto
+RUN mkdir -p /app/backend/pkg/messages/protobufs \
+  && cd protobufs \
+  && protoc --go_out=/app/backend/pkg/messages/protobufs \
+    --go_opt=paths=source_relative *.proto
 
 COPY db/ ./db/
 COPY sqlc.yaml ./
