@@ -55,21 +55,21 @@ const rotationQuat = computed(() => {
       :controlling="movableObject.controlling"
       direction="y"
       color="red"
-      @change="triggerUpdate"
+      @move="triggerUpdate"
     />
     <MovableArrow
       v-model="movableObject"
       :controlling="movableObject.controlling"
       direction="z"
       color="blue"
-      @change="triggerUpdate"
+      @move="triggerUpdate"
     />
     <RotationWheel
       v-model="movableObject"
       :controlling="movableObject.controlling"
       direction="y"
       color="red"
-      @change="triggerUpdate"
+      @move="triggerUpdate"
     />
   </TresGroup>
 </template>
