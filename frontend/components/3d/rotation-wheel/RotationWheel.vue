@@ -10,6 +10,16 @@ import type { MovableObject } from "~/types/movable";
 
 const object = defineModel<MovableObject>({ required: true });
 
+const emit = defineEmits<{
+  (event: "down" | "up"): void;
+  (
+    event: "move",
+    direction: "x" | "y" | "z",
+    directionSign: number,
+    delta: number,
+  ): void;
+}>();
+
 const props = defineProps({
   direction: {
     type: String as PropType<"x" | "y" | "z">,
@@ -42,6 +52,15 @@ wheelBase.userData = new RotatingUserData(
   props.direction,
   object.value,
   context,
+  () => {
+    emit("up");
+  },
+  () => {
+    emit("down");
+  },
+  (direction, angleDir, delta) => {
+    emit("move", direction, angleDir, delta);
+  },
 );
 
 const wheel = wheelBase as unknown as Obj3DWithUserData;

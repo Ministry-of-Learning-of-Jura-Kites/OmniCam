@@ -24,6 +24,7 @@ import (
 	db_sqlc_gen "omnicam.com/backend/pkg/db/sqlc-gen"
 	messages_cameras "omnicam.com/backend/pkg/messages/cameras"
 	messages_model_workspace "omnicam.com/backend/pkg/messages/model_workspace"
+	messages_trapezoid "omnicam.com/backend/pkg/messages/trapezoids"
 	messages_workspace "omnicam.com/backend/pkg/messages/workspace"
 )
 
@@ -712,21 +713,32 @@ func (t *WorkspaceRoute) getWorkspaceMe(c *gin.Context) {
 		}
 	}
 
+	var targetTrapezoids messages_trapezoid.Trapezoids
+	if slices.Contains(includedFields, "target_area_trapezoids") {
+		err := json.Unmarshal(data.TargetAreaTrapezoids, &targetTrapezoids)
+		if err != nil {
+			t.Logger.Error("targetTrapezoids jsonb are invalid", zap.Error(err))
+			c.JSON(http.StatusInternalServerError, gin.H{})
+			return
+		}
+	}
+
 	c.JSON(http.StatusOK, gin.H{"data": messages_model_workspace.ModelWorkspace{
-		ModelId:        modelId,
-		Name:           data.Model.Name,
-		Description:    data.Model.Description,
-		ProjectId:      data.Model.ProjectID,
-		FilePath:       data.Model.FilePath,
-		ModelExtension: data.Model.ModelExtension,
-		ImagePath:      data.Model.ImagePath,
-		ImageExtension: data.Model.ImageExtension,
-		Version:        data.Version,
-		CreatedAt:      data.CreatedAt.Time.Format(time.RFC3339),
-		UpdatedAt:      data.UpdatedAt.Time.Format(time.RFC3339),
-		Cameras:        &cameras,
-		ScaleFactor:    data.ScaleFactor,
-		ModelHeight:    data.ModelHeight,
+		ModelId:          modelId,
+		Name:             data.Model.Name,
+		Description:      data.Model.Description,
+		ProjectId:        data.Model.ProjectID,
+		FilePath:         data.Model.FilePath,
+		ModelExtension:   data.Model.ModelExtension,
+		ImagePath:        data.Model.ImagePath,
+		ImageExtension:   data.Model.ImageExtension,
+		Version:          data.Version,
+		CreatedAt:        data.CreatedAt.Time.Format(time.RFC3339),
+		UpdatedAt:        data.UpdatedAt.Time.Format(time.RFC3339),
+		Cameras:          &cameras,
+		TargetTrapezoids: &targetTrapezoids,
+		ScaleFactor:      data.ScaleFactor,
+		ModelHeight:      data.ModelHeight,
 	}})
 }
 

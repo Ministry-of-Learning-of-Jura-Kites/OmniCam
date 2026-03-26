@@ -1,10 +1,17 @@
+import asyncio
+import json
 import math
+from os import path
 import time
-from typing import List, Tuple
+from typing import Any, Dict, List, Tuple
 import uuid
-from pydantic import BaseModel
+from pydantic import BaseModel, ValidationError
+import redis.asyncio as redis
 from scipy.spatial.distance import cdist
 from cost_functions import total_cost
+from google.protobuf.json_format import MessageToJson
+import messages.protobufs.camera_pb2 as cam_pb
+import messages.protobufs.optimization_pb2 as opt_pb
 from algorithms.differential_evolution import optimize_de
 import numpy as np
 from state import CameraConfiguration, CameraState, State
@@ -21,12 +28,11 @@ from dev.visualization import init_3d_scene, render_from_state
 import pyvista as pv
 from basic_types import Array4x3
 
-from fastapi import FastAPI
-
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
+# TODO: Use protobufs(?)
 class ReqCameraConfiguration(BaseModel):
     pixels: Tuple[float, float]
     vfov: float
@@ -38,25 +44,9 @@ class OptimizeRequest(BaseModel):
     faces: List[List[Tuple[float, float, float]]]
     cam_configs: List[ReqCameraConfiguration]
     scale: float
-
-
-class CameraResponse(BaseModel):
-    id: str
-    name: str
-    angle_x: float
-    angle_y: float
-    angle_z: float
-    angle_w: float
-    pos_x: float
-    pos_y: float
-    pos_z: float
-    fov: float
-    width_res: int
-    height_res: int
-
-
-class OptimizeResponse(BaseModel):
-    cameras: List[CameraResponse]
+    job_id: str
+    model_id: str
+    project_id: str
 
 
 def create_arbitrary_face(center, width, height, normal):
@@ -264,7 +254,7 @@ def transform_cameras(raw_cam_configs: List[ReqCameraConfiguration]):
     return cameras
 
 
-def optimize(req: OptimizeRequest):
+def optimize(req: OptimizeRequest) -> State:
     pl = None
     if env_settings.dev_mode:
         from pyvistaqt import BackgroundPlotter
@@ -272,7 +262,14 @@ def optimize(req: OptimizeRequest):
         pl = BackgroundPlotter()
 
     gltf = (
-        pv.read("~/Downloads/omnicam/cpn-lidar.glb")
+        pv.read(
+            path.join(
+                env_settings.model_file_path,
+                "3d_models",
+                req.project_id,
+                req.model_id + ".glb",
+            )
+        )
         .combine()
         .extract_surface()
         .triangulate()
@@ -338,15 +335,7 @@ def optimize(req: OptimizeRequest):
     return final_state
 
 
-app = FastAPI()
-
-# TODO: Use Redis to support async processing instead
-
-
-@app.get("/")
-async def root(req: OptimizeRequest):
-    state = optimize(req)
-
+def serialize_response(state: State):
     cameras = []
     for cam_state in state.cameras:
         angle_x = cam_state.angle.x
@@ -354,7 +343,7 @@ async def root(req: OptimizeRequest):
         angle_z = cam_state.angle.z
         angle_w = cam_state.angle.w
         pos_x, pos_y, pos_z = cam_state.pos
-        cam = CameraResponse(
+        cam = cam_pb.Camera(
             id=str(uuid.uuid4()),
             name=cam_state.camera_config.name,
             angle_x=angle_x,
@@ -373,5 +362,132 @@ async def root(req: OptimizeRequest):
 
     return cameras
 
+
+r = redis.Redis(
+    host=env_settings.redis_host, port=env_settings.redis_port, decode_responses=True
+)
+
+
+def cam_state_to_proto(cam_state: CameraState) -> cam_pb.Camera:
+    # Initialize the proto message
+    camera = cam_pb.Camera()
+
+    # 1. Basic Metadata
+    camera.name = cam_state.name
+    # If your dataclass doesn't have an ID, you might use name or a UUID
+    camera.id = cam_state.name
+
+    # 2. Position Mapping (Direct mapping from Array3)
+    # Assuming pos is an indexable array-like [x, y, z]
+    camera.pos_x = cam_state.pos[0]
+    camera.pos_y = cam_state.pos[1]
+    camera.pos_z = cam_state.pos[2]
+
+    # 3. Rotation Mapping (Quaternion)
+    # Mapping components based on your Z-up vertical axis preference
+    camera.angle_w = cam_state.angle.w
+    camera.angle_x = cam_state.angle.x
+    camera.angle_y = cam_state.angle.y
+    camera.angle_z = cam_state.angle.z
+
+    # 4. Configuration & Optics
+    # Mapping from nested camera_config
+    config = cam_state.camera_config
+    camera.fov = config.vfov
+    camera.width_res = config.pixels[0]
+    camera.height_res = config.pixels[1]
+    camera.frustum_length = 10
+
+    # 5. Booleans (Visibility & Locks)
+    camera.is_hiding_arrows = False
+    camera.is_hiding_wheels = False
+    camera.is_locking_position = False
+    camera.is_locking_rotation = False
+    camera.is_hiding_frustum = True
+
+    camera.frustum_color.r = 0.5
+    camera.frustum_color.g = 0.5
+    camera.frustum_color.b = 0.5
+    camera.frustum_color.a = 0.5
+
+    camera.distortion.enabled = True
+    camera.distortion.is_fisheye = False
+
+    return camera
+
+
+async def worker():
+    print("Work started")
+
+    while True:
+        # Read from the task stream (Blocking read)
+        # 0 means wait indefinitely for a new message
+        messages: List[Tuple[str, List[Tuple[str, Dict[str, Any]]]]] = await r.xread(
+            {env_settings.redis_req_topic: "0"}, count=1, block=0
+        )
+
+        for _stream, msgs in messages:
+            for msg_id, data in msgs:
+                print("Received message", data)
+                try:
+                    req: str = data.get("data")
+
+                    payload = OptimizeRequest.model_validate_json(req)
+
+                    result_state = optimize(payload)
+
+                    opti_res = MessageToJson(
+                        opt_pb.OptimizationEventResp(
+                            success_resp=opt_pb.SuccessOptimizationEventResp(
+                                cameras=[
+                                    cam_state_to_proto(cam)
+                                    for cam in result_state.cameras
+                                ],
+                            ),
+                            job_id=payload.job_id,
+                        )
+                    )
+
+                    # Publish back to a result topic/stream
+                    await r.xadd(
+                        env_settings.redis_res_topic,
+                        {
+                            "job_id": payload.job_id,
+                            "status": "ok",
+                            "data": opti_res,
+                        },
+                    )
+                except ValidationError as e:
+                    raw_data_field: str = data.get("data", "{}")
+
+                    try:
+                        parsed_inner_data: Dict[str, Any] = json.loads(raw_data_field)
+                    except (json.JSONDecodeError, TypeError):
+                        parsed_inner_data = {}
+
+                    await r.xadd(
+                        env_settings.redis_res_topic,
+                        {
+                            "job_id": parsed_inner_data.get("job_id", ""),
+                            "status": "error",
+                            "error": f"Bad request {e}",
+                        },
+                    )
+                except Exception as e:
+                    print(e)
+                    await r.xadd(
+                        env_settings.redis_res_topic,
+                        {
+                            "job_id": payload.job_id,
+                            "status": "error",
+                            "error": "Internal error",
+                        },
+                    )
+                finally:
+                    await r.xdel(env_settings.redis_req_topic, msg_id)
+
+
+if __name__ == "__main__":
+    asyncio.run(worker())
 
 # Running -> OmniCam/predictive-algorithm/src$ uvicorn main:app --reload --port 8081

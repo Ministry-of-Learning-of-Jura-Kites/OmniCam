@@ -1,7 +1,15 @@
 <script setup lang="ts">
 import { useGLTF } from "@tresjs/cientos";
-import type { Material, Mesh, Object3D } from "three";
+import { BufferGeometry, Mesh, type Material, type Object3D } from "three";
 import type { GLTF } from "three-stdlib";
+import { SCENE_STATES_KEY } from "~/constants/state-keys";
+import {
+  computeBoundsTree,
+  disposeBoundsTree,
+  acceleratedRaycast,
+} from "three-mesh-bvh";
+
+const sceneStates = inject(SCENE_STATES_KEY);
 
 const props = withDefaults(
   defineProps<{
@@ -44,6 +52,12 @@ const { data, error, status } = await useFetch<ArrayBuffer>(props.path ?? "", {
 });
 
 onMounted(() => {
+  if (!BufferGeometry.prototype.computeBoundsTree) {
+    BufferGeometry.prototype.computeBoundsTree = computeBoundsTree;
+    BufferGeometry.prototype.disposeBoundsTree = disposeBoundsTree;
+    Mesh.prototype.raycast = acceleratedRaycast;
+  }
+
   const stopWatch = watch(
     data,
     (newData) => {
@@ -58,6 +72,17 @@ onMounted(() => {
             if (s != undefined) {
               // s.scene.traverse(applyFisheye);
               state.value = s;
+
+              s.scene.traverse((child) => {
+                if ((child as Mesh).isMesh) {
+                  const mesh = child as Mesh;
+                  mesh.geometry.computeBoundsTree();
+                  // Optional: Helps with raycasting through complex hierarchies
+                  mesh.raycast = acceleratedRaycast;
+                }
+              });
+
+              sceneStates!.modelRef.value = s;
 
               URL.revokeObjectURL(blobUrl!);
 

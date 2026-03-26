@@ -1,14 +1,9 @@
 syntax = "proto3";
 
-package autosave;
+package protobufs;
 
 // Go: generated under go/autosave
-option go_package = "omnicam.com/gen/go/autosave";
-
-enum CameraEventType {
-  CAMERA_EVENT_TYPE_DELETE = 0;
-  CAMERA_EVENT_TYPE_UPSERT = 1;
-}
+option go_package = "omnicam.com/pkg/messages/protobufs";
 
 // RGBA color message
 message ColorRGBA {
@@ -55,42 +50,4 @@ message Camera {
   double     width_res           = 18;
   double     height_res          = 19;
   Distortion distortion          = 20;
-}
-
-message CameraDeleteEvent { string id = 1;  }
-
-message CameraUpsertEvent { Camera camera = 1; }
-
-message CalibrationUpdateEvent {
-  double scale_factor = 1;
-  double model_height = 2;
-}
-
-message AutosaveEvent {
-  oneof event {
-    CameraDeleteEvent      delete    = 1;
-    CameraUpsertEvent      upsert    = 2;
-    CalibrationUpdateEvent calibrate = 3;
-  }
-}
-
-enum CameraAutosaveResponseType {
-  ACK = 0;
-}
-
-message CameraAutosaveResponse {
-  oneof payload { CameraAutosaveResponseAck ack = 1; }
-}
-
-message CameraAutosaveResponseAck {
-  int32 last_updated_version = 1; // for ACK
-}
-
-message AutosaveMessage {
-  repeated AutosaveEvent events  = 1;
-  uint32                 version = 2;
-}
-
-message AutosaveResponse {
-  int32 last_updated_version = 1;
 }

@@ -13,7 +13,10 @@ const functionalityKeys = [
 
 type FunctionalityKey = (typeof functionalityKeys)[number];
 
-export function useSpectatorPosition(sceneStates: SceneStates) {
+export function useSpectatorPosition(
+  sceneStates: SceneStates,
+  workspace: string | null,
+) {
   let isKeyDown: Partial<Record<FunctionalityKey, boolean>> = {};
   let lastKeyDown = Date.now();
 
@@ -61,7 +64,11 @@ export function useSpectatorPosition(sceneStates: SceneStates) {
     }
     const spectatorCamera = sceneStates.tresContext.value?.camera.activeCamera;
     const camPreviewId = sceneStates.currentCamId.value;
-    const isLock = sceneStates.cameras[camPreviewId!]?.isLockingPosition;
+    const camActive = sceneStates.currentCamId.value != null;
+    const notInOwnWorkspace = workspace != "me";
+    const isLock =
+      sceneStates.cameras[camPreviewId!]?.isLockingPosition ||
+      (camActive && notInOwnWorkspace);
     for (const [key, isDown] of Object.entries(isKeyDown) as [
       FunctionalityKey,
       boolean,

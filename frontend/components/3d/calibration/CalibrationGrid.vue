@@ -25,12 +25,12 @@ const rotationQuat = computed(() => {
   const quaternion = new Quaternion().setFromEuler(movableObject!.rotation);
   return quaternion;
 });
-// v-if="isCalibrating" && props.workspace != null"
+// v-if="isCalibrating" && props.workspace == 'me'"
 </script>
 
 <template>
   <TresGroup
-    v-if="isCalibrating && props.workspace != null"
+    v-if="isCalibrating && props.workspace == 'me'"
     :position-x="movableObject.position.x"
     :position-y="movableObject.position.y"
     :position-z="movableObject.position.z"
@@ -55,21 +55,21 @@ const rotationQuat = computed(() => {
       :controlling="movableObject.controlling"
       direction="y"
       color="red"
-      @change="triggerUpdate"
+      @move="triggerUpdate"
     />
     <MovableArrow
       v-model="movableObject"
       :controlling="movableObject.controlling"
       direction="z"
       color="blue"
-      @change="triggerUpdate"
+      @move="triggerUpdate"
     />
     <RotationWheel
       v-model="movableObject"
       :controlling="movableObject.controlling"
       direction="y"
       color="red"
-      @change="triggerUpdate"
+      @move="triggerUpdate"
     />
   </TresGroup>
 </template>

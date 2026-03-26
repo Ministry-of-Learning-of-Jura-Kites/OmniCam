@@ -57,7 +57,7 @@ def cost_single_cam(
 ):
     cost = 0
     min_dist_threshold = 1  # Meter
-    face_dist = get_distance_to_face(face, cam_state.pos) / state.scale  # Metre
+    face_dist = get_distance_to_face(face, cam_state.pos) * state.scale  # Metre
 
     if face_dist < min_dist_threshold:
         # Quadratic penalty: The closer it gets to 0, the higher the cost explodes
@@ -71,15 +71,15 @@ def cost_single_cam(
         print("x_pixel_per_dist:", x_pixel_per_dist)
         print("y_pixel_per_dist:", y_pixel_per_dist)
 
-    cost += ppm_to_cost(x_pixel_per_dist * state.scale)
-    cost += ppm_to_cost(y_pixel_per_dist * state.scale)
+    cost += ppm_to_cost(x_pixel_per_dist / state.scale)
+    cost += ppm_to_cost(y_pixel_per_dist / state.scale)
 
     return cost
 
 
 def cost(state: State):
     cost = 0
-    min_dist_threshold = 1 * state.scale
+    min_dist_threshold = 1 / state.scale
     for cam_state in state.cameras:
         cost += cost_single_cam(state, cam_state, min_dist_threshold)
 

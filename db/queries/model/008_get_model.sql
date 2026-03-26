@@ -14,6 +14,10 @@ SELECT
     WHEN 'cameras' = ANY (COALESCE(SQLC.NARG(fields)::TEXT[], '{}'::TEXT[])) THEN m.cameras::JSONB
     ELSE NULL::JSONB
   END AS cameras,
+  CASE
+    WHEN 'target_area_trapezoids' = ANY (COALESCE(SQLC.NARG(fields)::TEXT[], '{}'::TEXT[])) THEN m.target_area_trapezoids::JSONB
+    ELSE NULL::JSONB
+  END AS target_area_trapezoids,
   (umw.model_id IS NOT NULL)::BOOLEAN AS workspace_exists,
   m.version,
   m.created_at,

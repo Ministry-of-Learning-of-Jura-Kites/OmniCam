@@ -1,5 +1,5 @@
 // import type { WebGLProgramParametersWithUniforms, WebGLRenderer } from "three";
-// import { DistortionMode } from "~/messages/protobufs/autosave_event";
+// import { DistortionMode } from "~/messages/protobufs/backend_frontend_event";
 // import type { SceneStatesWithHelper } from "~/types/scene-states";
 // // import type { ICamera } from "~/types/camera";
 

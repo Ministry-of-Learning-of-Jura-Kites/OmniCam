@@ -2,22 +2,10 @@ import type { TresContext } from "@tresjs/core";
 import type { IUserData } from "~/types/obj-3d-user-data";
 import { Raycaster, Vector2, Vector3 } from "three";
 import type { ICamera } from "~/types/camera";
+import type { SceneStates } from "~/types/scene-states";
+import { orderPointsOnPlane } from "~/utils/face-helper/order-points-plane";
 
 type Axis = "x" | "y" | "z";
-type Point3 = [number, number, number];
-
-type CoverageFaceLite = {
-  id: string;
-  points: Point3[];
-};
-
-type SceneStatesLike = {
-  facesManagement: {
-    faces: { value: CoverageFaceLite[] };
-    updateCorner: (faceId: string, cornerIndex: number, p: Point3) => void;
-  };
-  tresContext: { value: TresContext | null };
-};
 
 function axisVector(axis: Axis) {
   switch (axis) {
@@ -37,7 +25,7 @@ export class CornerTranslateUserData implements IUserData {
   faceId: string;
   cornerIndex: number;
   context: TresContext;
-  sceneStates: SceneStatesLike;
+  sceneStates: SceneStates;
   yOffset: number;
 
   private raycaster = new Raycaster();
@@ -52,7 +40,7 @@ export class CornerTranslateUserData implements IUserData {
     axis: Axis,
     faceId: string,
     cornerIndex: number,
-    sceneStates: SceneStatesLike,
+    sceneStates: SceneStates,
     context: TresContext,
     yOffset: number,
   ) {
@@ -110,9 +98,7 @@ export class CornerTranslateUserData implements IUserData {
   }
 
   private onPointerDown(event: PointerEvent) {
-    const face = this.sceneStates.facesManagement.faces.value.find(
-      (f) => f.id === this.faceId,
-    );
+    const face = this.sceneStates.facesManagement.faces[this.faceId];
     if (!face) return;
 
     const p = face.points?.[this.cornerIndex];
@@ -164,6 +150,24 @@ export class CornerTranslateUserData implements IUserData {
 
   private onPointerUp = () => {
     this.isDragging = false;
+
+    const face = this.sceneStates.facesManagement.faces[this.faceId];
+    if (face != undefined) {
+      const allPoints = face.points.map((p) => new Vector3(...p));
+      const sortedPoints = orderPointsOnPlane(
+        allPoints,
+        numbersToThreeVector3(face.normal),
+      );
+
+      for (let idx = 0; idx < 4; idx++) {
+        this.sceneStates.facesManagement.updateCorner(
+          this.faceId,
+          idx,
+          threeVector3ToNumbers(sortedPoints[idx]!),
+        );
+      }
+    }
+
     document.removeEventListener("pointermove", this.onPointerMove);
     document.removeEventListener("pointerup", this.onPointerUp);
   };
