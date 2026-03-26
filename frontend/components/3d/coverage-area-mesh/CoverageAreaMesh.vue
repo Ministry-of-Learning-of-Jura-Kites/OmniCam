@@ -49,11 +49,14 @@ const props = withDefaults(
   },
 );
 
+let isPreview = false;
+
 let pointsRef: Ref<[number, number, number][]>;
 if (model.value != null) {
   pointsRef = toRef(model.value, "points");
 } else {
   pointsRef = toRef(props, "previewPoints");
+  isPreview = true;
 }
 
 const center = computed((): Point3 => {
@@ -333,7 +336,7 @@ onUnmounted(() => {
 
 <template>
   <primitive :object="group" />
-  <TresMesh :position="center">
+  <TresMesh :position="center" :visible="!isPreview">
     <MovableArrow
       v-for="dir of ['x', 'y', 'z'] as const"
       :key="dir"
@@ -344,14 +347,7 @@ onUnmounted(() => {
       @move="onPosDragged"
     />
   </TresMesh>
-  <TresMesh
-    :position="center"
-    :rotation="[
-      emptyGroup.rotation.x,
-      emptyGroup.rotation.y,
-      emptyGroup.rotation.z,
-    ]"
-  >
+  <TresMesh :position="center" :visible="!isPreview">
     <RotationWheel
       v-for="dir of ['x', 'y', 'z'] as const"
       :key="dir"
