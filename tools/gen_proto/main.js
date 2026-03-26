@@ -13,10 +13,13 @@ if (!target || !["front", "back", "all"].includes(target)) {
 }
 
 // Helper to delete folder contents (like rimraf)
-async function cleanDirOrCreate(dirPath) {
+async function cleanDirOrCreate(dirPath, excepts) {
   try {
     const tasks = [];
     for (const file of await readdir(dirPath)) {
+      if (excepts && excepts.includes(file)) {
+        continue;
+      }
       tasks.push(rm(join(dirPath, file), { recursive: true, force: true }));
     }
     await Promise.all(tasks);
@@ -77,7 +80,7 @@ try {
     run(frontendCmd, "frontend proto build", "protobufs");
   }
 
-  if (target === "front" || target === "all") {
+  if (target === "algo" || target === "all") {
     console.log();
 
     const algoDir = join(
@@ -86,7 +89,7 @@ try {
       "messages",
       "protobufs",
     );
-    await cleanDirOrCreate(algoDir);
+    await cleanDirOrCreate(algoDir, join(algoDir, "__init__.py"));
 
     const algoDirInProto = join("..", algoDir);
 

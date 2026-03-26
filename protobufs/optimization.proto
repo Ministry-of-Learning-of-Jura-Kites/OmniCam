@@ -30,7 +30,18 @@ message OptimizationEventReq {
   double                scale         = 3;
 }
 
-message OptimizationEventResp {
+message SuccessOptimizationEventResp {
   repeated Camera cameras = 1;
-  string          job_id  = 2;
+}
+
+message ErrorOptimizationEventResp {
+  string error = 1;
+}
+
+message OptimizationEventResp {
+  string job_id = 1;
+  oneof payload {
+    SuccessOptimizationEventResp success_resp = 2;
+    ErrorOptimizationEventResp   error_resp   = 3;
+  }
 }

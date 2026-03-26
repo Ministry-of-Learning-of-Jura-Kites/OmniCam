@@ -63,6 +63,7 @@ export function transformFaceToProto(
 export function useAutosave(
   sceneStates: SceneStates,
   workspace: string | null,
+  handleWorkspaceEvent: (resp: WorkspaceEventResponse) => void,
 ) {
   if (workspace !== "me") return;
 
@@ -98,10 +99,7 @@ export function useAutosave(
         const buf = await (messageBlob as Blob).arrayBuffer();
         const resp = WorkspaceEventResponse.decode(new Uint8Array(buf));
 
-        if (resp.autosave) {
-          sceneStates.lastSyncedVersion.value =
-            resp.autosave.lastUpdatedVersion;
-        }
+        handleWorkspaceEvent(resp);
       },
     );
 

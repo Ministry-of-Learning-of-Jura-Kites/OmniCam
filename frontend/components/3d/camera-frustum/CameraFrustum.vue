@@ -7,7 +7,7 @@ import {
   type BufferGeometry,
 } from "three";
 import { useFrustumGeometries } from "~/composables/useFrustumGeometries";
-import type { ColorRGBA } from "~/messages/protobufs/backend_frontend_event";
+import type { ColorRGBA } from "~/messages/protobufs/camera";
 
 const props = withDefaults(
   defineProps<{

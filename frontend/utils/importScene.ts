@@ -1,7 +1,7 @@
 import type { ICamera } from "~/types/camera";
-import type { Camera } from "~/messages/protobufs/backend_frontend_event";
 import type { SceneStates } from "~/types/scene-states";
 import { transformProtoEventToCamera } from "~/components/3d/scene-states-provider/create-scene-states";
+import type { Camera } from "~/messages/protobufs/camera";
 
 export function importJsonToCameras(
   sceneStates: SceneStates,

@@ -2,10 +2,10 @@ import type { SceneStates } from "~/types/scene-states";
 import type { ProcessedCoverageFace } from "../scene-states-provider/create-scene-states";
 import { transformFaceToProto } from "./use-autosave";
 import type { CameraConfig } from "~/messages/protobufs/optimization";
-import {
-  WorkspaceEventResponse,
-  WorkspaceEventRequest,
-} from "~/messages/protobufs/workspace_event";
+import { WorkspaceEventRequest } from "~/messages/protobufs/workspace_event";
+import type { ICamera } from "~/types/camera";
+
+// type OptimizationCallback = (opt: OptimizationEventResp) => void;
 
 export function useOptimize(
   sceneStates: SceneStates,
@@ -15,20 +15,8 @@ export function useOptimize(
     return null;
   }
 
-  onMounted(() => {
-    watch(
-      () => sceneStates.websocket?.data.value,
-      async (messageBlob) => {
-        if (!messageBlob) return;
-        const buf = await (messageBlob as Blob).arrayBuffer();
-        const resp = WorkspaceEventResponse.decode(new Uint8Array(buf));
-
-        if (resp.optimize) {
-          console.log(resp.optimize);
-        }
-      },
-    );
-  });
+  const candidateCameras = reactive<Record<string, ICamera>>({});
+  const submitStatus = ref<"idle" | "sending" | "optimizing">("idle");
 
   function requestOptimize(
     targetAreaEntries: [string, ProcessedCoverageFace][],
@@ -47,11 +35,14 @@ export function useOptimize(
       },
     }).finish();
     sceneStates.websocket.send(encoded.buffer);
+    submitStatus.value = "sending";
 
     return true;
   }
 
   return {
     requestOptimize,
+    candidateCameras,
+    submitStatus,
   };
 }

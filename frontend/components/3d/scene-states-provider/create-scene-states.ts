@@ -22,6 +22,7 @@ import type { Camera } from "~/messages/protobufs/camera";
 import type { CoverageFace } from "~/messages/protobufs/optimization";
 import type { ProtoVector3 } from "~/messages/protobufs/vector";
 import { useAutosave } from "~/components/3d/scene-3d/use-autosave";
+import type { WorkspaceEventResponse } from "~/messages/protobufs/workspace_event";
 
 export interface ProcessedCoverageFace {
   name: string;
@@ -397,7 +398,30 @@ export function createSceneStatesWithHelper(
 ) {
   const aspectRatioManagement = useAspectRatioManagement(sceneStates);
 
-  useAutosave(sceneStates, workspace);
+  const optimization = useOptimize(sceneStates, workspace);
+
+  function handle(resp: WorkspaceEventResponse) {
+    if (resp.autosave) {
+      sceneStates.lastSyncedVersion.value = resp.autosave.lastUpdatedVersion;
+    } else {
+      const submitStatus = optimization!.submitStatus!;
+      if (!resp.optimize) {
+        return;
+      }
+
+      if (resp.optimize.successResp) {
+        for (const [camId, cam] of Object.entries(
+          resp.optimize.successResp.cameras,
+        )) {
+          optimization!.candidateCameras[camId] =
+            transformProtoEventToCamera(cam);
+        }
+      }
+      submitStatus.value = "idle";
+    }
+  }
+
+  useAutosave(sceneStates, workspace, handle);
 
   onMounted(() => {
     watch(
@@ -420,7 +444,7 @@ export function createSceneStatesWithHelper(
     cameraManagement: useCameraManagement(sceneStates),
     spectatorPosition: useSpectatorPosition(sceneStates, workspace),
     spectatorRotation: useSpectatorRotation(sceneStates, workspace),
-    optimization: useOptimize(sceneStates, workspace),
+    optimization,
   };
   return sceneStatesWithCam;
 }
