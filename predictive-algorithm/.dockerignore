@@ -1,1 +1,5 @@
 .venv
+src/messages/protobufs/*
+!src/messages/protobufs/__init__.py
+
+.env.*

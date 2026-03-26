@@ -69,4 +69,4 @@ class State:
     cameras: List[CameraState]
     gltf: pv.PolyData
     gltf_locator: vtk.vtkStaticCellLocator
-    scale: float  # virtual metre/metre
+    scale: float  # real-life metre / virtual metre

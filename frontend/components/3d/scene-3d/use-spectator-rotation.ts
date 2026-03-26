@@ -5,7 +5,10 @@ import { useSensitivity } from "#imports";
 const maxPitch = Math.PI / 2 - 0.01;
 const minPitch = -Math.PI / 2 + 0.01;
 
-export function useSpectatorRotation(sceneStates: SceneStates) {
+export function useSpectatorRotation(
+  sceneStates: SceneStates,
+  workspace: string | null,
+) {
   const isDragging = ref(false);
   const userSensitivity = useSensitivity();
   async function onPointerDown(_e: PointerEvent) {
@@ -39,7 +42,12 @@ export function useSpectatorRotation(sceneStates: SceneStates) {
       return;
 
     const camPreviewId = sceneStates.currentCamId.value;
-    const isLock = sceneStates.cameras[camPreviewId!]?.isLockingRotation;
+
+    const camActive = sceneStates.currentCamId.value != null;
+    const notInOwnWorkspace = workspace !== "me";
+    const isLock =
+      sceneStates.cameras[camPreviewId!]?.isLockingRotation ||
+      (camActive && notInOwnWorkspace);
     if (isLock) return;
 
     const deltaX = e.movementX;

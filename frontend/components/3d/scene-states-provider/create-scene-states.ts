@@ -14,18 +14,24 @@ import { useCameraManagement } from "../scene-3d/use-camera-management";
 import { useSpectatorRotation } from "../scene-3d/use-spectator-rotation";
 import { useSpectatorPosition } from "../scene-3d/use-spectator-position";
 import type { UseWebSocketReturn } from "@vueuse/core";
-import type { Camera } from "~/messages/protobufs/autosave_event";
 import { useAspectRatio as useAspectRatioManagement } from "../scene-3d/use-aspect-ratio";
-import { useAutosave } from "../scene-3d/use-autosave";
+import type { GLTF } from "three-stdlib";
+import type { Trapezoid as TrapezoidPoints } from "~/types/trapezoid";
+import { useOptimize } from "../scene-3d/use-optimize";
+import type { Camera } from "~/messages/protobufs/camera";
+import type { CoverageFace } from "~/messages/protobufs/optimization";
+import type { ProtoVector3 } from "~/messages/protobufs/vector";
+import { useAutosave } from "~/components/3d/scene-3d/use-autosave";
+import type { WorkspaceEventResponse } from "~/messages/protobufs/workspace_event";
 
-export interface CoverageFace {
-  id: string;
-  points: [number, number, number][];
-  center: [number, number, number];
-  normal?: [number, number, number];
-  planeY?: number;
-  color?: string;
-  hidden?: boolean;
+export interface ProcessedCoverageFace {
+  name: string;
+  points: TrapezoidPoints;
+  color: string | undefined;
+  hidden: boolean;
+  normal: [number, number, number];
+  // Derived field
+  center?: [number, number, number];
 }
 export interface ModelWithCamsResp {
   data: {
@@ -42,6 +48,7 @@ export interface ModelWithCamsResp {
     imagePath: string;
     imageExtension: string;
     cameras: Record<string, Camera>;
+    targetTrapezoids?: Record<string, CoverageFace>;
     scaleFactor?: number;
     modelHeight?: number;
   };
@@ -96,6 +103,38 @@ function transformCamsData(
   );
 }
 
+function protoVecToNumbers(vec: ProtoVector3): [number, number, number] {
+  return [vec.x, vec.y, vec.z];
+}
+
+function transformProtoEventToTrapezoid(
+  rawTrapezoid: CoverageFace,
+): ProcessedCoverageFace {
+  return {
+    name: rawTrapezoid.name,
+    points: rawTrapezoid.points.map(protoVecToNumbers) as TrapezoidPoints,
+    color: rawTrapezoid.color,
+    hidden: rawTrapezoid.hidden,
+    normal: protoVecToNumbers(rawTrapezoid.normal ?? { x: 0, y: 1, z: 0 }),
+  };
+}
+
+function transformFacesData(
+  modelWithCamsResp: ModelWithCamsResp,
+): Record<string, ProcessedCoverageFace> {
+  if (modelWithCamsResp.data.targetTrapezoids == undefined) {
+    return {};
+  }
+  return Object.fromEntries(
+    Object.entries(modelWithCamsResp.data.targetTrapezoids).map(
+      ([id, trapezoid]) => {
+        const transTrapezoid = transformProtoEventToTrapezoid(trapezoid);
+        return [id, transTrapezoid];
+      },
+    ),
+  );
+}
+
 export function createBaseSceneStates(
   websocket: UseWebSocketReturn<unknown> | undefined,
   modelWithCamsResp: ModelWithCamsResp,
@@ -134,6 +173,8 @@ export function createBaseSceneStates(
   const camsData = transformCamsData(modelWithCamsResp);
 
   const cameras = reactive<Record<string, ICamera>>(camsData!);
+
+  const markedFacesForCheck = ref(false);
 
   const spectatorCam: Reactive<ICamera> = reactive({
     ...structuredClone(cameraDefault),
@@ -201,12 +242,14 @@ export function createBaseSceneStates(
   const perspectiveCamera = ref<PerspectiveCamera | null>(null);
   const cubeCamera = ref<CubeCamera | null>(null);
 
-  const coverageMode = ref<"none" | "coverage-area">("none");
-  const coverageFaces = ref<CoverageFace[]>([]);
+  const selectionMode = ref<"none" | "coverage-area">("none");
+  const initialCoverageFaces = transformFacesData(modelWithCamsResp);
+  const coverageFaces =
+    reactive<Record<string, ProcessedCoverageFace>>(initialCoverageFaces);
   const coverageAllHidden = ref(false);
 
   const setCoverageMode = (mode: "none" | "coverage-area") => {
-    coverageMode.value = mode;
+    selectionMode.value = mode;
   };
 
   const toggleAllCoverageHidden = () => {
@@ -218,58 +261,43 @@ export function createBaseSceneStates(
   };
 
   const toggleCoverageFaceHidden = (faceId: string) => {
-    const idx = coverageFaces.value.findIndex((f) => f.id === faceId);
-    if (idx < 0) return;
+    const found = coverageFaces[faceId];
+    if (found == undefined) return;
 
-    const next = [...coverageFaces.value];
-    next[idx] = {
-      ...next[idx]!,
-      hidden: !next[idx]!.hidden,
-    };
-
-    coverageFaces.value = next;
+    found.hidden = !found.hidden;
   };
 
   const setCoverageFaceHidden = (faceId: string, hidden: boolean) => {
-    const idx = coverageFaces.value.findIndex((f) => f.id === faceId);
-    if (idx < 0) return;
+    const found = coverageFaces[faceId];
+    if (found == undefined) return;
 
-    const next = [...coverageFaces.value];
-    next[idx] = {
-      ...next[idx]!,
-      hidden,
-    };
-
-    coverageFaces.value = next;
+    found.hidden = hidden;
   };
 
-  const addCoverageFace = (face: CoverageFace) => {
-    coverageFaces.value.push({
+  const addCoverageFace = (id: string, face: ProcessedCoverageFace) => {
+    coverageFaces[id] = {
       ...face,
       color: face.color ?? "#22ff88",
       hidden: face.hidden ?? false,
-    });
+    };
   };
 
   const removeCoverageFace = (faceId: string) => {
-    coverageFaces.value = coverageFaces.value.filter((f) => f.id !== faceId);
+    delete coverageFaces[faceId];
   };
 
   const updateCoverageFaceColor = (faceId: string, color: string) => {
-    const idx = coverageFaces.value.findIndex((f) => f.id === faceId);
-    if (idx < 0) return;
+    const found = coverageFaces[faceId];
+    if (found == undefined) return;
 
-    const next = [...coverageFaces.value];
-    next[idx] = {
-      ...next[idx]!,
-      color,
-    };
-
-    coverageFaces.value = next;
+    found.color = color;
   };
 
   const clearCoverageFaces = () => {
-    coverageFaces.value = [];
+    // Remove this function later
+    for (const face of Object.keys(coverageFaces)) {
+      delete coverageFaces[face];
+    }
   };
 
   const updateCoverageFaceCorner = (
@@ -277,13 +305,12 @@ export function createBaseSceneStates(
     cornerIndex: number,
     point: [number, number, number],
   ) => {
-    const idx = coverageFaces.value.findIndex((f) => f.id === faceId);
-    if (idx < 0) return;
+    const found = coverageFaces[faceId];
+    if (found == undefined) return;
 
-    const face = coverageFaces.value[idx]!;
-    const newPoints = face.points.map((p, i) =>
+    const newPoints = found.points.map((p, i) =>
       i === cornerIndex ? point : p,
-    ) as [number, number, number][];
+    ) as TrapezoidPoints;
 
     const center: [number, number, number] = [
       (newPoints[0]![0] +
@@ -303,18 +330,11 @@ export function createBaseSceneStates(
         4,
     ];
 
-    const next = [...coverageFaces.value];
-    next[idx] = {
-      ...face,
-      points: newPoints,
-      center,
-    };
-
-    coverageFaces.value = next;
+    found.points = newPoints;
+    found.center = center;
   };
 
   const facesManagement = {
-    mode: coverageMode,
     faces: coverageFaces,
     isAllHidden: coverageAllHidden,
     setMode: setCoverageMode,
@@ -329,8 +349,12 @@ export function createBaseSceneStates(
     setFaceHidden: setCoverageFaceHidden,
   } as const;
 
+  const modelRef = ref<GLTF | null>(null);
+
   const sceneStates = {
     tresContext,
+    modelRef,
+    selectionMode,
     draggableObjects,
     isDraggingObject,
     currentCamId,
@@ -344,6 +368,7 @@ export function createBaseSceneStates(
     cameras,
     error: null,
     markedForCheck,
+    markedFacesForCheck,
     modelInfo,
     screenSize,
     aspectMargin,
@@ -372,10 +397,33 @@ export function createSceneStatesWithHelper(
   workspace: string | null,
 ) {
   const aspectRatioManagement = useAspectRatioManagement(sceneStates);
-  useAutosave(sceneStates, workspace);
+
+  const optimization = useOptimize(sceneStates, workspace);
+
+  function handle(resp: WorkspaceEventResponse) {
+    if (resp.autosave) {
+      sceneStates.lastSyncedVersion.value = resp.autosave.lastUpdatedVersion;
+    } else {
+      const submitStatus = optimization!.submitStatus!;
+      if (!resp.optimize) {
+        return;
+      }
+
+      if (resp.optimize.successResp) {
+        for (const [camId, cam] of Object.entries(
+          resp.optimize.successResp.cameras,
+        )) {
+          optimization!.candidateCameras[camId] =
+            transformProtoEventToCamera(cam);
+        }
+      }
+      submitStatus.value = "idle";
+    }
+  }
+
+  useAutosave(sceneStates, workspace, handle);
 
   onMounted(() => {
-    useAutosave(sceneStates, workspace);
     watch(
       () => [sceneStates.transformingInfo, sceneStates.currentCam],
       ([transform, cam]) => {
@@ -394,8 +442,9 @@ export function createSceneStatesWithHelper(
     ...sceneStates,
     aspectRatioManagement: aspectRatioManagement,
     cameraManagement: useCameraManagement(sceneStates),
-    spectatorPosition: useSpectatorPosition(sceneStates),
-    spectatorRotation: useSpectatorRotation(sceneStates),
+    spectatorPosition: useSpectatorPosition(sceneStates, workspace),
+    spectatorRotation: useSpectatorRotation(sceneStates, workspace),
+    optimization,
   };
   return sceneStatesWithCam;
 }

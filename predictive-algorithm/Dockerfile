@@ -2,21 +2,32 @@ FROM python:3.12-slim-trixie
 
 COPY --from=ghcr.io/astral-sh/uv:0.10 /uv /uvx /bin/
 
-RUN apt-get update && apt-get install -y --no-install-recommends python3-vtk9 \
-    && rm -rf /var/lib/apt/lists/*
+RUN apt update \
+  && apt install -y --no-install-recommends \
+  protobuf-compiler \
+  python3-vtk9 \
+  && rm -rf /var/lib/apt/lists/*
 
-WORKDIR /app
+# Install deps for python
+WORKDIR /app/algo
 
-COPY pyproject.toml uv.lock ./
+COPY predictive-algorithm/pyproject.toml predictive-algorithm/uv.lock ./
 
 RUN uv sync --locked --no-dev
 
-COPY . .
-
 WORKDIR /app
+
+COPY protobufs/ ./protobufs/
+
+RUN mkdir -p /app/algo/src/messages/protobufs && cd protobufs && \
+  protoc --python_out=/app/algo/src/messages/protobufs \
+  --pyi_out=/app/algo/src/messages/protobufs \
+  *.proto
+
+WORKDIR /app/algo
+
+COPY . .
 
 ENV PATH="/app/.venv/bin:$PATH"
 
-# CMD ["tail", "-f", "/dev/null"]
-
-CMD ["uvicorn", "main:app", "--app-dir", "src", "--host", "0.0.0.0","--port", "8081"]
+CMD ["python","src/main.py"]

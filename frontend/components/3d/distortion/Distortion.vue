@@ -6,7 +6,7 @@ import { OutputPass } from "three/addons/postprocessing/OutputPass.js";
 import { RenderPass } from "three/addons/postprocessing/RenderPass.js";
 import { ShaderPass } from "three/examples/jsm/postprocessing/ShaderPass.js";
 import { SCENE_STATES_KEY } from "~/constants/state-keys";
-import { DistortionMode } from "~/messages/protobufs/autosave_event";
+import { DistortionMode } from "~/messages/protobufs/backend_frontend_event";
 
 const sceneStates = inject(SCENE_STATES_KEY);
 if (sceneStates == undefined) {

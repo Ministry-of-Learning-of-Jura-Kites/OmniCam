@@ -36,6 +36,8 @@ frontend/public/models/**
 
 frontend/messages/protobufs
 backend/pkg/messages/protobufs
+predictive-algorithm/src/messages/protobufs/*
+!predictive-algorithm/src/messages/protobufs/__init__.py
 
 # Python cache
 *.pyc

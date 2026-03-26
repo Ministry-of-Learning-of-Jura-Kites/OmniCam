@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import type { Vector3 } from "three";
 import { Mesh, CylinderGeometry, MeshBasicMaterial, Group } from "three";
 import { MOVING_TYPE, MovingUserData } from "./moving-event-handle";
 import { MOVING_ARROW_CONFIG } from "~/constants";
@@ -11,7 +12,8 @@ import type { MovableObject } from "~/types/movable";
 const object = defineModel<MovableObject>({ required: true });
 
 const emit = defineEmits<{
-  (event: "change"): void;
+  (event: "down"): void;
+  (event: "move", delta: Vector3): void;
 }>();
 
 const props = defineProps({
@@ -40,7 +42,10 @@ const cameraUserData = new MovingUserData(
   object.value,
   context!,
   () => {
-    emit("change");
+    emit("down");
+  },
+  (delta) => {
+    emit("move", delta);
   },
 );
 

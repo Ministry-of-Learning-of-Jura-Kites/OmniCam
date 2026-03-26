@@ -1,14 +1,16 @@
-import {
-  type Camera,
-  type AutosaveEvent,
-  AutosaveMessage,
-  AutosaveResponse,
-} from "~/messages/protobufs/autosave_event";
 import type { ICamera } from "~/types/camera";
 import type { SceneStates } from "~/types/scene-states";
 import { Quaternion } from "three";
+import type { ProcessedCoverageFace } from "../scene-states-provider/create-scene-states";
+import type { Camera } from "~/messages/protobufs/camera";
+import type { CoverageFace } from "~/messages/protobufs/optimization";
+import type { AutosaveEvent } from "~/messages/protobufs/workspace_autosave";
+import {
+  WorkspaceEventResponse,
+  WorkspaceEventRequest,
+} from "~/messages/protobufs/workspace_event";
 
-function isEqual(a: Camera, b: Camera): boolean {
+function isEqual<T>(a: T, b: T): boolean {
   return JSON.stringify(a) === JSON.stringify(b);
 }
 
@@ -45,13 +47,28 @@ export function transformCameraToProtoEventWithId(
   return { ...transformCameraToProtoEvent(cam), id: camId };
 }
 
+export function transformFaceToProto(
+  id: string,
+  face: ProcessedCoverageFace,
+): CoverageFace {
+  return {
+    id: id,
+    name: face.name,
+    points: face.points.map(numbersToThreeVector3),
+    color: face.color,
+    hidden: face.hidden,
+    normal: numbersToThreeVector3(face.normal),
+  };
+}
+
 export function useAutosave(
   sceneStates: SceneStates,
   workspace: string | null,
+  handleWorkspaceEvent: (resp: WorkspaceEventResponse) => void,
 ) {
-  if (workspace == null) return;
+  if (workspace !== "me") return;
 
-  const lastSynced: Map<string, Camera> = new Map(
+  const lastSyncedCams: Map<string, Camera> = new Map(
     Object.entries(sceneStates.cameras!).map(([camId, cam]) => [
       camId,
       transformCameraToProtoEventWithId(camId, cam),
@@ -60,25 +77,30 @@ export function useAutosave(
 
   const isServerUpdate = ref(false);
 
+  const lastSyncedFaces: Map<string, CoverageFace> = new Map(
+    Object.entries(sceneStates.facesManagement.faces).map(([id, face]) => [
+      id,
+      transformFaceToProto(id, face),
+    ]),
+  );
+
+  watch(
+    () => sceneStates.facesManagement.faces,
+    () => {
+      sceneStates.markedFacesForCheck.value = true;
+    },
+    { deep: true },
+  );
+
   onMounted(() => {
     watch(
       () => sceneStates.websocket?.data.value,
       async (messageBlob) => {
         if (!messageBlob) return;
         const buf = await (messageBlob as Blob).arrayBuffer();
-        const resp = AutosaveResponse.decode(new Uint8Array(buf));
+        const resp = WorkspaceEventResponse.decode(new Uint8Array(buf));
 
-        sceneStates.lastSyncedVersion.value = resp.lastUpdatedVersion;
-
-        // if (resp.calibrationAck) {
-        //   isServerUpdate.value = true;
-        //   sceneStates.calibrationScale.value = resp.calibrationAck.scaleFactor;
-        //   sceneStates.calibrationHeight.value = resp.calibrationAck.modelHeight;
-        //   sceneStates.calibrationVersion.value =
-        //     resp.calibrationAck.lastUpdatedVersion;
-        //   await nextTick();
-        //   isServerUpdate.value = false;
-        // }
+        handleWorkspaceEvent(resp);
       },
     );
 
@@ -95,33 +117,36 @@ export function useAutosave(
       },
     );
 
-    setInterval(() => {
-      if (!sceneStates.websocket) return;
-
-      const changed: AutosaveEvent[] = [];
+    function updateCams(changed: AutosaveEvent[]) {
+      if (!sceneStates.markedForCheck.value) {
+        return;
+      }
 
       // Cameras
       if (sceneStates.markedForCheck.value) {
         for (const [camId, cam] of Object.entries(sceneStates.cameras)) {
-          const prev = lastSynced.get(camId);
+          const prev = lastSyncedCams.get(camId);
           const formattedCam = transformCameraToProtoEventWithId(camId, cam);
 
           if (prev == undefined || !isEqual(prev, formattedCam)) {
             changed.push({ upsert: { camera: formattedCam } });
-            lastSynced.set(camId, formattedCam);
+            lastSyncedCams.set(camId, formattedCam);
           }
         }
 
         // Check for deleted cameras
-        for (const camId of lastSynced.keys()) {
+        for (const camId of lastSyncedCams.keys()) {
           if (!sceneStates.cameras[camId]) {
-            lastSynced.delete(camId);
+            lastSyncedCams.delete(camId);
             changed.push({ delete: { id: camId } });
           }
         }
       }
 
-      // Calibration
+      sceneStates.markedForCheck.value = false;
+    }
+
+    function updateCalibration(changed: AutosaveEvent[]) {
       if (sceneStates.calibration.dirty) {
         changed.push({
           calibrate: {
@@ -131,17 +156,55 @@ export function useAutosave(
         });
         sceneStates.calibration.dirty = false;
       }
+    }
+
+    function updateFaces(changed: AutosaveEvent[]) {
+      for (const faceId in sceneStates.facesManagement.faces) {
+        const prev = lastSyncedFaces.get(faceId);
+        const face = sceneStates.facesManagement.faces[faceId]!;
+
+        // Handle Upsert (New or Changed)
+        const formattedFace = transformFaceToProto(faceId, face);
+
+        if (prev === undefined || !isEqual(prev, formattedFace)) {
+          changed.push({ faceUpsert: { coverageFace: formattedFace } });
+          lastSyncedFaces.set(faceId, formattedFace);
+        }
+      }
+
+      for (const faceId of lastSyncedFaces.keys()) {
+        const face = sceneStates.facesManagement.faces[faceId];
+        // Handle Deletion
+        if (face === undefined) {
+          lastSyncedFaces.delete(faceId);
+          changed.push({ faceDelete: { id: faceId } });
+        }
+      }
+
+      sceneStates.markedFacesForCheck.value = false;
+    }
+
+    setInterval(() => {
+      if (!sceneStates.websocket) return;
+
+      const changed: AutosaveEvent[] = [];
+
+      updateCams(changed);
+
+      updateCalibration(changed);
+
+      updateFaces(changed);
 
       if (changed.length > 0) {
         sceneStates.localVersion.value += 1;
-        const encoded = AutosaveMessage.encode({
-          version: sceneStates.localVersion.value,
-          events: changed,
+        const encoded = WorkspaceEventRequest.encode({
+          autosave: {
+            version: sceneStates.localVersion.value,
+            events: changed,
+          },
         }).finish();
         sceneStates.websocket.send(encoded.buffer);
       }
-
-      sceneStates.markedForCheck.value = false;
     }, 2000);
   });
 }

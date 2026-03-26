@@ -1,0 +1,59 @@
+syntax = "proto3";
+
+package protobufs;
+import "optimization.proto";
+import "camera.proto";
+
+// Go: generated under go/autosave
+option go_package = "omnicam.com/pkg/messages/protobufs";
+
+enum CameraEventType {
+  CAMERA_EVENT_TYPE_DELETE = 0;
+  CAMERA_EVENT_TYPE_UPSERT = 1;
+}
+
+message CameraDeleteEvent { string id = 1;  }
+
+message CameraUpsertEvent { Camera camera = 1; }
+
+message FacesDeleteEvent { string id = 1;  }
+
+message FacesUpsertEvent {
+  CoverageFace coverage_face = 1;
+}
+
+message CalibrationUpdateEvent {
+  double scale_factor = 1;
+  double model_height = 2;
+}
+
+message AutosaveEvent {
+  oneof event {
+    CameraDeleteEvent      delete      = 1;
+    CameraUpsertEvent      upsert      = 2;
+    CalibrationUpdateEvent calibrate   = 3;
+    FacesDeleteEvent       face_delete = 4;
+    FacesUpsertEvent       face_upsert = 5;
+  }
+}
+
+enum CameraAutosaveEventResponseType {
+  ACK = 0;
+}
+
+message CameraAutosaveEventResponse {
+  oneof payload { CameraAutosaveEventResponseAck ack = 1; }
+}
+
+message CameraAutosaveEventResponseAck {
+  int32 last_updated_version = 1; // for ACK
+}
+
+message AutosaveEventRequest {
+  repeated AutosaveEvent events  = 1;
+  uint32                 version = 2;
+}
+
+message AutosaveEventResponse {
+  int32 last_updated_version = 1;
+}

@@ -17,3 +17,9 @@ export const ROTATING_TORUS_CONFIG = {
   RADIUS: 1,
   TUBE_RADIUS: MOVING_ARROW_CONFIG.HEAD_RADIUS / 2,
 };
+
+export const AXIS_COLOR = {
+  x: "green",
+  y: "red",
+  z: "blue",
+};
