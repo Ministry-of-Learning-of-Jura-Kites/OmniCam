@@ -29,7 +29,7 @@ export interface ProcessedCoverageFace {
   points: TrapezoidPoints;
   color: string | undefined;
   hidden: boolean;
-  normal?: [number, number, number];
+  normal: [number, number, number];
   // Derived field
   center?: [number, number, number];
 }
@@ -115,7 +115,7 @@ function transformProtoEventToTrapezoid(
     points: rawTrapezoid.points.map(protoVecToNumbers) as TrapezoidPoints,
     color: rawTrapezoid.color,
     hidden: rawTrapezoid.hidden,
-    normal: undefined,
+    normal: protoVecToNumbers(rawTrapezoid.normal ?? { x: 0, y: 1, z: 0 }),
   };
 }
 

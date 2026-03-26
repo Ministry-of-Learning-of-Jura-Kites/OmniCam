@@ -11,15 +11,26 @@ import {
   MeshBasicMaterial,
   SphereGeometry,
   DoubleSide,
+  Matrix4,
+  Vector3,
 } from "three";
+import MovableArrow from "../movable-arrow/MovableArrow.vue";
+import TresMesh from "@tresjs/core";
+import { AXIS_COLOR } from "~/constants";
+import RotationWheel from "../rotation-wheel/RotationWheel.vue";
+import type { ProcessedCoverageFace } from "../scene-states-provider/create-scene-states";
 
 type Point3 = [number, number, number];
+
+const model = defineModel<ProcessedCoverageFace>({
+  required: false,
+})!;
 
 const props = withDefaults(
   defineProps<{
     faceId?: string;
-    points: Point3[];
     color?: string;
+    previewPoints?: [number, number, number][];
     opacity?: number;
     wireframe?: boolean;
     selected?: boolean;
@@ -34,8 +45,16 @@ const props = withDefaults(
     selected: false,
     showCorners: true,
     yOffset: 0.01,
+    previewPoints: () => [],
   },
 );
+
+let pointsRef: Ref<[number, number, number][]>;
+if (model.value != null) {
+  pointsRef = toRef(model.value, "points");
+} else {
+  pointsRef = toRef(props, "previewPoints");
+}
 
 const fillOpacity = computed(() => {
   if (props.opacity != null) return props.opacity;
@@ -94,6 +113,103 @@ const corners = Array.from({ length: 4 }, () => {
   return m;
 });
 
+const emptyGroup = new Group();
+
+function onPosDragged() {
+  const x = emptyGroup.position.x;
+  const y = emptyGroup.position.y;
+  const z = emptyGroup.position.z;
+
+  if (x != 0) {
+    for (const point of pointsRef.value!) {
+      point[0] += x;
+    }
+  }
+  if (y != 0) {
+    for (const point of pointsRef.value!) {
+      point[1] += y;
+    }
+  }
+  if (z != 0) {
+    for (const point of pointsRef.value!) {
+      point[2] += z;
+    }
+  }
+  emptyGroup.position.set(0, 0, 0);
+}
+
+// Persistent storage for the drag session
+let initialPoints: Point3[] | null = null;
+let initialNormal: Point3 | null = null;
+let initialCenter: Vector3 | null = null;
+
+function onRotStart() {
+  if (!pointsRef.value) return;
+
+  // Deep copy the points so we have a "frozen" reference
+  initialPoints = pointsRef.value.map((p) => [...p] as Point3);
+
+  // Store the initial normal
+  initialNormal = [...model.value!.normal] as Point3;
+
+  // Calculate the center ONCE at the start of the drag
+  const [cx, cy, cz] = center.value;
+  initialCenter = new Vector3(cx, cy, cz);
+}
+
+function onRotDragged(
+  axisName: "x" | "y" | "z",
+  directionSign: number,
+  totalDelta: number,
+) {
+  if (
+    !pointsRef ||
+    !pointsRef.value ||
+    !initialPoints ||
+    !initialCenter ||
+    !initialNormal
+  )
+    return;
+
+  // 1. Calculate the TOTAL rotation for this gesture
+  const rotationMatrix = new Matrix4();
+  const axis = new Vector3();
+  if (axisName === "x") axis.set(1, 0, 0);
+  else if (axisName === "y") axis.set(0, 1, 0);
+  else if (axisName === "z") axis.set(0, 0, 1);
+
+  // Apply the full delta from the start of the drag
+  rotationMatrix.makeRotationAxis(axis, totalDelta * directionSign);
+
+  // 2. Update the Normal from the initial state
+  const nV = new Vector3(...initialNormal);
+  nV.applyMatrix4(rotationMatrix).normalize();
+  model.value!.normal = [nV.x, nV.y, nV.z];
+
+  // 3. Map initial points to the current pointsRef
+  for (let i = 0; i < initialPoints.length; i++) {
+    const original = initialPoints[i];
+    const v = new Vector3(original![0], original![1], original![2]);
+
+    // Move to initial center -> Rotate -> Move back
+    v.sub(initialCenter);
+    v.applyMatrix4(rotationMatrix);
+    v.add(initialCenter);
+
+    // Write directly to the reactive points array
+    pointsRef.value![i]![0] = v.x;
+    pointsRef.value![i]![1] = v.y;
+    pointsRef.value![i]![2] = v.z;
+  }
+}
+
+function onRotEnd() {
+  // Clean up references
+  initialPoints = null;
+  initialNormal = null;
+  initialCenter = null;
+}
+
 function applyUserData() {
   const fid = props.faceId;
   mesh.userData = fid
@@ -108,7 +224,6 @@ function applyUserData() {
       : { kind: "coverage-corner", cornerIndex: i };
   });
 }
-
 // update geometry positions
 function setPositions(geom: BufferGeometry, pts: Point3[]) {
   let attr = geom.getAttribute("position") as
@@ -146,8 +261,23 @@ function setPositions(geom: BufferGeometry, pts: Point3[]) {
 
 let meshIndexSet = false;
 
+const center = computed((): Point3 => {
+  const sum = pointsRef.value!.reduce(
+    (acc, [x, y, z]) => {
+      acc[0] += x;
+      acc[1] += y;
+      acc[2] += z;
+      return acc;
+    },
+    [0, 0, 0] as Point3,
+  );
+
+  const count = pointsRef.value!.length;
+  return [sum[0] / count, sum[1] / count, sum[2] / count];
+});
+
 watchEffect(() => {
-  const pts = props.points ?? [];
+  const pts = pointsRef.value ?? [];
   const ok = pts.length === 4;
 
   group.visible = ok;
@@ -210,4 +340,33 @@ onUnmounted(() => {
 
 <template>
   <primitive :object="group" />
+  <TresMesh :position="center">
+    <MovableArrow
+      v-for="dir of ['x', 'y', 'z'] as const"
+      :key="dir"
+      v-model="emptyGroup"
+      :direction="dir"
+      :color="AXIS_COLOR[dir]"
+      @change="onPosDragged"
+    />
+  </TresMesh>
+  <TresMesh
+    :position="center"
+    :rotation="[
+      emptyGroup.rotation.x,
+      emptyGroup.rotation.y,
+      emptyGroup.rotation.z,
+    ]"
+  >
+    <RotationWheel
+      v-for="dir of ['x', 'y', 'z'] as const"
+      :key="dir"
+      v-model="emptyGroup"
+      :direction="dir"
+      :color="AXIS_COLOR[dir]"
+      @down="onRotStart"
+      @move="onRotDragged"
+      @up="onRotEnd"
+    />
+  </TresMesh>
 </template>

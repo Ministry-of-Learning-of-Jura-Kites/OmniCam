@@ -21,6 +21,7 @@ const props = withDefaults(
   {
     name: "Untitled",
     color: "white",
+    instance: undefined,
   },
 );
 

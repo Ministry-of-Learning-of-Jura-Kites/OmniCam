@@ -9,7 +9,7 @@ import {
   Raycaster,
   Vector2,
   DoubleSide,
-  type Vector3,
+  Vector3,
   type OrthographicCamera,
   WebGLCubeRenderTarget,
   LinearFilter,
@@ -186,7 +186,7 @@ function handleCoverageAreaPointer(event: PointerEvent) {
 
   const hit = getSurfaceHit(event);
 
-  if (!hit) return true;
+  if (!hit) return {};
 
   draftCoveragePoints.value = [...draftCoveragePoints.value, hit.point.clone()];
   draftCoverageNormals.value = [
@@ -238,8 +238,18 @@ function getSurfaceHit(
   );
   const hit = hits[0];
 
-  if (!hit || !hit.face) return null;
+  const forwardDirection = new Vector3();
+  camera.getWorldDirection(forwardDirection);
 
+  if (!hit || !hit.face) {
+    const targetPoint = new Vector3();
+    raycaster.ray.at(5, targetPoint);
+    const normal = raycaster.ray.direction.clone().negate();
+    return {
+      point: targetPoint,
+      normal: normal,
+    };
+  }
   const worldNormal = hit.face.normal
     .clone()
     .applyMatrix3(new Matrix3().getNormalMatrix(hit.object.matrixWorld))
@@ -573,8 +583,8 @@ function selectCurrentCamShortcut() {
           <CoverageAreaMesh
             v-if="isPreviewing"
             face-id="__preview__"
-            :points="previewPoints"
             color="#22ff88"
+            :preview-points="previewPoints"
             :selected="true"
             :show-corners="false"
             :opacity="0.12"
@@ -649,8 +659,8 @@ function selectCurrentCamShortcut() {
 
           <template v-for="[id, face] of selectedFaces" :key="id">
             <CoverageAreaMesh
+              v-model.points="sceneStates.facesManagement.faces[id]!"
               :face-id="id"
-              :points="face.points"
               :color="face.color ?? '#22ff88'"
               :selected="true"
               :show-corners="false"

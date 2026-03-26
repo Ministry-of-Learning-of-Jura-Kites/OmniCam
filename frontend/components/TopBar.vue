@@ -45,7 +45,7 @@ const props = defineProps({
 });
 
 const candidateEntries = computed(() =>
-  Object.entries(sceneStates.optimization!.candidateCameras),
+  Object.entries(sceneStates.optimization?.candidateCameras ?? {}),
 );
 
 const {
