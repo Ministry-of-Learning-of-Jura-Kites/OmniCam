@@ -1,6 +1,7 @@
 import asyncio
 import json
 import math
+from os import path
 import time
 from typing import Any, Dict, List, Tuple
 import uuid
@@ -45,6 +46,7 @@ class OptimizeRequest(BaseModel):
     scale: float
     job_id: str
     model_id: str
+    project_id: str
 
 
 def create_arbitrary_face(center, width, height, normal):
@@ -260,7 +262,14 @@ def optimize(req: OptimizeRequest) -> State:
         pl = BackgroundPlotter()
 
     gltf = (
-        pv.read("~/Downloads/omnicam/cpn-lidar.glb")
+        pv.read(
+            path.join(
+                env_settings.model_file_path,
+                "3d_models",
+                req.project_id,
+                req.model_id + ".glb",
+            )
+        )
         .combine()
         .extract_surface()
         .triangulate()

@@ -14,5 +14,7 @@ class Settings(BaseSettings):
 
     redis_res_topic: str
 
+    model_file_path: str
+
 
 env_settings = Settings()
