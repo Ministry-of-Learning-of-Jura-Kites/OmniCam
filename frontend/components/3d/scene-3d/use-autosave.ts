@@ -57,6 +57,7 @@ export function transformFaceToProto(
     points: face.points.map(numbersToThreeVector3),
     color: face.color,
     hidden: face.hidden,
+    normal: numbersToThreeVector3(face.normal),
   };
 }
 
@@ -158,21 +159,9 @@ export function useAutosave(
     }
 
     function updateFaces(changed: AutosaveEvent[]) {
-      if (Object.keys(sceneStates.facesManagement.faces).length == 0) {
-        return;
-      }
       for (const faceId in sceneStates.facesManagement.faces) {
         const prev = lastSyncedFaces.get(faceId);
-        const face = sceneStates.facesManagement.faces[faceId];
-
-        // Handle Deletion
-        if (face === undefined) {
-          if (prev !== undefined) {
-            lastSyncedFaces.delete(faceId);
-            changed.push({ faceDelete: { id: faceId } });
-          }
-          continue;
-        }
+        const face = sceneStates.facesManagement.faces[faceId]!;
 
         // Handle Upsert (New or Changed)
         const formattedFace = transformFaceToProto(faceId, face);
@@ -182,6 +171,16 @@ export function useAutosave(
           lastSyncedFaces.set(faceId, formattedFace);
         }
       }
+
+      for (const faceId of lastSyncedFaces.keys()) {
+        const face = sceneStates.facesManagement.faces[faceId];
+        // Handle Deletion
+        if (face === undefined) {
+          lastSyncedFaces.delete(faceId);
+          changed.push({ faceDelete: { id: faceId } });
+        }
+      }
+
       sceneStates.markedFacesForCheck.value = false;
     }
 

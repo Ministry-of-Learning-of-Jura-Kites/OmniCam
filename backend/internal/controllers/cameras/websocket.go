@@ -3,6 +3,7 @@ package controller_camera
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"sync"
 	"time"
@@ -166,6 +167,7 @@ func (t *UpdateEventRoute) handleFaceDelete(
 		UserID:  userId,
 		ModelID: modelId,
 	})
+	fmt.Println(event.FaceDelete.Id)
 	if err != nil {
 		t.Logger.Error("error updating face", zap.Error(err))
 		return
@@ -205,6 +207,7 @@ func (t *UpdateEventRoute) handleAutosaveEvent(
 		case *protobufs.AutosaveEvent_Calibrate:
 			t.handleCalibration(c, conn, modelId, userId, ce, casted.Version, currentVersion)
 		case *protobufs.AutosaveEvent_FaceDelete:
+			fmt.Println("ggg")
 			t.handleFaceDelete(c, conn, modelId, userId, ce, casted.Version, currentVersion)
 		case *protobufs.AutosaveEvent_FaceUpsert:
 			t.handleFaceUpsert(c, conn, modelId, userId, ce, casted.Version, currentVersion)
