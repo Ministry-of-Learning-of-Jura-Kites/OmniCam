@@ -600,6 +600,18 @@ function selectCurrentCamShortcut() {
           </template>
 
           <CameraObject
+            v-for="[camId, cam] in Object.entries(
+              sceneStates.optimization?.candidateCameras ?? {},
+            )"
+            :key="camId"
+            :cam-id="camId"
+            :name="cam.name"
+            :instance="cam"
+            :workspace="props.workspace"
+            color="#62B2F5"
+          />
+
+          <CameraObject
             v-for="[camId, cam] in Object.entries(sceneStates.cameras)"
             :key="camId"
             :cam-id="camId"

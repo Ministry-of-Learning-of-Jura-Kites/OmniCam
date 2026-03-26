@@ -429,9 +429,12 @@ async def worker():
 
                     opti_res = MessageToJson(
                         opt_pb.OptimizationEventResp(
-                            cameras=[
-                                cam_state_to_proto(cam) for cam in result_state.cameras
-                            ],
+                            success_resp=opt_pb.SuccessOptimizationEventResp(
+                                cameras=[
+                                    cam_state_to_proto(cam)
+                                    for cam in result_state.cameras
+                                ],
+                            ),
                             job_id=payload.job_id,
                         )
                     )

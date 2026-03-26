@@ -5,7 +5,7 @@ import { Eye, EyeOff, Plus, Trash } from "lucide-vue-next";
 import type { Camerapreset } from "./CameraPanel.vue";
 import LazyCameraSpawnDialog from "./dialog/CameraSpawnDialog.vue";
 import Card from "./ui/card/Card.vue";
-import type { CameraConfig } from "~/messages/protobufs/backend_frontend_event";
+import type { CameraConfig } from "~/messages/protobufs/optimization";
 
 const isCameraSpawnDialogOpen = ref(false);
 
@@ -13,8 +13,7 @@ const sceneStates = inject(SCENE_STATES_KEY)!;
 
 const cameraConfigs = reactive<CameraConfig[]>([]);
 
-const submitStatus = ref<"idle" | "sending" | "optimizing">("idle");
-const isOptimizing = ref(false);
+const errorMsg = ref<string | null>(null);
 
 const faceEntries = computed(() =>
   Object.entries(sceneStates.facesManagement.faces),
@@ -345,10 +344,7 @@ function submit() {
 
       <Button
         :disabled="
-          facesCount === 0 ||
-          cameraConfigs.length == 0 ||
-          selectedIds.size == 0 ||
-          isOptimizing
+          facesCount === 0 || cameraConfigs.length == 0 || selectedIds.size == 0
         "
         variant="default"
         class="w-full text-white bg-emerald-400! hover:bg-emerald-500! disabled:bg-red-800 text-lg transition"
@@ -359,11 +355,12 @@ function submit() {
             idle: "Run Optimization",
             sending: "Sending..",
             optimizing: "Optimizing..",
-          }[submitStatus]
+          }[sceneStates.optimization!.submitStatus.value]
         }}
       </Button>
     </div>
   </TooltipProvider>
+  <span v-if="errorMsg">{{ errorMsg }}</span>
 </template>
 
 <style lang="scss" scoped>
