@@ -232,6 +232,7 @@ function confirmOptimizedCams() {
   for (const [camId, candidate] of candidateEntries.value) {
     sceneStates.cameras[camId] = candidate;
   }
+  removeOptimizedCams();
 }
 function removeOptimizedCams() {
   for (const [camId, _candidate] of candidateEntries.value) {

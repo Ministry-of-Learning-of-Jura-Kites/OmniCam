@@ -17,12 +17,13 @@ def cost_single_cam(state: State, cam_state: CameraState, _face: Array4x3):
     )
 
     d_val = math.sqrt(dist2.get())
-    mounting_tolerance = 0.1 * state.scale
+    maximum_mounting_tolerance = 0.8 / state.scale
+    minimum_mounting_tolerance = 0.3 / state.scale
 
     # 2. Basic distance penalty (Quadratic "pull" toward surfaces)
     cost = 0.0
-    if d_val > mounting_tolerance:
-        cost += 5000 * ((d_val - mounting_tolerance) ** 2)
+    if d_val < minimum_mounting_tolerance or d_val > maximum_mounting_tolerance:
+        cost += 5000 * ((d_val - minimum_mounting_tolerance) ** 2)
 
     # 3. The "Below" Penalty (Hard Push)
     # If the surface we found is lower than the camera, it's a floor/ledge.
