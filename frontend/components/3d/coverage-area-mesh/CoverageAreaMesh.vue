@@ -56,6 +56,21 @@ if (model.value != null) {
   pointsRef = toRef(props, "previewPoints");
 }
 
+const center = computed((): Point3 => {
+  const sum = pointsRef.value!.reduce(
+    (acc, [x, y, z]) => {
+      acc[0] += x;
+      acc[1] += y;
+      acc[2] += z;
+      return acc;
+    },
+    [0, 0, 0] as Point3,
+  );
+
+  const count = pointsRef.value!.length;
+  return [sum[0] / count, sum[1] / count, sum[2] / count];
+});
+
 const fillOpacity = computed(() => {
   if (props.opacity != null) return props.opacity;
   return props.selected ? 0.35 : 0.18;
@@ -114,32 +129,25 @@ const corners = Array.from({ length: 4 }, () => {
 });
 
 const emptyGroup = new Group();
-
-function onPosDragged() {
-  const x = emptyGroup.position.x;
-  const y = emptyGroup.position.y;
-  const z = emptyGroup.position.z;
-
-  if (x != 0) {
-    for (const point of pointsRef.value!) {
-      point[0] += x;
-    }
-  }
-  if (y != 0) {
-    for (const point of pointsRef.value!) {
-      point[1] += y;
-    }
-  }
-  if (z != 0) {
-    for (const point of pointsRef.value!) {
-      point[2] += z;
-    }
-  }
-  emptyGroup.position.set(0, 0, 0);
-}
+emptyGroup.position.set(center.value[0], center.value[1], center.value[2]);
 
 // Persistent storage for the drag session
 let initialPoints: Point3[] | null = null;
+function onPosStart() {
+  initialPoints = [...pointsRef.value];
+}
+function onPosDragged(delta: Vector3) {
+  if (!pointsRef.value || !pointsRef || !initialPoints) {
+    return;
+  }
+  for (const idx in pointsRef.value) {
+    const point = initialPoints[idx];
+    pointsRef.value[idx]![0] = point![0] + delta.x;
+    pointsRef.value[idx]![1] = point![1] + delta.y;
+    pointsRef.value[idx]![2] = point![2] + delta.z;
+  }
+}
+
 let initialNormal: Point3 | null = null;
 let initialCenter: Vector3 | null = null;
 
@@ -261,21 +269,6 @@ function setPositions(geom: BufferGeometry, pts: Point3[]) {
 
 let meshIndexSet = false;
 
-const center = computed((): Point3 => {
-  const sum = pointsRef.value!.reduce(
-    (acc, [x, y, z]) => {
-      acc[0] += x;
-      acc[1] += y;
-      acc[2] += z;
-      return acc;
-    },
-    [0, 0, 0] as Point3,
-  );
-
-  const count = pointsRef.value!.length;
-  return [sum[0] / count, sum[1] / count, sum[2] / count];
-});
-
 watchEffect(() => {
   const pts = pointsRef.value ?? [];
   const ok = pts.length === 4;
@@ -347,7 +340,8 @@ onUnmounted(() => {
       v-model="emptyGroup"
       :direction="dir"
       :color="AXIS_COLOR[dir]"
-      @change="onPosDragged"
+      @down="onPosStart"
+      @move="onPosDragged"
     />
   </TresMesh>
   <TresMesh

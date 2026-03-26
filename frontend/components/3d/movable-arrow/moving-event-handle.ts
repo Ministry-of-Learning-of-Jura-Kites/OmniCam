@@ -3,6 +3,7 @@ import { MOVING_ARROW_CONFIG } from "~/constants";
 import type { TresContext } from "@tresjs/core";
 import { getAxisVector as createAxisVector } from "~/lib/three";
 import type { MovableObject } from "~/types/movable";
+import type { Vector3 } from "three";
 
 export const MOVING_TYPE = "moving";
 
@@ -12,7 +13,8 @@ export class MovingUserData implements IUserData<MovableObject> {
   target: MovableObject;
   context: TresContext;
 
-  onchange: undefined | (() => void);
+  onDown: undefined | (() => void);
+  onMove: undefined | ((delta: Vector3) => void);
 
   isDragging = false;
 
@@ -20,12 +22,14 @@ export class MovingUserData implements IUserData<MovableObject> {
     type: string,
     target: MovableObject,
     context: TresContext,
-    onchange?: () => void,
+    onDown?: () => void,
+    onMove?: (delta: Vector3) => void,
   ) {
     this.type = type as "x" | "y" | "z";
     this.target = target;
     this.context = context;
-    this.onchange = onchange;
+    this.onDown = onDown;
+    this.onMove = onMove;
   }
 
   handleEvent(eventType: string, event: Event) {
@@ -46,6 +50,9 @@ export class MovingUserData implements IUserData<MovableObject> {
     };
     document.addEventListener("pointermove", this.handlePointerMoveEvent);
     document.addEventListener("pointerup", this.handlePointerUpEvent);
+    if (this.onDown) {
+      this.onDown();
+    }
   };
 
   handlePointerMoveEvent = (event: PointerEvent) => {
@@ -73,8 +80,8 @@ export class MovingUserData implements IUserData<MovableObject> {
           MOVING_ARROW_CONFIG.DRAGGING_SENTIVITY,
       );
       this.target.position.add(delta);
-      if (this.onchange) {
-        this.onchange();
+      if (this.onMove) {
+        this.onMove(delta);
       }
     }
   };
