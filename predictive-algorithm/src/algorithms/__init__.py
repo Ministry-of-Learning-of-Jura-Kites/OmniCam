@@ -213,6 +213,8 @@ class CartesianSerialize(AlgorithmSerialization):
         total_dim = len(initial_vec)
         init_pop = np.empty((num_particles, total_dim))
 
+        rng = np.random.default_rng(self.seed)
+
         low_b = np.array([b[0] for b in bounds])
         high_b = np.array([b[1] for b in bounds])
 
@@ -221,7 +223,7 @@ class CartesianSerialize(AlgorithmSerialization):
             particle = initial_vec.copy()
 
             # Add spatial noise
-            noise = np.random.uniform(-5, 5, total_dim)
+            noise = rng.uniform(-5, 5, total_dim)
 
             # For the second half, we can add a larger "jump" to spread them out
             if i >= num_particles // 2:
@@ -237,6 +239,7 @@ class SphericalSerialize(AlgorithmSerialization):
     num_cams: int
     num_faces: int
     scale: float  # virtual meter per meter
+    seed: int
 
     def init_bounds(self) -> List[Tuple[float, float]]:
         bounds = []
@@ -259,6 +262,8 @@ class SphericalSerialize(AlgorithmSerialization):
         low_b = np.array([b[0] for b in bounds])
         high_b = np.array([b[1] for b in bounds])
 
+        rng = np.random.default_rng(self.seed)
+
         # Extract target "normal" or reference angles from the initial_vec
         # We assume initial_vec represents a 'good' starting orientation
         for i in range(num_particles):
@@ -271,7 +276,7 @@ class SphericalSerialize(AlgorithmSerialization):
                 # Mix of close and far within bounds
                 r_min, r_max = bounds[base][0], bounds[base][1]
                 # Use a beta distribution to favor the middle-range but allow extremes
-                particle[base] = np.random.uniform(r_min, r_max)
+                particle[base] = rng.uniform(r_min, r_max)
 
                 # 2. Diversify Angles (theta, phi) with Normal Bias
                 # Instead of pure uniform, we use a normal dist centered on the initial_vec
@@ -281,11 +286,11 @@ class SphericalSerialize(AlgorithmSerialization):
                 ) * 2.0  # Increases variance across pop
 
                 # Theta (Azimuth) noise
-                theta_noise = np.random.normal(0, 30 * spread_factor)
+                theta_noise = rng.normal(0, 30 * spread_factor)
                 particle[base + 1] += theta_noise
 
                 # Phi (Elevation) noise - favor 'top-down' or 'front-on' based on initial
-                phi_noise = np.random.normal(0, 15 * spread_factor)
+                phi_noise = rng.normal(0, 15 * spread_factor)
                 particle[base + 2] += phi_noise
 
                 # Wrap angles
@@ -293,7 +298,7 @@ class SphericalSerialize(AlgorithmSerialization):
                 particle[base + 2] = np.clip(particle[base + 2], -90, 90)
 
             # 3. Add a final layer of uniform jitter for global coverage
-            jitter = np.random.uniform(-2, 2, total_dim)
+            jitter = rng.uniform(-2, 2, total_dim)
 
             # Ensure the particle stays within search space
             init_pop[i] = np.clip(particle + jitter, low_b, high_b)

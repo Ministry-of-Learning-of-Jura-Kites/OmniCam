@@ -33,6 +33,7 @@ import CoverageCornerGizmos from "../coverage-area-mesh/CoverageCornerGizmos.vue
 import { orderPointsOnPlane } from "~/utils/face-helper/order-points-plane";
 import { computeStableNormal } from "~/utils/face-helper/stable-normal";
 import { averageVector } from "~/utils/face-helper/avg-vec";
+import { v4 as uuidv4 } from "uuid";
 
 const { isPanelOpen, currentPanel, camPanelInfo } = inject(PANEL_KEY)!;
 const { selectedCamId } = camPanelInfo;
@@ -201,7 +202,7 @@ function handleCoverageAreaPointer(event: PointerEvent) {
     );
 
     if (face) {
-      sceneStates.facesManagement.add(crypto.randomUUID(), face);
+      sceneStates.facesManagement.add(uuidv4(), face);
     }
 
     requestAnimationFrame(() => {
