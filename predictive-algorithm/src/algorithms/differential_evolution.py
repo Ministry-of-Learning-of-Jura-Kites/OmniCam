@@ -10,7 +10,6 @@ def optimize_de(initial_state: State, seed: int, verbose=False):
     num_cams = len(template.cameras)
 
     cartesian = CartesianSerialize(seed)
-    # spherical = SphericalSerialize(num_cams, num_faces, template.scale, seed)
 
     initial_vec = cartesian.state_to_vector(initial_state)
     # initial_vec = spherical.state_to_vector(initial_state)
