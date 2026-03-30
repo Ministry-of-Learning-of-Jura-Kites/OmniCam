@@ -43,9 +43,9 @@ medium_model_id = parse_uuid_base64(medium_model_id_raw)
 large_model_id = parse_uuid_base64(large_model_id_raw)
 
 times_avg = []
-for id in [small_model_id, medium_model_id, large_model_id]:
+for id in [medium_model_id]:
     times = []
-    for i in range(3):
+    for i in range(10):
         start = time.perf_counter()
         with open("src/evaluation/ff.json", "r") as file:
             req = json.loads(file.read())
