@@ -1,20 +1,18 @@
 import json
-import math
 from os import path
 import time
 from cost_functions import total_cost
-from algorithms.differential_evolution import optimize_de
 import numpy as np
 from state import CameraConfiguration, CameraState, State
 import quaternion
 from utils import (
     center_of_face,
 )
-from env import env_settings
 import vtk
-from dev.visualization import init_3d_scene, render_from_state
 import pyvista as pv
 from main import assign_faces
+from algorithms import CartesianSerialize, SphericalSerialize
+from scipy.optimize import differential_evolution
 
 # --- Setup Shared Resources ---
 gltf = (
@@ -29,12 +27,64 @@ gltf_locator = vtk.vtkStaticCellLocator()
 gltf_locator.SetDataSet(gltf)
 gltf_locator.BuildLocator()
 
+
 face = np.array([[2, 2 + 1, 2], [-2, 2 + 1, 2], [-2, -2 + 1, 2], [2, -2 + 1, 2]])
 cam_config = CameraConfiguration(
     pixels=[500, 500],
     vfov=60,
     name="f",
 )
+
+
+def optimize_de(initial_state: State, seed: int, verbose=False):
+    template = initial_state
+
+    num_faces = len(template.faces)
+    num_cams = len(template.cameras)
+
+    # cartesian = CartesianSerialize()
+    spherical = SphericalSerialize(num_cams, num_faces, template.scale, seed)
+
+    initial_vec = spherical.state_to_vector(initial_state)
+
+    bounds = spherical.init_bounds()
+
+    num_particles = 50
+    init_pop = spherical.init_pop(num_particles, initial_vec, bounds, num_cams, None)
+
+    def objective(vec):
+        # state = cartesian.vector_to_state(vec, template)
+        state = spherical.vector_to_state(vec, template)
+        cost = total_cost(state, verbose)
+        # render_from_state(None, state)
+        return cost
+
+    result = differential_evolution(
+        objective,
+        bounds,
+        strategy="rand1bin",
+        maxiter=500,
+        init=init_pop,
+        mutation=(0.2, 0.7),
+        popsize=num_particles,
+        recombination=0.9,
+        rng=seed,
+        # Fitness Stagnation:
+        # tol=0 ignores relative change in favor of atol
+        tol=0,
+        # atol matches epsilon (10^-6)
+        atol=1e-2,
+        # Ensure it checks for 50 consecutive generations
+        # Note: SciPy's internal 'convergence' check varies slightly by version,
+        # but setting polish=False ensures it stops strictly on these bounds.
+        polish=False,
+    )
+
+    print(f"Total generations used: {result.nit}")
+
+    # return cartesian.vector_to_state(result.x, template)
+    return (spherical.vector_to_state(result.x, template), result)
+
 
 # --- Benchmarking Loop ---
 seeds = range(2000, 2000 + 30)  # 2000 to 2014 inclusive
@@ -91,6 +141,6 @@ export = {
 }
 
 
-with open("low res case b.json", "w") as json_file:
+with open("albation sphe.json", "w") as json_file:
     # Step 5: Format the output with 4-space indentation
     json.dump(export, json_file, indent=4)  #

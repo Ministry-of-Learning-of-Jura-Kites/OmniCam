@@ -98,6 +98,7 @@ speedup = avg_ref_time / avg_op_time
 print(f"Mean Operational Time: {avg_op_time:.2f}s")
 print(f"Mean Reference Time:   {avg_ref_time:.2f}s")
 print(f"Average Speedup:        {speedup:.1f}x")
+print(f"Takes:        {1/speedup*100:.2f}x")
 
 plt.figure(figsize=(10, 6))
 

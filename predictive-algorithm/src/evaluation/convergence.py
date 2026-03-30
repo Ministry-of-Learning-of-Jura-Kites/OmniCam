@@ -12,44 +12,35 @@ import vtk
 from main import transform_faces, transform_cameras
 from utils import center_of_face
 from cost_functions import total_cost
+from algorithms import CartesianSerialize
 from scipy.optimize import differential_evolution
-from algorithms import SphericalSerialize
-from state import State
-from cost_functions import total_cost
-
-import matplotlib.pyplot as plt
-import seaborn as sns
-import numpy as np
-import pandas as pd
 
 
-def super_optimize_de(
-    initial_state: State, seed: int, maxiter: int, num_particles: int, verbose=False
-):
+def optimize_de(initial_state: State, seed: int, verbose=False):
     template = initial_state
+
+    num_cams = len(template.cameras)
+
+    cartesian = CartesianSerialize(seed)
+    # spherical = SphericalSerialize(num_cams, num_faces, template.scale, seed)
+
+    initial_vec = cartesian.state_to_vector(initial_state)
+    # initial_vec = spherical.state_to_vector(initial_state)
+
+    bounds = cartesian.init_bounds(template)
+    # bounds = spherical.init_bounds()
+
+    num_particles = 50
+    init_pop = cartesian.init_pop(num_particles, initial_vec, bounds, num_cams)
+    # init_pop = spherical.init_pop(
+    #     num_particles, initial_vec, bounds, num_cams, num_faces
+    # )
 
     convergence_history = []
 
-    num_faces = len(template.faces)
-    num_cams = len(template.cameras)
-
-    # cartesian = CartesianSerialize()
-    spherical = SphericalSerialize(num_cams, num_faces, template.scale, seed)
-
-    # initial_vec = cartesian.state_to_vector(initial_state)
-    initial_vec = spherical.state_to_vector(initial_state)
-
-    # bounds = cartesian.init_bounds(template)
-    bounds = spherical.init_bounds()
-
-    # init_pop = cartesian.init_pop(num_particles, initial_vec, bounds, num_cams)
-    init_pop = spherical.init_pop(
-        num_particles, initial_vec, bounds, num_cams, num_faces
-    )
-
     def objective(vec):
-        # state = cartesian.vector_to_state(vec, template)
-        state = spherical.vector_to_state(vec, template)
+        state = cartesian.vector_to_state(vec, template)
+        # state = spherical.vector_to_state(vec, template)
         cost = total_cost(state, verbose)
         # render_from_state(None, state)
         return cost
@@ -64,7 +55,7 @@ def super_optimize_de(
         objective,
         bounds,
         strategy="rand1bin",
-        maxiter=maxiter,
+        maxiter=500,
         init=init_pop,
         mutation=(0.2, 0.7),
         popsize=num_particles,
@@ -74,23 +65,83 @@ def super_optimize_de(
         # tol=0 ignores relative change in favor of atol
         tol=0,
         # atol matches epsilon (10^-6)
-        atol=1e-4,
-        callback=callback,
+        atol=1e-2,
         # Ensure it checks for 50 consecutive generations
         # Note: SciPy's internal 'convergence' check varies slightly by version,
         # but setting polish=False ensures it stops strictly on these bounds.
         polish=False,
+        callback=callback,
     )
 
     print(f"Total generations used: {result.nit}")
 
-    # return cartesian.vector_to_state(result.x, template)
-    return (spherical.vector_to_state(result.x, template), result, convergence_history)
+    return (cartesian.vector_to_state(result.x, template), result, convergence_history)
+    # return (spherical.vector_to_state(result.x, template), result)
 
 
-def optimize(
-    req: OptimizeRequest, seed: int, maxiter: int, num_particles: int
-) -> State:
+def super_optimize_de(initial_state: State, seed: int, verbose=False):
+    template = initial_state
+
+    num_cams = len(template.cameras)
+
+    cartesian = CartesianSerialize(seed)
+    # spherical = SphericalSerialize(num_cams, num_faces, template.scale, seed)
+
+    initial_vec = cartesian.state_to_vector(initial_state)
+    # initial_vec = spherical.state_to_vector(initial_state)
+
+    bounds = cartesian.init_bounds(template)
+    # bounds = spherical.init_bounds()
+
+    num_particles = 200
+    init_pop = cartesian.init_pop(num_particles, initial_vec, bounds, num_cams)
+    # init_pop = spherical.init_pop(
+    #     num_particles, initial_vec, bounds, num_cams, num_faces
+    # )
+
+    convergence_history = []
+
+    def objective(vec):
+        state = cartesian.vector_to_state(vec, template)
+        # state = spherical.vector_to_state(vec, template)
+        cost = total_cost(state, verbose)
+        # render_from_state(None, state)
+        return cost
+
+    def callback(xk, convergence):
+        # xk is the best parameter vector found so far in this generation
+        # We re-calculate the objective to get the exact cost for the graph
+        current_best_cost = objective(xk)
+        convergence_history.append(1 / current_best_cost)
+
+    result = differential_evolution(
+        objective,
+        bounds,
+        strategy="rand1bin",
+        maxiter=5000,
+        init=init_pop,
+        mutation=(0.2, 0.7),
+        popsize=num_particles,
+        recombination=0.9,
+        rng=seed,
+        # Fitness Stagnation:
+        # tol=0 ignores relative change in favor of atol
+        tol=0,
+        # atol matches epsilon (10^-6)
+        atol=1e-2,
+        # Ensure it checks for 50 consecutive generations
+        # Note: SciPy's internal 'convergence' check varies slightly by version,
+        # but setting polish=False ensures it stops strictly on these bounds.
+        polish=False,
+        callback=callback,
+    )
+
+    print(f"Total generations used: {result.nit}")
+
+    return (cartesian.vector_to_state(result.x, template), result, convergence_history)
+
+
+def optimize(req: OptimizeRequest, seed: int, super: bool) -> State:
     pl = None
     if env_settings.dev_mode:
         from pyvistaqt import BackgroundPlotter
@@ -146,9 +197,10 @@ def optimize(
     #     # pl,
     #     None,
     # )
-    final_state, _res, convergence_history = super_optimize_de(
-        state, seed, maxiter, num_particles
-    )
+    if super:
+        final_state, _res, convergence_history = super_optimize_de(state, seed)
+    else:
+        final_state, _res, convergence_history = optimize_de(state, seed)
 
     end_time = time.perf_counter()
     elapsed_time = end_time - start_time
@@ -180,12 +232,7 @@ def parse_uuid_base64(base64_str: str) -> uuid.UUID:
     return uuid.UUID(bytes=decoded_bytes)
 
 
-small_model_id_raw = "aBOpEuNkQZCQQeOnct1oRA"
-medium_model_id_raw = "9pUzFr5iRWeIcu50urUsvQ"
-large_model_id_raw = "It6QmaHGSHCaTtiGSS13mA"
-small_model_id = parse_uuid_base64(small_model_id_raw)
-medium_model_id = parse_uuid_base64(medium_model_id_raw)
-large_model_id = parse_uuid_base64(large_model_id_raw)
+small_model_id_raw = "/home/frook/Downloads/living 1.14"
 
 trials = 10
 results_summary = []
@@ -198,7 +245,7 @@ def cost_to_fitness(cost_value):
     return 1 / cost_value
 
 
-for model_id in [small_model_id]:
+for model_id in [small_model_id_raw]:
     op_fitness_scores = []
     ref_fitness_scores = []
     op_times = []
@@ -214,14 +261,14 @@ for model_id in [small_model_id]:
 
         # 1. Run Operational Trial
         start_op = time.perf_counter()
-        cost_op, h_op = optimize(payload, seed, 500, 50)
+        cost_op, h_op = optimize(payload, seed, False)
         op_fitness_histories.append(h_op)
         op_fitness_scores.append(cost_to_fitness(cost_op))
         op_times.append(time.perf_counter() - start_op)
 
         # 2. Run Reference Trial
         start_ref = time.perf_counter()
-        cost_ref, h_ref = optimize(payload, seed, 5000, 200)
+        cost_ref, h_ref = optimize(payload, seed, True)
         ref_fitness_histories.append(h_ref)
         ref_fitness_scores.append(cost_to_fitness(cost_ref))
         ref_times.append(time.perf_counter() - start_ref)
@@ -260,7 +307,7 @@ export_data = {
     "ref_fitness_histories": [list(h) for h in ref_fitness_histories],
 }
 
-breakpoint()
+# breakpoint()
 
 with open("optimization_results_v1.json", "w") as f:
     json.dump(export_data, f, indent=4)

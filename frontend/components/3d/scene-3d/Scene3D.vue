@@ -423,6 +423,48 @@ onMounted(() => {
       }
 
       sceneStates.value!.tresContext.value = context;
+      let lastFrameTime = performance.now();
+      let frameCount = 0;
+      let totalTime = 0;
+      renderer.loop.onBeforeLoop(() => {
+        const currentTime = performance.now();
+        const delta = currentTime - lastFrameTime; // The precise duration of the last frame
+
+        totalTime += delta;
+        frameCount++;
+
+        // Log the average every 60 frames for readability
+        if (frameCount >= 60) {
+          const averageFrameTime = totalTime / frameCount;
+
+          console.log(
+            `Avg Frame Time: %c${averageFrameTime.toFixed(3)}ms`,
+            "color: #00ff00; font-weight: bold;",
+          );
+
+          // Reset counters
+          frameCount = 0;
+          totalTime = 0;
+        }
+
+        lastFrameTime = currentTime;
+        stats!.begin();
+      });
+      // let frameCount = 0;
+      renderer.loop.onLoop(() => {
+        stats!.end();
+        // if (frameCount % 100 === 0) {
+        //   console.table({
+        //     // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        //     "Draw Calls": (renderer.instance as any).info.render.calls,
+        //     Triangles: renderer.instance.info.render.triangles,
+        //     "Geometries (Mem)": renderer.instance.info.memory.geometries,
+        //     "Textures (Mem)": renderer.instance.info.memory.textures,
+        //   });
+        // }
+        // frameCount++;
+      });
+      sceneStates.value!.tresContext.value = context;
       renderer.instance.domElement.addEventListener(
         "pointerdown",
         onCanvasPointer,
@@ -612,6 +654,7 @@ const isShowingCamDirection = computed(() => {
           id="canvas"
           ref="canvas"
           :window-size="false"
+          :preserveDrawingBuffer="true"
           clear-color="#0E0C29"
           tabindex="0"
           alpha

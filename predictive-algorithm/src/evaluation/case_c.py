@@ -18,7 +18,7 @@ from main import assign_faces
 
 # --- Setup Shared Resources ---
 gltf = (
-    pv.read(path.join("/home/frook/Downloads/omnicam/test case b.glb"))
+    pv.read(path.join("/home/frook/Downloads/omnicam/test case c.glb"))
     .combine()
     .extract_surface()
     .triangulate()
@@ -29,9 +29,17 @@ gltf_locator = vtk.vtkStaticCellLocator()
 gltf_locator.SetDataSet(gltf)
 gltf_locator.BuildLocator()
 
-face = np.array([[2, 2 + 1, 2], [-2, 2 + 1, 2], [-2, -2 + 1, 2], [2, -2 + 1, 2]])
+face = np.array(
+    [
+        [0.2, 1 - 0.76732698797, 1],
+        [0.2, 1 - 0.76732698797, -1],
+        [0.2, -1 - 0.76732698797, -1],
+        [0.2, -1 - 0.76732698797, 1],
+    ]
+)
+
 cam_config = CameraConfiguration(
-    pixels=[500, 500],
+    pixels=[5000, 5000],
     vfov=60,
     name="f",
 )
@@ -83,6 +91,17 @@ for seed in seeds:
 
     print(f"Seed {seed} | Time: {elapsed_time:.4f}s | Cost: {current_cost:.4f}")
 
+    # Optional: Visualization of the last result if dev_mode is on
+    if env_settings.dev_mode:
+        from pyvistaqt import BackgroundPlotter
+
+        pl = BackgroundPlotter()
+        init_3d_scene(pl, final_state)
+        render_from_state(pl, final_state)
+        pl.show()
+        breakpoint()
+        # Note: pl.close() or breakpoint() handling as needed
+
 export = {
     "times": times,
     "costs": costs,
@@ -91,6 +110,6 @@ export = {
 }
 
 
-with open("low res case b.json", "w") as json_file:
+with open("case c.json", "w") as json_file:
     # Step 5: Format the output with 4-space indentation
     json.dump(export, json_file, indent=4)  #

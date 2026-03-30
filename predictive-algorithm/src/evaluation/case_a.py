@@ -1,3 +1,5 @@
+import json
+import math
 from os import path
 import time
 from cost_functions import total_cost
@@ -27,8 +29,8 @@ cam_config = CameraConfiguration(
 
 # --- Benchmarking Parameters ---
 seeds = range(2000, 2000 + 30)
-results_time = []
-results_cost = []
+times = []
+costs = []
 results_gens = []
 
 print(f"Benchmarking {len(seeds)} seeds...")
@@ -69,25 +71,20 @@ for seed in seeds:
     elapsed = end_time - start_time
     cost = total_cost(final_state, True)
 
-    results_time.append(elapsed)
-    results_cost.append(cost)
+    times.append(elapsed)
+    costs.append(cost)
     results_gens.append(gens)
 
     print(f"Seed {seed}: {gens} gens | {elapsed:.4f}s | Cost: {cost:.4f}")
 
-# --- Final Statistics ---
-avg_time = np.mean(results_time)
-avg_cost = np.mean(results_cost)
-med_cost = np.median(results_cost)
+export = {
+    "times": times,
+    "costs": costs,
+    "results_gens": results_gens,
+    "seeds": list(seeds),
+}
 
-# Calculate a (mean) and b (standard deviation)
-gen_mean = np.mean(results_gens)
-gen_std = np.std(results_gens)
 
-print("\n" + "=" * 40)
-print(f"AVERAGE RESULTS (Seeds {seeds.start}-{seeds.stop-1})")
-print(f"Generations:  {gen_mean:.2f} ± {gen_std:.2f}")
-print(f"Avg Time:     {avg_time:.4f} seconds")
-print(f"Avg Cost:     {avg_cost:.4f}")
-print(f"Median Cost:     {med_cost:.4f}")
-print("=" * 40)
+with open("case a.json", "w") as json_file:
+    # Step 5: Format the output with 4-space indentation
+    json.dump(export, json_file, indent=4)  #
