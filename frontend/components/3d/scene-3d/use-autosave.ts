@@ -84,6 +84,37 @@ export function useAutosave(
     ]),
   );
 
+  onMounted(() => {
+    watch(sceneStates.tresContext, (ctx) => {
+      const { onBeforeLoop } = ctx!.renderer.loop;
+      const takeNextFrame = ref(false);
+
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (window as any).screenshot = () => {
+        takeNextFrame.value = true;
+      };
+      onBeforeLoop(() => {
+        if (takeNextFrame.value) {
+          const renderer = toRaw(ctx!.renderer!.instance);
+
+          // We don't need to call .render() manually here
+          // because Tres is about to do it anyway!
+
+          // Use a one-time 'afterrender' listener to grab the pixels
+          renderer.domElement.toBlob((blob) => {
+            const url = URL.createObjectURL(blob!);
+            const link = document.createElement("a");
+            link.href = url;
+            link.download = "screenshot.png";
+            link.click();
+          }, "image/png");
+
+          takeNextFrame.value = false; // Reset the flag
+        }
+      });
+    });
+  });
+
   watch(
     () => sceneStates.facesManagement.faces,
     () => {

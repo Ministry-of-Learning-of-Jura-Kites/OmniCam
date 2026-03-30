@@ -254,7 +254,7 @@ def transform_cameras(raw_cam_configs: List[ReqCameraConfiguration]):
     return cameras
 
 
-def optimize(req: OptimizeRequest) -> State:
+def optimize(req: OptimizeRequest, seed: int = 2000) -> State:
     pl = None
     if env_settings.dev_mode:
         from pyvistaqt import BackgroundPlotter
@@ -291,8 +291,6 @@ def optimize(req: OptimizeRequest) -> State:
         gltf=gltf,
         gltf_locator=gltf_locator,
     )
-
-    seed = 2000
 
     num_faces = len(state.faces)
     num_cameras = len(state.cameras)

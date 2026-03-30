@@ -3,7 +3,7 @@ import math
 from os import path
 import time
 from cost_functions import total_cost
-from algorithms.differential_evolution import optimize_de
+from algorithms.particle_swarm_opt import optimize_pso
 import numpy as np
 from state import CameraConfiguration, CameraState, State
 import quaternion
@@ -37,7 +37,7 @@ cam_config = CameraConfiguration(
 )
 
 # --- Benchmarking Loop ---
-seeds = range(2000, 2000 + 30)  # 2000 to 2014 inclusive
+seeds = range(2000, 2000 + 10)  # 2000 to 2014 inclusive
 times = []
 costs = []
 results_gens = []
@@ -70,7 +70,7 @@ for seed in seeds:
 
     # 3. Run Optimization and Time it
     start_time = time.perf_counter()
-    final_state, result = optimize_de(state, seed)
+    final_state, result = optimize_pso(state, seed)
     end_time = time.perf_counter()
 
     # 4. Record Results
@@ -79,7 +79,7 @@ for seed in seeds:
 
     times.append(elapsed_time)
     costs.append(current_cost)
-    results_gens.append(result.nit)
+    results_gens.append(result)
 
     print(f"Seed {seed} | Time: {elapsed_time:.4f}s | Cost: {current_cost:.4f}")
 
@@ -90,7 +90,6 @@ export = {
     "seeds": list(seeds),
 }
 
-
-with open("low res case b.json", "w") as json_file:
+with open("case b pso.json", "w") as json_file:
     # Step 5: Format the output with 4-space indentation
     json.dump(export, json_file, indent=4)  #

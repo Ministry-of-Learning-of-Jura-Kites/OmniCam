@@ -336,7 +336,7 @@ onUnmounted(() => {
 
 <template>
   <primitive :object="group" />
-  <TresMesh :position="center" :visible="!isPreview">
+  <!-- <TresMesh :position="center" :visible="!isPreview">
     <MovableArrow
       v-for="dir of ['x', 'y', 'z'] as const"
       :key="dir"
@@ -358,5 +358,5 @@ onUnmounted(() => {
       @move="onRotDragged"
       @up="onRotEnd"
     />
-  </TresMesh>
+  </TresMesh> -->
 </template>

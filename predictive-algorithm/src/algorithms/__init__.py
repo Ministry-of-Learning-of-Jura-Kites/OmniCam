@@ -3,7 +3,7 @@ from typing import List, Tuple
 from state import State
 import numpy as np
 from dataclasses import dataclass, replace
-from utils import center_of_face, look_at_quaternion
+from utils import look_at_quaternion
 
 
 class AlgorithmSerialization(ABC):
@@ -172,12 +172,15 @@ class AlgorithmSerialization(ABC):
 #     return replace(template, cameras=new_cameras)
 
 
+@dataclass
 class CartesianSerialize(AlgorithmSerialization):
+    seed: int
+
     def state_to_vector(self, state: State):
         """Flattens State into a 1D numpy array."""
         vec = []
         for cam in state.cameras:
-            vec.extend(cam.pos)  # Just 3 params: x, y, z
+            vec.extend(cam.pos - cam.center_of_faces)  # Just 3 params: x, y, z
         return np.array(vec)
 
     def vector_to_state(self, vec, template_state: State):
@@ -185,10 +188,12 @@ class CartesianSerialize(AlgorithmSerialization):
         new_cameras = []
         idx = 0
         for i in range(len(template_state.cameras)):
-            pos = vec[idx : idx + 3]
+            rel_pos = vec[idx : idx + 3]
+
+            face_center = template_state.cameras[i].center_of_faces
+            pos = face_center + rel_pos
 
             # Calculate Look-At rotation automatically
-            face_center = center_of_face(template_state.faces[0])
             direction = face_center - pos
             # Use your existing utility to keep the camera pointed at the target
             angle = look_at_quaternion(direction)
