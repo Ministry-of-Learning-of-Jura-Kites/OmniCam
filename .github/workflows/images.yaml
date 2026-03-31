@@ -1,0 +1,34 @@
+on:
+  release:
+    types: [published]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Build frontend
+        uses: docker/build-push-action@v2
+        with:
+          context: frontend
+          push: true
+          tags: |
+            ghcr.io/${{ github.repository_owner }}/omnicam_frontend:${{ github.ref_name }}
+            ghcr.io/${{ github.repository_owner }}/omnicam_frontend:latest
+
+      - name: Build backend
+        uses: docker/build-push-action@v2
+        with:
+          context: backend
+          push: true
+          tags: |
+            ghcr.io/${{ github.repository_owner }}/omnicam_backend:${{ github.ref_name }}
+            ghcr.io/${{ github.repository_owner }}/omnicam_backend:latest
+
+      - name: Build algo
+        uses: docker/build-push-action@v2
+        with:
+          context: predictive-algorithm
+          push: true
+          tags: |
+            ghcr.io/${{ github.repository_owner }}/omnicam_algo:${{ github.ref_name }}
+            ghcr.io/${{ github.repository_owner }}/omnicam_algo:latest
