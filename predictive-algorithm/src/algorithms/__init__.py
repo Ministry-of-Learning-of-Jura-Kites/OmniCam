@@ -3,7 +3,7 @@ from typing import List, Tuple
 from state import State
 import numpy as np
 from dataclasses import dataclass, replace
-from utils import center_of_face, look_at_quaternion
+from utils import look_at_quaternion
 
 
 class AlgorithmSerialization(ABC):
@@ -172,12 +172,15 @@ class AlgorithmSerialization(ABC):
 #     return replace(template, cameras=new_cameras)
 
 
+@dataclass
 class CartesianSerialize(AlgorithmSerialization):
+    seed: int
+
     def state_to_vector(self, state: State):
         """Flattens State into a 1D numpy array."""
         vec = []
         for cam in state.cameras:
-            vec.extend(cam.pos)  # Just 3 params: x, y, z
+            vec.extend(cam.pos - cam.center_of_faces)  # Just 3 params: x, y, z
         return np.array(vec)
 
     def vector_to_state(self, vec, template_state: State):
@@ -185,10 +188,12 @@ class CartesianSerialize(AlgorithmSerialization):
         new_cameras = []
         idx = 0
         for i in range(len(template_state.cameras)):
-            pos = vec[idx : idx + 3]
+            rel_pos = vec[idx : idx + 3]
+
+            face_center = template_state.cameras[i].center_of_faces
+            pos = face_center + rel_pos
 
             # Calculate Look-At rotation automatically
-            face_center = center_of_face(template_state.faces[0])
             direction = face_center - pos
             # Use your existing utility to keep the camera pointed at the target
             angle = look_at_quaternion(direction)
@@ -213,6 +218,8 @@ class CartesianSerialize(AlgorithmSerialization):
         total_dim = len(initial_vec)
         init_pop = np.empty((num_particles, total_dim))
 
+        rng = np.random.default_rng(self.seed)
+
         low_b = np.array([b[0] for b in bounds])
         high_b = np.array([b[1] for b in bounds])
 
@@ -221,7 +228,7 @@ class CartesianSerialize(AlgorithmSerialization):
             particle = initial_vec.copy()
 
             # Add spatial noise
-            noise = np.random.uniform(-5, 5, total_dim)
+            noise = rng.uniform(-5, 5, total_dim)
 
             # For the second half, we can add a larger "jump" to spread them out
             if i >= num_particles // 2:
@@ -237,6 +244,7 @@ class SphericalSerialize(AlgorithmSerialization):
     num_cams: int
     num_faces: int
     scale: float  # virtual meter per meter
+    seed: int
 
     def init_bounds(self) -> List[Tuple[float, float]]:
         bounds = []
@@ -259,6 +267,8 @@ class SphericalSerialize(AlgorithmSerialization):
         low_b = np.array([b[0] for b in bounds])
         high_b = np.array([b[1] for b in bounds])
 
+        rng = np.random.default_rng(self.seed)
+
         # Extract target "normal" or reference angles from the initial_vec
         # We assume initial_vec represents a 'good' starting orientation
         for i in range(num_particles):
@@ -271,7 +281,7 @@ class SphericalSerialize(AlgorithmSerialization):
                 # Mix of close and far within bounds
                 r_min, r_max = bounds[base][0], bounds[base][1]
                 # Use a beta distribution to favor the middle-range but allow extremes
-                particle[base] = np.random.uniform(r_min, r_max)
+                particle[base] = rng.uniform(r_min, r_max)
 
                 # 2. Diversify Angles (theta, phi) with Normal Bias
                 # Instead of pure uniform, we use a normal dist centered on the initial_vec
@@ -281,11 +291,11 @@ class SphericalSerialize(AlgorithmSerialization):
                 ) * 2.0  # Increases variance across pop
 
                 # Theta (Azimuth) noise
-                theta_noise = np.random.normal(0, 30 * spread_factor)
+                theta_noise = rng.normal(0, 30 * spread_factor)
                 particle[base + 1] += theta_noise
 
                 # Phi (Elevation) noise - favor 'top-down' or 'front-on' based on initial
-                phi_noise = np.random.normal(0, 15 * spread_factor)
+                phi_noise = rng.normal(0, 15 * spread_factor)
                 particle[base + 2] += phi_noise
 
                 # Wrap angles
@@ -293,7 +303,7 @@ class SphericalSerialize(AlgorithmSerialization):
                 particle[base + 2] = np.clip(particle[base + 2], -90, 90)
 
             # 3. Add a final layer of uniform jitter for global coverage
-            jitter = np.random.uniform(-2, 2, total_dim)
+            jitter = rng.uniform(-2, 2, total_dim)
 
             # Ensure the particle stays within search space
             init_pop[i] = np.clip(particle + jitter, low_b, high_b)

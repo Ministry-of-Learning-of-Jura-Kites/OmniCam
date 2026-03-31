@@ -94,7 +94,7 @@ def assign_faces(state: State, seed: int):
     for _ in range(1, num_cameras):
         dist_sq = np.min(cdist(face_centers, face_centers[seeds_idx]), axis=1) ** 2
         probs = dist_sq / dist_sq.sum()
-        seeds_idx.append(np.random.choice(num_faces, p=probs))
+        seeds_idx.append(rng.choice(num_faces, p=probs))
 
     seed_centers = face_centers[seeds_idx]
     seed_normals = face_normals[seeds_idx]
@@ -254,7 +254,7 @@ def transform_cameras(raw_cam_configs: List[ReqCameraConfiguration]):
     return cameras
 
 
-def optimize(req: OptimizeRequest) -> State:
+def optimize(req: OptimizeRequest, seed: int = 2000) -> State:
     pl = None
     if env_settings.dev_mode:
         from pyvistaqt import BackgroundPlotter
@@ -292,8 +292,6 @@ def optimize(req: OptimizeRequest) -> State:
         gltf_locator=gltf_locator,
     )
 
-    seed = 2000
-
     num_faces = len(state.faces)
     num_cameras = len(state.cameras)
 
@@ -317,7 +315,7 @@ def optimize(req: OptimizeRequest) -> State:
     #     # pl,
     #     None,
     # )
-    final_state = optimize_de(state, seed)
+    final_state, _res = optimize_de(state, seed)
 
     end_time = time.perf_counter()
     elapsed_time = end_time - start_time
