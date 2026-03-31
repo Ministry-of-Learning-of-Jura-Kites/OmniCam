@@ -374,36 +374,70 @@ onMounted(() => {
     (context) => {
       if (!context || !stats) return;
       const renderer = context.renderer;
-      let lastFrameTime = performance.now();
-      let frameCount = 0;
-      let totalTime = 0;
-      renderer.loop.onBeforeLoop(() => {
-        const currentTime = performance.now();
-        const delta = currentTime - lastFrameTime; // The precise duration of the last frame
+      let frameDurations: number[] = [];
+      const WINDOW_SIZE = 60;
 
-        totalTime += delta;
-        frameCount++;
+      // O(1) Global Tracking for P95
+      let p95GlobalAverage = 0;
+      let p95SampleCount = 0;
 
-        // Log the average every 60 frames for readability
-        if (frameCount >= 60) {
-          const averageFrameTime = totalTime / frameCount;
+      // O(1) Global Tracking for every single Frame
+      let globalFrameAvg = 0;
+      let totalFrameCount = 0;
+
+      setInterval(() => {
+        if (frameDurations.length >= WINDOW_SIZE) {
+          const sorted = [...frameDurations].sort((a, b) => a - b);
+          const p95 = sorted[Math.floor(0.95 * (WINDOW_SIZE - 1))]!;
+
+          const windowAvg =
+            frameDurations.reduce((a, b) => a + b, 0) / WINDOW_SIZE;
+
+          // 2. Update Global P95 Average (O(1) space)
+          p95SampleCount++;
+          p95GlobalAverage =
+            (p95 + p95GlobalAverage * (p95SampleCount - 1)) / p95SampleCount;
+
+          // Local copies for the async log
+          const snapshot = {
+            windowAvg,
+            p95,
+            p95Global: p95GlobalAverage,
+            frameGlobal: globalFrameAvg,
+            totalFrames: totalFrameCount,
+          };
 
           console.log(
-            `Avg Frame Time: %c${averageFrameTime.toFixed(3)}ms`,
-            "color: #00ff00; font-weight: bold;",
+            `[Stats] WinAvg: ${snapshot.windowAvg.toFixed(2)}ms | ` +
+              `%cP95: ${snapshot.p95.toFixed(2)}ms%c | ` +
+              `Global P95: %c${snapshot.p95Global.toFixed(2)}ms%c | ` +
+              `Global Frame: %c${snapshot.frameGlobal.toFixed(3)}ms`,
+            "color: #ffaa00; font-weight: bold;", // P95
+            "color: inherit;",
+            "color: #00d4ff; font-weight: bold;", // Global P95
+            "color: inherit;",
+            "color: #00ff00; font-weight: bold;", // Global Frame
           );
 
-          // Reset counters
-          frameCount = 0;
-          totalTime = 0;
+          frameDurations = [];
         }
+      });
 
-        lastFrameTime = currentTime;
-        stats!.begin();
+      renderer.loop.onBeforeLoop((time: { delta: number; elapsed: number }) => {
+        const delta = time.delta * 1000; // Assuming time.delta is in seconds
+
+        // 1. Update Global Frame Average (O(1) space)
+        // This updates every single frame for maximum precision
+        totalFrameCount++;
+        globalFrameAvg =
+          (delta + globalFrameAvg * (totalFrameCount - 1)) / totalFrameCount;
+
+        frameDurations.push(delta);
+        // stats!.begin();
       });
       // let frameCount = 0;
       renderer.loop.onLoop(() => {
-        stats!.end();
+        // stats!.end();
         // if (frameCount % 100 === 0) {
         //   console.table({
         //     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -582,7 +616,7 @@ function selectCurrentCamShortcut() {
           id="canvas"
           ref="canvas"
           :window-size="false"
-          :preserveDrawingBuffer="true"
+          :preserve-drawing-buffer="true"
           clear-color="#0E0C29"
           tabindex="0"
         >

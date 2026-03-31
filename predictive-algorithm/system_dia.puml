@@ -1,0 +1,39 @@
+@startuml
+skinparam componentStyle rectangle
+skinparam monochrome true
+skinparam shadowing false
+skinparam nodesep 60
+skinparam ranksep 60
+
+title Tri-Tier Architecture (ISO 23247 Digital Twin)
+
+package "Visualization Layer (User Entity)" {
+    [Three.js / WebGL] as UI
+}
+
+package "Synchronization Bridge (Device Communication Entity)" {
+    [Go Concurrency Engine] as Bridge
+    database "Redis Streams" as Redis
+    [Protocol Buffers] as Protobuf
+    
+    interface "WebSocket (Full-Duplex)" as WS
+    interface "Goroutines" as Goro
+}
+
+package "Optimization Core (Digital Twin Entity)" {
+    [Optimization] as opt
+}
+
+UI <-> WS : "Bidirectional"
+
+WS -- Goro
+Goro <--> Bridge
+
+Bridge -down-> Protobuf : "Serialization"
+Protobuf -down-> Redis : "High-dimensional\nUpdates"
+
+Redis <-> opt
+
+Bridge -up-> UI : "Real-time Spatial Feedback"
+
+@enduml
