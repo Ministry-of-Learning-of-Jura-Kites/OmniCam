@@ -33,6 +33,7 @@ import CoverageCornerGizmos from "../coverage-area-mesh/CoverageCornerGizmos.vue
 import { orderPointsOnPlane } from "~/utils/face-helper/order-points-plane";
 import { computeStableNormal } from "~/utils/face-helper/stable-normal";
 import { averageVector } from "~/utils/face-helper/avg-vec";
+import { v4 as uuidv4 } from "uuid";
 
 const { isPanelOpen, currentPanel, camPanelInfo } = inject(PANEL_KEY)!;
 const { selectedCamId } = camPanelInfo;
@@ -201,7 +202,7 @@ function handleCoverageAreaPointer(event: PointerEvent) {
     );
 
     if (face) {
-      sceneStates.facesManagement.add(crypto.randomUUID(), face);
+      sceneStates.facesManagement.add(uuidv4(), face);
     }
 
     requestAnimationFrame(() => {
@@ -371,14 +372,16 @@ onMounted(() => {
   watch(
     () => canvas.value?.context,
     (context) => {
-      if (!context || !stats) return;
+      if (!context) return;
       const renderer = context.renderer;
-      renderer.loop.onBeforeLoop(() => {
-        stats!.begin();
-      });
-      renderer.loop.onLoop(() => {
-        stats!.end();
-      });
+      if (stats != null) {
+        renderer.loop.onBeforeLoop(() => {
+          stats!.begin();
+        });
+        renderer.loop.onLoop(() => {
+          stats!.end();
+        });
+      }
       sceneStates.tresContext.value = context;
       renderer.instance.domElement.addEventListener(
         "pointerdown",
@@ -416,15 +419,17 @@ onMounted(() => {
   );
 });
 
-onMounted(() => {
-  stats = new Stats();
-  stats.showPanel(0);
-  // stats.showPanel(1);
-  // stats.showPanel(2); // 0: fps, 1: ms, 2: mb, 3+: custom
-  if (document) {
-    document.body.appendChild(stats.dom);
-  }
-});
+if (config.public.devMode) {
+  onMounted(() => {
+    stats = new Stats();
+    stats.showPanel(0);
+    // stats.showPanel(1);
+    // stats.showPanel(2); // 0: fps, 1: ms, 2: mb, 3+: custom
+    if (document) {
+      document.body.appendChild(stats.dom);
+    }
+  });
+}
 watch(
   () => sceneStates.selectionMode.value,
   (mode) => {
