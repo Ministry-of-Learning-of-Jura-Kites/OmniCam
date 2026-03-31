@@ -15,7 +15,16 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
       - name: Prepare Lowercase Owner
-        run: echo "OWNER_LC=${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]' >> $GITHUB_ENV
+        id: prep
+        run: |
+          OWNER="${{ github.repository_owner }}"
+          echo "OWNER_LC=${OWNER,,}" >> $GITHUB_ENV
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
       - name: Set Tag
         run: |
           if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
@@ -33,7 +42,7 @@ jobs:
             ghcr.io/${{ env.OWNER_LC }}/omnicam_frontend:latest
 
       - name: Build backend
-        uses: docker/build-push-action@v2
+        uses: docker/build-push-action@v6
         with:
           context: backend
           push: true
@@ -42,7 +51,7 @@ jobs:
             ghcr.io/${{ env.OWNER_LC }}/omnicam_backend:latest
 
       - name: Build algo
-        uses: docker/build-push-action@v2
+        uses: docker/build-push-action@v6
         with:
           context: predictive-algorithm
           push: true
