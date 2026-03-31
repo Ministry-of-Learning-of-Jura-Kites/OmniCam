@@ -6,6 +6,7 @@ import type { Camerapreset } from "./CameraPanel.vue";
 import LazyCameraSpawnDialog from "./dialog/CameraSpawnDialog.vue";
 import Card from "./ui/card/Card.vue";
 import type { CameraConfig } from "~/messages/protobufs/optimization";
+import { v4 as uuidv4 } from "uuid";
 
 const isCameraSpawnDialogOpen = ref(false);
 
@@ -77,7 +78,7 @@ const toggleAreaVisibility = (faceId: string) => {
 
 function handleAddCameraConfig(preset: Camerapreset) {
   cameraConfigs.push({
-    id: crypto.randomUUID(),
+    id: uuidv4(),
     name: `${preset.vendor} ${preset.camera} ${preset.sensor_name}`,
     fov: Number(preset.fov),
     widthRes: Number(preset.res_w),

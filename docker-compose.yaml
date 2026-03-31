@@ -1,3 +1,6 @@
+# If you want to use pre-built images, set env IMAGE_TAG=v0.0.1b
+# IMAGE_TAG=v0.0.1b docker-compose up
+
 name: omnicam-services
 
 services:
@@ -37,6 +40,7 @@ services:
     build:
       context: .
       dockerfile: ./backend/Dockerfile
+    image: ghcr.io/ministry-of-learning-of-jura-kites/omnicam_backend:${IMAGE_TAG:-latest}
     container_name: omnicam_backend
     env_file:
       - ./backend/.env.prod
@@ -57,6 +61,7 @@ services:
     build:
       context: .
       dockerfile: ./frontend/Dockerfile
+    image: ghcr.io/ministry-of-learning-of-jura-kites/omnicam_frontend:${IMAGE_TAG:-latest}
     container_name: omnicam_frontend
     env_file:
       - ./frontend/.env.prod
@@ -71,8 +76,10 @@ services:
 
   optimization:
     build:
-      context: predictive-algorithm
-    container_name: omnicam_optimization
+      context: .
+      dockerfile: ./predictive-algorithm/Dockerfile
+    image: ghcr.io/ministry-of-learning-of-jura-kites/omnicam_algo:${IMAGE_TAG:-latest}
+    container_name: omnicam_algo
     env_file:
       - ./predictive-algorithm/.env.prod
     ports:
@@ -82,11 +89,11 @@ services:
     networks:
       - private_net
 
-  # redis:
-  #   image: redis:8
-  #   ports:
-  #     - "6379:6379"
-  #   command: redis-server --appendonly yes --requirepass your_redis_password
+  redis:
+    image: redis:8
+    ports:
+      - "6379:6379"
+    command: redis-server --appendonly yes
 
 networks:
   dmz_net:

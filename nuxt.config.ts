@@ -75,6 +75,7 @@ export default defineNuxtConfig({
     internalBackendHost: "error",
     public: {
       externalBackendHost: "error",
+      devMode: false,
     },
   },
 });
