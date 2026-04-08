@@ -15,31 +15,30 @@ export async function useAuth() {
 
   const headers = useRequestHeaders(["cookie"]);
 
-  const { data, error } = await useAsyncData(
+  await useAsyncData(
     "auth-me",
-    () => {
-      return $fetch<{ data: User }>(
+    () =>
+      $fetch<{ data: User }>(
         `http://${getHostFromRuntime(config, import.meta.client)}/api/v1/me`,
         {
           method: "GET",
           headers: headers,
           credentials: "include",
+          onResponseError({ response }) {
+            console.error("fetch /me error", response._data);
+            user.value = null;
+          },
         },
-      );
-    },
+      ),
     {
       // Only run if we don't already have a user in state
       immediate: !user.value,
+      transform: (res) => {
+        user.value = res.data;
+        return res.data;
+      },
     },
   );
-  if (data.value) {
-    user.value = data.value.data;
-  }
-
-  if (error.value) {
-    console.error("fetch /me error", error.value);
-    user.value = null;
-  }
 
   return { user };
 }

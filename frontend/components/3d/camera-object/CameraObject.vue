@@ -89,7 +89,6 @@ const camQuat = computed(() => {
         :controlling="cam.controlling"
         direction="x"
         color="green"
-        @move="sceneStates.markedForCheck.add(camId)"
       />
       <MovableArrow
         v-model="cam"
@@ -101,7 +100,6 @@ const camQuat = computed(() => {
         :controlling="cam.controlling"
         direction="y"
         color="red"
-        @move="sceneStates.markedForCheck.add(camId)"
       />
       <MovableArrow
         v-model="cam"
@@ -113,7 +111,6 @@ const camQuat = computed(() => {
         :controlling="cam.controlling"
         direction="z"
         color="blue"
-        @move="sceneStates.markedForCheck.add(camId)"
       />
       <RotationWheel
         v-model="cam"

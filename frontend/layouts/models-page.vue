@@ -88,7 +88,7 @@ provide(PANEL_KEY, {
   },
 });
 
-const workspace = computed(() => route.meta.routeInfo?.workspace);
+const workspace = computed(() => route.params.workspaceId as string);
 </script>
 
 <template>
@@ -97,9 +97,9 @@ const workspace = computed(() => route.meta.routeInfo?.workspace);
       :key="`${route.params.projectId}-${route.params.modelId}-${workspace}`"
       :project-id="route.params.projectId as string"
       :model-id="route.params.modelId as string"
-      :workspace="workspace"
+      :workspace="workspace!"
     >
-      <LazyTopBar :workspace="workspace" />
+      <LazyTopBar :workspace="workspace!" />
 
       <div class="flex-1 flex overflow-hidden">
         <div

@@ -2,7 +2,7 @@ import type { SceneStatesWithHelper } from "~/types/scene-states";
 
 export function usePromptUnsaved(sceneStates: SceneStatesWithHelper) {
   const handleBeforeUnload = (event: BeforeUnloadEvent) => {
-    if (sceneStates.markedForCheck.size > 0) {
+    if (sceneStates.markedForCheck.value) {
       const message =
         "You have unsaved camera changes. Are you sure you want to leave?";
       event.preventDefault();
@@ -17,7 +17,7 @@ export function usePromptUnsaved(sceneStates: SceneStatesWithHelper) {
     window.removeEventListener("beforeunload", handleBeforeUnload);
   });
   onBeforeRouteLeave((to, from, next) => {
-    if (sceneStates.markedForCheck.size > 0) {
+    if (sceneStates.markedForCheck.value) {
       const answer = window.confirm(
         "You have unsaved camera changes. Are you sure you want to leave?",
       );

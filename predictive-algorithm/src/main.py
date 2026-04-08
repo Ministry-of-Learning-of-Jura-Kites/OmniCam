@@ -2,6 +2,7 @@ import asyncio
 import json
 import math
 from os import path
+import sys
 import time
 from typing import Any, Dict, List, Tuple
 import uuid
@@ -410,7 +411,6 @@ def cam_state_to_proto(cam_state: CameraState) -> cam_pb.Camera:
 
 
 async def main():
-    nc = await nats.connect(env_settings.nats_url)
 
     async def message_handler(msg):
         print("Received message", msg)
@@ -466,17 +466,29 @@ async def main():
                 },
             )
 
-    await nc.queue_subscribe(
-        subject=env_settings.req_topic_pattern.format(jobId="*"),
-        queue=env_settings.req_topic_queue,
-        cb=message_handler,
-    )
+    try:
+        nc: nats.NATS = await nats.connect(env_settings.nats_url)
+
+        print("Connected to nats")
+
+        await nc.subscribe(
+            subject=env_settings.req_topic_pattern.format(jobId="*"),
+            queue=env_settings.req_topic_queue,
+            cb=message_handler,
+        )
+
+        print("Worker registered")
+
+    except Exception as e:
+        print("Error while connecting to NATS:", e)
+        sys.exit(1)
 
     try:
-        while True:
-            await asyncio.sleep(0.01)
-    except InterruptedError:
+        await asyncio.Future()
+    except (KeyboardInterrupt, InterruptedError, asyncio.exceptions.CancelledError):
+        print("Closing nats connection")
         await nc.close()
+        print("Gracefully shutdowning...")
 
 
 if __name__ == "__main__":
