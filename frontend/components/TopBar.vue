@@ -36,6 +36,7 @@ import TooltipContent from "./ui/tooltip/TooltipContent.vue";
 import TooltipProvider from "./ui/tooltip/TooltipProvider.vue";
 import { MODEL_INFO_KEY, MAP_KEY } from "~/constants/state-keys";
 import Setting3dDialog from "./dialog/Setting3dDialog.vue";
+import { uuidToBase64Url } from "~/lib/uuid";
 
 const props = defineProps({
   workspace: {
@@ -77,6 +78,8 @@ const conflicts = ref({});
 const isSettingDialogOpen = ref<boolean>(false);
 
 const isCameraActive = computed(() => sceneStates.currentCamId.value !== null);
+
+const { user } = await useAuth();
 
 async function saveModelToPublic() {
   // Mocked data
@@ -239,6 +242,17 @@ function removeOptimizedCams() {
     delete sceneStates.optimization!.candidateCameras[camId];
   }
 }
+
+async function openShareModal() {
+  console.log("ggg", user.value);
+  const baseUrl = window.location.origin;
+  const projectId = route.params.projectId;
+  const modelId = route.params.modelId;
+  const userIdBase64 = uuidToBase64Url(user.value!.id);
+  await navigator.clipboard.writeText(
+    `${baseUrl}/projects/${projectId}/models/${modelId}/workspaces/${userIdBase64}`,
+  );
+}
 </script>
 
 <template>
@@ -378,6 +392,11 @@ function removeOptimizedCams() {
           >
           <span v-else class="ml-2 button-span-text"> Calibrating...</span>
         </Button>
+
+        <Button size="sm" variant="outline" @click="() => openShareModal()">
+          Share
+        </Button>
+
         <Button
           size="sm"
           variant="outline"

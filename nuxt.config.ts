@@ -74,6 +74,9 @@ export default defineNuxtConfig({
   runtimeConfig: {
     internalBackendHost: "error",
     public: {
+      nuxtHost: "localhost",
+      nuxtPort: 3000,
+      nuxtBackendSecure: true,
       externalBackendHost: "error",
       devMode: false,
     },

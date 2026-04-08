@@ -481,6 +481,6 @@ func (t *UpdateEventRoute) getAutosave(c *gin.Context) {
 
 func (t *UpdateEventRoute) InitRoute(router gin.IRouter) gin.IRouter {
 	router.GET("/projects/:projectId/models/:modelId/autosave", t.getAutosave)
-	router.GET("/models/:modelId/livestream/:workspaceUserId", t.getLivestream)
+	router.GET("/models/:modelId/livestream/:workspaceOwnerId", t.getLivestream)
 	return router
 }

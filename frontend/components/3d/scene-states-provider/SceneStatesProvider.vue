@@ -98,7 +98,7 @@ if (modelWithCamsResp.value == undefined) {
 }
 
 let autosaveWebsocket: UseWebSocketReturn<unknown> | undefined = undefined;
-if (props.workspace != undefined && import.meta.client) {
+if (props.workspace == "me" && import.meta.client) {
   const websocketUrl = `ws://${runtimeConfig.public.externalBackendHost}/api/v1/projects/${props.projectId}/models/${props.modelId}/autosave`;
 
   autosaveWebsocket = useWebSocket(websocketUrl, {
@@ -112,12 +112,14 @@ if (props.workspace != undefined && import.meta.client) {
 }
 
 let livestreamWebsocket: UseWebSocketReturn<unknown> | undefined = undefined;
-if (props.workspace != undefined && props.workspace != "me") {
-  const url = new URL(
-    `api/v1/projects/${props.projectId}/models/${props.modelId}/autosave`,
-    `${runtimeConfig.public.externalBackendHost}/`,
-  );
-
+if (
+  props.workspace != undefined &&
+  props.workspace != "me" &&
+  import.meta.client
+) {
+  const protocol = runtimeConfig.public.nuxtBackendSecure ? "ws" : "wss";
+  // Fix, don't hard code api/v1
+  const url = `${protocol}://${runtimeConfig.public.externalBackendHost}/api/v1/models/${props.modelId}/livestream/${props.workspace}`;
   livestreamWebsocket = useWebSocket(url, {
     autoReconnect: {
       delay: 1000,
