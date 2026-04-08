@@ -136,7 +136,8 @@ function transformFacesData(
 }
 
 export function createBaseSceneStates(
-  websocket: UseWebSocketReturn<unknown> | undefined,
+  autosaveWebsocket: UseWebSocketReturn<unknown> | undefined,
+  livestreamWebsocket: UseWebSocketReturn<unknown> | undefined,
   modelWithCamsResp: ModelWithCamsResp,
 ) {
   const tresContext = ref<TresContext | null>(null);
@@ -364,7 +365,8 @@ export function createBaseSceneStates(
     spectatorCameraRotation,
     spectatorCameraFov,
     tresCanvasParent,
-    websocket,
+    websocket: autosaveWebsocket,
+    livestreamSse: livestreamWebsocket,
     cameras,
     error: null,
     markedForCheck,

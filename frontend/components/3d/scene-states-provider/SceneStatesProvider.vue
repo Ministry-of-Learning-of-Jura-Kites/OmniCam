@@ -97,11 +97,11 @@ if (modelWithCamsResp.value == undefined) {
   }
 }
 
-let websocket: UseWebSocketReturn<unknown> | undefined = undefined;
+let autosaveWebsocket: UseWebSocketReturn<unknown> | undefined = undefined;
 if (props.workspace != undefined && import.meta.client) {
   const websocketUrl = `ws://${runtimeConfig.public.externalBackendHost}/api/v1/projects/${props.projectId}/models/${props.modelId}/autosave`;
 
-  websocket = useWebSocket(websocketUrl, {
+  autosaveWebsocket = useWebSocket(websocketUrl, {
     autoReconnect: {
       delay: 1000,
       onFailed: () => {
@@ -111,7 +111,28 @@ if (props.workspace != undefined && import.meta.client) {
   });
 }
 
-const sceneStates = createBaseSceneStates(websocket, modelWithCamsResp.value!);
+let livestreamWebsocket: UseWebSocketReturn<unknown> | undefined = undefined;
+if (props.workspace != undefined && props.workspace != "me") {
+  const url = new URL(
+    `api/v1/projects/${props.projectId}/models/${props.modelId}/autosave`,
+    `${runtimeConfig.public.externalBackendHost}/`,
+  );
+
+  livestreamWebsocket = useWebSocket(url, {
+    autoReconnect: {
+      delay: 1000,
+      onFailed: () => {
+        alert("Failed to connect websocket after multiple retries.");
+      },
+    },
+  });
+}
+
+const sceneStates = createBaseSceneStates(
+  autosaveWebsocket,
+  livestreamWebsocket,
+  modelWithCamsResp.value!,
+);
 
 if (sceneStates.error != null) {
   if (
