@@ -5,13 +5,13 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"sync"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
-	"github.com/redis/go-redis/v9"
+	"github.com/nats-io/nats.go"
 	"go.uber.org/zap"
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
@@ -25,28 +25,34 @@ import (
 )
 
 type UpdateEventRoute struct {
-	Logger          *zap.Logger
-	Env             *config_env.AppEnv
-	DB              *db_client.DB
-	RedisClient     *redis.Client
-	Upgrader        websocket.Upgrader
-	OptimizeRespMap *sync.Map
+	Logger   *zap.Logger
+	Env      *config_env.AppEnv
+	DB       *db_client.DB
+	Nc       *nats.Conn
+	Upgrader websocket.Upgrader
+}
+
+type EventContext struct {
+	Gin     *gin.Context
+	Conn    *websocket.Conn
+	ModelID uuid.UUID
+	UserID  uuid.UUID
+	Subject string
 }
 
 // Camera handlers
 func (t *UpdateEventRoute) handleEventDelete(
-	c *gin.Context, conn *websocket.Conn,
-	modelId uuid.UUID, userId uuid.UUID, deleteId string,
+	e *EventContext, deleteId string,
 ) {
 	_, err := uuid.Parse(deleteId)
 	if err != nil {
 		return
 	}
 
-	newVersion, err := t.DB.Queries.UpdateWorkspaceCams(c, db_sqlc_gen.UpdateWorkspaceCamsParams{
+	newVersion, err := t.DB.Queries.UpdateWorkspaceCams(e.Gin, db_sqlc_gen.UpdateWorkspaceCamsParams{
 		Key:     []string{deleteId},
-		UserID:  userId,
-		ModelID: modelId,
+		UserID:  e.UserID,
+		ModelID: e.ModelID,
 	})
 	if err != nil {
 		t.Logger.Error("error while updating workspace", zap.Error(err))
@@ -56,12 +62,11 @@ func (t *UpdateEventRoute) handleEventDelete(
 	resp := &protobufs.AutosaveEventResponse{
 		LastUpdatedVersion: newVersion,
 	}
-	sendAutosaveEventResponse(t.Logger, conn, resp)
+	t.sendAutosaveEventResponse(e, resp)
 }
 
 func (t *UpdateEventRoute) handleEventUpsert(
-	c *gin.Context, conn *websocket.Conn,
-	modelId uuid.UUID, userId uuid.UUID, upsert *protobufs.Camera,
+	e *EventContext, upsert *protobufs.Camera,
 ) {
 	cam := messages_cameras.ProtoCamToCam(upsert)
 	marshalled, err := json.Marshal(cam)
@@ -69,11 +74,11 @@ func (t *UpdateEventRoute) handleEventUpsert(
 		t.Logger.Error("error while marshaling camera", zap.Error(err))
 		return
 	}
-	newVersion, err := t.DB.Queries.UpdateWorkspaceCams(c, db_sqlc_gen.UpdateWorkspaceCamsParams{
+	newVersion, err := t.DB.Queries.UpdateWorkspaceCams(e.Gin, db_sqlc_gen.UpdateWorkspaceCamsParams{
 		Key:     []string{upsert.Id},
 		Value:   marshalled,
-		UserID:  userId,
-		ModelID: modelId,
+		UserID:  e.UserID,
+		ModelID: e.ModelID,
 	})
 	if err != nil {
 		t.Logger.Error("error while updating workspace cameras", zap.Error(err))
@@ -83,13 +88,12 @@ func (t *UpdateEventRoute) handleEventUpsert(
 	resp := &protobufs.AutosaveEventResponse{
 		LastUpdatedVersion: newVersion,
 	}
-	sendAutosaveEventResponse(t.Logger, conn, resp)
+	t.sendAutosaveEventResponse(e, resp)
 }
 
 // Calibration handler
 func (t *UpdateEventRoute) handleCalibration(
-	c *gin.Context, conn *websocket.Conn,
-	modelId uuid.UUID, userId uuid.UUID,
+	e *EventContext,
 	event *protobufs.AutosaveEvent_Calibrate,
 	inputVersion uint32,
 	currentVersion *int32,
@@ -98,9 +102,9 @@ func (t *UpdateEventRoute) handleCalibration(
 		return // stale/duplicate
 	}
 
-	row, err := t.DB.Queries.UpdateWorkspaceCalibration(c, db_sqlc_gen.UpdateWorkspaceCalibrationParams{
-		UserID:      userId,
-		ModelID:     modelId,
+	row, err := t.DB.Queries.UpdateWorkspaceCalibration(e.Gin, db_sqlc_gen.UpdateWorkspaceCalibrationParams{
+		UserID:      e.UserID,
+		ModelID:     e.ModelID,
 		ScaleFactor: event.Calibrate.ScaleFactor,
 		ModelHeight: event.Calibrate.ModelHeight,
 	})
@@ -114,12 +118,11 @@ func (t *UpdateEventRoute) handleCalibration(
 	resp := &protobufs.AutosaveEventResponse{
 		LastUpdatedVersion: row.Version,
 	}
-	sendAutosaveEventResponse(t.Logger, conn, resp)
+	t.sendAutosaveEventResponse(e, resp)
 }
 
 func (t *UpdateEventRoute) handleFaceUpsert(
-	c *gin.Context, conn *websocket.Conn,
-	modelId uuid.UUID, userId uuid.UUID,
+	e *EventContext,
 	event *protobufs.AutosaveEvent_FaceUpsert,
 	inputVersion uint32,
 	currentVersion *int32) {
@@ -134,11 +137,11 @@ func (t *UpdateEventRoute) handleFaceUpsert(
 		return
 	}
 
-	newVersion, err := t.DB.Queries.UpdateWorkspaceTargetTrapezoids(c, db_sqlc_gen.UpdateWorkspaceTargetTrapezoidsParams{
+	newVersion, err := t.DB.Queries.UpdateWorkspaceTargetTrapezoids(e.Gin, db_sqlc_gen.UpdateWorkspaceTargetTrapezoidsParams{
 		Key:     []string{event.FaceUpsert.CoverageFace.Id},
 		Value:   marshalled,
-		UserID:  userId,
-		ModelID: modelId,
+		UserID:  e.UserID,
+		ModelID: e.ModelID,
 	})
 	if err != nil {
 		t.Logger.Error("error updating face", zap.Error(err))
@@ -148,12 +151,11 @@ func (t *UpdateEventRoute) handleFaceUpsert(
 	resp := &protobufs.AutosaveEventResponse{
 		LastUpdatedVersion: newVersion,
 	}
-	sendAutosaveEventResponse(t.Logger, conn, resp)
+	t.sendAutosaveEventResponse(e, resp)
 }
 
 func (t *UpdateEventRoute) handleFaceDelete(
-	c *gin.Context, conn *websocket.Conn,
-	modelId uuid.UUID, userId uuid.UUID,
+	e *EventContext,
 	event *protobufs.AutosaveEvent_FaceDelete,
 	inputVersion uint32,
 	currentVersion *int32) {
@@ -161,11 +163,11 @@ func (t *UpdateEventRoute) handleFaceDelete(
 		return // stale/duplicate
 	}
 
-	newVersion, err := t.DB.Queries.UpdateWorkspaceTargetTrapezoids(c, db_sqlc_gen.UpdateWorkspaceTargetTrapezoidsParams{
+	newVersion, err := t.DB.Queries.UpdateWorkspaceTargetTrapezoids(e.Gin, db_sqlc_gen.UpdateWorkspaceTargetTrapezoidsParams{
 		Key:     []string{event.FaceDelete.Id},
 		Value:   nil,
-		UserID:  userId,
-		ModelID: modelId,
+		UserID:  e.UserID,
+		ModelID: e.ModelID,
 	})
 	fmt.Println(event.FaceDelete.Id)
 	if err != nil {
@@ -176,41 +178,42 @@ func (t *UpdateEventRoute) handleFaceDelete(
 	resp := &protobufs.AutosaveEventResponse{
 		LastUpdatedVersion: newVersion,
 	}
-	sendAutosaveEventResponse(t.Logger, conn, resp)
+	t.sendAutosaveEventResponse(e, resp)
 }
 
-func sendAutosaveEventResponse(logger *zap.Logger, conn *websocket.Conn, resp *protobufs.AutosaveEventResponse) {
-	bytes, err := proto.Marshal(&protobufs.WorkspaceEventResponse{
+func (t *UpdateEventRoute) sendAutosaveEventResponse(e *EventContext, resp *protobufs.AutosaveEventResponse) {
+	dataBytes, err := proto.Marshal(&protobufs.WorkspaceEventResponse{
 		Resp: &protobufs.WorkspaceEventResponse_Autosave{
 			Autosave: resp,
 		},
 	})
 	if err != nil {
-		logger.Error("error marshalling response", zap.Error(err))
+		t.Logger.Error("error marshalling response", zap.Error(err))
 		return
 	}
-	conn.WriteMessage(websocket.BinaryMessage, bytes)
+
+	t.Nc.Publish(e.Subject, dataBytes)
+
+	e.Conn.WriteMessage(websocket.BinaryMessage, dataBytes)
 }
 
 func (t *UpdateEventRoute) handleAutosaveEvent(
-	c *gin.Context, conn *websocket.Conn,
-	modelId uuid.UUID, userId uuid.UUID, currentVersion *int32, casted *protobufs.AutosaveEventRequest) {
+	e *EventContext, currentVersion *int32, casted *protobufs.AutosaveEventRequest) {
 	if casted.Version <= uint32(*currentVersion) {
 		return // stale
 	}
 	for _, camEvent := range casted.Events {
 		switch ce := camEvent.GetEvent().(type) {
 		case *protobufs.AutosaveEvent_Delete:
-			t.handleEventDelete(c, conn, modelId, userId, ce.Delete.Id)
+			t.handleEventDelete(e, ce.Delete.Id)
 		case *protobufs.AutosaveEvent_Upsert:
-			t.handleEventUpsert(c, conn, modelId, userId, ce.Upsert.Camera)
+			t.handleEventUpsert(e, ce.Upsert.Camera)
 		case *protobufs.AutosaveEvent_Calibrate:
-			t.handleCalibration(c, conn, modelId, userId, ce, casted.Version, currentVersion)
+			t.handleCalibration(e, ce, casted.Version, currentVersion)
 		case *protobufs.AutosaveEvent_FaceDelete:
-			fmt.Println("ggg")
-			t.handleFaceDelete(c, conn, modelId, userId, ce, casted.Version, currentVersion)
+			t.handleFaceDelete(e, ce, casted.Version, currentVersion)
 		case *protobufs.AutosaveEvent_FaceUpsert:
-			t.handleFaceUpsert(c, conn, modelId, userId, ce, casted.Version, currentVersion)
+			t.handleFaceUpsert(e, ce, casted.Version, currentVersion)
 		}
 	}
 }
@@ -231,8 +234,22 @@ func (t *UpdateEventRoute) sendOptimizationEventResp(conn *websocket.Conn, optiR
 	conn.WriteMessage(websocket.BinaryMessage, bytes)
 }
 
+func (t *UpdateEventRoute) sendOptimizeInternalError(conn *websocket.Conn, jobId string) {
+	resp := &protobufs.OptimizationEventResp{
+		JobId: jobId,
+		Payload: &protobufs.OptimizationEventResp_ErrorResp{
+			ErrorResp: &protobufs.ErrorOptimizationEventResp{
+				Error: "INTERNAL_ERROR",
+			},
+		},
+	}
+	t.sendOptimizationEventResp(conn, resp)
+}
+
 func (t *UpdateEventRoute) handleOptimizeEvent(projectId uuid.UUID, modelId uuid.UUID, conn *websocket.Conn, casted *protobufs.OptimizationEventReq) {
-	ctx := context.Background()
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
+
+	defer cancel()
 
 	if len(casted.GetCoverageFace()) == 0 {
 		t.Logger.Warn("optimization aborted: no coverage faces provided")
@@ -261,9 +278,6 @@ func (t *UpdateEventRoute) handleOptimizeEvent(projectId uuid.UUID, modelId uuid
 
 	jobId := uuid.New().String()
 
-	resChan := make(chan string, 1)
-	t.OptimizeRespMap.Store(jobId, resChan)
-
 	payload := map[string]interface{}{
 		"faces":       faces,
 		"cam_configs": camConfigs,
@@ -282,42 +296,104 @@ func (t *UpdateEventRoute) handleOptimizeEvent(projectId uuid.UUID, modelId uuid
 		return
 	}
 
-	err = t.RedisClient.XAdd(ctx, &redis.XAddArgs{
-		Stream: t.Env.OptiReqTopic, // Use your actual env field name here
-		Values: map[string]interface{}{
-			"data": string(jsonData), // This matches what model_validate_json(data) expects
-		},
-	}).Err()
+	pubTopic := strings.NewReplacer("{jobId}", jobId).Replace(t.Env.OptiReqTopicPattern)
 
-	if err != nil {
-		t.Logger.Error("failed to publish to redis stream",
+	if err := t.Nc.Publish(pubTopic, jsonData); err != nil {
+		t.Logger.Error("Failed to publish to nats stream for optimiz algo",
 			zap.Error(err),
 			zap.String("job_id", jobId),
 		)
+		t.sendOptimizeInternalError(conn, jobId)
+	}
+
+	respTopic := strings.NewReplacer("{jobId}", jobId).Replace(t.Env.OptiResTopicPattern)
+
+	sub, err := t.Nc.Subscribe(respTopic, func(msg *nats.Msg) {
+		optiResp := &protobufs.OptimizationEventResp{}
+
+		err := protojson.Unmarshal(msg.Data, optiResp)
+		if err != nil {
+			t.Logger.Error("failed to unmarshal proto-json", zap.Error(err))
+			t.sendOptimizeInternalError(conn, jobId)
+			return
+		}
+
+		t.sendOptimizationEventResp(conn, optiResp)
+	})
+
+	sub.AutoUnsubscribe(1)
+
+	go func() {
+		<-ctx.Done()
+		sub.Drain() // Unsub
+	}()
+}
+
+// Have to use websocket instead of SSE because protobuf is binary
+func (t *UpdateEventRoute) getLivestream(c *gin.Context) {
+	strModelId := c.Param("modelId")
+	modelId, err := utils.ParseUuidBase64(strModelId)
+	if err != nil {
+		t.Logger.Error("error while converting str id to uuid", zap.Error(err))
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid model ID"})
 		return
 	}
 
+	// TODO: Secure sharable link(?)
+	strWorkspaceOwnerId := c.Param("workspaceOwnerId")
+	workspaceOwnerId, err := utils.ParseUuidBase64(strWorkspaceOwnerId)
+	if err != nil {
+		t.Logger.Error("error while converting str id to uuid", zap.Error(err))
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid model ID"})
+		return
+	}
+
+	_, err = utils.GetUuidFromCtx(c, "userId")
+	if err != nil {
+		t.Logger.Error("error while getting userId", zap.Error(err))
+		c.JSON(http.StatusInternalServerError, gin.H{})
+		return
+	}
+
+	// Check owner
+	_, err = t.DB.Queries.GetWorkspaceByID(c, db_sqlc_gen.GetWorkspaceByIDParams{
+		UserID:  workspaceOwnerId,
+		ModelID: modelId,
+	})
+	if err != nil {
+		// Respond not found for security
+		t.Logger.Error("workspace not found", zap.Error(err))
+		c.JSON(http.StatusNotFound, gin.H{})
+		return
+	}
+
+	conn, err := t.Upgrader.Upgrade(c.Writer, c.Request, nil)
+	if err != nil {
+		return
+	}
+
+	sendData := func(data []byte) {
+		conn.WriteMessage(websocket.BinaryMessage, data)
+	}
+
+	subject := strings.NewReplacer("modelId", modelId.String(), "userId", workspaceOwnerId.String()).Replace(t.Env.LivestreamTopicPattern)
+
 	go func() {
-		defer t.OptimizeRespMap.Delete(jobId)
-		select {
-		case rawJSON := <-resChan:
-			optiResp := &protobufs.OptimizationEventResp{}
-
-			err := protojson.Unmarshal([]byte(rawJSON), optiResp)
-			if err != nil {
-				t.Logger.Error("failed to unmarshal proto-json", zap.Error(err))
-				return
-			}
-
-			t.sendOptimizationEventResp(conn, optiResp)
-		case <-time.After(10 * time.Minute):
-			t.Logger.Warn("optimization timed out", zap.String("job_id", jobId))
+		sub, err := t.Nc.Subscribe(subject, func(msg *nats.Msg) {
+			sendData(msg.Data)
+		})
+		if err != nil {
+			// TODO: Error
 		}
+
+		<-c.Done()
+
+		sub.Drain()
 	}()
 }
 
 // Main WebSocket handler
-func (t *UpdateEventRoute) get(c *gin.Context) {
+func (t *UpdateEventRoute) getAutosave(c *gin.Context) {
 	strProjectId := c.Param("projectId")
 	projectId, err := utils.ParseUuidBase64(strProjectId)
 	if err != nil {
@@ -341,11 +417,13 @@ func (t *UpdateEventRoute) get(c *gin.Context) {
 		return
 	}
 
+	// Check owner
 	workspace, err := t.DB.Queries.GetWorkspaceByID(c, db_sqlc_gen.GetWorkspaceByIDParams{
 		UserID:  userId,
 		ModelID: modelId,
 	})
 	if err != nil {
+		// Respond not found for security
 		t.Logger.Error("workspace not found", zap.Error(err))
 		c.JSON(http.StatusNotFound, gin.H{})
 		return
@@ -356,16 +434,26 @@ func (t *UpdateEventRoute) get(c *gin.Context) {
 		return
 	}
 
+	subject := strings.NewReplacer("modelId", modelId.String(), "userId", userId.String()).Replace(t.Env.LivestreamTopicPattern)
+
 	go func() {
 		defer conn.Close()
 
 		currentVersion := workspace.Version
 
+		e := &EventContext{
+			Gin:     c,
+			Conn:    conn,
+			ModelID: modelId,
+			UserID:  userId,
+			Subject: subject,
+		}
+
 		// Send initial state on connect — both camera version + calibration values
 		initResp := &protobufs.AutosaveEventResponse{
 			LastUpdatedVersion: currentVersion,
 		}
-		sendAutosaveEventResponse(t.Logger, conn, initResp)
+		t.sendAutosaveEventResponse(e, initResp)
 
 		for {
 			_, rawMsg, err := conn.ReadMessage()
@@ -383,7 +471,7 @@ func (t *UpdateEventRoute) get(c *gin.Context) {
 
 			switch casted := msg.Event.(type) {
 			case *protobufs.WorkspaceEventRequest_Autosave:
-				t.handleAutosaveEvent(c, conn, modelId, userId, &currentVersion, casted.Autosave)
+				t.handleAutosaveEvent(e, &currentVersion, casted.Autosave)
 			case *protobufs.WorkspaceEventRequest_Optimize:
 				t.handleOptimizeEvent(projectId, modelId, conn, casted.Optimize)
 			}
@@ -392,6 +480,7 @@ func (t *UpdateEventRoute) get(c *gin.Context) {
 }
 
 func (t *UpdateEventRoute) InitRoute(router gin.IRouter) gin.IRouter {
-	router.GET("/projects/:projectId/models/:modelId/autosave", t.get)
+	router.GET("/projects/:projectId/models/:modelId/autosave", t.getAutosave)
+	router.GET("/models/:modelId/livestream/:workspaceUserId", t.getLivestream)
 	return router
 }

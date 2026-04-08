@@ -22,15 +22,20 @@ type AppEnv struct {
 	RawJWTExpireTime string `env:"JWT_EXPIRE_TIME"`
 	JWTExpireTime    time.Duration
 
-	// Redis Configuration
-	RedisHost     string `env:"REDIS_HOST"`
-	RedisPort     string `env:"REDIS_PORT"`
-	RedisPassword string `env:"REDIS_PASSWORD"`
-	RedisDB       int    `env:"REDIS_DB"`
+	// // Redis Configuration
+	// RedisHost     string `env:"REDIS_HOST"`
+	// RedisPort     string `env:"REDIS_PORT"`
+	// RedisPassword string `env:"REDIS_PASSWORD"`
+	// RedisDB       int    `env:"REDIS_DB"`
+
+	// Nats
+	NatsUrl string `env:"NATS_URL"`
 
 	// Optimization Topics (Redis Streams)
-	OptiReqTopic string `env:"OPTI_REQ_TOPIC"`
-	OptiResTopic string `env:"OPTI_RES_TOPIC"`
+	OptiReqTopicPattern string `env:"OPTI_REQ_TOPIC_PATTERN"`
+	OptiResTopicPattern string `env:"OPTI_RES_TOPIC_PATTERN"`
+
+	LivestreamTopicPattern string `env:"LIVESTREAM_TOPIC_PATTERN"`
 }
 
 func transformAppEnv(logger *zap.Logger, cfg *AppEnv, isTest bool) {

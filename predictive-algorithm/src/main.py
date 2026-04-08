@@ -5,8 +5,8 @@ from os import path
 import time
 from typing import Any, Dict, List, Tuple
 import uuid
+import nats
 from pydantic import BaseModel, ValidationError
-import redis.asyncio as redis
 from scipy.spatial.distance import cdist
 from cost_functions import total_cost
 from google.protobuf.json_format import MessageToJson
@@ -361,11 +361,6 @@ def serialize_response(state: State):
     return cameras
 
 
-r = redis.Redis(
-    host=env_settings.redis_host, port=env_settings.redis_port, decode_responses=True
-)
-
-
 def cam_state_to_proto(cam_state: CameraState) -> cam_pb.Camera:
     # Initialize the proto message
     camera = cam_pb.Camera()
@@ -414,78 +409,77 @@ def cam_state_to_proto(cam_state: CameraState) -> cam_pb.Camera:
     return camera
 
 
-async def worker():
-    print("Work started")
+async def main():
+    nc = await nats.connect(env_settings.nats_url)
 
-    while True:
-        # Read from the task stream (Blocking read)
-        # 0 means wait indefinitely for a new message
-        messages: List[Tuple[str, List[Tuple[str, Dict[str, Any]]]]] = await r.xread(
-            {env_settings.redis_req_topic: "0"}, count=1, block=0
-        )
+    async def message_handler(msg):
+        print("Received message", msg)
+        try:
+            payload = OptimizeRequest.model_validate_json(msg)
 
-        for _stream, msgs in messages:
-            for msg_id, data in msgs:
-                print("Received message", data)
-                try:
-                    req: str = data.get("data")
+            resp_topic = env_settings.res_topic_pattern.format(jobId=payload.job_id)
 
-                    payload = OptimizeRequest.model_validate_json(req)
+            result_state = optimize(payload)
 
-                    result_state = optimize(payload)
+            opti_res = MessageToJson(
+                opt_pb.OptimizationEventResp(
+                    success_resp=opt_pb.SuccessOptimizationEventResp(
+                        cameras=[
+                            cam_state_to_proto(cam) for cam in result_state.cameras
+                        ],
+                    ),
+                    job_id=payload.job_id,
+                )
+            )
 
-                    opti_res = MessageToJson(
-                        opt_pb.OptimizationEventResp(
-                            success_resp=opt_pb.SuccessOptimizationEventResp(
-                                cameras=[
-                                    cam_state_to_proto(cam)
-                                    for cam in result_state.cameras
-                                ],
-                            ),
-                            job_id=payload.job_id,
-                        )
-                    )
+            # Publish back to a result topic/stream
+            await nc.publish(
+                resp_topic,
+                {
+                    "job_id": payload.job_id,
+                    "status": "ok",
+                    "data": opti_res,
+                },
+            )
+        except ValidationError as e:
+            try:
+                parsed_inner_data: Dict[str, Any] = json.loads(msg)
+            except (json.JSONDecodeError, TypeError):
+                parsed_inner_data = {}
 
-                    # Publish back to a result topic/stream
-                    await r.xadd(
-                        env_settings.redis_res_topic,
-                        {
-                            "job_id": payload.job_id,
-                            "status": "ok",
-                            "data": opti_res,
-                        },
-                    )
-                except ValidationError as e:
-                    raw_data_field: str = data.get("data", "{}")
+            await nc.publish(
+                resp_topic,
+                {
+                    "job_id": parsed_inner_data.get("job_id", ""),
+                    "status": "error",
+                    "error": f"Bad request {e}",
+                },
+            )
+        except Exception as e:
+            print(e)
+            await nc.publish(
+                resp_topic,
+                {
+                    "job_id": payload.job_id,
+                    "status": "error",
+                    "error": "Internal error",
+                },
+            )
 
-                    try:
-                        parsed_inner_data: Dict[str, Any] = json.loads(raw_data_field)
-                    except (json.JSONDecodeError, TypeError):
-                        parsed_inner_data = {}
+    await nc.queue_subscribe(
+        subject=env_settings.req_topic_pattern.format(jobId="*"),
+        queue=env_settings.req_topic_queue,
+        cb=message_handler,
+    )
 
-                    await r.xadd(
-                        env_settings.redis_res_topic,
-                        {
-                            "job_id": parsed_inner_data.get("job_id", ""),
-                            "status": "error",
-                            "error": f"Bad request {e}",
-                        },
-                    )
-                except Exception as e:
-                    print(e)
-                    await r.xadd(
-                        env_settings.redis_res_topic,
-                        {
-                            "job_id": payload.job_id,
-                            "status": "error",
-                            "error": "Internal error",
-                        },
-                    )
-                finally:
-                    await r.xdel(env_settings.redis_req_topic, msg_id)
+    try:
+        while True:
+            await asyncio.sleep(0.01)
+    except InterruptedError:
+        await nc.close()
 
 
 if __name__ == "__main__":
-    asyncio.run(worker())
+    asyncio.run(main())
 
 # Running -> OmniCam/predictive-algorithm/src$ uvicorn main:app --reload --port 8081

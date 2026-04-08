@@ -6,13 +6,21 @@ class Settings(BaseSettings):
 
     dev_mode: bool = False
 
-    redis_host: str
+    # redis_host: str
 
-    redis_port: str
+    # redis_port: str
 
-    redis_req_topic: str
+    # redis_req_topic: str
 
-    redis_res_topic: str
+    # redis_res_topic: str
+
+    nats_url: str
+
+    req_topic_pattern: str
+
+    res_topic_pattern: str
+
+    req_topic_queue: str
 
     model_file_path: str
 
