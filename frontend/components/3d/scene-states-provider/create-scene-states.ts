@@ -425,20 +425,18 @@ export function createSceneStatesWithHelper(
 
   useAutosave(sceneStates, workspace, handle);
 
-  onMounted(() => {
-    watch(
-      () => [sceneStates.transformingInfo, sceneStates.currentCam],
-      ([transform, cam]) => {
-        const newFov = transform?.value?.fov ?? cam?.value?.fov;
-        const actualCamera = sceneStates.tresContext.value?.camera.activeCamera;
-        if (actualCamera && newFov !== undefined) {
-          (actualCamera as PerspectiveCamera).fov = newFov;
-          actualCamera.updateProjectionMatrix();
-        }
-      },
-      { deep: true },
-    );
-  });
+  watch(
+    () => [sceneStates.transformingInfo, sceneStates.currentCam],
+    ([transform, cam]) => {
+      const newFov = transform?.value?.fov ?? cam?.value?.fov;
+      const actualCamera = sceneStates.tresContext.value?.camera.activeCamera;
+      if (actualCamera && newFov !== undefined) {
+        (actualCamera as PerspectiveCamera).fov = newFov;
+        actualCamera.updateProjectionMatrix();
+      }
+    },
+    { deep: true },
+  );
 
   const sceneStatesWithCam = {
     ...sceneStates,

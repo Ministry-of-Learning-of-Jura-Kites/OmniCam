@@ -6,53 +6,18 @@ import SuccessDialog from "~/components/dialog/SuccessDialog.vue";
 import FormDialog from "~/components/dialog/FormDialog.vue";
 import AddUserDialog from "~/components/dialog/AddUserDialog.vue";
 import EditRoleDialog from "~/components/dialog/EditRoleDialog.vue";
-import { useAuth } from "~/composables/useAuth";
+import { useAuth } from "~/composables/api/useAuth";
 import ContentCard from "~/components/card/ContentCard.vue";
 import CustomPagination from "~/components/pagination/CustomPagination.vue";
 import { uuidToBase64Url } from "~/lib/uuid";
 import { Plus } from "lucide-vue-next";
 import type { Project } from "~/types/project";
-
-export interface Model {
-  modelId: string;
-  projectId: string;
-  name: string;
-  description: string;
-  version: number;
-  imagePath?: string;
-  imageExtension?: string;
-  filePath?: string;
-  modelExtension?: string;
-  createdAt: string;
-  updatedAt: string;
-}
-export interface ProjectMember {
-  userId: string;
-  username: string;
-  firstName?: string | null;
-  lastName?: string | null;
-  role: string;
-}
-
-export interface ModelGetRequest {
-  data: Model[];
-  count: number;
-}
-
-export interface ModelReturnRequest {
-  data: Model;
-}
-
-export interface ModelCreateRequest {
-  name: string;
-  description: string;
-  file: File;
-}
-
-export interface ModelUpdateRequest {
-  name: string;
-  description: string;
-}
+import { useProject, type ProjectMember } from "~/composables/api/useProject";
+import {
+  type Model,
+  useModels,
+  getUrlForModelImage,
+} from "~/composables/api/useModels";
 
 export type ModelForm = {
   name: string;
@@ -62,9 +27,14 @@ export type ModelForm = {
 };
 export type ModelWithoutId = Omit<Model, "modelId">;
 
-const config = useRuntimeConfig();
 const route = useRoute();
-const { user } = await useAuth();
+const { user, getMe } = await useAuth();
+getMe();
+
+const projectId = route.params.projectId as string;
+
+const projectApi = useProject();
+const modelApi = useModels(projectId);
 
 const models = ref<Record<string, ModelWithoutId>>({});
 const members = ref<ProjectMember[]>([]);
@@ -151,63 +121,45 @@ const formTitles = {
 const roles = ["project_manager", "collaborator"];
 
 async function fetchProjectById() {
-  const projectId = route.params.projectId as string;
-  try {
-    const response = await $fetch<{ data: Project }>(
-      `http://${config.public.externalBackendHost}/api/v1/projects/${projectId}`,
-      {
-        method: "GET",
-        credentials: "include",
-      },
-    );
-
-    projectDetail.value = response.data;
-  } catch (err) {
-    console.error("Failed to fetch project by id", err);
+  const { data: response, error } = await projectApi.getProject(projectId);
+  if (error.value != undefined) {
+    // TODO: Handle error
+    return;
   }
+  projectDetail.value = response.value!.data;
 }
 
 async function fetchModel() {
-  const projectId = route.params.projectId as string;
-  try {
-    const response = await $fetch<ModelGetRequest>(
-      `http://${config.public.externalBackendHost}/api/v1/projects/${projectId}/models`,
-      {
-        method: "GET",
-        query: {
-          pageSize: pageSize.value,
-          page: page.value,
-        },
-        credentials: "include",
-      },
-    );
+  const { data: response, error } = await modelApi.listModels(
+    page.value,
+    pageSize.value,
+  );
 
-    const now = Date.now();
-    if (response.data != null) {
-      models.value = response.data.reduce<Record<string, ModelWithoutId>>(
-        (acc, model) => {
-          const { modelId, imagePath, ...rest } = model;
+  const respData = response.value;
+  if (error.value != null) {
+    console.error("fetchModel error", error);
+    return;
+  }
+  if (respData?.data != null) {
+    models.value = respData.data.reduce<Record<string, ModelWithoutId>>(
+      (acc, model) => {
+        const { modelId, imagePath, imageExtension, ...rest } = model;
 
-          const ext = model.imageExtension?.slice(
-            1,
-            model.imageExtension?.length,
-          );
-          const url = `http://${config.public.externalBackendHost}/api/v1/assets/projects/${model.projectId}/models/${model.modelId}/file/${ext}?t=${now}`;
+        if (imageExtension != null) {
+          const url = getUrlForModelImage(projectId, modelId, imageExtension);
           acc[modelId] = {
             ...rest,
-            imagePath: imagePath ? url : undefined,
+            imagePath: imagePath ? url.href : undefined,
           };
-          return acc;
-        },
-        {},
-      );
-      totalData.value = response.count;
-    } else {
-      models.value = {};
-      totalData.value = 0;
-    }
-  } catch (err) {
-    console.error("fetchModel error", err);
+        }
+        return acc;
+      },
+      {},
+    );
+    totalData.value = respData.count;
+  } else {
+    models.value = {};
+    totalData.value = 0;
   }
 }
 
@@ -223,15 +175,7 @@ async function createModel() {
     formData.append("image", modelForm.image);
   }
 
-  const projectId = route.params.projectId as string;
-  const response = await $fetch<ModelReturnRequest>(
-    `http://${config.public.externalBackendHost}/api/v1/projects/${projectId}/models`,
-    {
-      method: "POST",
-      body: formData,
-      credentials: "include",
-    },
-  );
+  const response = await modelApi.postCreateModel(formData);
 
   successDialog.value = true;
   successMessage.value = `You have successfully created ${response.data.name}`;
@@ -239,24 +183,16 @@ async function createModel() {
   fetchModel();
 }
 
-async function updateModel(id: string) {
-  const projectId = route.params.projectId as string;
-  const modelId = uuidToBase64Url(id);
+async function updateModel(hexId: string) {
+  const modelId = uuidToBase64Url(hexId);
   try {
-    const response = await $fetch<ModelReturnRequest>(
-      `http://${config.public.externalBackendHost}/api/v1/projects/${projectId}/models/${modelId}`,
-      {
-        method: "PUT",
-        body: {
-          name: modelForm.name,
-          description: modelForm.description,
-        },
-        credentials: "include",
-      },
-    );
+    const response = await modelApi.updateModel(modelId, {
+      name: modelForm.name,
+      description: modelForm.description,
+    });
     models.value = {
       ...models.value,
-      [id]: {
+      [hexId]: {
         name: response.data.name,
         description: response.data.description,
         imagePath: response.data.imagePath,
@@ -276,15 +212,8 @@ async function updateModel(id: string) {
 
 async function deleteRow(id: string) {
   try {
-    const projectId = route.params.projectId;
     const modelId = uuidToBase64Url(id);
-    await $fetch(
-      `http://${config.public.externalBackendHost}/api/v1/projects/${projectId}/models/${modelId}`,
-      {
-        method: "DELETE",
-        credentials: "include",
-      },
-    );
+    await modelApi.deleteModel(modelId);
 
     models.value = Object.fromEntries(
       Object.entries(models.value).filter(([key]) => key !== id),
@@ -298,15 +227,8 @@ async function deleteRow(id: string) {
   }
 }
 async function fetchMembers() {
-  const projectId = route.params.projectId as string;
   try {
-    const res = await $fetch<{ data: ProjectMember[]; count: number }>(
-      `http://${config.public.externalBackendHost}/api/v1/projects/${projectId}/members`,
-      {
-        method: "GET",
-        credentials: "include",
-      },
-    );
+    const res = await projectApi.getProjectMembers(projectId);
     members.value = res.data;
   } catch (err) {
     console.error("Failed to fetch members", err);
@@ -317,13 +239,7 @@ async function deleteMember(userId: string) {
   try {
     const projectId = route.params.projectId as string;
     const encodedUserId = uuidToBase64Url(userId);
-    await $fetch(
-      `http://${config.public.externalBackendHost}/api/v1/projects/${projectId}/member/${encodedUserId}`,
-      {
-        method: "DELETE",
-        credentials: "include",
-      },
-    );
+    await projectApi.removeProjectMember(projectId, encodedUserId);
 
     successDialog.value = true;
     successMessage.value = `Member removed successfully`;
@@ -336,17 +252,11 @@ async function deleteMember(userId: string) {
 
 async function handleSubmitRole(newRole: string) {
   if (!editingMember.value) return;
-  const projectId = route.params.projectId;
   const encodedUserId = uuidToBase64Url(editingMember.value.userId);
 
-  await $fetch(
-    `http://${config.public.externalBackendHost}/api/v1/projects/${projectId}/user/${encodedUserId}/role`,
-    {
-      method: "PUT",
-      body: { role: newRole },
-      credentials: "include",
-    },
-  );
+  await projectApi.updateProjectMember(projectId, encodedUserId, {
+    role: newRole,
+  });
   successDialog.value = true;
   successMessage.value = `${editingMember.value.username}'s role updated to ${newRole}`;
   fetchMembers();
@@ -418,20 +328,11 @@ function handleCreateFormSubmit() {
 
 async function handleUpdateImage(file: File | undefined, modelId: string) {
   if (!file || !modelId) return;
-
-  const projectId = route.params.projectId as string;
   const formData = new FormData();
   formData.append("image", file);
 
   try {
-    const res = await $fetch<{ imagePath: string; message: string }>(
-      `http://${config.public.externalBackendHost}/api/v1/projects/${projectId}/models/${uuidToBase64Url(modelId)}/image`,
-      {
-        method: "PUT",
-        body: formData,
-        credentials: "include",
-      },
-    );
+    const res = await modelApi.updateModelImage(modelId, formData);
 
     const updatedImagePath = res.imagePath;
     const timestamp = new Date().getTime();
@@ -451,8 +352,9 @@ async function handleUpdateImage(file: File | undefined, modelId: string) {
   }
 }
 
+fetchProjectById();
+
 onMounted(() => {
-  fetchProjectById();
   fetchModel();
   fetchMembers();
 });
@@ -556,7 +458,7 @@ watch([page, pageSize], async () => {
       </div>
 
       <!-- Right Section: Project Info -->
-      <div class="w-full lg:w-80 flex-shrink-0 flex flex-col gap-6">
+      <div class="w-full lg:w-80 shrink-0 flex flex-col gap-6">
         <div class="rounded-2xl shadow p-5 border border-gray-300">
           <h3 class="text-md font-semibold mb-3">Project Information</h3>
           <div class="space-y-2 text-sm">

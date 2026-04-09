@@ -102,19 +102,19 @@ const componentDraggableMeshes: Obj3DWithUserData[] = [];
 for (const mesh of arrow.children) {
   const obj = mesh as Obj3DWithUserData;
   obj.userData = cameraUserData;
-  sceneStates?.draggableObjects.add(obj);
+  sceneStates.value!.draggableObjects.add(obj);
   componentDraggableMeshes.push(obj);
 }
 
 function setMeshUndraggable() {
   for (const mesh of componentDraggableMeshes) {
-    sceneStates?.draggableObjects.delete(mesh);
+    sceneStates.value!.draggableObjects.delete(mesh);
   }
 }
 
 function setMeshDraggable() {
   for (const mesh of componentDraggableMeshes) {
-    sceneStates?.draggableObjects.add(mesh);
+    sceneStates.value!.draggableObjects.add(mesh);
   }
 }
 

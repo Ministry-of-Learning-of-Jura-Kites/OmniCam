@@ -26,11 +26,7 @@ const intersectMaterial = new MeshBasicMaterial({
   depthTest: true,
 });
 
-const visibleFrustum = computed(() =>
-  Object.entries(sceneStates.cameras).filter(
-    ([_, cam]: [string, ICamera]) => !cam.isHidingFrustum,
-  ),
-);
+const visibleFrustum = ref<[string, ICamera][]>([]);
 
 const { getFrustumGeometry } = useFrustumGeometries();
 
@@ -41,6 +37,12 @@ const boxA = new Box3();
 const boxB = new Box3();
 const overlayGroup = new Group();
 const workingQuaternion = new Quaternion();
+
+watch(sceneStates, (sceneStates) => {
+  visibleFrustum.value = Object.entries(sceneStates!.cameras).filter(
+    ([_, cam]: [string, ICamera]) => !cam.isHidingFrustum,
+  );
+});
 
 function syncMeshToCamera(
   mesh: Mesh,

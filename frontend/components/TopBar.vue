@@ -2,7 +2,6 @@
 import Button from "./ui/button/Button.vue";
 import Badge from "./ui/badge/Badge.vue";
 import Card from "./ui/card/Card.vue";
-
 import {
   PackageOpen,
   RefreshCcw,
@@ -34,9 +33,11 @@ import Tooltip from "./ui/tooltip/Tooltip.vue";
 import TooltipTrigger from "./ui/tooltip/TooltipTrigger.vue";
 import TooltipContent from "./ui/tooltip/TooltipContent.vue";
 import TooltipProvider from "./ui/tooltip/TooltipProvider.vue";
-import { MODEL_INFO_KEY, MAP_KEY } from "~/constants/state-keys";
+import { MAP_KEY } from "~/constants/state-keys";
 import Setting3dDialog from "./dialog/Setting3dDialog.vue";
 import { uuidToBase64Url } from "~/lib/uuid";
+import { useWorkspaceApi } from "~/composables/api/useWorkspaceApi";
+import { useAuth } from "~/composables/api/useAuth";
 
 const props = defineProps({
   workspace: {
@@ -45,8 +46,20 @@ const props = defineProps({
   },
 });
 
+const route = useRoute();
+const runtimeConfig = useRuntimeConfig();
+
+const projectId = route.params.projectId as string;
+const modelId = route.params.modelId as string;
+
+const { postCreateMe, postMerge, deleteWorkspaceMe } = useWorkspaceApi(
+  projectId,
+  modelId,
+  runtimeConfig,
+);
+
 const candidateEntries = computed(() =>
-  Object.entries(sceneStates.optimization?.candidateCameras ?? {}),
+  Object.entries(sceneStates?.value!.optimization?.candidateCameras ?? {}),
 );
 
 const {
@@ -59,11 +72,10 @@ const {
 
 const { toggleCalibration, isCalibrating } = calibrationPanelInfo;
 
-const sceneStates = inject(SCENE_STATES_KEY)!;
+// Scenestates can be null to allow skeleton UI
+const sceneStates = inject(SCENE_STATES_KEY);
 
 const { isMapOpen, toggleMap } = inject(MAP_KEY)!;
-
-const route = useRoute();
 
 const openDialog = ref(false);
 
@@ -77,9 +89,22 @@ const conflicts = ref({});
 
 const isSettingDialogOpen = ref<boolean>(false);
 
-const isCameraActive = computed(() => sceneStates.currentCamId.value !== null);
+const isCameraActive = ref(false);
 
-const { user } = await useAuth();
+const { user, getMe } = useAuth();
+getMe();
+
+watch(
+  () => sceneStates?.value,
+  (sceneStates) => {
+    watch(
+      () => sceneStates!.currentCamId.value,
+      () => {
+        isCameraActive.value = sceneStates!.currentCamId.value !== null;
+      },
+    );
+  },
+);
 
 async function saveModelToPublic() {
   // Mocked data
@@ -117,12 +142,7 @@ async function saveModelToPublic() {
   //   },
   // };
 
-  const runtimeConfig = useRuntimeConfig();
-  const resp = await fetch(
-    `http://${runtimeConfig.public.externalBackendHost}/api/v1/projects/${route.params.projectId}/models/${route.params.modelId}/workspaces/me/merge`,
-    { method: "POST", credentials: "include" },
-  );
-
+  const { resp } = await postMerge();
   if (!resp.ok) {
     console.error(resp);
     return;
@@ -162,7 +182,7 @@ function openFileDialog() {
 
     try {
       const text = await file.text();
-      importJsonToCameras(sceneStates, text);
+      importJsonToCameras(sceneStates!.value!, text);
     } catch (err) {
       console.error("Failed to import cameras:", err);
     }
@@ -178,17 +198,8 @@ function toggleSettingDialog() {
 }
 
 async function createWorkspace() {
-  const runtimeConfig = useRuntimeConfig();
-
   try {
-    const data = await $fetch(
-      `http://${runtimeConfig.public.externalBackendHost}/api/v1/projects/${route.params.projectId}/models/${route.params.modelId}/workspaces/me`,
-      {
-        method: "POST",
-        credentials: "include",
-      },
-    );
-    useState(`${MODEL_INFO_KEY}-${route.params.modelId}`, () => data);
+    await postCreateMe();
     goToMyWorkspace();
   } catch (err) {
     console.error(err);
@@ -198,19 +209,9 @@ async function createWorkspace() {
   }
 }
 
-const runtimeConfig = useRuntimeConfig();
-
 async function deleteWorkspace() {
   try {
-    await $fetch<undefined>(
-      `http://${runtimeConfig.public.externalBackendHost}/api/v1/projects/${route.params.projectId}/models/${route.params.modelId}/workspaces/me`,
-      {
-        credentials: "include",
-        method: "DELETE",
-      },
-    );
-
-    useState(`${MODEL_INFO_KEY}-${route.params.modelId}`, () => undefined);
+    deleteWorkspaceMe();
     goToModel();
   } catch (err) {
     console.error(err);
@@ -233,18 +234,17 @@ function goToMyWorkspace() {
 
 function confirmOptimizedCams() {
   for (const [camId, candidate] of candidateEntries.value) {
-    sceneStates.cameras[camId] = candidate;
+    sceneStates!.value!.cameras[camId] = candidate;
   }
   removeOptimizedCams();
 }
 function removeOptimizedCams() {
   for (const [camId, _candidate] of candidateEntries.value) {
-    delete sceneStates.optimization!.candidateCameras[camId];
+    delete sceneStates!.value!.optimization!.candidateCameras[camId];
   }
 }
 
 async function openShareModal() {
-  console.log("ggg", user.value);
   const baseUrl = window.location.origin;
   const projectId = route.params.projectId;
   const modelId = route.params.modelId;
@@ -285,7 +285,7 @@ async function openShareModal() {
           <div class="flex items-center gap-2">
             <div class="w-2 h-2 bg-survey-accent rounded-full" />
             <span class="text-sm font-medium max-w-[50px] truncate">{{
-              sceneStates.modelInfo.data.name
+              sceneStates?.modelInfo?.data.name ?? "Loading..."
             }}</span>
             <Badge variant="secondary" class="ml-2">
               {{ props.workspace == null ? "Public" : "Workspace" }}
@@ -296,7 +296,8 @@ async function openShareModal() {
           <Tooltip
             v-if="
               workspace == 'me' &&
-              (sceneStates.markedForCheck.value ||
+              (sceneStates == undefined ||
+                sceneStates.markedForCheck.value ||
                 sceneStates.localVersion.value !==
                   sceneStates.lastSyncedVersion.value ||
                 sceneStates.calibration.dirty ||
@@ -324,7 +325,7 @@ async function openShareModal() {
           variant="outline"
           :disabled="!isCameraActive"
           :class="isCameraActive ? 'bg-red-500! hover:bg-red-700!' : ''"
-          @click="sceneStates.cameraManagement.switchToSpectator()"
+          @click="sceneStates?.cameraManagement.switchToSpectator()"
           ><LogOut class="button-icon" />
           <span class="ml-2 button-span-text">Exit Camera</span>
         </Button>
@@ -365,7 +366,7 @@ async function openShareModal() {
 
         <template v-if="workspace == null">
           <Button
-            v-if="sceneStates.modelInfo.data.workspaceExists"
+            v-if="sceneStates?.modelInfo.data.workspaceExists"
             size="sm"
             variant="outline"
             @click="goToMyWorkspace()"
@@ -456,7 +457,7 @@ async function openShareModal() {
                 Import
               </DropdownMenuItem>
               <DropdownMenuItem
-                @click="() => exportCamerasToJson(sceneStates.cameras)"
+                @click="() => exportCamerasToJson(sceneStates?.cameras)"
               >
                 <Upload class="button-icon" />
                 Export
