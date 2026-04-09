@@ -18,6 +18,7 @@ import {
   SelectContent,
   SelectItem,
 } from "@/components/ui/select";
+import { getApiBaseUrlWithProtocol } from "~/utils/url";
 
 const config = useRuntimeConfig();
 
@@ -76,8 +77,9 @@ const availableRoles = computed(() => {
 async function fetchUsers() {
   loading.value = true;
   try {
+    const baseWithProtocol = getApiBaseUrlWithProtocol("http", config);
     const res = await $fetch<{ data: UserItem[]; count: number }>(
-      `http://${config.public.externalBackendHost}/api/v1/projects/${props.projectId}/userForAddMembers`,
+      new URL(`projects/${props.projectId}/members`, baseWithProtocol).href,
       {
         method: "GET",
         query: {
@@ -125,8 +127,9 @@ async function fetchUsers() {
 async function addMembers(out: { userId: string; role: string }[]) {
   console.log("Submitting selected users:", out);
   try {
+    const baseWithProtocol = getApiBaseUrlWithProtocol("http", config);
     const res = await $fetch(
-      `http://${config.public.externalBackendHost}/api/v1/projects/${props.projectId}/members`,
+      new URL(`projects/${props.projectId}/members`, baseWithProtocol).href,
       {
         method: "POST",
         body: out,

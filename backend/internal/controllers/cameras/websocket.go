@@ -192,8 +192,6 @@ func (t *UpdateEventRoute) sendAutosaveEventResponse(e *EventContext, resp *prot
 		return
 	}
 
-	t.Nc.Publish(e.Subject, dataBytes)
-
 	e.Conn.WriteMessage(websocket.BinaryMessage, dataBytes)
 }
 
@@ -472,6 +470,7 @@ func (t *UpdateEventRoute) getAutosave(c *gin.Context) {
 			switch casted := msg.Event.(type) {
 			case *protobufs.WorkspaceEventRequest_Autosave:
 				t.handleAutosaveEvent(e, &currentVersion, casted.Autosave)
+				t.Nc.Publish(e.Subject, rawMsg)
 			case *protobufs.WorkspaceEventRequest_Optimize:
 				t.handleOptimizeEvent(projectId, modelId, conn, casted.Optimize)
 			}

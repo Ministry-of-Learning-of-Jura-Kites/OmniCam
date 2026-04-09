@@ -14,7 +14,7 @@ const props = withDefaults(
   defineProps<{
     name?: string;
     camId: string;
-    workspace: string;
+    workspace: string | null;
     color?: string | number | Color | [r: number, g: number, b: number];
     instance?: ICamera;
   }>(),
@@ -29,7 +29,7 @@ const sceneStates = inject(SCENE_STATES_KEY)!;
 
 let cam: Ref<ICamera>;
 if (props.instance == undefined) {
-  cam = toRef(sceneStates.cameras, props.camId);
+  cam = toRef(sceneStates.value!.cameras, props.camId);
 } else {
   cam = ref(props.instance);
 }
@@ -42,7 +42,7 @@ const camQuat = computed(() => {
 
 <template>
   <TresMesh
-    :visible="sceneStates.currentCamId.value !== props.camId"
+    :visible="sceneStates!.currentCamId.value !== props.camId"
     :position="[cam!.position.x, cam!.position.y, cam!.position.z]"
   >
     <TresObject3D :quaternion="camQuat">
@@ -74,7 +74,7 @@ const camQuat = computed(() => {
         :length="cam!.frustumLength"
         :color="cam!.frustumColor"
         :is-hiding="
-          cam!.isHidingFrustum || camId == sceneStates.currentCamId.value
+          cam!.isHidingFrustum || camId == sceneStates!.currentCamId.value
         "
       />
     </TresObject3D>
@@ -83,7 +83,7 @@ const camQuat = computed(() => {
         v-model="cam"
         :is-hiding="
           cam.isHidingArrows ||
-          sceneStates.currentCamId.value == props.camId ||
+          sceneStates!.currentCamId.value == props.camId ||
           props.workspace != 'me'
         "
         :controlling="cam.controlling"
@@ -94,7 +94,7 @@ const camQuat = computed(() => {
         v-model="cam"
         :is-hiding="
           cam.isHidingArrows ||
-          sceneStates.currentCamId.value == props.camId ||
+          sceneStates!.currentCamId.value == props.camId ||
           props.workspace != 'me'
         "
         :controlling="cam.controlling"
@@ -105,7 +105,7 @@ const camQuat = computed(() => {
         v-model="cam"
         :is-hiding="
           cam.isHidingArrows ||
-          sceneStates.currentCamId.value == props.camId ||
+          sceneStates!.currentCamId.value == props.camId ||
           props.workspace != 'me'
         "
         :controlling="cam.controlling"
@@ -116,7 +116,7 @@ const camQuat = computed(() => {
         v-model="cam"
         :is-hiding="
           cam.isHidingWheels ||
-          sceneStates.currentCamId.value == props.camId ||
+          sceneStates!.currentCamId.value == props.camId ||
           props.workspace != 'me'
         "
         direction="x"
@@ -126,7 +126,7 @@ const camQuat = computed(() => {
         v-model="cam"
         :is-hiding="
           cam.isHidingWheels ||
-          sceneStates.currentCamId.value == props.camId ||
+          sceneStates!.currentCamId.value == props.camId ||
           props.workspace != 'me'
         "
         direction="y"
@@ -136,7 +136,7 @@ const camQuat = computed(() => {
         v-model="cam"
         :is-hiding="
           cam.isHidingWheels ||
-          sceneStates.currentCamId.value == props.camId ||
+          sceneStates!.currentCamId.value == props.camId ||
           props.workspace != 'me'
         "
         direction="z"

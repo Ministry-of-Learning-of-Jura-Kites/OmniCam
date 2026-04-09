@@ -15,31 +15,31 @@ const { isCalibrating, calibrationGridScale, toggleCalibration } =
 const realWorldSizeCm = ref(100);
 const previousScaleFactor = ref(1);
 const previousCalibrationGridScale = ref(1); // Default model height in cm
-const sceneStates = inject(SCENE_STATES_KEY);
+const sceneStates = inject(SCENE_STATES_KEY)!;
 const canCancel = ref(false);
 
 onMounted(() => {
   if (calibrationGridScale && calibrationGridScale.value === 1) {
     calibrationGridScale.value =
-      realWorldSizeCm.value / 100 / sceneStates!.calibration.scale;
+      realWorldSizeCm.value / 100 / sceneStates.value!.calibration.scale;
   }
 });
 
 const confirmCalibration = () => {
-  previousScaleFactor.value = sceneStates!.calibration.scale;
+  previousScaleFactor.value = sceneStates.value!.calibration.scale;
   previousCalibrationGridScale.value = calibrationGridScale!.value;
   canCancel.value = true;
   const realWorldSizeMeters = realWorldSizeCm.value / 100;
   const adjustment = realWorldSizeMeters / calibrationGridScale!.value;
-  sceneStates!.calibration.scale = adjustment;
+  sceneStates.value!.calibration.scale = adjustment;
 };
 const cancelCalibration = () => {
-  sceneStates!.calibration.scale = previousScaleFactor.value;
+  sceneStates.value!.calibration.scale = previousScaleFactor.value;
   calibrationGridScale!.value = previousCalibrationGridScale.value;
   canCancel.value = false;
 };
 const resetCalibration = () => {
-  sceneStates!.calibration.scale = 1;
+  sceneStates.value!.calibration.scale = 1;
   calibrationGridScale!.value = 1;
   canCancel.value = false;
 };

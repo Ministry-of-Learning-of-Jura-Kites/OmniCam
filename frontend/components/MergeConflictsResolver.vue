@@ -1,6 +1,7 @@
 <!-- eslint-disable @typescript-eslint/no-explicit-any -->
 <script lang="ts" setup>
 import { TriangleAlert } from "lucide-vue-next";
+import { useWorkspaceApi } from "~/composables/api/useWorkspaceApi";
 
 interface ConflictItem {
   base: any;
@@ -37,6 +38,12 @@ const globalErr = ref<string | null>(null);
 
 const route = useRoute();
 const runtimeConfig = useRuntimeConfig();
+
+const projectId = route.params.projectId as string;
+const modelId = route.params.modelId as string;
+
+const { postResolve } = useWorkspaceApi(projectId, modelId, runtimeConfig);
+
 // initialize defaults whenever conflicts change
 watch(
   () => props.conflicts,
@@ -138,11 +145,8 @@ async function applyAll() {
     return;
   }
 
-  const { data, error } = await useFetch<{ error?: string }>(
-    `http://${runtimeConfig.public.externalBackendHost}/api/v1/projects/${route.params.projectId}/models/${route.params.modelId}/workspaces/me/resolve`,
-    { method: "POST", credentials: "include", body: { merged: results } },
-  );
-  if (error.value != undefined || data.value?.error != undefined) {
+  const { error } = await postResolve(results);
+  if (error.value != undefined) {
     // globalErr = error
     return;
   }

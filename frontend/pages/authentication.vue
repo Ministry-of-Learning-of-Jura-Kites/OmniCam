@@ -1,36 +1,15 @@
 <script setup lang="ts">
+import {
+  useAuth,
+  type LoginRequest,
+  type RegisterRequest,
+} from "~/composables/api/useAuth";
+
 definePageMeta({
   layout: false,
 });
-interface RegisterRequest {
-  firstName: string;
-  lastName: string;
-  username: string;
-  email: string;
-  password: string;
-}
 
-interface LoginRequest {
-  identifier: string;
-  password: string;
-}
-
-interface User {
-  firstName: string;
-  lastName: string;
-  username: string;
-  email: string;
-  password: string;
-  createdAt: string;
-  updatedAt: string;
-}
-
-interface Response {
-  data: User;
-  token: string;
-}
-
-const config = useRuntimeConfig();
+const { postLogin, postRegister } = useAuth();
 
 const activeTab = ref<"signup" | "signin">("signup");
 
@@ -58,14 +37,7 @@ const loginForm = reactive<LoginRequest>({
 async function register() {
   // console.log(registerForm);
   try {
-    const _response = await $fetch<Response>(
-      "http://" + config.public.externalBackendHost + "/api/v1/register",
-      {
-        method: "POST",
-        body: registerForm,
-        credentials: "include",
-      },
-    );
+    postRegister(registerForm);
     navigateTo("/");
   } catch (err) {
     console.log(err);
@@ -77,14 +49,7 @@ async function register() {
 async function login() {
   // console.log(loginForm);
   try {
-    const _response = await $fetch<Response>(
-      "http://" + config.public.externalBackendHost + "/api/v1/login",
-      {
-        method: "POST",
-        body: loginForm,
-        credentials: "include",
-      },
-    );
+    postLogin(loginForm);
     navigateTo("/");
   } catch (err) {
     console.log(err);

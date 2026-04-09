@@ -1,12 +1,16 @@
 <script setup lang="ts">
-import type { SceneStates } from "~/types/scene-states";
+import type { SceneStates, SceneStatesWithHelper } from "~/types/scene-states";
 import {
   createBaseSceneStates,
   createSceneStatesWithHelper,
-  type ModelWithCamsResp,
 } from "./create-scene-states";
-import { useWebSocket, type UseWebSocketReturn } from "@vueuse/core";
-import { MODEL_INFO_KEY, SCENE_STATES_KEY } from "~/constants/state-keys";
+import {
+  SCENE_STATES_KEY,
+  SCENE_STATES_READY_KEY,
+} from "~/constants/state-keys";
+import { useFetchModel } from "~/composables/api/useFetchModel";
+import { useAutosaveWs } from "~/composables/api/useAutosaveWs";
+import { useLivestreamWs } from "~/composables/api/useLivestreamWs";
 
 const props = defineProps({
   projectId: {
@@ -25,121 +29,49 @@ const props = defineProps({
 
 const runtimeConfig = useRuntimeConfig();
 
-const workspaceSuffix =
-  props.workspace == null ? "" : `/workspaces/${props.workspace}`;
-
-const modelWithCamsResp = useState<ModelWithCamsResp | undefined>(
-  `${MODEL_INFO_KEY}-${props.modelId}`,
+const {
+  modelWithCamsResp,
+  error,
+  fetch: fetchModel,
+} = useFetchModel(
+  props.projectId,
+  props.modelId,
+  props.workspace,
+  runtimeConfig,
 );
 
-const error = ref<unknown | undefined>(undefined);
+const { autosaveWs } = useAutosaveWs(
+  props.projectId,
+  props.modelId,
+  props.workspace,
+);
 
-async function fetchAndCombine(fields: string[]) {
-  const paramsObj = {
-    fields: fields,
-    t: Date.now(),
-  };
-  const params = objectToQueryParams(paramsObj);
-  // Support credentials for both server-side and client-side fetching
-  const headers = useRequestHeaders(["cookie"]);
+const { livestreamWs } = useLivestreamWs(
+  props.modelId,
+  props.workspace,
+  runtimeConfig,
+);
 
-  const { data: fetchedModelWithCamsResp, error: modelFetchError } =
-    await useAsyncData("model_information", () =>
-      $fetch<ModelWithCamsResp>(
-        `http://${getHostFromRuntime(runtimeConfig, import.meta.client)}/api/v1/projects/${props.projectId}/models/${props.modelId}${workspaceSuffix}?${params.toString()}`,
-        {
-          headers: headers,
-          credentials: "include",
-        },
-      ),
-    );
+const sceneStates = shallowRef<SceneStatesWithHelper | undefined>(undefined);
+const sceneStatesReady = inject(SCENE_STATES_READY_KEY);
+provide(SCENE_STATES_KEY, sceneStates);
 
-  if (modelFetchError.value != undefined) {
-    error.value = modelFetchError.value;
-    showError({
-      statusCode: modelFetchError.value.statusCode,
-      statusMessage: modelFetchError.value.statusMessage + " " + error.value,
-      fatal: true,
-    });
-  }
+await fetchModel();
 
-  modelWithCamsResp.value = {
-    ...modelWithCamsResp.value,
-    ...fetchedModelWithCamsResp.value!,
-  };
+if (error.value != null) {
+  showError(error.value);
 }
 
-if (modelWithCamsResp.value == undefined) {
-  await fetchAndCombine([
-    "cameras",
-    "workspace_exists",
-    "target_area_trapezoids",
-  ]);
-} else {
-  // If exit from workspace into model
-  if (
-    props.workspace == null &&
-    modelWithCamsResp.value.data.workspaceExists == undefined
-  ) {
-    await fetchAndCombine([
-      "cameras",
-      "workspace_exists",
-      "target_area_trapezoids",
-    ]);
-  }
-
-  // If open workspace from model page
-  else if (
-    props.workspace == "me" &&
-    modelWithCamsResp.value.data.workspaceExists != undefined
-  ) {
-    await fetchAndCombine(["cameras", "target_area_trapezoids"]);
-  }
-}
-
-let autosaveWebsocket: UseWebSocketReturn<unknown> | undefined = undefined;
-if (props.workspace == "me" && import.meta.client) {
-  const websocketUrl = `ws://${runtimeConfig.public.externalBackendHost}/api/v1/projects/${props.projectId}/models/${props.modelId}/autosave`;
-
-  autosaveWebsocket = useWebSocket(websocketUrl, {
-    autoReconnect: {
-      delay: 1000,
-      onFailed: () => {
-        alert("Failed to connect websocket after multiple retries.");
-      },
-    },
-  });
-}
-
-let livestreamWebsocket: UseWebSocketReturn<unknown> | undefined = undefined;
-if (
-  props.workspace != undefined &&
-  props.workspace != "me" &&
-  import.meta.client
-) {
-  const protocol = runtimeConfig.public.nuxtBackendSecure ? "ws" : "wss";
-  // Fix, don't hard code api/v1
-  const url = `${protocol}://${runtimeConfig.public.externalBackendHost}/api/v1/models/${props.modelId}/livestream/${props.workspace}`;
-  livestreamWebsocket = useWebSocket(url, {
-    autoReconnect: {
-      delay: 1000,
-      onFailed: () => {
-        alert("Failed to connect websocket after multiple retries.");
-      },
-    },
-  });
-}
-
-const sceneStates = createBaseSceneStates(
-  autosaveWebsocket,
-  livestreamWebsocket,
+const baseSceneStates = createBaseSceneStates(
+  autosaveWs,
+  livestreamWs,
   modelWithCamsResp.value!,
 );
 
-if (sceneStates.error != null) {
+if (baseSceneStates.error != null) {
   if (
-    sceneStates.error &&
-    (sceneStates.error as { action: string }).action == "not-found"
+    baseSceneStates.error &&
+    (baseSceneStates.error as { action: string }).action == "not-found"
   ) {
     showError({
       statusCode: 404,
@@ -148,12 +80,16 @@ if (sceneStates.error != null) {
     });
   }
 } else {
-  const sceneStatesWithHelper = createSceneStatesWithHelper(
-    sceneStates as SceneStates,
+  sceneStates.value = createSceneStatesWithHelper(
+    baseSceneStates as SceneStates,
     props.workspace,
   );
+  await nextTick();
+  sceneStatesReady!.value = true;
+}
 
-  provide(SCENE_STATES_KEY, sceneStatesWithHelper);
+if (error.value != null) {
+  showError(error.value);
 }
 </script>
 

@@ -92,98 +92,95 @@ export function useAutosave(
     { deep: true },
   );
 
-  onMounted(() => {
-    watch(
-      () => sceneStates.websocket?.data.value,
-      async (messageBlob) => {
-        if (!messageBlob) return;
-        const buf = await (messageBlob as Blob).arrayBuffer();
-        const resp = WorkspaceEventResponse.decode(new Uint8Array(buf));
+  watch(
+    () => sceneStates.websocket?.data.value,
+    async (messageBlob) => {
+      if (!messageBlob) return;
+      const buf = await (messageBlob as Blob).arrayBuffer();
+      const resp = WorkspaceEventResponse.decode(new Uint8Array(buf));
 
-        handleWorkspaceEvent(resp);
-      },
-    );
+      handleWorkspaceEvent(resp);
+    },
+  );
 
-    watch(
-      () => [
-        sceneStates.calibration.scale,
-        sceneStates.calibration.heightOffset,
-      ],
-      ([newScale, newHeight], [oldScale, oldHeight]) => {
-        if (isServerUpdate.value) return;
-        if (newScale !== oldScale || newHeight !== oldHeight) {
-          sceneStates.calibration.dirty = true;
-        }
-      },
-    );
-
-    function updateCams(changed: AutosaveEvent[]) {
-      if (!sceneStates.markedForCheck.value) {
-        return;
+  watch(
+    () => [sceneStates.calibration.scale, sceneStates.calibration.heightOffset],
+    ([newScale, newHeight], [oldScale, oldHeight]) => {
+      if (isServerUpdate.value) return;
+      if (newScale !== oldScale || newHeight !== oldHeight) {
+        sceneStates.calibration.dirty = true;
       }
+    },
+  );
 
-      // Cameras
-      if (sceneStates.markedForCheck.value) {
-        for (const [camId, cam] of Object.entries(sceneStates.cameras)) {
-          const prev = lastSyncedCams.get(camId);
-          const formattedCam = transformCameraToProtoEventWithId(camId, cam);
-
-          if (prev == undefined || !isEqual(prev, formattedCam)) {
-            changed.push({ upsert: { camera: formattedCam } });
-            lastSyncedCams.set(camId, formattedCam);
-          }
-        }
-
-        // Check for deleted cameras
-        for (const camId of lastSyncedCams.keys()) {
-          if (!sceneStates.cameras[camId]) {
-            lastSyncedCams.delete(camId);
-            changed.push({ delete: { id: camId } });
-          }
-        }
-      }
-
-      sceneStates.markedForCheck.value = false;
+  function updateCams(changed: AutosaveEvent[]) {
+    if (!sceneStates.markedForCheck.value) {
+      return;
     }
 
-    function updateCalibration(changed: AutosaveEvent[]) {
-      if (sceneStates.calibration.dirty) {
-        changed.push({
-          calibrate: {
-            scaleFactor: sceneStates.calibration.scale,
-            modelHeight: sceneStates.calibration.heightOffset,
-          },
-        });
-        sceneStates.calibration.dirty = false;
+    // Cameras
+    if (sceneStates.markedForCheck.value) {
+      for (const [camId, cam] of Object.entries(sceneStates.cameras)) {
+        const prev = lastSyncedCams.get(camId);
+        const formattedCam = transformCameraToProtoEventWithId(camId, cam);
+
+        if (prev == undefined || !isEqual(prev, formattedCam)) {
+          changed.push({ upsert: { camera: formattedCam } });
+          lastSyncedCams.set(camId, formattedCam);
+        }
+      }
+
+      // Check for deleted cameras
+      for (const camId of lastSyncedCams.keys()) {
+        if (!sceneStates.cameras[camId]) {
+          lastSyncedCams.delete(camId);
+          changed.push({ delete: { id: camId } });
+        }
       }
     }
 
-    function updateFaces(changed: AutosaveEvent[]) {
-      for (const faceId in sceneStates.facesManagement.faces) {
-        const prev = lastSyncedFaces.get(faceId);
-        const face = sceneStates.facesManagement.faces[faceId]!;
+    sceneStates.markedForCheck.value = false;
+  }
 
-        // Handle Upsert (New or Changed)
-        const formattedFace = transformFaceToProto(faceId, face);
+  function updateCalibration(changed: AutosaveEvent[]) {
+    if (sceneStates.calibration.dirty) {
+      changed.push({
+        calibrate: {
+          scaleFactor: sceneStates.calibration.scale,
+          modelHeight: sceneStates.calibration.heightOffset,
+        },
+      });
+      sceneStates.calibration.dirty = false;
+    }
+  }
 
-        if (prev === undefined || !isEqual(prev, formattedFace)) {
-          changed.push({ faceUpsert: { coverageFace: formattedFace } });
-          lastSyncedFaces.set(faceId, formattedFace);
-        }
+  function updateFaces(changed: AutosaveEvent[]) {
+    for (const faceId in sceneStates.facesManagement.faces) {
+      const prev = lastSyncedFaces.get(faceId);
+      const face = sceneStates.facesManagement.faces[faceId]!;
+
+      // Handle Upsert (New or Changed)
+      const formattedFace = transformFaceToProto(faceId, face);
+
+      if (prev === undefined || !isEqual(prev, formattedFace)) {
+        changed.push({ faceUpsert: { coverageFace: formattedFace } });
+        lastSyncedFaces.set(faceId, formattedFace);
       }
-
-      for (const faceId of lastSyncedFaces.keys()) {
-        const face = sceneStates.facesManagement.faces[faceId];
-        // Handle Deletion
-        if (face === undefined) {
-          lastSyncedFaces.delete(faceId);
-          changed.push({ faceDelete: { id: faceId } });
-        }
-      }
-
-      sceneStates.markedFacesForCheck.value = false;
     }
 
+    for (const faceId of lastSyncedFaces.keys()) {
+      const face = sceneStates.facesManagement.faces[faceId];
+      // Handle Deletion
+      if (face === undefined) {
+        lastSyncedFaces.delete(faceId);
+        changed.push({ faceDelete: { id: faceId } });
+      }
+    }
+
+    sceneStates.markedFacesForCheck.value = false;
+  }
+
+  if (import.meta.client) {
     setInterval(() => {
       if (!sceneStates.websocket) return;
 
@@ -206,5 +203,5 @@ export function useAutosave(
         sceneStates.websocket.send(encoded.buffer);
       }
     }, 2000);
-  });
+  }
 }

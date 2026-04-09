@@ -60,13 +60,12 @@ func (t *FileRoute) serveFile(c *gin.Context, pathSegments ...string) {
 
 	c.Header("Content-Type", mimeType)
 	c.File(filePath)
-	c.File(filePath)
 }
 
 func (t *FileRoute) getProjectFile(c *gin.Context) {
 	projectIdStr := c.Param("projectId")
 	fileExt := c.Param("fileExt")
-	projectId, err := uuid.Parse(projectIdStr)
+	projectId, err := utils.ParseUuidBase64(projectIdStr)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"message": "invalid projectId"})
 		return
@@ -101,13 +100,13 @@ func (t *FileRoute) getModelFile(c *gin.Context) {
 	modelIdStr := c.Param("modelId")
 	fileExt := c.Param("fileExt")
 
-	projectId, err := uuid.Parse(projectIdStr)
+	projectId, err := utils.ParseUuidBase64(projectIdStr)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"message": "invalid projectId"})
 		return
 	}
 
-	modelId, err := uuid.Parse(modelIdStr)
+	modelId, err := utils.ParseUuidBase64(modelIdStr)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"message": "invalid modelId"})
 		return

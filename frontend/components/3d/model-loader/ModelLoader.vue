@@ -9,7 +9,7 @@ import {
   acceleratedRaycast,
 } from "three-mesh-bvh";
 
-const sceneStates = inject(SCENE_STATES_KEY);
+const sceneStates = inject(SCENE_STATES_KEY)!;
 
 const props = withDefaults(
   defineProps<{
@@ -82,7 +82,7 @@ onMounted(() => {
                 }
               });
 
-              sceneStates!.modelRef.value = s;
+              sceneStates.value!.modelRef.value = s;
 
               URL.revokeObjectURL(blobUrl!);
 
