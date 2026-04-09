@@ -35,7 +35,7 @@ export default defineNuxtConfig({
     vue: templateCompilerOptions,
   },
   compatibilityDate: "2025-07-15",
-  ssr: false,
+  ssr: true,
   devtools: { enabled: true },
   srcDir: "frontend",
   modules: ["@nuxt/eslint", "shadcn-nuxt"],

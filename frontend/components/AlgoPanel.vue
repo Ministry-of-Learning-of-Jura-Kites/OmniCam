@@ -10,14 +10,14 @@ import { v4 as uuidv4 } from "uuid";
 
 const isCameraSpawnDialogOpen = ref(false);
 
-const sceneStates = inject(SCENE_STATES_KEY)!;
+const sceneStates = inject(SCENE_STATES_KEY);
 
 const cameraConfigs = reactive<CameraConfig[]>([]);
 
 const errorMsg = ref<string | null>(null);
 
 const faceEntries = computed(() =>
-  Object.entries(sceneStates.facesManagement.faces),
+  Object.entries(sceneStates?.value?.facesManagement.faces ?? {}),
 );
 
 const isAllSelected = computed(() => {
@@ -30,7 +30,7 @@ const isAllSelected = computed(() => {
 const selectedIds = reactive(new Set<string>());
 
 const facesCount = computed(
-  () => Object.keys(sceneStates.facesManagement.faces).length,
+  () => Object.keys(sceneStates?.value?.facesManagement.faces ?? {}).length,
 );
 
 const selectedSize = computed(() => {
@@ -41,39 +41,57 @@ const selectedSize = computed(() => {
 });
 
 const toggleAreaSelection = () => {
-  if (sceneStates.selectionMode.value == "none") {
-    sceneStates.facesManagement.setMode("coverage-area");
+  if (sceneStates == undefined) {
+    return;
+  }
+  if (sceneStates.value!.selectionMode.value == "none") {
+    sceneStates.value!.facesManagement.setMode("coverage-area");
   } else {
-    sceneStates.facesManagement.setMode("none");
+    sceneStates.value!.facesManagement.setMode("none");
   }
 };
 
 const clearAreas = () => {
-  sceneStates.facesManagement.clear();
+  if (sceneStates == undefined) {
+    return;
+  }
+  sceneStates.value!.facesManagement.clear();
 };
 
 const deleteArea = (faceId: string) => {
-  sceneStates.facesManagement.remove(faceId);
+  if (sceneStates == undefined) {
+    return;
+  }
+  sceneStates.value!.facesManagement.remove(faceId);
   selectedIds.delete(faceId);
 };
 
 const updateAreaColor = (faceId: string, event: Event) => {
+  if (sceneStates == undefined) {
+    return;
+  }
   const color = (event.target as HTMLInputElement | null)?.value;
   if (!color) return;
-  sceneStates.facesManagement.updateColor(faceId, color);
+  sceneStates.value!.facesManagement.updateColor(faceId, color);
 };
 
 const getAreaColor = (color?: string) => color ?? "#22ff88";
 const isAllCoverageHidden = computed(
-  () => sceneStates.facesManagement.isAllHidden.value,
+  () => sceneStates?.value?.facesManagement.isAllHidden.value ?? true,
 );
 
 const toggleAllAreasVisibility = () => {
-  sceneStates.facesManagement.toggleAllHidden();
+  if (sceneStates == undefined) {
+    return;
+  }
+  sceneStates.value!.facesManagement.toggleAllHidden();
 };
 
 const toggleAreaVisibility = (faceId: string) => {
-  sceneStates.facesManagement.toggleFaceHidden(faceId);
+  if (sceneStates == undefined) {
+    return;
+  }
+  sceneStates.value!.facesManagement.toggleFaceHidden(faceId);
 };
 
 function handleAddCameraConfig(preset: Camerapreset) {
@@ -119,9 +137,12 @@ function toggleSelectAll(checked: boolean | "indetermediate") {
 }
 
 function submit() {
-  sceneStates.optimization?.requestOptimize(
+  if (sceneStates == undefined) {
+    return;
+  }
+  sceneStates.value!.optimization?.requestOptimize(
     faceEntries.value.filter(([id, _face]) => selectedIds.has(id)),
-    sceneStates.calibration.scale,
+    sceneStates.value!.calibration.scale,
     cameraConfigs,
   );
 }
@@ -147,13 +168,13 @@ function submit() {
           <button
             class="py-2 bg-blue-600 hover:bg-blue-700 rounded-lg font-medium transition text-white"
             :class="{
-              'bg-red-600': sceneStates.selectionMode.value !== 'none',
-              'hover:bg-red-700': sceneStates.selectionMode.value !== 'none',
+              'bg-red-600': sceneStates?.selectionMode.value !== 'none',
+              'hover:bg-red-700': sceneStates?.selectionMode.value !== 'none',
             }"
             @click="toggleAreaSelection"
           >
             {{
-              sceneStates.selectionMode.value == "none"
+              sceneStates?.selectionMode.value !== "coverage-area"
                 ? "Start Selecting"
                 : "Stop Selecting"
             }}
@@ -268,7 +289,7 @@ function submit() {
 
         <div
           v-for="[id, face] of Object.entries(
-            sceneStates.facesManagement.faces,
+            sceneStates?.facesManagement.faces ?? {},
           )"
           :key="id"
           class="mb-3 rounded-lg border border-border bg-muted/20 p-3"
@@ -356,7 +377,7 @@ function submit() {
             idle: "Run Optimization",
             sending: "Sending..",
             optimizing: "Optimizing..",
-          }[sceneStates.optimization!.submitStatus.value]
+          }[sceneStates?.optimization?.submitStatus?.value ?? "idle"]
         }}
       </Button>
     </div>

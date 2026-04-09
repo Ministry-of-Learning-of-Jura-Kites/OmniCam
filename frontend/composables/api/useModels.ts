@@ -54,6 +54,7 @@ export function getModelBaseUrl(id: string, allowServerSide: boolean) {
 
 export function useModels(projectId: string) {
   async function listModels(page = 1, pageSize = 4) {
+    const headers = useRequestHeaders(["cookie"]);
     const base = getModelBaseUrl(projectId, true);
     return await useFetch<ModelGetResponse>(base.href, {
       method: "GET",
@@ -61,6 +62,7 @@ export function useModels(projectId: string) {
         pageSize: pageSize,
         page: page,
       },
+      headers,
       credentials: "include",
     });
   }

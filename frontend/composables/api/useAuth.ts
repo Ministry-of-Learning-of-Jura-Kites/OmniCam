@@ -49,7 +49,7 @@ export function useAuth() {
   const user = useState<User | null>("user", () => null);
 
   async function postLogin(loginForm: LoginRequest) {
-    const base = getApiBaseUrlWithProtocol("http", config, true);
+    const base = getApiBaseUrlWithProtocol("http", config, false);
     await $fetch<Response>(new URL("login", base).href, {
       method: "POST",
       body: loginForm,
@@ -58,7 +58,7 @@ export function useAuth() {
   }
 
   async function postRegister(registerForm: RegisterRequest) {
-    const base = getApiBaseUrlWithProtocol("http", config, true);
+    const base = getApiBaseUrlWithProtocol("http", config, false);
     await $fetch<Response>(new URL("register", base).href, {
       method: "POST",
       body: registerForm,
@@ -67,7 +67,7 @@ export function useAuth() {
   }
 
   async function postLogout() {
-    const base = getApiBaseUrlWithProtocol("http", config, true);
+    const base = getApiBaseUrlWithProtocol("http", config, false);
 
     $fetch<null>(new URL(`logout`, base).href, {
       method: "POST",
