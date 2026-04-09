@@ -95,14 +95,12 @@ const { user, getMe } = useAuth();
 getMe();
 
 watch(
-  () => sceneStates?.value,
-  (sceneStates) => {
-    watch(
-      () => sceneStates!.currentCamId.value,
-      () => {
-        isCameraActive.value = sceneStates!.currentCamId.value !== null;
-      },
-    );
+  () => sceneStates?.value?.currentCamId?.value,
+  (currentCamId) => {
+    if (currentCamId == undefined) {
+      return;
+    }
+    isCameraActive.value = currentCamId !== null;
   },
 );
 

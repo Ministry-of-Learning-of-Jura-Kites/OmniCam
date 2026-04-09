@@ -64,10 +64,13 @@ async function fetchProjects() {
     loading.value = true;
     error.value = null;
 
-    const { data: respData } = await projectApi.listProjects(
+    const { data: respData, error: listError } = await projectApi.listProjects(
       page.value,
       pageSize.value,
     );
+    if (listError.value != undefined) {
+      console.error("Error while fetching projects", listError.value);
+    }
     const data = respData.value?.data || [];
     const count = respData.value?.count || 0;
 
@@ -215,8 +218,9 @@ async function handleConfirmAction() {
   currentEditHexId.value = null;
 }
 
+fetchProjects();
+
 watch([page, pageSize], fetchProjects);
-onMounted(fetchProjects);
 </script>
 
 <template>

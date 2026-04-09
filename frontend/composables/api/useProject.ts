@@ -55,11 +55,13 @@ export function getProjectBaseUrl(allowServerSide: boolean) {
 
 export function useProject() {
   async function listProjects(page = 1, pageSize = 4) {
+    const headers = useRequestHeaders(["cookie"]);
     const response = await useFetch<{ data: Project[]; count: number }>(
       getProjectBaseUrl(true).href,
       {
         method: "GET",
         query: { page: page, pageSize: pageSize },
+        headers,
         credentials: "include",
       },
     );
@@ -75,7 +77,7 @@ export function useProject() {
   }
 
   async function updateProject(hexId: string, body: ProjectUpdateRequest) {
-    const url = new URL(uuidToBase64Url(hexId), getProjectBaseUrl(true));
+    const url = new URL(uuidToBase64Url(hexId), getProjectBaseUrl(false));
     return await $fetch<{ data: Project }>(url.href, {
       method: "PUT",
       body,
@@ -84,7 +86,7 @@ export function useProject() {
   }
 
   async function deleteProject(hexId: string) {
-    const url = new URL(uuidToBase64Url(hexId), getProjectBaseUrl(true));
+    const url = new URL(uuidToBase64Url(hexId), getProjectBaseUrl(false));
     return await $fetch<{ data: Project }>(url.href, {
       method: "DELETE",
       credentials: "include",
@@ -94,7 +96,7 @@ export function useProject() {
   async function updateProjectImage(hexId: string, body: FormData) {
     const url = new URL(
       `${uuidToBase64Url(hexId)}/image`,
-      addTrailingSlash(getProjectBaseUrl(true)),
+      addTrailingSlash(getProjectBaseUrl(false)),
     );
     return await $fetch<{ imagePath: string }>(url.href, {
       method: "PUT",
@@ -104,7 +106,7 @@ export function useProject() {
   }
 
   async function getProject(projectId: string) {
-    const base = getProjectBaseUrl(true);
+    const base = getProjectBaseUrl(false);
     return await useFetch<{ data: Project }>(
       new URL(projectId, addTrailingSlash(base.href)).href,
       {
@@ -115,7 +117,7 @@ export function useProject() {
   }
 
   async function getProjectMembers(projectId: string) {
-    const base = getProjectBaseUrl(true);
+    const base = getProjectBaseUrl(false);
     const url = new URL(`${projectId}/members`, addTrailingSlash(base));
     return $fetch<{ data: ProjectMember[]; count: number }>(url.href, {
       method: "GET",
@@ -124,7 +126,7 @@ export function useProject() {
   }
 
   async function removeProjectMember(projectId: string, memberId: string) {
-    const base = getProjectBaseUrl(true);
+    const base = getProjectBaseUrl(false);
     const url = new URL(
       `${projectId}/members/${memberId}`,
       addTrailingSlash(base),
