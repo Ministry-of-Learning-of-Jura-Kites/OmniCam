@@ -8,9 +8,9 @@ import {
   SCENE_STATES_KEY,
   SCENE_STATES_READY_KEY,
 } from "~/constants/state-keys";
-import { useFetchModel } from "~/composables/api/useFetchModel";
-import { useAutosaveWs } from "~/composables/api/useAutosaveWs";
-import { useLivestreamWs } from "~/composables/api/useLivestreamWs";
+import { useFetchModel } from "~/composables/api/use-fetch-model";
+import { useAutosaveWs } from "~/composables/api/use-autosave-ws";
+import { useLivestreamWs } from "~/composables/api/use-livestream-ws";
 
 const props = defineProps({
   projectId: {

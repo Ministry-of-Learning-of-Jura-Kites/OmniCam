@@ -117,10 +117,12 @@ export function useProject() {
   }
 
   async function getProjectMembers(projectId: string) {
-    const base = getProjectBaseUrl(false);
+    const headers = useRequestHeaders(["cookie"]);
+    const base = getProjectBaseUrl(true);
     const url = new URL(`${projectId}/members`, addTrailingSlash(base));
     return $fetch<{ data: ProjectMember[]; count: number }>(url.href, {
       method: "GET",
+      headers,
       credentials: "include",
     });
   }

@@ -6,18 +6,18 @@ import SuccessDialog from "~/components/dialog/SuccessDialog.vue";
 import FormDialog from "~/components/dialog/FormDialog.vue";
 import AddUserDialog from "~/components/dialog/AddUserDialog.vue";
 import EditRoleDialog from "~/components/dialog/EditRoleDialog.vue";
-import { useAuth } from "~/composables/api/useAuth";
+import { useAuth } from "~/composables/api/use-auth";
 import ContentCard from "~/components/card/ContentCard.vue";
 import CustomPagination from "~/components/pagination/CustomPagination.vue";
 import { uuidToBase64Url } from "~/lib/uuid";
 import { Plus } from "lucide-vue-next";
 import type { Project } from "~/types/project";
-import { useProject, type ProjectMember } from "~/composables/api/useProject";
+import { useProject, type ProjectMember } from "~/composables/api/use-project";
 import {
   type Model,
   useModels,
   getUrlForModelImage,
-} from "~/composables/api/useModels";
+} from "~/composables/api/use-models";
 
 export type ModelForm = {
   name: string;
@@ -354,10 +354,8 @@ async function handleUpdateImage(file: File | undefined, modelId: string) {
 
 fetchProjectById();
 
-onMounted(() => {
-  fetchModel();
-  fetchMembers();
-});
+fetchModel();
+fetchMembers();
 
 watch([page, pageSize], async () => {
   await fetchModel();

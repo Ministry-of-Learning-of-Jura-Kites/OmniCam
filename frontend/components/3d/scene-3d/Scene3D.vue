@@ -34,7 +34,7 @@ import { orderPointsOnPlane } from "~/utils/face-helper/order-points-plane";
 import { computeStableNormal } from "~/utils/face-helper/stable-normal";
 import { averageVector } from "~/utils/face-helper/avg-vec";
 import { v4 as uuidv4 } from "uuid";
-import { get3dModelPathClient } from "~/composables/api/useFetchModel";
+import { get3dModelPathClient } from "~/composables/api/use-fetch-model";
 
 const { isPanelOpen, currentPanel, camPanelInfo } = inject(PANEL_KEY)!;
 const { selectedCamId } = camPanelInfo;

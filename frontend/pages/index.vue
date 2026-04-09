@@ -10,7 +10,7 @@ import {
   getUrlForProjectImage,
   useProject,
   type Project,
-} from "~/composables/api/useProject";
+} from "~/composables/api/use-project";
 
 type ProjectWithoutId = Omit<Project, "id">;
 type ProjectForm = { name: string; description: string; image: File | null };
