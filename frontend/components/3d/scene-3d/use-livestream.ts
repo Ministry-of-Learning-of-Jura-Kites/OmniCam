@@ -1,4 +1,7 @@
-import { WorkspaceEventResponse } from "~/messages/protobufs/workspace_event";
+import {
+  WorkspaceEventRequest,
+  WorkspaceEventResponse,
+} from "~/messages/protobufs/workspace_event";
 import type { SceneStates } from "~/types/scene-states";
 
 export function useLivestream(
@@ -8,20 +11,29 @@ export function useLivestream(
   if (
     workspace == undefined ||
     workspace == "me" ||
-    sceneStates.livestreamSse == undefined
+    sceneStates.livestreamWebsocket == undefined
   ) {
     return;
   }
 
-  function handleWorkspaceEvent(resp: WorkspaceEventResponse) {}
+  function handleWorkspaceEvent(resp: WorkspaceEventRequest) {
+    for (const event of resp.autosave?.events ?? []) {
+      if (event.calibrate != undefined) {
+      } else if (event.delete != undefined) {
+      } else if (event.faceDelete != undefined) {
+      } else if (event.faceUpsert != undefined) {
+      } else if (event.upsert != undefined) {
+      }
+    }
+  }
 
   onMounted(() => {
     watch(
-      () => sceneStates.websocket?.data.value,
+      () => sceneStates.livestreamWebsocket?.data.value,
       async (messageBlob) => {
         if (!messageBlob) return;
         const buf = await (messageBlob as Blob).arrayBuffer();
-        const resp = WorkspaceEventResponse.decode(new Uint8Array(buf));
+        const resp = WorkspaceEventRequest.decode(new Uint8Array(buf));
 
         handleWorkspaceEvent(resp);
       },

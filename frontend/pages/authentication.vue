@@ -3,7 +3,7 @@ import {
   useAuth,
   type LoginRequest,
   type RegisterRequest,
-} from "~/composables/api/useAuth";
+} from "~/composables/api/use-auth";
 
 definePageMeta({
   layout: false,

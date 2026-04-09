@@ -12,7 +12,7 @@ import {
 import { Moon, Sun } from "lucide-vue-next";
 import FailDialog from "~/components/dialog/FailDialog.vue";
 import { useFailDialog } from "~/composables/useFailDialog";
-import { useAuth } from "~/composables/api/useAuth";
+import { useAuth } from "~/composables/api/use-auth";
 const { open, message } = useFailDialog();
 
 const { theme, toggleTheme } = useLightDarkTheme();

@@ -23,6 +23,7 @@ import type { CoverageFace } from "~/messages/protobufs/optimization";
 import type { ProtoVector3 } from "~/messages/protobufs/vector";
 import { useAutosave } from "~/components/3d/scene-3d/use-autosave";
 import type { WorkspaceEventResponse } from "~/messages/protobufs/workspace_event";
+import { useLivestream } from "../scene-3d/use-livestream";
 
 export interface ProcessedCoverageFace {
   name: string;
@@ -366,7 +367,7 @@ export function createBaseSceneStates(
     spectatorCameraFov,
     tresCanvasParent,
     websocket: autosaveWebsocket,
-    livestreamSse: livestreamWebsocket,
+    livestreamWebsocket,
     cameras,
     error: null,
     markedForCheck,
@@ -398,6 +399,7 @@ export function createSceneStatesWithHelper(
   sceneStates: Awaited<BaseSceneStates>,
   workspace: string | null,
 ) {
+  const livestream = useLivestream(sceneStates, workspace);
   const aspectRatioManagement = useAspectRatioManagement(sceneStates);
 
   const optimization = useOptimize(sceneStates, workspace);
@@ -445,6 +447,7 @@ export function createSceneStatesWithHelper(
     spectatorPosition: useSpectatorPosition(sceneStates, workspace),
     spectatorRotation: useSpectatorRotation(sceneStates, workspace),
     optimization,
+    livestream,
   };
   return sceneStatesWithCam;
 }

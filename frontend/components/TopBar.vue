@@ -36,8 +36,8 @@ import TooltipProvider from "./ui/tooltip/TooltipProvider.vue";
 import { MAP_KEY } from "~/constants/state-keys";
 import Setting3dDialog from "./dialog/Setting3dDialog.vue";
 import { uuidToBase64Url } from "~/lib/uuid";
-import { useWorkspaceApi } from "~/composables/api/useWorkspaceApi";
-import { useAuth } from "~/composables/api/useAuth";
+import { useWorkspaceApi } from "~/composables/api/use-workspace-api";
+import { useAuth } from "~/composables/api/use-auth";
 
 const props = defineProps({
   workspace: {

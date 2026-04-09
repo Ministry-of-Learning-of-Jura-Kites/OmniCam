@@ -1,7 +1,7 @@
 <!-- eslint-disable @typescript-eslint/no-explicit-any -->
 <script lang="ts" setup>
 import { TriangleAlert } from "lucide-vue-next";
-import { useWorkspaceApi } from "~/composables/api/useWorkspaceApi";
+import { useWorkspaceApi } from "~/composables/api/use-workspace-api";
 
 interface ConflictItem {
   base: any;

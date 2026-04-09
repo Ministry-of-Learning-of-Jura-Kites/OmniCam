@@ -1,4 +1,4 @@
-import { getBaseProjectImageUrl, getProjectBaseUrl } from "./useProject";
+import { getBaseProjectImageUrl, getProjectBaseUrl } from "./use-project";
 
 export interface Model {
   modelId: string;
