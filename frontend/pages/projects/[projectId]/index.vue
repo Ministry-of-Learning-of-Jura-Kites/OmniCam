@@ -27,7 +27,7 @@ export type ModelForm = {
 export type ModelWithoutId = Omit<Model, "modelId">;
 
 const route = useRoute();
-const { user, fetchUser } = await useAuth();
+const { user, fetchUser } = useAuth();
 fetchUser();
 
 const projectId = route.params.projectId as string;

@@ -33,12 +33,7 @@ const {
   modelWithCamsResp,
   error,
   fetch: fetchModel,
-} = useFetchModel(
-  props.projectId,
-  props.modelId,
-  props.workspace,
-  runtimeConfig,
-);
+} = useFetchModel(props.projectId, props.modelId, props.workspace);
 
 const { autosaveWs } = useAutosaveWs(
   props.projectId,

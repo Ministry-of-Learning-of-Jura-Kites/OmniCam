@@ -1,8 +1,6 @@
-import type { RuntimeConfig } from "nuxt/schema";
 import type { ModelWithCamsResp } from "~/components/3d/scene-states-provider/create-scene-states";
 import { MODEL_INFO_KEY } from "~/constants/state-keys";
 import { getApiBaseUrlWithProtocol } from "~/utils/url";
-import type { FetchError } from "ofetch";
 
 export function get3dModelPathClient(
   projectId: string,
@@ -21,76 +19,75 @@ export function get3dModelPathClient(
 export function useFetchModel(
   projectId: string,
   modelId: string,
-  workspace: string,
-  runtimeConfig: RuntimeConfig,
+  workspace: string | null,
 ) {
-  const modelWithCamsResp = useState<ModelWithCamsResp | undefined>(
-    `${MODEL_INFO_KEY}-${modelId}`,
+  const workspaceSuffix = computed(() =>
+    workspace ? `/workspaces/${workspace}` : "",
   );
+  const runtimeConfig = useRuntimeConfig();
+  const nuxtApp = useNuxtApp();
+  const key = `${MODEL_INFO_KEY}-${modelId}`;
 
-  const workspaceSuffix = workspace == null ? "" : `/workspaces/${workspace}`;
+  const {
+    data: modelWithCamsResp,
+    error,
+    execute,
+    status,
+  } = useAsyncData<ModelWithCamsResp>(
+    key,
+    async () => {
+      const currentData = nuxtApp.payload.data[key];
+      const fields = getRequiredFields(workspace, currentData);
 
-  const error = useState<FetchError<unknown> | null>(
-    "fetch-model-error",
-    () => null,
-  );
+      const headers = useRequestHeaders(["cookie"]);
+      const apiBase = getApiBaseUrlWithProtocol("http", runtimeConfig, true);
+      const url = new URL(
+        `projects/${projectId}/models/${modelId}${workspaceSuffix.value}`,
+        apiBase,
+      );
 
-  async function fetchAndCombine(fields: string[]) {
-    const paramsObj = {
-      fields: fields,
-      t: Date.now(),
-    };
-    const params = objectToQueryParams(paramsObj);
-    // Support credentials for both server-side and client-side fetching
-    const headers = useRequestHeaders(["cookie"]);
-    const apiBaseWithProtocol = getApiBaseUrlWithProtocol(
-      "http",
-      runtimeConfig,
-      true,
-    );
+      for (const field of fields) {
+        url.searchParams.append("fields", field);
+      }
+      url.searchParams.append("t", Date.now().toString());
 
-    const { data, error: actualError } = await useFetch<ModelWithCamsResp>(
-      new URL(
-        `projects/${projectId}/models/${modelId}${workspaceSuffix}?${params.toString()}`,
-        apiBaseWithProtocol,
-      ).href,
-      {
-        headers: headers,
+      return await $fetch<ModelWithCamsResp>(url.href, {
+        headers,
         credentials: "include",
-      },
-    );
+      });
+    },
+    { immediate: true },
+  );
 
-    modelWithCamsResp.value = data.value;
-    error.value = actualError.value as FetchError<unknown>;
+  function getRequiredFields(
+    ws: string | null,
+    currentData?: ModelWithCamsResp,
+  ) {
+    if (!currentData)
+      return ["cameras", "workspace_exists", "target_area_trapezoids"];
+    if (ws == null && currentData.data.workspaceExists == undefined) {
+      return ["cameras", "workspace_exists", "target_area_trapezoids"];
+    }
+    return ["cameras", "target_area_trapezoids"];
   }
-  async function fetch() {
-    if (modelWithCamsResp.value == undefined) {
-      await fetchAndCombine([
-        "cameras",
-        "workspace_exists",
-        "target_area_trapezoids",
-      ]);
-    } else {
-      // If exit from workspace into model
-      if (
-        workspace == null &&
-        modelWithCamsResp.value.data.workspaceExists == undefined
-      ) {
-        await fetchAndCombine([
-          "cameras",
-          "workspace_exists",
-          "target_area_trapezoids",
-        ]);
-      }
 
-      // If open workspace from model page
-      else if (
-        workspace == "me" &&
-        modelWithCamsResp.value.data.workspaceExists != undefined
-      ) {
-        await fetchAndCombine(["cameras", "target_area_trapezoids"]);
-      }
+  async function fetch() {
+    const needsFetch =
+      !modelWithCamsResp.value ||
+      (workspace == null &&
+        modelWithCamsResp.value.data.workspaceExists == undefined) ||
+      (workspace == "me" &&
+        modelWithCamsResp.value.data.workspaceExists != undefined);
+
+    if (needsFetch) {
+      await execute();
     }
   }
-  return { modelWithCamsResp, fetch, error };
+
+  return {
+    modelWithCamsResp,
+    fetch,
+    error,
+    pending: computed(() => status.value === "pending"),
+  };
 }

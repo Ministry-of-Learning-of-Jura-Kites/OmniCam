@@ -91,7 +91,7 @@ const isSettingDialogOpen = ref<boolean>(false);
 
 const isCameraActive = ref(false);
 
-const { user, fetchUser } = await useAuth();
+const { user, fetchUser } = useAuth();
 fetchUser();
 
 watch(
