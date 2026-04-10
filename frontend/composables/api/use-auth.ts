@@ -43,12 +43,12 @@ export interface Response {
   token: string;
 }
 
-export async function useAuth() {
+export function useAuth() {
   const config = useRuntimeConfig();
 
   const user = useState<User | null>("user", () => null);
 
-  const { data, execute: fetchUser } = await useAsyncData("auth-me", getMe, {
+  const { data, execute: fetchUser } = useAsyncData("auth-me", getMe, {
     immediate: false,
     transform: (resp) => resp.data,
     lazy: true,

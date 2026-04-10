@@ -9,7 +9,7 @@ definePageMeta({
   layout: false,
 });
 
-const { postLogin, postRegister } = await useAuth();
+const { postLogin, postRegister } = useAuth();
 
 const activeTab = ref<"signup" | "signin">("signup");
 

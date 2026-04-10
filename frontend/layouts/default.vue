@@ -16,7 +16,7 @@ import { useAuth } from "~/composables/api/use-auth";
 const { open, message } = useFailDialog();
 
 const { theme, toggleTheme } = useLightDarkTheme();
-const { user, fetchUser, postLogout } = await useAuth();
+const { user, fetchUser, postLogout } = useAuth();
 fetchUser();
 
 const handleLogout = () => {
