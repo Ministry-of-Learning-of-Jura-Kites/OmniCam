@@ -47,7 +47,8 @@ const props = defineProps({
   },
 });
 
-const sceneStates = inject(SCENE_STATES_KEY)!;
+// Scenestates can be null to allow skeleton UI
+const sceneStates = inject(SCENE_STATES_KEY);
 
 const { camPanelInfo } = inject(PANEL_KEY)!;
 const { selectedCamId } = camPanelInfo;
@@ -58,53 +59,53 @@ const isDistortionPropertiesOpen = ref(true);
 const isCameraSpawnDialogOpen = ref(false);
 
 const selectedCam = computed(() =>
-  selectedCamId.value ? sceneStates.cameras[selectedCamId.value] : null,
+  selectedCamId.value ? sceneStates?.value?.cameras[selectedCamId.value] : null,
 );
 
 watch(
-  () => sceneStates.cameras,
+  () => sceneStates?.value?.cameras,
   () => {
-    sceneStates.markedForCheck.value = true;
+    sceneStates!.value!.markedForCheck.value = true;
   },
   { deep: true },
 );
 
 const isSelectedActive = computed(
-  () => sceneStates.currentCamId.value === selectedCamId.value,
+  () => sceneStates?.value?.currentCamId.value === selectedCamId.value,
 );
 
 watch(
   [() => selectedCam.value?.widthRes, () => selectedCam.value?.heightRes],
   () => {
-    sceneStates.aspectRatioManagement?.updateAspectFromEle();
+    sceneStates!.value!.aspectRatioManagement?.updateAspectFromEle();
   },
 );
 
 // const spawnCamera = () => {
-//   const newCamId = sceneStates.cameraManagement.spawnCameraHere();
+//   const newCamId = sceneStates.value!.cameraManagement.spawnCameraHere();
 //   if (newCamId) {
 //     selectedCamId.value = newCamId;
 //   }
 // };
 
 const moveCameraHere = (id: string) => {
-  sceneStates.cameras[id]!.position = new Vector3().copy(
-    sceneStates.spectatorCameraPosition,
+  sceneStates!.value!.cameras[id]!.position = new Vector3().copy(
+    sceneStates!.value!.spectatorCameraPosition,
   );
-  sceneStates.cameras[id]!.rotation = new Euler().copy(
-    sceneStates.spectatorCameraRotation,
+  sceneStates!.value!.cameras[id]!.rotation = new Euler().copy(
+    sceneStates!.value!.spectatorCameraRotation,
   );
 };
 
 const deleteCamera = (id: string) => {
-  if (sceneStates.currentCamId.value == id) {
-    sceneStates.currentCamId.value = null;
+  if (sceneStates!.value!.currentCamId.value == id) {
+    sceneStates!.value!.currentCamId.value = null;
   }
-  delete sceneStates.cameras[id];
+  delete sceneStates!.value!.cameras[id];
 };
 
 function randomNewFrustumColor() {
-  const cam = sceneStates.cameras[selectedCamId.value!]!;
+  const cam = sceneStates!.value!.cameras[selectedCamId.value!]!;
   const color = randomVividColor();
   cam.frustumColor.r = color.r;
   cam.frustumColor.g = color.g;
@@ -112,7 +113,7 @@ function randomNewFrustumColor() {
 }
 
 function onToggleLockPosition() {
-  const cam = sceneStates.cameras[selectedCamId.value!]!;
+  const cam = sceneStates!.value!.cameras[selectedCamId.value!]!;
 
   if (cam.isLockingPosition) {
     cam.isHidingArrows = true;
@@ -122,7 +123,7 @@ function onToggleLockPosition() {
 }
 
 function onToggleLockRotation() {
-  const cam = sceneStates.cameras[selectedCamId.value!]!;
+  const cam = sceneStates!.value!.cameras[selectedCamId.value!]!;
 
   if (cam.isLockingRotation) {
     cam.isHidingWheels = true;
@@ -132,14 +133,14 @@ function onToggleLockRotation() {
 }
 
 function onFovChange() {
-  const cam = sceneStates.cameras[selectedCamId.value!]!;
+  const cam = sceneStates!.value!.cameras[selectedCamId.value!]!;
   if (cam.fov > 179) {
     cam.isHidingFrustum = true;
   }
 }
 
 function getUniqueCameraName(baseName: string) {
-  const names = Object.values(sceneStates.cameras).map((c) => c.name);
+  const names = Object.values(sceneStates!.value!.cameras).map((c) => c.name);
 
   if (!names.includes(baseName)) return baseName;
 
@@ -152,12 +153,14 @@ function getUniqueCameraName(baseName: string) {
 
 const isLockingRotation = computed(() => {
   return (
-    sceneStates.currentCam.value.isLockingRotation || props.workspace != "me"
+    sceneStates?.value?.currentCam.value.isLockingRotation ||
+    props.workspace != "me"
   );
 });
 const isLockingPosition = computed(() => {
   return (
-    sceneStates.currentCam.value.isLockingPosition || props.workspace != "me"
+    sceneStates?.value?.currentCam.value.isLockingPosition ||
+    props.workspace != "me"
   );
 });
 
@@ -166,8 +169,11 @@ const isLockingPosition = computed(() => {
 // };
 
 const handleSpawnCamera = (preset: Camerapreset) => {
-  const camId = sceneStates.cameraManagement.spawnCameraHere();
-  const cam = sceneStates.cameras[camId];
+  if (!sceneStates) {
+    return;
+  }
+  const camId = sceneStates.value!.cameraManagement.spawnCameraHere();
+  const cam = sceneStates.value!.cameras[camId];
 
   if (cam) {
     cam.name = getUniqueCameraName(`${preset.vendor} ${preset.camera}`);
@@ -181,7 +187,7 @@ const handleSpawnCamera = (preset: Camerapreset) => {
 
     cam.frustumLength = Number(preset.focal_length) * 50;
 
-    sceneStates.markedForCheck.value = true;
+    sceneStates.value!.markedForCheck.value = true;
 
     if (selectedCamId.value !== undefined) {
       selectedCamId.value = camId;
@@ -201,7 +207,7 @@ const createRotationRef = (axis: "x" | "y" | "z") => {
     set(value: number) {
       if (!selectedCam.value) return;
       selectedCam.value.rotation[axis] = MathUtils.degToRad(value);
-      sceneStates.markedForCheck.value = true;
+      sceneStates!.value!.markedForCheck.value = true;
     },
   });
 };
@@ -251,9 +257,9 @@ const directionAngles = computed(() => {
 
 function toggleCamera(camId: string) {
   if (isSelectedActive.value) {
-    sceneStates.cameraManagement.switchToSpectator();
+    sceneStates!.value!.cameraManagement.switchToSpectator();
   } else {
-    sceneStates.cameraManagement.switchToCam(camId);
+    sceneStates!.value!.cameraManagement.switchToCam(camId);
   }
 }
 // cloud point -> glb -> using point to make surface (triangle)
@@ -269,7 +275,7 @@ function toggleCamera(camId: string) {
         </h2>
         <!-- <Button
         size="sm"
-        @click="sceneStates.cameraManagement.switchToSpectator()"
+        @click="sceneStates.value!.cameraManagement.switchToSpectator()"
       >
         <RotateCcw class="h-4 w-4" />
       </Button> -->
@@ -304,7 +310,9 @@ function toggleCamera(camId: string) {
           class="w-full border rounded px-3 py-2 bg-background text-foreground"
         >
           <option
-            v-for="[camId, camera] of Object.entries(sceneStates.cameras)"
+            v-for="[camId, camera] of Object.entries(
+              sceneStates?.cameras ?? {},
+            )"
             :key="camId"
             :value="camId"
           >
@@ -316,7 +324,7 @@ function toggleCamera(camId: string) {
 
       <div class="space-y-3">
         <!-- Camera Properties -->
-        <Card v-if="selectedCamId && sceneStates.cameras[selectedCamId]">
+        <Card v-if="selectedCamId && sceneStates?.cameras[selectedCamId]">
           <CardHeader
             class="cursor-pointer flex items-center justify-between"
             @click="isCameraPropertiesOpen = !isCameraPropertiesOpen"
@@ -617,7 +625,7 @@ function toggleCamera(camId: string) {
         </Card>
 
         <!-- Frustum Properties -->
-        <Card v-if="selectedCamId && sceneStates.cameras[selectedCamId]">
+        <Card v-if="selectedCamId && sceneStates?.cameras[selectedCamId]">
           <CardHeader
             class="cursor-pointer flex items-center justify-between"
             @click="isFrustumPropertiesOpen = !isFrustumPropertiesOpen"
@@ -640,15 +648,15 @@ function toggleCamera(camId: string) {
                   <Button
                     size="sm"
                     class="flex-1 w-full"
-                    :disabled="sceneStates.cameras[selectedCamId]!.fov > 179"
+                    :disabled="sceneStates?.cameras[selectedCamId]!.fov > 179"
                     @click="
-                      sceneStates.cameras[selectedCamId]!.isHidingFrustum =
-                        !sceneStates.cameras[selectedCamId]!.isHidingFrustum
+                      sceneStates!.cameras[selectedCamId]!.isHidingFrustum =
+                        !sceneStates!.cameras[selectedCamId]!.isHidingFrustum
                     "
                   >
                     <Eye
                       v-if="
-                        !sceneStates.cameras[selectedCamId]!.isHidingFrustum
+                        !sceneStates?.cameras[selectedCamId]!.isHidingFrustum
                       "
                       class="h-3 w-3"
                     />
@@ -657,7 +665,7 @@ function toggleCamera(camId: string) {
                   </Button></TooltipTrigger
                 >
                 <TooltipContent
-                  v-if="sceneStates.cameras[selectedCamId]!.fov > 179"
+                  v-if="sceneStates?.cameras[selectedCamId]!.fov > 179"
                 >
                   Fov is too high for frustum visualization
                 </TooltipContent>
@@ -677,6 +685,7 @@ function toggleCamera(camId: string) {
               <div>
                 <Label for="color-r"><p>R</p></Label>
                 <Input
+                  v-if="sceneStates.cameras"
                   id="color-r"
                   v-model.number="
                     sceneStates.cameras[selectedCamId]!.frustumColor.r
@@ -740,7 +749,7 @@ function toggleCamera(camId: string) {
           </CardContent>
         </Card>
 
-        <Card v-if="selectedCamId && sceneStates.cameras[selectedCamId]">
+        <Card v-if="selectedCamId && sceneStates?.cameras[selectedCamId]">
           <CardHeader
             class="cursor-pointer flex items-center justify-between"
             @click="isDistortionPropertiesOpen = !isDistortionPropertiesOpen"
@@ -769,6 +778,7 @@ function toggleCamera(camId: string) {
             </div>
             <div class="flex items-center gap-2">
               <input
+                v-if="sceneStates"
                 id="is-fisheye"
                 v-model="
                   sceneStates.cameras[selectedCamId]!.distortion.isFisheye

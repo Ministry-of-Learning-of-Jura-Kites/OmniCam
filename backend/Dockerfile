@@ -1,4 +1,4 @@
-FROM golang:1.24.5 AS builder
+FROM golang:1.25.0 AS builder
 WORKDIR /app
 
 RUN mkdir -p ./backend/pkg/messages
@@ -26,7 +26,7 @@ COPY ./backend ./backend
 # Build binary
 RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o omnicam ./backend/main.go
 
-FROM gcr.io/distroless/base-debian11
+FROM debian:11-slim
 WORKDIR /app
 
 # Copy binary only

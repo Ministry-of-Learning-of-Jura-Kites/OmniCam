@@ -34,30 +34,42 @@ import { orderPointsOnPlane } from "~/utils/face-helper/order-points-plane";
 import { computeStableNormal } from "~/utils/face-helper/stable-normal";
 import { averageVector } from "~/utils/face-helper/avg-vec";
 import { v4 as uuidv4 } from "uuid";
+import { get3dModelPathClient } from "~/composables/api/use-fetch-model";
 
 const { isPanelOpen, currentPanel, camPanelInfo } = inject(PANEL_KEY)!;
 const { selectedCamId } = camPanelInfo;
 
 const selectedFaces = computed(() =>
   Object.entries(
-    sceneStates.facesManagement.faces ?? ({} as ProcessedCoverageFace),
+    sceneStates.value!.facesManagement.faces ?? ({} as ProcessedCoverageFace),
   ).filter(
     ([_id, face]) =>
-      !sceneStates.facesManagement.isAllHidden.value && !face.hidden,
+      !sceneStates.value!.facesManagement.isAllHidden.value && !face.hidden,
   ),
 );
 type Point3 = [number, number, number];
-const props = defineProps({
-  projectId: { type: String, required: true },
-  modelId: { type: String, required: true },
-  workspace: { type: String, default: null },
-});
+const props = withDefaults(
+  defineProps<{
+    projectId: string;
+    modelId: string;
+    workspace?: string | null;
+  }>(),
+  {
+    workspace: null,
+  },
+);
 
 const config = useRuntimeConfig();
 const sceneStates = inject(SCENE_STATES_KEY)!;
-const { data: modelResp } = sceneStates.modelInfo;
+const modelResp = computed(() => {
+  return sceneStates.value!.modelInfo.data;
+});
 
-const modelPath = `http://${config.public.externalBackendHost}/api/v1/assets/projects/${modelResp.projectId}/models/${modelResp.modelId}/file/${modelResp.fileExtension.slice(1)}`;
+const modelPath = get3dModelPathClient(
+  props.projectId,
+  props.modelId,
+  modelResp.value.fileExtension,
+);
 
 const perspectiveCamera = ref<PerspectiveCamera | null>(null);
 const canvas: Ref<InstanceType<typeof TresCanvas> | null> = ref(null);
@@ -73,14 +85,14 @@ const draftCoveragePoints = ref<Vector3[]>([]);
 const draftCoverageNormals = ref<Vector3[]>([]);
 
 const aspect = computed(() => {
-  const width = sceneStates.currentCam.value.widthRes;
+  const width = sceneStates.value!.currentCam.value.widthRes;
   if (width == 0) return undefined;
-  const height = sceneStates.currentCam.value.heightRes || 1;
+  const height = sceneStates.value!.currentCam.value.heightRes || 1;
   return width / height;
 });
 
 const previewPoints = computed<Point3[]>(() => {
-  if (sceneStates.selectionMode.value !== "coverage-area") return [];
+  if (sceneStates.value!.selectionMode.value !== "coverage-area") return [];
 
   return buildDraftCoveragePreview(
     draftCoveragePoints.value,
@@ -91,14 +103,14 @@ const previewPoints = computed<Point3[]>(() => {
 const isPreviewing = computed(() => previewPoints.value.length === 4);
 
 const draftPointMarkers = computed<Point3[]>(() => {
-  if (sceneStates.selectionMode.value !== "coverage-area") return [];
+  if (sceneStates.value!.selectionMode.value !== "coverage-area") return [];
 
   return draftCoveragePoints.value.map((p) => [p.x, p.y, p.z] as Point3);
 });
 
-usePromptUnsaved(sceneStates);
+usePromptUnsaved(sceneStates.value!);
 
-useCameraUpdate(sceneStates);
+useCameraUpdate(sceneStates.value!);
 
 // ── Raycasting & Input Events (Omitted same logic for brevity) ───────
 const raycaster = new Raycaster();
@@ -107,7 +119,7 @@ const mouse = new Vector2();
 function clearDraftCoverageSelection() {
   draftCoveragePoints.value = [];
   draftCoverageNormals.value = [];
-  // sceneStates.tresContext.value?.invalidate?.();
+  // sceneStates.value!.tresContext.value?.invalidate?.();
 }
 
 function buildDraftCoveragePreview(
@@ -175,7 +187,7 @@ function buildCoverageFaceFromPickedPoints(
 }
 
 function handleCoverageAreaPointer(event: PointerEvent) {
-  if (sceneStates.selectionMode.value !== "coverage-area") return false;
+  if (sceneStates.value!.selectionMode.value !== "coverage-area") return false;
 
   if (event.type !== "pointerdown" || !event.ctrlKey) {
     return false;
@@ -202,24 +214,24 @@ function handleCoverageAreaPointer(event: PointerEvent) {
     );
 
     if (face) {
-      sceneStates.facesManagement.add(uuidv4(), face);
+      sceneStates.value!.facesManagement.add(uuidv4(), face);
     }
 
     requestAnimationFrame(() => {
       clearDraftCoverageSelection();
     });
 
-    // sceneStates.tresContext.value?.invalidate?.();
+    // sceneStates.value!.tresContext.value?.invalidate?.();
     return true;
   }
 
-  // sceneStates.tresContext.value?.invalidate?.();
+  // sceneStates.value!.tresContext.value?.invalidate?.();
   return true;
 }
 function getSurfaceHit(
   event: PointerEvent,
 ): { point: Vector3; normal: Vector3 } | null {
-  const context = sceneStates.tresContext.value;
+  const context = sceneStates.value!.tresContext.value;
   const camera = perspectiveCamera.value;
 
   if (!context?.renderer?.instance || !camera) return null;
@@ -234,7 +246,7 @@ function getSurfaceHit(
   raycaster.setFromCamera(mouse, camera);
 
   const hits = raycaster.intersectObjects(
-    [sceneStates.modelRef.value!.scene!],
+    [sceneStates.value!.modelRef.value!.scene!],
     true,
   );
   const hit = hits[0];
@@ -265,29 +277,29 @@ function getSurfaceHit(
 function onCanvasKeydown(event: KeyboardEvent) {
   if (
     event.code == "Escape" &&
-    sceneStates.selectionMode.value === "coverage-area"
+    sceneStates.value!.selectionMode.value === "coverage-area"
   ) {
     requestAnimationFrame(() => {
       clearDraftCoverageSelection();
     });
     return;
   }
-  sceneStates.spectatorPosition.onKeyDown(event);
+  sceneStates.value!.spectatorPosition.onKeyDown(event);
 }
 
 function onCanvasPointer(event: PointerEvent) {
-  if (!sceneStates.tresContext.value || !perspectiveCamera.value) return;
-  if (sceneStates.selectionMode.value === "coverage-area") {
+  if (!sceneStates.value!.tresContext.value || !perspectiveCamera.value) return;
+  if (sceneStates.value!.selectionMode.value === "coverage-area") {
     const handled = handleCoverageAreaPointer(event);
     if (handled) return;
   }
-  const ele = sceneStates.tresContext.value.renderer.instance.domElement;
+  const ele = sceneStates.value!.tresContext.value.renderer.instance.domElement;
   const rect = ele.getBoundingClientRect();
   mouse.x = ((event.clientX - rect.left) / rect.width!) * 2 - 1;
   mouse.y = -((event.clientY - rect.top) / rect.height!) * 2 + 1;
   raycaster.setFromCamera(mouse, perspectiveCamera.value!);
   const intersects = raycaster.intersectObjects(
-    [...sceneStates.draggableObjects],
+    [...sceneStates.value!.draggableObjects],
     false,
   );
   if (intersects.length > 0) {
@@ -296,9 +308,9 @@ function onCanvasPointer(event: PointerEvent) {
     userData.handleEvent.call(userData, event.type, event);
   } else if (
     event.type === "pointerdown" &&
-    (sceneStates.currentCamId.value == null || props.workspace == "me")
+    (sceneStates.value!.currentCamId.value == null || props.workspace == "me")
   ) {
-    sceneStates.spectatorRotation.onPointerDown(event);
+    sceneStates.value!.spectatorRotation.onPointerDown(event);
   }
 }
 
@@ -314,7 +326,7 @@ onMounted(() => {
     perspectiveCamera,
     (camera) => {
       if (camera != undefined) {
-        sceneStates.perspectiveCamera.value = camera;
+        sceneStates.value!.perspectiveCamera.value = camera;
         stopPersWatch();
       }
     },
@@ -326,40 +338,40 @@ onMounted(() => {
     (camera) => {
       if (camera != null) {
         camera.renderTarget = cubeCameraTarget;
-        sceneStates.cubeCamera.value = camera;
+        sceneStates.value!.cubeCamera.value = camera;
         camera.rotation.order = "YXZ";
         watch(
-          () => sceneStates.currentCam.value.position.x,
+          () => sceneStates.value!.currentCam.value.position.x,
           (x) => {
             camera.position.x = x;
           },
         );
         watch(
-          () => sceneStates.currentCam.value.position.y,
+          () => sceneStates.value!.currentCam.value.position.y,
           (y) => {
             camera.position.y = y;
           },
         );
         watch(
-          () => sceneStates.currentCam.value.position.z,
+          () => sceneStates.value!.currentCam.value.position.z,
           (z) => {
             camera.position.z = z;
           },
         );
         watch(
-          () => sceneStates.currentCam.value.rotation.x,
+          () => sceneStates.value!.currentCam.value.rotation.x,
           (x) => {
             camera.rotation.x = x;
           },
         );
         watch(
-          () => sceneStates.currentCam.value.rotation.y,
+          () => sceneStates.value!.currentCam.value.rotation.y,
           (y) => {
             camera.rotation.y = y;
           },
         );
         watch(
-          () => sceneStates.currentCam.value.rotation.z,
+          () => sceneStates.value!.currentCam.value.rotation.z,
           (z) => {
             camera.rotation.z = z;
           },
@@ -382,7 +394,7 @@ onMounted(() => {
           stats!.end();
         });
       }
-      sceneStates.tresContext.value = context;
+      sceneStates.value!.tresContext.value = context;
       renderer.instance.domElement.addEventListener(
         "pointerdown",
         onCanvasPointer,
@@ -398,11 +410,11 @@ onMounted(() => {
       renderer.instance.domElement.addEventListener("keydown", onCanvasKeydown);
       renderer.instance.domElement.addEventListener(
         "keyup",
-        sceneStates.spectatorPosition.onKeyUp,
+        sceneStates.value!.spectatorPosition.onKeyUp,
       );
       renderer.instance.domElement.addEventListener("blur", (e: FocusEvent) => {
-        sceneStates.spectatorRotation.onBlur(e);
-        sceneStates.spectatorPosition.onBlur(e);
+        sceneStates.value!.spectatorRotation.onBlur(e);
+        sceneStates.value!.spectatorPosition.onBlur(e);
       });
 
       renderer.instance.domElement.addEventListener(
@@ -410,8 +422,12 @@ onMounted(() => {
         (event: Event) => {
           event.preventDefault();
 
-          sceneStates.spectatorRotation.onBlur(event as unknown as FocusEvent);
-          sceneStates.spectatorPosition.onBlur(event as unknown as FocusEvent);
+          sceneStates.value!.spectatorRotation.onBlur(
+            event as unknown as FocusEvent,
+          );
+          sceneStates.value!.spectatorPosition.onBlur(
+            event as unknown as FocusEvent,
+          );
         },
       );
     },
@@ -431,7 +447,7 @@ if (config.public.devMode) {
   });
 }
 watch(
-  () => sceneStates.selectionMode.value,
+  () => sceneStates.value!.selectionMode.value,
   (mode) => {
     if (mode !== "coverage-area") {
       clearDraftCoverageSelection();
@@ -440,7 +456,8 @@ watch(
 );
 
 watch(
-  () => Object.keys(sceneStates.facesManagement.faces.value ?? {}).length,
+  () =>
+    Object.keys(sceneStates.value!.facesManagement.faces.value ?? {}).length,
   (len) => {
     if (len === 0) {
       clearDraftCoverageSelection();
@@ -449,9 +466,9 @@ watch(
 );
 
 function selectCurrentCamShortcut() {
-  const currentCamId = sceneStates.currentCamId.value;
+  const currentCamId = sceneStates.value!.currentCamId.value;
   if (currentCamId) {
-    selectedCamId.value = sceneStates.currentCamId.value;
+    selectedCamId.value = sceneStates.value!.currentCamId.value;
     isPanelOpen.value = true;
     currentPanel.value = "camera";
   }
@@ -466,22 +483,22 @@ function selectCurrentCamShortcut() {
       <div
         class="w-full h-full absolute z-3 pointer-events-none flex justify-between"
         :class="
-          sceneStates.aspectMarginType.value == 'horizontal'
+          sceneStates!.aspectMarginType.value == 'horizontal'
             ? 'flex-col'
             : 'row'
         "
       >
         <div
           :style="{
-            width: sceneStates.aspectMargin.width ?? '0px',
-            height: sceneStates.aspectMargin.height ?? '0px',
+            width: sceneStates!.aspectMargin.width ?? '0px',
+            height: sceneStates!.aspectMargin.height ?? '0px',
           }"
           class="align-start pointer-events-auto"
         ></div>
         <div
           :style="{
-            width: sceneStates.aspectMargin.width ?? '0px',
-            height: sceneStates.aspectMargin.height ?? '0px',
+            width: sceneStates!.aspectMargin.width ?? '0px',
+            height: sceneStates!.aspectMargin.height ?? '0px',
           }"
           class="align-end pointer-events-auto"
         ></div>
@@ -493,13 +510,15 @@ function selectCurrentCamShortcut() {
       >
         <p
           class="text-center w-full mb-2 font-bold border-b border-white/20 truncate"
-          :class="{ 'cursor-pointer': sceneStates.currentCamId.value != null }"
+          :class="{
+            'cursor-pointer': sceneStates!.currentCamId.value != null,
+          }"
           @click="selectCurrentCamShortcut"
         >
           {{
-            sceneStates.currentCamId.value == null
+            sceneStates!.currentCamId.value == null
               ? "Spectator"
-              : sceneStates.currentCam.value.name
+              : sceneStates!.currentCam.value.name
           }}
         </p>
 
@@ -510,7 +529,7 @@ function selectCurrentCamShortcut() {
         >
           <p class="w-4">{{ axis }}:</p>
           <AdjustableInput
-            v-model="sceneStates.currentCam.value.position[axis]"
+            v-model="sceneStates!.currentCam.value.position[axis]"
             class="right-adjustable-input"
             :sliding-sensitivity="SPECTATOR_ADJ_INPUT_SENTIVITY"
           />
@@ -528,7 +547,7 @@ function selectCurrentCamShortcut() {
             >:
           </p>
           <AdjustableInput
-            v-model="sceneStates.currentCam.value.rotation[axis]"
+            v-model="sceneStates!.currentCam.value.rotation[axis]"
             class="right-adjustable-input"
             :sliding-sensitivity="SPECTATOR_ADJ_INPUT_SENTIVITY"
             :max="axis === 'x' ? Math.PI / 2 - 0.01 : undefined"
@@ -540,10 +559,10 @@ function selectCurrentCamShortcut() {
       <LazyMinimap :show="isMapOpen" :minimap-camera="minimapCamera" />
 
       <div
-        :ref="sceneStates.tresCanvasParent"
+        :ref="sceneStates!.tresCanvasParent"
         :style="{
-          width: (sceneStates.screenSize.width ?? 0) + 'px',
-          height: (sceneStates.screenSize.height ?? 0) + 'px',
+          width: (sceneStates!.screenSize.width ?? 0) + 'px',
+          height: (sceneStates!.screenSize.height ?? 0) + 'px',
         }"
         class="relative"
       >
@@ -557,16 +576,16 @@ function selectCurrentCamShortcut() {
           <TresPerspectiveCamera
             ref="perspectiveCamera"
             :position="
-              sceneStates.transformingInfo.value?.position ??
-              sceneStates.currentCam.value?.position
+              sceneStates!.transformingInfo.value?.position ??
+              sceneStates!.currentCam.value?.position
             "
             :rotation="
-              sceneStates.transformingInfo.value?.rotation ??
-              sceneStates.currentCam.value?.rotation
+              sceneStates!.transformingInfo.value?.rotation ??
+              sceneStates!.currentCam.value?.rotation
             "
             :fov="
-              sceneStates.transformingInfo.value?.fov ??
-              sceneStates.currentCam.value?.fov
+              sceneStates!.transformingInfo.value?.fov ??
+              sceneStates!.currentCam.value?.fov
             "
             :aspect="aspect"
           />
@@ -596,7 +615,7 @@ function selectCurrentCamShortcut() {
             :y-offset="COVERAGE_Y_OFFSET"
           />
 
-          <template v-if="sceneStates.selectionMode.value === 'coverage-area'">
+          <template v-if="sceneStates!.selectionMode.value === 'coverage-area'">
             <TresMesh
               v-for="(point, i) in draftPointMarkers"
               :key="`draft-point-${i}`"
@@ -616,7 +635,7 @@ function selectCurrentCamShortcut() {
 
           <CameraObject
             v-for="[camId, cam] in Object.entries(
-              sceneStates.optimization?.candidateCameras ?? {},
+              sceneStates!.optimization?.candidateCameras ?? {},
             )"
             :key="camId"
             :cam-id="camId"
@@ -627,7 +646,7 @@ function selectCurrentCamShortcut() {
           />
 
           <CameraObject
-            v-for="[camId, cam] in Object.entries(sceneStates.cameras)"
+            v-for="[camId, cam] in Object.entries(sceneStates!.cameras)"
             :key="camId"
             :cam-id="camId"
             :name="cam.name"
@@ -640,15 +659,21 @@ function selectCurrentCamShortcut() {
           <TresAmbientLight :intensity="0.4" />
           <TresDirectionalLight :position="[10, 10, 5]" :intensity="1" />
 
-          <CalibrationGrid :workspace="props.workspace" />
+          <CalibrationGrid
+            v-if="props.workspace"
+            :workspace="props.workspace"
+          />
 
           <Suspense>
-            <ModelLoader :path="modelPath" />
+            <ModelLoader
+              v-if="modelPath != undefined"
+              :path="modelPath!.href"
+            />
           </Suspense>
 
           <!-- Grid  1 unit = 1 virtual m -->
           <Grid
-            :position="[0, -sceneStates.calibration.heightOffset, 0]"
+            :position="[0, -sceneStates!.calibration.heightOffset, 0]"
             :args="[1, 1]"
             :cell-size="0.2"
             cell-color="#90EE90"
@@ -664,7 +689,7 @@ function selectCurrentCamShortcut() {
 
           <template v-for="[id, face] of selectedFaces" :key="id">
             <CoverageAreaMesh
-              v-model.points="sceneStates.facesManagement.faces[id]!"
+              v-model.points="sceneStates!.facesManagement.faces[id]!"
               :face-id="id"
               :color="face.color ?? '#22ff88'"
               :selected="true"
@@ -677,7 +702,7 @@ function selectCurrentCamShortcut() {
               :points="face.points"
               :size="0.14"
               :y-offset="COVERAGE_Y_OFFSET"
-              :visible="sceneStates.selectionMode.value !== 'coverage-area'"
+              :visible="sceneStates!.selectionMode.value !== 'coverage-area'"
             />
           </template>
         </TresCanvas>

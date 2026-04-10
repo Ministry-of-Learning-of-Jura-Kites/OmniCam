@@ -6,17 +6,12 @@ import SuccessDialog from "~/components/dialog/SuccessDialog.vue";
 import ContentCard from "~/components/card/ContentCard.vue";
 import CustomPagination from "~/components/pagination/CustomPagination.vue";
 import { uuidToBase64Url } from "~/lib/uuid";
-import type Stream from "stream";
+import {
+  getUrlForProjectImage,
+  useProject,
+  type Project,
+} from "~/composables/api/use-project";
 
-interface Project {
-  id: string;
-  name: string;
-  description: string;
-  createdAt: string;
-  updatedAt: string;
-  imagePath?: string;
-  imageData?: Stream;
-}
 type ProjectWithoutId = Omit<Project, "id">;
 type ProjectForm = { name: string; description: string; image: File | null };
 
@@ -36,8 +31,6 @@ const formTitles = {
   image: "Project Image",
 };
 
-const config = useRuntimeConfig();
-
 const projects = ref<Record<string, ProjectWithoutId>>({});
 const totalItem = ref(0);
 const page = ref(1);
@@ -49,7 +42,7 @@ const error = ref<string | null>(null);
 // dialogs & forms
 const isFormDialogOpen = ref(false);
 const isCreateMode = ref(true);
-const currentEditId = ref<string | null>(null);
+const currentEditHexId = ref<string | null>(null);
 
 const isConfirmDialogOpen = ref(false);
 const confirmAction = ref<"update" | "delete" | null>(null);
@@ -64,30 +57,36 @@ const projectForm = reactive<ProjectForm>({
   image: null,
 });
 
-async function fetchProjects() {
-  try {
-    loading.value = true;
-    error.value = null;
+const projectApi = useProject();
 
-    const response = await $fetch<{ data: Project[]; count: number }>(
-      `http://${config.public.externalBackendHost}/api/v1/projects`,
-      {
-        method: "GET",
-        query: { page: page.value, pageSize: pageSize.value },
-        credentials: "include",
-      },
-    );
-    const data = response?.data || [];
-    const count = response?.count || 0;
+const {
+  data: respData,
+  error: fetchError,
+  refresh,
+} = await useAsyncData(
+  "projects-list", // A unique key ensures the client finds the server's work
+  () => projectApi.listProjects(page.value, pageSize.value),
+  {
+    watch: [page, pageSize],
+  },
+);
+
+watch(
+  respData,
+  (newData) => {
+    loading.value = false;
+    if (fetchError.value != undefined) {
+      console.error("Error while fetching projects", fetchError.value);
+    }
+    const data = newData?.data || [];
+    const count = newData?.count || 0;
+
     projects.value = data.reduce<Record<string, ProjectWithoutId>>((acc, p) => {
       const { id, imagePath, ...rest } = p;
-      const now = Date.now();
 
       let url: string | undefined = undefined;
       if (imagePath) {
-        const extMatch = imagePath.match(/\.(\w+)$/);
-        const ext = extMatch ? extMatch[1] : "png";
-        url = `http://${config.public.externalBackendHost}/api/v1/assets/projects/${id}/file/${ext}?t=${now}`;
+        url = getUrlForProjectImage(id, imagePath).href;
       }
 
       acc[id] = {
@@ -99,46 +98,36 @@ async function fetchProjects() {
     }, {});
 
     totalItem.value = count;
-  } catch (err: unknown) {
-    error.value = err instanceof Error ? err.message : String(err);
-    console.error("Error fetching projects:", err);
-  } finally {
-    loading.value = false;
-  }
-}
+  },
+  { immediate: true },
+);
 
-async function createProject() {
+async function submitCreateProject() {
   try {
     const formData = new FormData();
     formData.append("name", projectForm.name);
     formData.append("description", projectForm.description);
     if (projectForm.image) formData.append("image", projectForm.image);
 
-    const { data } = await $fetch<{ data: Project }>(
-      `http://${config.public.externalBackendHost}/api/v1/projects`,
-      { method: "POST", body: formData, credentials: "include" },
-    );
+    const { data } = await projectApi.createProject(formData);
 
     const { id, ...rest } = data;
     projects.value = { [id]: rest, ...projects.value }; // unshift
     successMessage.value = `Project "${data.name}" created successfully.`;
     isSuccessDialogOpen.value = true;
-    await fetchProjects();
+    await refresh();
   } catch (err) {
     console.error("Error creating project:", err);
   }
 }
 
-async function updateProject(id: string) {
+async function submitUpdateProject(hexId: string) {
   try {
     const body = {
       name: projectForm.name,
       description: projectForm.description,
     };
-    const { data } = await $fetch<{ data: Project }>(
-      `http://${config.public.externalBackendHost}/api/v1/projects/${uuidToBase64Url(id)}`,
-      { method: "PUT", body, credentials: "include" },
-    );
+    const { data } = await projectApi.updateProject(hexId, body);
     const { id: pid, ...rest } = data;
     projects.value[pid] = rest;
     successMessage.value = `Project "${data.name}" updated successfully.`;
@@ -153,10 +142,7 @@ async function updateProjectImage(id: string, file: File) {
   const formData = new FormData();
   formData.append("image", file);
   try {
-    const { imagePath } = await $fetch<{ imagePath: string }>(
-      `http://${config.public.externalBackendHost}/api/v1/projects/${uuidToBase64Url(id)}/image`,
-      { method: "PUT", body: formData, credentials: "include" },
-    );
+    const { imagePath } = await projectApi.updateProjectImage(id, formData);
     if (projects.value[id]) {
       projects.value[id] = {
         ...projects.value[id],
@@ -170,20 +156,14 @@ async function updateProjectImage(id: string, file: File) {
   }
 }
 
-async function deleteProject(id: string) {
+async function deleteProject(hexId: string) {
   try {
-    await $fetch(
-      `http://${config.public.externalBackendHost}/api/v1/projects/${uuidToBase64Url(id)}`,
-      {
-        method: "DELETE",
-        credentials: "include",
-      },
-    );
-    const { [id]: _, ...rest } = projects.value;
+    await projectApi.deleteProject(hexId);
+    const { [hexId]: _, ...rest } = projects.value;
     projects.value = rest;
     successMessage.value = `Project deleted successfully.`;
     isSuccessDialogOpen.value = true;
-    await fetchProjects();
+    await refresh();
   } catch (err) {
     console.error("Error deleting project:", err);
   }
@@ -192,17 +172,17 @@ async function deleteProject(id: string) {
 // ---------- Dialog Handlers ----------
 function openCreateDialog() {
   isCreateMode.value = true;
-  currentEditId.value = null;
+  currentEditHexId.value = null;
   projectForm.name = "";
   projectForm.description = "";
   projectForm.image = null;
   isFormDialogOpen.value = true;
 }
 
-function handleEditRow(projectId: string) {
+function handleEditRow(projectHexId: string) {
   isCreateMode.value = false;
-  currentEditId.value = projectId;
-  const project = projects.value[projectId];
+  currentEditHexId.value = projectHexId;
+  const project = projects.value[projectHexId];
   if (project) {
     projectForm.name = project.name;
     projectForm.description = project.description;
@@ -213,9 +193,9 @@ function handleEditRow(projectId: string) {
 
 async function handleFormSubmit() {
   if (isCreateMode.value) {
-    await createProject();
+    await submitCreateProject();
     isFormDialogOpen.value = false;
-  } else if (currentEditId.value) {
+  } else if (currentEditHexId.value) {
     confirmAction.value = "update";
     confirmMessage.value = `Update project "${projectForm.name}"?`;
     isFormDialogOpen.value = false;
@@ -223,26 +203,23 @@ async function handleFormSubmit() {
   }
 }
 
-function handleDeleteProject(id: string, name: string) {
-  currentEditId.value = id;
+function handleDeleteProject(hexId: string, name: string) {
+  currentEditHexId.value = hexId;
   confirmAction.value = "delete";
   confirmMessage.value = `Do you want to delete project "${name}"?`;
   isConfirmDialogOpen.value = true;
 }
 
 async function handleConfirmAction() {
-  if (confirmAction.value === "update" && currentEditId.value) {
-    await updateProject(currentEditId.value);
-  } else if (confirmAction.value === "delete" && currentEditId.value) {
-    await deleteProject(currentEditId.value);
+  if (confirmAction.value === "update" && currentEditHexId.value) {
+    await submitUpdateProject(currentEditHexId.value);
+  } else if (confirmAction.value === "delete" && currentEditHexId.value) {
+    await deleteProject(currentEditHexId.value);
   }
   isConfirmDialogOpen.value = false;
   confirmAction.value = null;
-  currentEditId.value = null;
+  currentEditHexId.value = null;
 }
-
-watch([page, pageSize], fetchProjects);
-onMounted(fetchProjects);
 </script>
 
 <template>

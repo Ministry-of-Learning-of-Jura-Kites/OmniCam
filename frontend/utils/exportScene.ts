@@ -1,7 +1,12 @@
 import type { ICamera } from "~/types/camera";
 import { transformCameraToProtoEvent } from "~/components/3d/scene-3d/use-autosave";
 
-export function exportCamerasToJson(cameras: Record<string, ICamera>) {
+export function exportCamerasToJson(
+  cameras: Record<string, ICamera> | undefined,
+) {
+  if (cameras == undefined) {
+    return;
+  }
   const data = Object.fromEntries(
     Object.entries(cameras).map(([id, camera]) => {
       return [id, transformCameraToProtoEvent(camera)];

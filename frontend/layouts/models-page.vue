@@ -9,10 +9,14 @@ import {
   MAP_KEY,
   PANEL_KEY as PANEL_KEY,
   type PanelInfo,
+  SCENE_STATES_READY_KEY,
 } from "~/constants/state-keys";
 
 import FailDialog from "~/components/dialog/FailDialog.vue";
 import { useFailDialog } from "~/composables/useFailDialog";
+
+const sceneStatesReady = ref(false);
+provide(SCENE_STATES_READY_KEY, sceneStatesReady);
 
 const { open, message } = useFailDialog();
 const route = useRoute();
@@ -88,7 +92,7 @@ provide(PANEL_KEY, {
   },
 });
 
-const workspace = computed(() => route.meta.routeInfo?.workspace);
+const workspace = computed(() => route.params.workspaceId as string);
 </script>
 
 <template>
@@ -97,12 +101,13 @@ const workspace = computed(() => route.meta.routeInfo?.workspace);
       :key="`${route.params.projectId}-${route.params.modelId}-${workspace}`"
       :project-id="route.params.projectId as string"
       :model-id="route.params.modelId as string"
-      :workspace="workspace"
+      :workspace="workspace!"
     >
-      <LazyTopBar :workspace="workspace" />
+      <LazyTopBar :workspace="workspace!" />
 
       <div class="flex-1 flex overflow-hidden">
         <div
+          v-if="sceneStatesReady"
           class="h-full transition-all duration-300"
           :style="{ width: slotWidth }"
         >
@@ -110,6 +115,7 @@ const workspace = computed(() => route.meta.routeInfo?.workspace);
         </div>
 
         <div
+          v-if="sceneStatesReady"
           class="h-full transition-all duration-300 overflow-hidden"
           :style="{ width: isPanelOpen ? '20rem' : '0' }"
         >

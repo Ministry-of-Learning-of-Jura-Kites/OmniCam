@@ -40,14 +40,14 @@ function render() {
   if (
     !minimapCanvas.value ||
     !minimapCamera ||
-    !sceneStates.tresContext.value ||
+    !sceneStates.value!.tresContext.value ||
     !show
   ) {
     rafId = requestAnimationFrame(render);
     return;
   }
 
-  const mainScene = sceneStates.tresContext.value.scene as Scene;
+  const mainScene = sceneStates.value!.tresContext.value.scene as Scene;
   const miniCam = minimapCamera as OrthographicCamera;
 
   if (!miniRenderer) {
@@ -65,16 +65,16 @@ function render() {
     // CHANGE: Set the Y position to our slider value.
     // This effectively makes the camera "hover" at the slider height.
     miniCam.position.set(
-      sceneStates.spectatorCameraPosition.x,
+      sceneStates.value!.spectatorCameraPosition.x,
       minimapHeight.value,
-      sceneStates.spectatorCameraPosition.z,
+      sceneStates.value!.spectatorCameraPosition.z,
     );
 
     // Look straight down from that height
     miniCam.lookAt(
-      sceneStates.spectatorCameraPosition.x,
+      sceneStates.value!.spectatorCameraPosition.x,
       minimapHeight.value - 1,
-      sceneStates.spectatorCameraPosition.z,
+      sceneStates.value!.spectatorCameraPosition.z,
     );
 
     const halfSize = minimapFrustumSize.value / 2;
@@ -110,7 +110,11 @@ onUnmounted(() => {
 });
 
 watch(
-  [minimapFrustumSize, minimapHeight, sceneStates.spectatorCameraPosition],
+  [
+    minimapFrustumSize,
+    minimapHeight,
+    sceneStates.value!.spectatorCameraPosition,
+  ],
   () => {
     miniCamUpdate = true;
   },

@@ -2,11 +2,12 @@ import asyncio
 import json
 import math
 from os import path
+import sys
 import time
 from typing import Any, Dict, List, Tuple
 import uuid
+import nats
 from pydantic import BaseModel, ValidationError
-import redis.asyncio as redis
 from scipy.spatial.distance import cdist
 from cost_functions import total_cost
 from google.protobuf.json_format import MessageToJson
@@ -361,11 +362,6 @@ def serialize_response(state: State):
     return cameras
 
 
-r = redis.Redis(
-    host=env_settings.redis_host, port=env_settings.redis_port, decode_responses=True
-)
-
-
 def cam_state_to_proto(cam_state: CameraState) -> cam_pb.Camera:
     # Initialize the proto message
     camera = cam_pb.Camera()
@@ -414,78 +410,86 @@ def cam_state_to_proto(cam_state: CameraState) -> cam_pb.Camera:
     return camera
 
 
-async def worker():
-    print("Work started")
+async def main():
+    async def message_handler(msg):
+        print("Received message", msg)
+        try:
+            payload = OptimizeRequest.model_validate_json(msg)
 
-    while True:
-        # Read from the task stream (Blocking read)
-        # 0 means wait indefinitely for a new message
-        messages: List[Tuple[str, List[Tuple[str, Dict[str, Any]]]]] = await r.xread(
-            {env_settings.redis_req_topic: "0"}, count=1, block=0
+            resp_topic = env_settings.res_topic_pattern.format(jobId=payload.job_id)
+
+            result_state = optimize(payload)
+
+            opti_res = MessageToJson(
+                opt_pb.OptimizationEventResp(
+                    success_resp=opt_pb.SuccessOptimizationEventResp(
+                        cameras=[
+                            cam_state_to_proto(cam) for cam in result_state.cameras
+                        ],
+                    ),
+                    job_id=payload.job_id,
+                )
+            )
+
+            # Publish back to a result topic/stream
+            await nc.publish(
+                resp_topic,
+                {
+                    "job_id": payload.job_id,
+                    "status": "ok",
+                    "data": opti_res,
+                },
+            )
+        except ValidationError as e:
+            try:
+                parsed_inner_data: Dict[str, Any] = json.loads(msg)
+            except (json.JSONDecodeError, TypeError):
+                parsed_inner_data = {}
+
+            await nc.publish(
+                resp_topic,
+                {
+                    "job_id": parsed_inner_data.get("job_id", ""),
+                    "status": "error",
+                    "error": f"Bad request {e}",
+                },
+            )
+        except Exception as e:
+            print(e)
+            await nc.publish(
+                resp_topic,
+                {
+                    "job_id": payload.job_id,
+                    "status": "error",
+                    "error": "Internal error",
+                },
+            )
+
+    try:
+        print("Trying to connect to nats...")
+        nc: nats.NATS = await nats.connect(env_settings.nats_url)
+
+        print("Connected to nats")
+
+        await nc.subscribe(
+            subject=env_settings.req_topic_pattern.format(jobId="*"),
+            queue=env_settings.req_topic_queue,
+            cb=message_handler,
         )
 
-        for _stream, msgs in messages:
-            for msg_id, data in msgs:
-                print("Received message", data)
-                try:
-                    req: str = data.get("data")
+        print("Worker registered")
 
-                    payload = OptimizeRequest.model_validate_json(req)
+    except Exception as e:
+        print("Error while connecting to NATS:", e)
+        sys.exit(1)
 
-                    result_state = optimize(payload)
-
-                    opti_res = MessageToJson(
-                        opt_pb.OptimizationEventResp(
-                            success_resp=opt_pb.SuccessOptimizationEventResp(
-                                cameras=[
-                                    cam_state_to_proto(cam)
-                                    for cam in result_state.cameras
-                                ],
-                            ),
-                            job_id=payload.job_id,
-                        )
-                    )
-
-                    # Publish back to a result topic/stream
-                    await r.xadd(
-                        env_settings.redis_res_topic,
-                        {
-                            "job_id": payload.job_id,
-                            "status": "ok",
-                            "data": opti_res,
-                        },
-                    )
-                except ValidationError as e:
-                    raw_data_field: str = data.get("data", "{}")
-
-                    try:
-                        parsed_inner_data: Dict[str, Any] = json.loads(raw_data_field)
-                    except (json.JSONDecodeError, TypeError):
-                        parsed_inner_data = {}
-
-                    await r.xadd(
-                        env_settings.redis_res_topic,
-                        {
-                            "job_id": parsed_inner_data.get("job_id", ""),
-                            "status": "error",
-                            "error": f"Bad request {e}",
-                        },
-                    )
-                except Exception as e:
-                    print(e)
-                    await r.xadd(
-                        env_settings.redis_res_topic,
-                        {
-                            "job_id": payload.job_id,
-                            "status": "error",
-                            "error": "Internal error",
-                        },
-                    )
-                finally:
-                    await r.xdel(env_settings.redis_req_topic, msg_id)
+    try:
+        await asyncio.Future()
+    except (KeyboardInterrupt, InterruptedError, asyncio.exceptions.CancelledError):
+        print("Closing nats connection")
+        await nc.close()
+        print("Gracefully shutdowning...")
 
 
 if __name__ == "__main__":
-    asyncio.run(worker())
-
-# Running -> OmniCam/predictive-algorithm/src$ uvicorn main:app --reload --port 8081
+    asyncio.run(main())

@@ -1,6 +1,9 @@
-<script setup>
+<script setup lang="ts">
 import LazyScene3D from "~/components/3d/scene-3d/Scene3D.vue";
 import { useRoute } from "vue-router";
+import { SCENE_STATES_READY_KEY } from "~/constants/state-keys";
+
+const sceneStatesReady = inject(SCENE_STATES_READY_KEY);
 
 const workspace = null;
 
@@ -12,12 +15,13 @@ definePageMeta({
 });
 
 const route = useRoute();
-const projectId = route.params.projectId;
-const modelId = route.params.modelId;
+const projectId = route.params.projectId as string;
+const modelId = route.params.modelId as string;
 </script>
 
 <template>
   <LazyScene3D
+    v-if="sceneStatesReady"
     :project-id="projectId"
     :model-id="modelId"
     :workspace="workspace"
