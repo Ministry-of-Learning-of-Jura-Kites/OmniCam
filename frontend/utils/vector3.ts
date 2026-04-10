@@ -1,6 +1,7 @@
+import type { Vector3Like } from "three";
 import { Vector3 } from "three";
 
-export function threeVector3ToNumbers(vec: Vector3) {
+export function threeVector3ToNumbers(vec: Vector3Like) {
   return [vec.x, vec.y, vec.z] as [number, number, number];
 }
 

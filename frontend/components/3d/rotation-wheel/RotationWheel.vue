@@ -35,7 +35,7 @@ const props = defineProps({
   },
 });
 
-const sceneStates = inject(SCENE_STATES_KEY);
+const sceneStates = inject(SCENE_STATES_KEY)!;
 
 const context = useTresContext();
 
@@ -90,9 +90,9 @@ const isActuallyHiding = computed(() => {
 
 function onHidingChange(isHiding: boolean) {
   if (isHiding) {
-    sceneStates?.draggableObjects.delete(wheel);
+    sceneStates.value!.draggableObjects.delete(wheel);
   } else {
-    sceneStates?.draggableObjects.add(wheel);
+    sceneStates.value!.draggableObjects.add(wheel);
   }
 }
 
@@ -105,7 +105,7 @@ watch(
 );
 
 onBeforeUnmount(() => {
-  sceneStates?.draggableObjects.delete(wheel);
+  sceneStates.value!.draggableObjects.delete(wheel);
 });
 </script>
 

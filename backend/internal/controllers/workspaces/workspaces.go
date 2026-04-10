@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 	"github.com/jackc/pgerrcode"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
@@ -657,7 +658,7 @@ func (t *WorkspaceRoute) postWorkspaceMe(c *gin.Context) {
 	})
 }
 
-func (t *WorkspaceRoute) getWorkspaceMe(c *gin.Context) {
+func (t *WorkspaceRoute) getWorkspace(c *gin.Context) {
 	strModelId := c.Param("modelId")
 	modelId, err := utils.ParseUuidBase64(strModelId)
 	if err != nil {
@@ -674,9 +675,29 @@ func (t *WorkspaceRoute) getWorkspaceMe(c *gin.Context) {
 		return
 	}
 
+	userID, err := utils.GetUuidFromCtx(c, "userId")
+	if err != nil {
+		t.Logger.Error("error while getting userId form", zap.Error(err))
+		c.JSON(http.StatusInternalServerError, gin.H{})
+		return
+	}
+
 	username := c.GetString("username")
 
-	userInfo, err := t.DB.Queries.GetUserOfProject(c, db_sqlc_gen.GetUserOfProjectParams{
+	strWorkspaceId := c.Param("workspaceId")
+	isWorkspaceMe := strWorkspaceId == "me"
+	var workspaceId uuid.UUID
+	if !isWorkspaceMe {
+		parsed, err := utils.ParseUuidBase64(strWorkspaceId)
+		workspaceId = parsed
+		if err != nil {
+			t.Logger.Error("error while converting str id to uuid", zap.Error(err))
+			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid workspace ID"})
+			return
+		}
+	}
+
+	_, err = t.DB.Queries.GetUserOfProject(c, db_sqlc_gen.GetUserOfProjectParams{
 		Username: pgtype.Text{
 			String: username,
 			Valid:  true,
@@ -690,10 +711,16 @@ func (t *WorkspaceRoute) getWorkspaceMe(c *gin.Context) {
 	}
 
 	includedFields := c.QueryArray("fields")
+	var ownerID uuid.UUID
+	if isWorkspaceMe {
+		ownerID = userID
+	} else {
+		ownerID = workspaceId
+	}
 
 	data, err := t.DB.Queries.GetWorkspaceByID(c, db_sqlc_gen.GetWorkspaceByIDParams{
 		Fields:  includedFields,
-		UserID:  userInfo.ID,
+		UserID:  ownerID,
 		ModelID: modelId,
 	})
 	if err != nil {
@@ -743,7 +770,7 @@ func (t *WorkspaceRoute) getWorkspaceMe(c *gin.Context) {
 }
 
 func (t *WorkspaceRoute) InitRoute(router gin.IRouter) gin.IRouter {
-	router.GET("/projects/:projectId/models/:modelId/workspaces/me", t.getWorkspaceMe)
+	router.GET("/projects/:projectId/models/:modelId/workspaces/:workspaceId", t.getWorkspace)
 	router.POST("/projects/:projectId/models/:modelId/workspaces/me", t.postWorkspaceMe)
 	router.DELETE("/projects/:projectId/models/:modelId/workspaces/me", t.deleteWorkspaceMe)
 

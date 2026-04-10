@@ -30,5 +30,10 @@ export interface PanelInfo {
 }
 export const PANEL_KEY: InjectionKey<PanelInfo> = Symbol("panel");
 
-export const SCENE_STATES_KEY: InjectionKey<SceneStatesWithHelper> =
-  Symbol("3d-scene-states");
+export const SCENE_STATES_KEY: InjectionKey<
+  Ref<SceneStatesWithHelper | undefined>
+> = Symbol("3d-scene-states");
+
+export const SCENE_STATES_READY_KEY: InjectionKey<Ref<boolean>> = Symbol(
+  "3d-scene-states-ready",
+);

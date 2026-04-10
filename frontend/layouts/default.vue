@@ -12,23 +12,16 @@ import {
 import { Moon, Sun } from "lucide-vue-next";
 import FailDialog from "~/components/dialog/FailDialog.vue";
 import { useFailDialog } from "~/composables/useFailDialog";
-import { useAuth } from "~/composables/useAuth";
+import { useAuth } from "~/composables/api/use-auth";
 const { open, message } = useFailDialog();
 
 const { theme, toggleTheme } = useLightDarkTheme();
-const config = useRuntimeConfig();
-const auth = await useAuth();
-const { user } = auth;
+const { user, fetchUser, postLogout } = useAuth();
+fetchUser();
 
 const handleLogout = () => {
   try {
-    $fetch<null>(
-      "http://" + config.public.externalBackendHost + "/api/v1/logout",
-      {
-        method: "POST",
-        credentials: "include",
-      },
-    );
+    postLogout();
     navigateTo("/authentication");
   } catch (err) {
     console.log(err);

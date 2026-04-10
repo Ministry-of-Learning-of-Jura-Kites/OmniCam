@@ -2,11 +2,10 @@ package api_routes
 
 import (
 	"net/http"
-	"sync"
 
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
-	"github.com/redis/go-redis/v9"
+	"github.com/nats-io/nats.go"
 	"go.uber.org/zap"
 	config_env "omnicam.com/backend/config"
 
@@ -24,11 +23,10 @@ import (
 )
 
 type Dependencies struct {
-	Logger          *zap.Logger
-	Env             *config_env.AppEnv
-	DB              *db_client.DB
-	RedisClient     *redis.Client
-	OptimizeRespMap *sync.Map
+	Logger *zap.Logger
+	Env    *config_env.AppEnv
+	DB     *db_client.DB
+	Nc     *nats.Conn
 }
 
 func InitRoutes(deps Dependencies, router gin.IRouter) {
@@ -97,11 +95,10 @@ func InitRoutes(deps Dependencies, router gin.IRouter) {
 	deleteModelRoute.InitDeleteModelRoute(protectedRoute)
 
 	cameraAutosaveRoute := controller_camera.UpdateEventRoute{
-		Logger:          deps.Logger,
-		Env:             deps.Env,
-		DB:              deps.DB,
-		RedisClient:     deps.RedisClient,
-		OptimizeRespMap: deps.OptimizeRespMap,
+		Logger: deps.Logger,
+		Env:    deps.Env,
+		DB:     deps.DB,
+		Nc:     deps.Nc,
 		Upgrader: websocket.Upgrader{
 			ReadBufferSize:  1024,
 			WriteBufferSize: 1024,

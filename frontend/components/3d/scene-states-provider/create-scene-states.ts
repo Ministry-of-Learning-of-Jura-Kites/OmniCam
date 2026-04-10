@@ -23,6 +23,7 @@ import type { CoverageFace } from "~/messages/protobufs/optimization";
 import type { ProtoVector3 } from "~/messages/protobufs/vector";
 import { useAutosave } from "~/components/3d/scene-3d/use-autosave";
 import type { WorkspaceEventResponse } from "~/messages/protobufs/workspace_event";
+import { useLivestream } from "../scene-3d/use-livestream";
 
 export interface ProcessedCoverageFace {
   name: string;
@@ -136,7 +137,8 @@ function transformFacesData(
 }
 
 export function createBaseSceneStates(
-  websocket: UseWebSocketReturn<unknown> | undefined,
+  autosaveWebsocket: UseWebSocketReturn<unknown> | undefined,
+  livestreamWebsocket: UseWebSocketReturn<unknown> | undefined,
   modelWithCamsResp: ModelWithCamsResp,
 ) {
   const tresContext = ref<TresContext | null>(null);
@@ -364,7 +366,8 @@ export function createBaseSceneStates(
     spectatorCameraRotation,
     spectatorCameraFov,
     tresCanvasParent,
-    websocket,
+    websocket: autosaveWebsocket,
+    livestreamWebsocket,
     cameras,
     error: null,
     markedForCheck,
@@ -396,6 +399,7 @@ export function createSceneStatesWithHelper(
   sceneStates: Awaited<BaseSceneStates>,
   workspace: string | null,
 ) {
+  const livestream = useLivestream(sceneStates, workspace);
   const aspectRatioManagement = useAspectRatioManagement(sceneStates);
 
   const optimization = useOptimize(sceneStates, workspace);
@@ -423,20 +427,18 @@ export function createSceneStatesWithHelper(
 
   useAutosave(sceneStates, workspace, handle);
 
-  onMounted(() => {
-    watch(
-      () => [sceneStates.transformingInfo, sceneStates.currentCam],
-      ([transform, cam]) => {
-        const newFov = transform?.value?.fov ?? cam?.value?.fov;
-        const actualCamera = sceneStates.tresContext.value?.camera.activeCamera;
-        if (actualCamera && newFov !== undefined) {
-          (actualCamera as PerspectiveCamera).fov = newFov;
-          actualCamera.updateProjectionMatrix();
-        }
-      },
-      { deep: true },
-    );
-  });
+  watch(
+    () => [sceneStates.transformingInfo, sceneStates.currentCam],
+    ([transform, cam]) => {
+      const newFov = transform?.value?.fov ?? cam?.value?.fov;
+      const actualCamera = sceneStates.tresContext.value?.camera.activeCamera;
+      if (actualCamera && newFov !== undefined) {
+        (actualCamera as PerspectiveCamera).fov = newFov;
+        actualCamera.updateProjectionMatrix();
+      }
+    },
+    { deep: true },
+  );
 
   const sceneStatesWithCam = {
     ...sceneStates,
@@ -445,6 +447,7 @@ export function createSceneStatesWithHelper(
     spectatorPosition: useSpectatorPosition(sceneStates, workspace),
     spectatorRotation: useSpectatorRotation(sceneStates, workspace),
     optimization,
+    livestream,
   };
   return sceneStatesWithCam;
 }

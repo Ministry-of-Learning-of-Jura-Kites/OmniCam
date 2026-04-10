@@ -22,10 +22,6 @@ export function importJsonToCameras(
     });
 
     Object.assign(sceneCameras, newCameras);
-
-    for (const camId of Object.keys(newCameras)) {
-      sceneStates.markedForCheck.add(camId);
-    }
   } catch (err) {
     console.error("Failed to import cameras JSON:", err);
   }

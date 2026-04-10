@@ -59,28 +59,26 @@ export function useAspectRatio(sceneStates: SceneStates) {
 
   const updateAspectFromEle = updateAspectFromEleGenerator(sceneStates);
 
-  onMounted(() => {
-    watch(
-      () => sceneStates.tresContext.value?.renderer.instance.domElement,
-      (canvas) => {
-        const canvasParent = canvas?.parentElement;
-        const parentOfParent = canvasParent?.parentElement;
+  watch(
+    () => sceneStates.tresContext.value?.renderer.instance.domElement,
+    (canvas) => {
+      const canvasParent = canvas?.parentElement;
+      const parentOfParent = canvasParent?.parentElement;
 
-        if (
-          canvas == undefined ||
-          canvasParent == undefined ||
-          parentOfParent == undefined
-        ) {
-          return;
-        }
+      if (
+        canvas == undefined ||
+        canvasParent == undefined ||
+        parentOfParent == undefined
+      ) {
+        return;
+      }
 
-        observer.observe(parentOfParent);
-      },
-      {
-        once: true,
-      },
-    );
-  });
+      observer.observe(parentOfParent);
+    },
+    {
+      once: true,
+    },
+  );
 
   onUnmounted(() => {
     observer.disconnect();

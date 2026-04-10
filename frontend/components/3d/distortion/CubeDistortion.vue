@@ -73,7 +73,10 @@ let composer: EffectComposer | null = null;
 onMounted(() => {
   stopWatch = watch(
     () =>
-      [sceneStates.cubeCamera.value, sceneStates.tresContext.value] as const,
+      [
+        sceneStates.value!.cubeCamera.value,
+        sceneStates.value!.tresContext.value,
+      ] as const,
     ([cubeCam, tresContext]) => {
       if (renderCallback) {
         renderCallback.off();
@@ -103,16 +106,16 @@ onMounted(() => {
 
       composer.setPixelRatio(5 * window.devicePixelRatio);
 
-      customPass.uniforms.uFov! = sceneStates.currentFov;
-      customPass.uniforms.uIsFisheye! = sceneStates.currentIsFisheye;
-      customPass.uniforms.uAspectRatio! = sceneStates.aspectRatio;
+      customPass.uniforms.uFov! = sceneStates.value!.currentFov;
+      customPass.uniforms.uIsFisheye! = sceneStates.value!.currentIsFisheye;
+      customPass.uniforms.uAspectRatio! = sceneStates.value!.aspectRatio;
       const outputPass = new OutputPass();
       composer.addPass(outputPass);
 
       renderCallback = tresContext.renderer.onRender(() => {
         const isDistorting =
-          sceneStates.currentDistEnabled.value &&
-          sceneStates.transformingInfo.value == undefined;
+          sceneStates.value!.currentDistEnabled.value &&
+          sceneStates.value!.transformingInfo.value == undefined;
         if (!isDistorting || !composer) {
           return;
         }

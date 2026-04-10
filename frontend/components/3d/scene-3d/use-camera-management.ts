@@ -15,7 +15,6 @@ export function useCameraManagement(sceneStates: SceneStates) {
       fov: 60,
       frustumColor: randomVividColor(),
     };
-    sceneStates.markedForCheck.add(camId);
     return camId;
   }
 

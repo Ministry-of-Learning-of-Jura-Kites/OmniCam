@@ -12,7 +12,7 @@ services:
     ports:
       - "5433:5432"
     networks:
-      - dmz_net
+      - private_net
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
@@ -31,10 +31,35 @@ services:
     command:
       ["migrate -path /migrations -database $$DATABASE_URL?sslmode=disable up"]
     networks:
-      - dmz_net
+      - private_net
     depends_on:
       db:
         condition: service_healthy
+
+  nats:
+    image: nats:2.12.6-alpine
+    container_name: omnicam_nats
+    ports:
+      - "4222:4222" # Client port
+      - "8222:8222" # HTTP Management/Monitoring port
+    restart: always
+    command: ["-m", "8222"]
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "wget",
+          "--no-verbose",
+          "--tries=1",
+          "--spider",
+          "http://localhost:8222/healthz",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    networks:
+      - private_net
 
   backend:
     build:
@@ -53,9 +78,13 @@ services:
         condition: service_completed_successfully
       db:
         condition: service_healthy
+      nats:
+        condition: service_healthy
     networks:
-      - dmz_net
-      - private_net
+      app_net:
+        aliases:
+          - backend
+      private_net:
 
   frontend:
     build:
@@ -67,12 +96,12 @@ services:
       - ./frontend/.env.prod
     ports:
       - "3000:3000"
-    volumes:
-      - ./uploads:/app/uploads
     depends_on:
-      - backend
+      backend:
+        condition: service_started
     networks:
-      - dmz_net
+      - app_net
+      - public_net
 
   optimization:
     build:
@@ -84,20 +113,18 @@ services:
       - ./predictive-algorithm/.env.prod
     ports:
       - "8081:8081"
+    depends_on:
+      nats:
+        condition: service_healthy
     volumes:
       - ./uploads:/app/uploads
     networks:
       - private_net
 
-  redis:
-    image: redis:8
-    ports:
-      - "6379:6379"
-    command: redis-server --appendonly yes
-
 networks:
-  dmz_net:
   private_net:
+  public_net:
+  app_net:
 
 volumes:
   postgres_data:

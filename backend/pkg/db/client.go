@@ -2,10 +2,11 @@ package db_client
 
 import (
 	"context"
-	"fmt"
-	"os"
+	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
+	"go.uber.org/zap"
+
 	// "go.uber.org/zap/internal/pool"
 	config_env "omnicam.com/backend/config"
 	db_sqlc_gen "omnicam.com/backend/pkg/db/sqlc-gen"
@@ -16,24 +17,50 @@ type DB struct {
 	Pool    *pgxpool.Pool
 }
 
-func InitDatabase(env *config_env.AppEnv) *DB {
-	pool, err := pgxpool.New(context.Background(), env.DatabaseUrl)
+func InitDatabase(env *config_env.AppEnv, logger *zap.Logger) *DB {
+	config, err := pgxpool.ParseConfig(env.DatabaseUrl)
 	if err != nil {
-		fmt.Println("Failed to create DB pool:", err)
-		os.Exit(1)
+		logger.Fatal("Unable to parse DATABASE_URL", zap.Error(err))
 	}
 
-	err = pool.Ping(context.Background())
+	var pool *pgxpool.Pool
+	maxRetries := 5
 
-	if err != nil {
-		fmt.Println("Failed to create DB pool:", err)
-		os.Exit(1)
+	for i := 0; i < maxRetries; i++ {
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+
+		pool, err = pgxpool.NewWithConfig(ctx, config)
+		if err == nil {
+			err = pool.Ping(ctx)
+		}
+		cancel()
+
+		if err == nil {
+			logger.Info("Successfully connected to the database")
+
+			query := db_sqlc_gen.New(pool)
+
+			return &DB{
+				Queries: query,
+				Pool:    pool,
+			}
+		}
+
+		backoff := time.Duration(i*i) * time.Second
+
+		logger.Warn("DB connection failed",
+			zap.Int("attempt", i+1),
+			zap.Int("max_retries", maxRetries),
+			zap.Duration("backoff", backoff),
+			zap.Error(err),
+		)
+
+		time.Sleep(backoff)
 	}
 
-	query := db_sqlc_gen.New(pool)
+	logger.Fatal("Exiting: Could not connect to DB after maximum attempts",
+		zap.Int("total_attempts", maxRetries),
+	)
 
-	return &DB{
-		Queries: query,
-		Pool:    pool,
-	}
+	return nil
 }
