@@ -411,7 +411,6 @@ def cam_state_to_proto(cam_state: CameraState) -> cam_pb.Camera:
 
 
 async def main():
-
     async def message_handler(msg):
         print("Received message", msg)
         try:
@@ -467,6 +466,7 @@ async def main():
             )
 
     try:
+        print("Trying to connect to nats...")
         nc: nats.NATS = await nats.connect(env_settings.nats_url)
 
         print("Connected to nats")
@@ -493,5 +493,3 @@ async def main():
 
 if __name__ == "__main__":
     asyncio.run(main())
-
-# Running -> OmniCam/predictive-algorithm/src$ uvicorn main:app --reload --port 8081

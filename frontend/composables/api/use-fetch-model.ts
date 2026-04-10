@@ -46,6 +46,7 @@ export function useFetchModel(
     const apiBaseWithProtocol = getApiBaseUrlWithProtocol(
       "http",
       runtimeConfig,
+      true,
     );
 
     const { data, error: actualError } = await useFetch<ModelWithCamsResp>(

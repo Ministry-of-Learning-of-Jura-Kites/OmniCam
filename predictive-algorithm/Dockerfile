@@ -26,8 +26,10 @@ RUN mkdir -p /app/algo/src/messages/protobufs && cd protobufs && \
 
 WORKDIR /app/algo
 
-COPY . .
+COPY predictive-algorithm /app/algo
 
-ENV PATH="/app/.venv/bin:$PATH"
+# Allows immediate logging on console
+ENV PYTHONUNBUFFERED=1
+ENV PATH="/app/algo/.venv/bin:$PATH"
 
-CMD ["python","src/main.py"]
+CMD ["python","/app/algo/src/main.py"]

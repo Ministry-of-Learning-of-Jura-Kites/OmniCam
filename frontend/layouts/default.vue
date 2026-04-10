@@ -16,8 +16,8 @@ import { useAuth } from "~/composables/api/use-auth";
 const { open, message } = useFailDialog();
 
 const { theme, toggleTheme } = useLightDarkTheme();
-const auth = await useAuth();
-const { getMe, postLogout } = auth;
+const { user, fetchUser, postLogout } = await useAuth();
+fetchUser();
 
 const handleLogout = () => {
   try {
@@ -27,8 +27,6 @@ const handleLogout = () => {
     console.log(err);
   }
 };
-
-const { user } = await getMe();
 </script>
 <template>
   <div class="min-h-screen bg-white dark:bg-gray-900">

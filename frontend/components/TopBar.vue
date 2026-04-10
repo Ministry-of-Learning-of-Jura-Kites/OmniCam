@@ -91,8 +91,8 @@ const isSettingDialogOpen = ref<boolean>(false);
 
 const isCameraActive = ref(false);
 
-const { user, getMe } = useAuth();
-getMe();
+const { user, fetchUser } = await useAuth();
+fetchUser();
 
 watch(
   () => sceneStates?.value?.currentCamId?.value,
