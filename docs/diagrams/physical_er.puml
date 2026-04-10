@@ -1,10 +1,14 @@
 @startuml OmniCam Physical Entity Relationship Diagram
+!theme plain
+hide circle
+skinparam linetype ortho
+skinparam defaultFontName "Arial"
 
 entity "user" as user {
-  *id : UUID
+  *id : UUID <<PK>>
   --
-  email : VARCHAR(255)
-  username : VARCHAR(255)
+  email : VARCHAR(255) <<UNIQUE>>
+  username : VARCHAR(255) <<UNIQUE>>
   first_name : VARCHAR(255)
   last_name : VARCHAR(255)
   password : BYTEA
@@ -13,23 +17,23 @@ entity "user" as user {
 }
 
 entity "project" as project {
-  *id : UUID
+  *id : UUID <<PK>>
   --
-  name : VARCHAR(255)
+  name : VARCHAR(255) <<UNIQUE>>
   description : TEXT
   image_path: TEXT
+  image_extension: TEXT
   created_at : TIMESTAMPTZ
   updated_at : TIMESTAMPTZ
 }
 
 entity "model" as model {
-  *id : UUID
+  *id : UUID <<PK>>
   --
-  project_id : UUID  <<FK>>
+  project_id : UUID <<FK>>
   name : VARCHAR(255)
   description : TEXT
   cameras : JSONB
-  <color:red>scale: DOUBLE (Not Yet Implemented)</color>
   file_path : TEXT
   image_path : TEXT
   version : INT
@@ -38,29 +42,33 @@ entity "model" as model {
 }
 
 entity "user_model_workspace" as user_model_workspace {
-  *model_id : UUID
-  *user_id : UUID
+  *model_id : UUID <<PK, FK>>
+  *user_id : UUID <<PK, FK>>
   --
   cameras : JSONB
   base_cameras : JSONB
+  target_area_trapezoids : JSONB
+  scale_factor : FLOAT
+  model_height : FLOAT
   version : INT
   base_version: INT
-  created_at TIMESTAMPTZ
+  created_at : TIMESTAMPTZ
   updated_at : TIMESTAMPTZ
 }
 
 entity "user_to_project" as user_to_project {
-  *user_id : UUID
-  *project_id : UUID
+  *user_id : UUID <<PK, FK>>
+  *project_id : UUID <<PK, FK>>
   --
-  role : Enum (Owner, Project Manager, Collaborator, <color:red>(Not Yet Implemented) Reader</color>)
+  role : ENUM(Owner, PM, Collaborator, Reader)
 }
 
 ' Relationships
-user ||--o{ user_to_project : "assigned to"
-project ||--o{ user_to_project : "has members"
+user ||--o{ user_to_project : "manages"
+project ||--o{ user_to_project : "includes"
 
-project ||--o{ model : "contains"
-user ||--o{ user_model_workspace : "owns workspace"
-model ||--o{ user_model_workspace : "is used in workspace"
+project ||--o{ model : "houses"
+user ||--o{ user_model_workspace : "operates"
+model ||--o{ user_model_workspace : "defines"
+
 @enduml

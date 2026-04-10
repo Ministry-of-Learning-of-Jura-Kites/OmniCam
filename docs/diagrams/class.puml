@@ -1,29 +1,42 @@
 @startuml Omnicam Class Diagram
+skinparam defaultFontName "Arial"
+
+enum RoleType {
+    OWNER
+    PROJECT_MANAGER
+    COLLABORATOR
+}
+
 class User {
-    +userId: uuid
-    +name: string
-    +email : string
-    +username : string
-    +firstName : string
-    +lastName : string
+    +id: uuid <<PK>>
+    +email: string
+    +username: string
+    +firstName: string
+    +lastName: string
+    -password: bytea
+    +createdAt: timestamptz
+    +updatedAt: timestamptz
+    --
     +createWorkspace()
     +readWorkspace()
     +updateWorkspace()
     +deleteWorkspace()
 }
 
-class ProjectUserRole {
-    +role: enum {Owner, Project Manager, Collaborator, <color:red>(Not Yet Implemented) Reader</color>}
-}
-
 class Project {
-    +projectId: uuid
+    +id: uuid <<PK>>
     +name: string
-    +addUser(user: User,role: ProjectUserRole)
+    +description: string
+    +imagePath: string
+    +imageExtension: string
+    +createdAt: timestamptz
+    +updatedAt: timestamptz
+    --
     +createProject()
     +readProject()
     +updateProject()
     +deleteProject()
+    +addUser(user: User, role: RoleType)
 }
 
 class Model {
@@ -36,27 +49,33 @@ class Model {
     +deleteModel()
     +saveChanges()
 }
+class Distortion {
+    +enabled: boolean
+    +isFisheye: boolean
+}
 
 class Camera {
-    +cameraId: uuid
+    +id: string
     +name: string
-    +angleX: float
-    +angleY: float
-    +angleZ: float
-    +angleW: float
-    +posX: float
-    +posY: float
-    +posZ: float
-    +fov: float
-    +frustumColor: RGB
-    +frustumLength: float
+    +angleX: double
+    +angleY: double
+    +angleZ: double
+    +angleW: double
+    +posX: double
+    +posY: double
+    +posZ: double
+    +fov: double
+    +frustumColor: ColorRGBA
+    +frustumLength: double
     +isHidingArrows: boolean
     +isHidingWheels: boolean
     +isLockingPosition: boolean
     +isLockingRotation: boolean
     +isHidingFrustum: boolean
-    +aspectWidth: float
-    +aspectHeight: float
+    +widthRes: double
+    +heightRes: double
+    +distortion: Distortion
+    --
     +create()
     +update()
     +delete()
@@ -65,17 +84,32 @@ class Camera {
 }
 
 class Workspace {
-    +workspaceId: uuid
-    +userId: uuid
-    +modelId: uuid
+    +userId: uuid <<PK>>
+    +modelId: uuid <<PK>>
     +cameras: Camera[]
     +baseCameras: Camera[]
+    +targetAreaTrapezoids: jsonb
+    +scaleFactor: float
+    +modelHeight: float
     +version: int
     +baseVersion: int
+    +createdAt: timestamp
+    +updatedAt: timestamp
+    --
     +autosave()
     +tryMergeIntoModel()
     +resolveConflict()
 }
+
+class ColorRGBA {
+    +r: double
+    +g: double
+    +b: double
+    +a: double
+}
+
+Camera "1" *-- "1" Distortion : configures
+Camera "1" *-- "1" ColorRGBA : styles
 
 ' Relationships
 Project "1" -- "1..*" Model

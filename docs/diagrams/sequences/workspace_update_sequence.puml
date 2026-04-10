@@ -11,7 +11,7 @@ actor "Other User" as OtherUser
 User -> Workspace: Edit element
 Workspace -> MQ: Publish "WorkspaceChanged" event
 
-== <color:red>System processes event (Not Yet Implemented)</color> ==
+== System processes event ==
 MQ -> System: Deliver "WorkspaceChanged"
 System -> PersistenceService: Apply event (idempotent)
 PersistenceService -> DB: Persist new state/version
@@ -23,10 +23,10 @@ System -> MQ: Publish "WorkspaceChanged" (delta)
 MQ -> Workspace: Deliver "WorkspaceChanged"
 Workspace --> User: Update view
 
-== <color:red>Update livestream view (Not Yet Implemented)</color> ==
+== Update livestream view ==
 Workspace --> OtherUser: Update view
 
-== <color:red>Late joiner (Not Yet Implemented)</color> ==
+== Late joiner (Not Yet Implemented) ==
 OtherUser -> System: Request current state
 System -> DB: Fetch latest model
 DB --> System: Return current snapshot

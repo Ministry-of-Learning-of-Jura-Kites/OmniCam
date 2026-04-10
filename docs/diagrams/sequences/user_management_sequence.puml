@@ -6,12 +6,12 @@ participant Project
 participant Model
 participant Workspace
 
-== Owner adds Project Manager/Collaborator/<color:red>(Not Yet Implemented)Reader</color> to Project ==
+== Owner adds Project Manager/Collaborator</color> to Project ==
 Owner -> System: Add User to Project
 System -> Project: Verify Membership and role (Owner)
 Project --> System: Membership confirmed
-System -> Project: Grant Project Manager/Collaborator/Reader access
-Project --> System: Confirm Project Manager/Collaborator/Reader access granted
+System -> Project: Grant Project Manager/Collaborator access
+Project --> System: Confirm Project Manager/Collaborator access granted
 System --> Owner: Success
 
 @enduml
