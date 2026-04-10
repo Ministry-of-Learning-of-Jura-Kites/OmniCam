@@ -9,6 +9,7 @@ import {
   WorkspaceEventResponse,
   WorkspaceEventRequest,
 } from "~/messages/protobufs/workspace_event";
+import { getTrapezoidNormal, type Trapezoid } from "~/types/trapezoid";
 
 function isEqual<T>(a: T, b: T): boolean {
   return JSON.stringify(a) === JSON.stringify(b);
@@ -45,6 +46,24 @@ export function transformCameraToProtoEventWithId(
   cam: ICamera,
 ): Camera {
   return { ...transformCameraToProtoEvent(cam), id: camId };
+}
+
+export function transformProtoToFace(
+  face: CoverageFace,
+): ProcessedCoverageFace {
+  const transFaces = face.points
+    .slice(0, 4)
+    .map(threeVector3ToNumbers) as Trapezoid;
+
+  return {
+    name: face.name,
+    points: transFaces,
+    color: face.color,
+    hidden: face.hidden,
+    normal: face.normal
+      ? threeVector3ToNumbers(face.normal)
+      : getTrapezoidNormal(transFaces),
+  };
 }
 
 export function transformFaceToProto(
