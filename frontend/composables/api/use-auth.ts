@@ -43,10 +43,20 @@ export interface Response {
   token: string;
 }
 
-export function useAuth() {
+export async function useAuth() {
   const config = useRuntimeConfig();
 
   const user = useState<User | null>("user", () => null);
+
+  const { data, execute: fetchUser } = await useAsyncData("auth-me", getMe, {
+    immediate: false,
+    transform: (resp) => resp.data,
+    lazy: true,
+  });
+
+  watch(data, (data) => {
+    user.value = data ?? null;
+  });
 
   async function postLogin(loginForm: LoginRequest) {
     const base = getApiBaseUrlWithProtocol("http", config, false);
@@ -79,29 +89,16 @@ export function useAuth() {
     const headers = useRequestHeaders(["cookie"]);
 
     const base = getApiBaseUrlWithProtocol("http", config, true);
-    const { data, error } = await useAsyncData(
-      "auth-me",
-      () =>
-        $fetch<{ data: User }>(new URL(`me`, base).href, {
-          method: "GET",
-          headers: headers,
-          credentials: "include",
-          onResponseError({ response }) {
-            console.error("fetch /me error", response._data);
-            user.value = null;
-          },
-        }),
-      {
-        // Only run if we don't already have a user in state
-        immediate: !user.value,
-        transform: (resp) => {
-          user.value = resp.data;
-          return resp.data;
-        },
+    return $fetch<{ data: User }>(new URL(`me`, base).href, {
+      method: "GET",
+      headers: headers,
+      credentials: "include",
+      onResponseError({ response }) {
+        console.error("fetch /me error", response._data);
+        user.value = null;
       },
-    );
-    return { user: data, error };
+    });
   }
 
-  return { user, postLogin, postRegister, getMe, postLogout };
+  return { user, postLogin, postRegister, fetchUser, getMe, postLogout };
 }

@@ -11,7 +11,6 @@ import ContentCard from "~/components/card/ContentCard.vue";
 import CustomPagination from "~/components/pagination/CustomPagination.vue";
 import { uuidToBase64Url } from "~/lib/uuid";
 import { Plus } from "lucide-vue-next";
-import type { Project } from "~/types/project";
 import { useProject, type ProjectMember } from "~/composables/api/use-project";
 import {
   type Model,
@@ -28,19 +27,16 @@ export type ModelForm = {
 export type ModelWithoutId = Omit<Model, "modelId">;
 
 const route = useRoute();
-const { user, getMe } = await useAuth();
-getMe();
+const { user, fetchUser } = await useAuth();
+fetchUser();
 
 const projectId = route.params.projectId as string;
 
 const projectApi = useProject();
 const modelApi = useModels(projectId);
 
-const models = ref<Record<string, ModelWithoutId>>({});
 const members = ref<ProjectMember[]>([]);
-const totalData = ref<number>(0);
 const currentEditId = ref<string | null>(null);
-const projectDetail = ref<Project | null>(null);
 const editingMember = ref<ProjectMember | null>(null);
 const modelForm = reactive<ModelForm>({
   name: "",
@@ -52,30 +48,6 @@ const modelForm = reactive<ModelForm>({
 //pagination
 const page = ref<number>(1);
 const pageSize = ref<number>(4);
-
-// write table model (what u want to show etc.)
-// const modelKeys: (keyof Model)[] = [
-//   "name",
-//   "description",
-//   "version",
-//   "createdAt",
-//   "updatedAt",
-// ];
-
-// const tableTitles = {
-//   name: "Name",
-//   description: "Description",
-//   version: "Version",
-//   createdAt: "Created At",
-//   updatedAt: "Updated At",
-// };
-
-// generate key to use here
-
-// const generateKey = generateColumnsFromKeys<Model>(modelKeys, tableTitles, {
-//   onEdit: (row) => handleEditRow(row),
-//   onDelete: (row) => handleDeleteRow(row),
-// });
 
 // Dialog handler for create delete update
 const isEditFormDialogOpen = ref<boolean>(false);
@@ -120,48 +92,57 @@ const formTitles = {
 };
 const roles = ["project_manager", "collaborator"];
 
-async function fetchProjectById() {
-  const { data: response, error } = await projectApi.getProject(projectId);
-  if (error.value != undefined) {
-    // TODO: Handle error
-    return;
-  }
-  projectDetail.value = response.value!.data;
-}
+const { data: project } = await useAsyncData(
+  `project-${projectId}`,
+  () => projectApi.getProject(projectId),
+  {
+    // Extract the .data property immediately so 'project' is the object itself
+    transform: (response) => response.data,
+  },
+);
+const projectDetail = ref(project.value);
 
-async function fetchModel() {
-  const { data: response, error } = await modelApi.listModels(
-    page.value,
-    pageSize.value,
-  );
+watch(project, (newVal) => {
+  projectDetail.value = newVal;
+});
 
-  const respData = response.value;
-  if (error.value != null) {
-    console.error("fetchModel error", error);
-    return;
-  }
-  if (respData?.data != null) {
-    models.value = respData.data.reduce<Record<string, ModelWithoutId>>(
-      (acc, model) => {
-        const { modelId, imagePath, imageExtension, ...rest } = model;
+const { data: modelsRaw, refresh } = await useAsyncData(
+  `models-list-${projectId}-${page.value}`,
+  () => modelApi.listModels(page.value, pageSize.value),
+  {
+    watch: [page, pageSize],
 
-        if (imageExtension != null) {
-          const url = getUrlForModelImage(projectId, modelId, imageExtension);
+    transform: (respData) => {
+      if (!respData?.data) return { record: {}, count: 0 };
+
+      const record = respData.data.reduce<Record<string, ModelWithoutId>>(
+        (acc, model) => {
+          const { modelId, imagePath, imageExtension, ...rest } = model;
+
+          let urlHref: string | undefined = undefined;
+          if (imageExtension != null && imagePath) {
+            urlHref = getUrlForModelImage(
+              projectId,
+              modelId,
+              imageExtension,
+            ).href;
+          }
+
           acc[modelId] = {
             ...rest,
-            imagePath: imagePath ? url.href : undefined,
+            imagePath: urlHref,
           };
-        }
-        return acc;
-      },
-      {},
-    );
-    totalData.value = respData.count;
-  } else {
-    models.value = {};
-    totalData.value = 0;
-  }
-}
+          return acc;
+        },
+        {},
+      );
+      return { record, count: respData.count };
+    },
+  },
+);
+
+const models = ref(modelsRaw.value!.record);
+const totalData = ref(modelsRaw.value!.count);
 
 async function createModel() {
   const formData = new FormData();
@@ -180,7 +161,7 @@ async function createModel() {
   successDialog.value = true;
   successMessage.value = `You have successfully created ${response.data.name}`;
 
-  fetchModel();
+  refresh();
 }
 
 async function updateModel(hexId: string) {
@@ -221,7 +202,7 @@ async function deleteRow(id: string) {
     successDialog.value = true;
     successMessage.value = `You have successfully delete ${id}`;
 
-    await fetchModel();
+    await refresh();
   } catch (err) {
     console.error("Delete failed", err);
   }
@@ -352,14 +333,7 @@ async function handleUpdateImage(file: File | undefined, modelId: string) {
   }
 }
 
-fetchProjectById();
-
-fetchModel();
 fetchMembers();
-
-watch([page, pageSize], async () => {
-  await fetchModel();
-});
 </script>
 
 <template>

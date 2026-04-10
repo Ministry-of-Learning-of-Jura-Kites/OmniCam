@@ -105,7 +105,7 @@ function createAxisArrow(
     axis,
     props.faceId,
     cornerIndex,
-    sceneStates,
+    sceneStates.value!,
     context,
     props.yOffset,
   );
@@ -135,7 +135,7 @@ for (let ci = 0; ci < 4; ci++) {
   group.add(azNeg);
 }
 
-arrows.forEach((m) => sceneStates.draggableObjects.add(m));
+arrows.forEach((m) => sceneStates.value!.draggableObjects.add(m));
 
 watchEffect(() => {
   group.visible = !!props.visible;
@@ -159,7 +159,7 @@ watchEffect(() => {
 });
 
 onBeforeUnmount(() => {
-  arrows.forEach((m) => sceneStates.draggableObjects.delete(m));
+  arrows.forEach((m) => sceneStates.value!.draggableObjects.delete(m));
 
   dots.forEach((d) => group.remove(d));
   arrows.forEach((a) => group.remove(a));

@@ -56,7 +56,7 @@ export function getProjectBaseUrl(allowServerSide: boolean) {
 export function useProject() {
   async function listProjects(page = 1, pageSize = 4) {
     const headers = useRequestHeaders(["cookie"]);
-    const response = await useFetch<{ data: Project[]; count: number }>(
+    return await $fetch<{ data: Project[]; count: number }>(
       getProjectBaseUrl(true).href,
       {
         method: "GET",
@@ -65,7 +65,6 @@ export function useProject() {
         credentials: "include",
       },
     );
-    return response;
   }
 
   async function createProject(formData: FormData) {
@@ -77,10 +76,12 @@ export function useProject() {
   }
 
   async function updateProject(hexId: string, body: ProjectUpdateRequest) {
+    const headers = useRequestHeaders(["cookie"]);
     const url = new URL(uuidToBase64Url(hexId), getProjectBaseUrl(false));
     return await $fetch<{ data: Project }>(url.href, {
       method: "PUT",
       body,
+      headers,
       credentials: "include",
     });
   }
@@ -107,7 +108,7 @@ export function useProject() {
 
   async function getProject(projectId: string) {
     const base = getProjectBaseUrl(false);
-    return await useFetch<{ data: Project }>(
+    return await $fetch<{ data: Project }>(
       new URL(projectId, addTrailingSlash(base.href)).href,
       {
         method: "GET",
@@ -118,7 +119,7 @@ export function useProject() {
 
   async function getProjectMembers(projectId: string) {
     const headers = useRequestHeaders(["cookie"]);
-    const base = getProjectBaseUrl(true);
+    const base = getProjectBaseUrl(false);
     const url = new URL(`${projectId}/members`, addTrailingSlash(base));
     return $fetch<{ data: ProjectMember[]; count: number }>(url.href, {
       method: "GET",

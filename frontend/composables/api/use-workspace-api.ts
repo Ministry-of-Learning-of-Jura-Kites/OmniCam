@@ -49,7 +49,7 @@ export function useWorkspaceApi(
   async function postResolve(results: Record<string, Record<string, unknown>>) {
     const error = ref<Error | undefined>();
     const baseUrl = getWorkspaceMeUrl(projectId, modelId, runtimeConfig);
-    await useFetch<{ error?: string }>(new URL("resolve", baseUrl).href, {
+    await $fetch<{ error?: string }>(new URL("resolve", baseUrl).href, {
       method: "POST",
       credentials: "include",
       body: { merged: results },

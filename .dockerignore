@@ -1,25 +1,28 @@
-.env
-.env.prod
-.env.example
-*.env
-*.log
+**/.env
+**/.env.prod
+**/.env.example
+**/*.env
+**/*.log
 
-.DS_Store
+**/.DS_Store
 .git
-.gitignore
+**/.gitignore
 
-node_modules
-.nuxt
-.dist
-.output
+**/node_modules
+**/.nuxt
+**/.dist
+**/.output
 uploads
 tools
 
-Dockerfile
+**/Dockerfile
 
 backend/pkg/messages/protobufs
 frontend/messages/protobufs
 backend/pkg/db/sqlc-gen
+predictive-algorithm/src/messages/protobufs/*
+!predictive-algorithm/src/messages/protobufs/__init__.py
 
-.venv
-*/.pyc
+**/.venv
+*/*.pyc
+**/__pycache__

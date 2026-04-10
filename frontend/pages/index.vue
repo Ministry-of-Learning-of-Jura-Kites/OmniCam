@@ -59,20 +59,27 @@ const projectForm = reactive<ProjectForm>({
 
 const projectApi = useProject();
 
-async function fetchProjects() {
-  try {
-    loading.value = true;
-    error.value = null;
+const {
+  data: respData,
+  error: fetchError,
+  refresh,
+} = await useAsyncData(
+  "projects-list", // A unique key ensures the client finds the server's work
+  () => projectApi.listProjects(page.value, pageSize.value),
+  {
+    watch: [page, pageSize],
+  },
+);
 
-    const { data: respData, error: listError } = await projectApi.listProjects(
-      page.value,
-      pageSize.value,
-    );
-    if (listError.value != undefined) {
-      console.error("Error while fetching projects", listError.value);
+watch(
+  respData,
+  (newData) => {
+    loading.value = false;
+    if (fetchError.value != undefined) {
+      console.error("Error while fetching projects", fetchError.value);
     }
-    const data = respData.value?.data || [];
-    const count = respData.value?.count || 0;
+    const data = newData?.data || [];
+    const count = newData?.count || 0;
 
     projects.value = data.reduce<Record<string, ProjectWithoutId>>((acc, p) => {
       const { id, imagePath, ...rest } = p;
@@ -91,13 +98,9 @@ async function fetchProjects() {
     }, {});
 
     totalItem.value = count;
-  } catch (err: unknown) {
-    error.value = err instanceof Error ? err.message : String(err);
-    console.error("Error fetching projects:", err);
-  } finally {
-    loading.value = false;
-  }
-}
+  },
+  { immediate: true },
+);
 
 async function submitCreateProject() {
   try {
@@ -112,7 +115,7 @@ async function submitCreateProject() {
     projects.value = { [id]: rest, ...projects.value }; // unshift
     successMessage.value = `Project "${data.name}" created successfully.`;
     isSuccessDialogOpen.value = true;
-    await fetchProjects();
+    await refresh();
   } catch (err) {
     console.error("Error creating project:", err);
   }
@@ -160,7 +163,7 @@ async function deleteProject(hexId: string) {
     projects.value = rest;
     successMessage.value = `Project deleted successfully.`;
     isSuccessDialogOpen.value = true;
-    await fetchProjects();
+    await refresh();
   } catch (err) {
     console.error("Error deleting project:", err);
   }
@@ -217,10 +220,6 @@ async function handleConfirmAction() {
   confirmAction.value = null;
   currentEditHexId.value = null;
 }
-
-fetchProjects();
-
-watch([page, pageSize], fetchProjects);
 </script>
 
 <template>
