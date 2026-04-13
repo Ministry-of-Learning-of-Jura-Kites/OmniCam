@@ -4,6 +4,8 @@ export const SPECTATOR_ROTAING_SENTIVITY = 0.01;
 
 export const SPECTATOR_ADJ_INPUT_SENTIVITY = 0.01;
 
+export const SPECTATOR_SPEED_BOOST = 2;
+
 export const MOVING_ARROW_CONFIG = {
   HEAD_RADIUS: 0.05,
   HEAD_LENGTH: 0.1,
@@ -16,6 +18,13 @@ export const MOVING_ARROW_CONFIG = {
 export const ROTATING_TORUS_CONFIG = {
   RADIUS: 1,
   TUBE_RADIUS: MOVING_ARROW_CONFIG.HEAD_RADIUS / 2,
+};
+
+export const AXIS_GIZMO = {
+  RADIUS: 0.1,
+  LENGTH: 1,
+  LABEL_RADIUS: 0.15,
+  GIZMO_WIDTH: 150,
 };
 
 export const AXIS_COLOR = {
