@@ -1,27 +1,17 @@
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+from pydantic_settings import BaseSettings, SettingsConfigDict
+
 
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(
-        env_file=".env", env_file_encoding="utf-8", extra="ignore"  # Default to no file
+        env_file=".env", env_file_encoding="utf-8", extra="ignore"
     )
 
     dev_mode: bool = False
-
-    # redis_host: str
-
-    # redis_port: str
-
-    # redis_req_topic: str
-
-    # redis_res_topic: str
-
     nats_url: str
-
     req_topic_pattern: str
-
     req_topic_queue: str
-
     model_file_path: str
 
 

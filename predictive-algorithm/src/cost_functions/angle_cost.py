@@ -41,7 +41,11 @@ def vertical_cost(ver_deg: Quantity[u.degree]) -> float:
 
 
 def off_center_penalty(
-    h_off: Quantity[u.deg], v_off: Quantity[u.deg], h_fov=90.0, v_fov=60.0
+    h_off: Quantity[u.deg],
+    v_off: Quantity[u.deg],
+    h_fov=90.0,
+    v_fov=60.0,
+    verbose: bool = False,
 ) -> float:
     h = abs(h_off.to_value(u.deg))
     v = abs(v_off.to_value(u.deg))
@@ -82,6 +86,7 @@ def cost_single_cam(
         off_v_deg,
         cam_state.camera_config.get_hfov(),
         cam_state.camera_config.vfov,
+        verbose,
     )
 
     if verbose:

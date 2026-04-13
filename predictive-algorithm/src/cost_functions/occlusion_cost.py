@@ -36,7 +36,9 @@ def is_in_view(point, cam_state: CameraState) -> Union[bool, Union[Array3]]:
     return (is_visible, local_point)
 
 
-def cost_single_cam(state: State, cam_state: CameraState, face: Array4x3):
+def cost_single_cam(
+    state: State, cam_state: CameraState, face: Array4x3, verbose: bool
+):
     total_occlusion_cost = 0
 
     face_center = center_of_face(face)
@@ -45,6 +47,7 @@ def cost_single_cam(state: State, cam_state: CameraState, face: Array4x3):
         for corner in face
         for i in range(0, 3)
     ]
+
     for corner, weight in check_corners:
         # 1. Soften the 'Out of View' penalty
         valid_coord, ndc_coord = is_in_view(corner, cam_state)
@@ -67,7 +70,7 @@ def cost_single_cam(state: State, cam_state: CameraState, face: Array4x3):
             continue
 
         to_corner_dist = np.linalg.norm(corner - cam_state.pos)
-        to_hit_dist = np.linalg.norm(points.GetPoint(0) - cam_state.pos)
+        to_hit_dist = np.linalg.norm(np.array(points.GetPoint(0)) - cam_state.pos)
 
         # distance is how much of the ray is 'blocked'
         # We only care if hit_dist < corner_dist

@@ -18,7 +18,7 @@ from main import assign_faces
 
 # --- Setup Shared Resources ---
 gltf = (
-    pv.read(path.join("/home/frook/Downloads/omnicam/test case c.glb"))
+    pv.read(path.join("/home/frook/Downloads/omnicam/test case c correct.glb"))
     .combine()
     .extract_surface()
     .triangulate()
@@ -29,12 +29,14 @@ gltf_locator = vtk.vtkStaticCellLocator()
 gltf_locator.SetDataSet(gltf)
 gltf_locator.BuildLocator()
 
+y_offset = 0.2 * np.tan(np.radians(37.5))
+
 face = np.array(
     [
-        [0.2, 1 - 0.76732698797, 1],
-        [0.2, 1 - 0.76732698797, -1],
-        [0.2, -1 - 0.76732698797, -1],
-        [0.2, -1 - 0.76732698797, 1],
+        [0.2, 0.5 - y_offset, 0.5],
+        [0.2, 0.5 - y_offset, -0.5],
+        [0.2, -0.5 - y_offset, -0.5],
+        [0.2, -0.5 - y_offset, 0.5],
     ]
 )
 
@@ -45,7 +47,8 @@ cam_config = CameraConfiguration(
 )
 
 # --- Benchmarking Loop ---
-seeds = range(2000, 2000 + 30)  # 2000 to 2014 inclusive
+seeds = range(2000, 2000 + 50)  # 2000 to 2014 inclusive
+# seeds = range(2026, 2026 + 1)
 times = []
 costs = []
 results_gens = []
@@ -76,6 +79,14 @@ for seed in seeds:
     # 2. Assign faces based on the current seed
     state = assign_faces(state, seed)
 
+    if env_settings.dev_mode:
+        from pyvistaqt import BackgroundPlotter
+
+        pl = BackgroundPlotter()
+        init_3d_scene(pl, state)
+
+        breakpoint()
+
     # 3. Run Optimization and Time it
     start_time = time.perf_counter()
     final_state, result = optimize_de(state, seed)
@@ -93,10 +104,6 @@ for seed in seeds:
 
     # Optional: Visualization of the last result if dev_mode is on
     if env_settings.dev_mode:
-        from pyvistaqt import BackgroundPlotter
-
-        pl = BackgroundPlotter()
-        init_3d_scene(pl, final_state)
         render_from_state(pl, final_state)
         pl.show()
         breakpoint()
