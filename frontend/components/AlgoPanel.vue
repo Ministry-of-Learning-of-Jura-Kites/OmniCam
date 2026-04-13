@@ -182,13 +182,13 @@ function submit() {
         </div>
 
         <button
-          class="w-full mt-2 py-2 bg-zinc-800 hover:bg-zinc-700 rounded-lg font-medium transition"
+          class="w-full mt-2 py-2 bg-gray-300 dark:bg-zinc-800 hover:bg-gray-200 hover:dark:bg-zinc-700 rounded-lg font-medium transition"
           @click="clearAreas"
         >
           Clear Selected Areas
         </button>
         <button
-          class="w-full mt-2 py-2 bg-zinc-800 hover:bg-zinc-700 rounded-lg font-medium transition"
+          class="w-full mt-2 py-2 bg-gray-300 dark:bg-zinc-800 hover:bg-gray-200 hover:dark:bg-zinc-700 rounded-lg font-medium transition"
           @click="toggleAllAreasVisibility"
         >
           {{ isAllCoverageHidden ? "Show All Areas" : "Hide All Areas" }}

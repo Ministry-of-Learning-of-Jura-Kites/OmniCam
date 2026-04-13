@@ -35,6 +35,7 @@ import { computeStableNormal } from "~/utils/face-helper/stable-normal";
 import { averageVector } from "~/utils/face-helper/avg-vec";
 import { v4 as uuidv4 } from "uuid";
 import { get3dModelPathClient } from "~/composables/api/use-fetch-model";
+import AxisGizmo from "../axis-gizmo/axis-gizmo.vue";
 
 const { isPanelOpen, currentPanel, camPanelInfo } = inject(PANEL_KEY)!;
 const { selectedCamId } = camPanelInfo;
@@ -572,6 +573,7 @@ function selectCurrentCamShortcut() {
           :window-size="false"
           clear-color="#0E0C29"
           tabindex="0"
+          alpha
         >
           <TresPerspectiveCamera
             ref="perspectiveCamera"
@@ -654,6 +656,8 @@ function selectCurrentCamShortcut() {
           />
 
           <FrustumOverlay />
+
+          <AxisGizmo />
 
           <Suspense><Environment preset="city" /></Suspense>
           <TresAmbientLight :intensity="0.4" />

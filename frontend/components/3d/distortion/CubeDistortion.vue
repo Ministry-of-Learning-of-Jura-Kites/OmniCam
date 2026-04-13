@@ -151,3 +151,7 @@ onUnmounted(() => {
   }
 });
 </script>
+
+<template>
+  <slot></slot>
+</template>
