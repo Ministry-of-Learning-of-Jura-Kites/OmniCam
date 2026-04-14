@@ -1,3 +1,5 @@
+import type { Vector3 } from "three";
+
 export type FixedLengthArray<
   TItem,
   TLength extends number,
@@ -6,10 +8,12 @@ export type FixedLengthArray<
   ? TAcc
   : FixedLengthArray<TItem, TLength, [...TAcc, TItem]>;
 
-export type Trapezoid = FixedLengthArray<[number, number, number], 4>;
+export type QuadrilateralPoints = FixedLengthArray<[number, number, number], 4>;
+
+export type QuadrilateralVectors = FixedLengthArray<Vector3, 4>;
 
 export function getTrapezoidNormal(
-  trapezoid: Trapezoid,
+  trapezoid: QuadrilateralPoints,
 ): [number, number, number] {
   const [p0, p1, , p3] = trapezoid;
 

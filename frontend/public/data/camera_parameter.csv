@@ -1,4 +1,6 @@
 vendor,camera,sensor_name,aspect,fov,pixel_pitch,res_w,res_h,sensor_w_mm,sensor_h_mm,focal_length
+-,Fisheye Camera,,1,180,0.009,6000,6000,23,23,35
+-,Wide Angle Camera,,1.33,120,0.009,4000,3000,23,23,35
 ARRI,ALEXA 265,6.5K 2.12:1 Open Gate,2.1161,40.15,0.008250,6560,3100,54.12,25.58,35.00
 ARRI,ALEXA 265,5.1K 1.65:1,1.6516,40.15,0.008250,5120,3100,42.24,25.58,35.00
 ARRI,ALEXA 265,4.5K LF 3:2,1.4367,40.10,0.008250,4448,3096,36.70,25.55,35.00

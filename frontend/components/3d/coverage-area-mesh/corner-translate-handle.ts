@@ -1,23 +1,28 @@
 import type { TresContext } from "@tresjs/core";
 import type { IUserData } from "~/types/obj-3d-user-data";
+import type { Group } from "three";
 import { Raycaster, Vector2, Vector3 } from "three";
 import type { ICamera } from "~/types/camera";
 import type { SceneStates } from "~/types/scene-states";
-import { orderPointsOnPlane } from "~/utils/face-helper/order-points-plane";
+import type { QuadrilateralPoints as QuadrilateralPoints } from "~/types/trapezoid";
 
-type Axis = "x" | "y" | "z";
+type Axis = "x" | "y";
 
-function axisVector(axis: Axis) {
-  switch (axis) {
-    case "x":
-      return new Vector3(1, 0, 0);
-    case "y":
-      return new Vector3(0, 1, 0);
-    case "z":
-      return new Vector3(0, 0, 1);
-  }
+/**
+ * Returns the local direction vector for a given axis based on our
+ * "Normal = Z" basis convention.
+ */
+export function getGizmoLocalDirection(axis: Axis, direction: 1 | -1): Vector3 {
+  // Convention:
+  // Normal is Z (0,0,1)
+  // X is (1,0,0)
+  // Y is (0,1,0)
+  return new Vector3(
+    axis === "x" ? 1 : 0,
+    axis === "y" ? 1 : 0,
+    0,
+  ).multiplyScalar(direction);
 }
-
 export class CornerTranslateUserData implements IUserData {
   type = "corner-translate" as const;
 
@@ -31,13 +36,19 @@ export class CornerTranslateUserData implements IUserData {
   private raycaster = new Raycaster();
   private mouse = new Vector2();
 
+  private initialP: QuadrilateralPoints | undefined = undefined;
+
+  private direction: 1 | -1;
+  private parentGroup: Group;
+
   private isDragging = false;
   private startElev = new Vector3();
   private axisDir = new Vector3();
   private t0 = 0;
-
   constructor(
     axis: Axis,
+    direction: 1 | -1,
+    parentGroup: Group,
     faceId: string,
     cornerIndex: number,
     sceneStates: SceneStates,
@@ -45,6 +56,8 @@ export class CornerTranslateUserData implements IUserData {
     yOffset: number,
   ) {
     this.axis = axis;
+    this.direction = direction;
+    this.parentGroup = parentGroup;
     this.faceId = faceId;
     this.cornerIndex = cornerIndex;
     this.sceneStates = sceneStates;
@@ -104,11 +117,25 @@ export class CornerTranslateUserData implements IUserData {
     const p = face.points?.[this.cornerIndex];
     if (!p) return;
 
-    this.startElev.set(p[0], p[1] + this.yOffset, p[2]);
-    this.axisDir = axisVector(this.axis).clone().normalize();
+    // The starting point for the drag calculation
+    this.startElev.set(p[0], p[1], p[2]);
+
+    // --- THE FIX: Align with Gizmo Basis ---
+    // Use the shared helper to get the vector (e.g., [1,0,0] for X)
+    const localDir = getGizmoLocalDirection(this.axis, this.direction);
+
+    // Transform local direction to World Space using the group's current orientation
+    // This ensures that dragging moves exactly along the visible arrow's line
+    this.axisDir = localDir
+      .applyQuaternion(this.parentGroup.quaternion)
+      .normalize();
 
     const ray = this.getRay(event);
     if (!ray) return;
+
+    this.initialP = structuredClone(
+      face.points.map(toRaw) as QuadrilateralPoints,
+    );
 
     this.t0 = this.closestTOnAxisLine(
       ray.origin,
@@ -128,23 +155,23 @@ export class CornerTranslateUserData implements IUserData {
     const ray = this.getRay(event);
     if (!ray) return;
 
+    // Calculate the projection on the translation axis
     const t = this.closestTOnAxisLine(
       ray.origin,
       ray.direction,
       this.startElev,
       this.axisDir,
     );
+
     const delta = t - this.t0;
 
-    const newElev = this.startElev.clone().addScaledVector(this.axisDir, delta);
-
-    const newBase = newElev.clone();
-    newBase.y -= this.yOffset;
+    // Compute the new position
+    const newPos = this.startElev.clone().addScaledVector(this.axisDir, delta);
 
     this.sceneStates.facesManagement.updateCorner(
       this.faceId,
       this.cornerIndex,
-      [newBase.x, newBase.y, newBase.z],
+      [newPos.x, newPos.y, newPos.z],
     );
   };
 
@@ -152,20 +179,19 @@ export class CornerTranslateUserData implements IUserData {
     this.isDragging = false;
 
     const face = this.sceneStates.facesManagement.faces[this.faceId];
-    if (face != undefined) {
-      const allPoints = face.points.map((p) => new Vector3(...p));
-      const sortedPoints = orderPointsOnPlane(
-        allPoints,
-        numbersToThreeVector3(face.normal),
-      );
 
-      for (let idx = 0; idx < 4; idx++) {
-        this.sceneStates.facesManagement.updateCorner(
-          this.faceId,
-          idx,
-          threeVector3ToNumbers(sortedPoints[idx]!),
-        );
-      }
+    if (face && this.initialP) {
+      // If you want to ensure the plane stays perfectly flat (coplanar)
+      // after a move, you would do math here.
+      // But for a simple 4-point plane, we usually just accept the new position.
+
+      const currentPoint = face.points[this.cornerIndex]!;
+
+      this.sceneStates.facesManagement.updateCorner(
+        this.faceId,
+        this.cornerIndex,
+        [currentPoint[0], currentPoint[1], currentPoint[2]],
+      );
     }
 
     document.removeEventListener("pointermove", this.onPointerMove);

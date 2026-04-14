@@ -29,12 +29,15 @@ import FrustumOverlay from "@/components/3d/camera-frustum/FrustumOverlay.vue";
 import CubeDistortion from "@/components/3d/distortion/CubeDistortion.vue";
 import CoverageAreaMesh from "../coverage-area-mesh/CoverageAreaMesh.vue";
 import type { ProcessedCoverageFace } from "../scene-states-provider/create-scene-states";
-import CoverageCornerGizmos from "../coverage-area-mesh/CoverageCornerGizmos.vue";
-import { orderPointsOnPlane } from "~/utils/face-helper/order-points-plane";
-import { computeStableNormal } from "~/utils/face-helper/stable-normal";
+import CoverageCornerGizmo from "../coverage-area-mesh/CoverageCornerGizmo.vue";
 import { averageVector } from "~/utils/face-helper/avg-vec";
 import { v4 as uuidv4 } from "uuid";
 import { get3dModelPathClient } from "~/composables/api/use-fetch-model";
+import AxisGizmo from "../axis-gizmo/axis-gizmo.vue";
+import type {
+  QuadrilateralPoints,
+  QuadrilateralVectors,
+} from "~/types/trapezoid";
 
 const { isPanelOpen, currentPanel, camPanelInfo } = inject(PANEL_KEY)!;
 const { selectedCamId } = camPanelInfo;
@@ -82,7 +85,6 @@ const { isMapOpen } = inject(MAP_KEY)!;
 const COVERAGE_Y_OFFSET = 0.01;
 
 const draftCoveragePoints = ref<Vector3[]>([]);
-const draftCoverageNormals = ref<Vector3[]>([]);
 
 const aspect = computed(() => {
   const width = sceneStates.value!.currentCam.value.widthRes;
@@ -94,13 +96,10 @@ const aspect = computed(() => {
 const previewPoints = computed<Point3[]>(() => {
   if (sceneStates.value!.selectionMode.value !== "coverage-area") return [];
 
-  return buildDraftCoveragePreview(
-    draftCoveragePoints.value,
-    draftCoverageNormals.value,
-  );
+  return buildDraftCoveragePreview(draftCoveragePoints.value);
 });
 
-const isPreviewing = computed(() => previewPoints.value.length === 4);
+const isPreviewing = computed(() => previewPoints.value.length > 2);
 
 const draftPointMarkers = computed<Point3[]>(() => {
   if (sceneStates.value!.selectionMode.value !== "coverage-area") return [];
@@ -118,25 +117,39 @@ const mouse = new Vector2();
 
 function clearDraftCoverageSelection() {
   draftCoveragePoints.value = [];
-  draftCoverageNormals.value = [];
   // sceneStates.value!.tresContext.value?.invalidate?.();
 }
 
-function buildDraftCoveragePreview(
-  points: Vector3[],
-  normals: Vector3[],
-): Point3[] {
-  if (points.length < 3) return [];
+function buildDraftCoveragePreview(points: Vector3[]): Point3[] {
+  const count = points.length;
+  if (count < 1) return [];
 
-  const normal = computeStableNormal(points, normals);
-  const ordered = orderPointsOnPlane(points, normal);
+  // 1 & 2 points: Just the raw points (renders as a point or a single line)
+  if (count < 3) {
+    return points.map((p) => [p.x, p.y, p.z] as Point3);
+  }
 
-  const padded =
-    ordered.length === 3
-      ? [...ordered, ordered[2]!.clone()]
-      : ordered.slice(0, 4);
+  const p0 = points[0]!;
+  const p1 = points[1]!;
+  const p2 = points[2]!;
 
-  return padded.map((p) => [p.x, p.y, p.z] as Point3);
+  // 3 points EXACTLY: Return a triangle (P0 -> P1 -> P2)
+  if (count === 3) {
+    return points.map((p) => [p.x, p.y, p.z] as Point3);
+  }
+
+  // 4 points: Snap the 4th point to the parallel rail
+  const p3Raw = points[3]!;
+
+  // Direction comes from the edge p1 -> p2
+  const dir = new Vector3().subVectors(p2, p1).normalize();
+
+  // Project the mouse position (p3Raw) onto the rail starting at p0
+  const v = new Vector3().subVectors(p3Raw, p0);
+  const dot = v.dot(dir);
+  const p3 = p0.clone().add(dir.multiplyScalar(dot));
+
+  return [p0, p1, p2, p3].map((p) => [p.x, p.y, p.z] as Point3);
 }
 
 const defaultCoverageFace: ProcessedCoverageFace = {
@@ -147,41 +160,66 @@ const defaultCoverageFace: ProcessedCoverageFace = {
     [0, 0, 0],
     [0, 0, 0],
   ],
-  normal: [0, 0, 1],
+  normal: new Vector3(0, 0, 1),
   color: "#22ff88",
   hidden: false,
 };
 
 function buildCoverageFaceFromPickedPoints(
-  points: Vector3[],
-  normals: Vector3[],
+  points: QuadrilateralVectors,
 ): ProcessedCoverageFace | null {
   if (points.length !== 4) return null;
 
-  const normal = computeStableNormal(points, normals);
-  const ordered = orderPointsOnPlane(points, normal);
+  const p0 = points[0]!;
+  const p1 = points[1]!;
+  const p2 = points[2]!;
+  const p3Raw = points[3]!;
 
-  const p0 = ordered[0]!;
-  const p1 = ordered[1]!;
-  const p2 = ordered[2]!;
-  const p3 = ordered[3]!;
+  // 1. Force Trapezoid/Parallelism
+  const dir = new Vector3().subVectors(p2, p1).normalize();
+  const v = new Vector3().subVectors(p3Raw, p0);
+  const p3 = p0.clone().add(dir.multiplyScalar(v.dot(dir)));
 
-  const centerV = averageVector(ordered);
+  let finalPoints = [p0, p1, p2, p3];
+  const centerV = averageVector(finalPoints);
 
-  const width = (p0.distanceTo(p1) + p2.distanceTo(p3)) / 2;
+  // 2. Initial Normal Calculation (Vector3)
+  const e1 = new Vector3().subVectors(p1, p0);
+  const e2 = new Vector3().subVectors(p2, p0);
+  const finalNormal = new Vector3().crossVectors(e1, e2).normalize();
 
-  const height = (p1.distanceTo(p2) + p3.distanceTo(p0)) / 2;
+  // 3. Winding Order Check
+  // We check the cross product of vectors from the center to points 0 and 1
+  const v0 = new Vector3().subVectors(p0, centerV);
+  const v1 = new Vector3().subVectors(p1, centerV);
+  const windingCheck = new Vector3().crossVectors(v0, v1).dot(finalNormal);
 
-  if (width < 0.05 || height < 0.05) return null;
+  console.log("--- Winding Validation ---");
+  console.log("Winding Check Dot:", windingCheck);
+
+  if (windingCheck < 0) {
+    console.warn("Winding is Clockwise. Normalizing to Counter-Clockwise.");
+    // Reverse order to [0, 3, 2, 1] to flip winding
+    finalPoints = [p0, p3, p2, p1];
+
+    // We flip the normal so it points "outward" relative to the new CCW order
+    finalNormal.multiplyScalar(-1);
+  } else {
+    console.log("Winding is already Counter-Clockwise.");
+  }
+
+  // 4. Final Validation
+  const width = p0.distanceTo(p1);
+  const height = p1.distanceTo(p2);
+  if (width < 0.05 || height < 0.05) {
+    console.error("Face too small, rejecting.");
+    return null;
+  }
 
   return {
     ...defaultCoverageFace,
-    points: [
-      [p0.x, p0.y, p0.z],
-      [p1.x, p1.y, p1.z],
-      [p2.x, p2.y, p2.z],
-      [p3.x, p3.y, p3.z],
-    ],
+    points: finalPoints.map(threeVector3ToNumbers) as QuadrilateralPoints,
+    normal: finalNormal, // Maintained as Vector3
     center: [centerV.x, centerV.y, centerV.z],
   };
 }
@@ -201,16 +239,14 @@ function handleCoverageAreaPointer(event: PointerEvent) {
 
   if (!hit) return {};
 
+  const forward = new Vector3(0, 0, 1);
+  forward.applyEuler(sceneStates.value!.spectatorCameraRotation!);
+
   draftCoveragePoints.value = [...draftCoveragePoints.value, hit.point.clone()];
-  draftCoverageNormals.value = [
-    ...draftCoverageNormals.value,
-    hit.normal.clone(),
-  ];
 
   if (draftCoveragePoints.value.length === 4) {
     const face = buildCoverageFaceFromPickedPoints(
-      draftCoveragePoints.value,
-      draftCoverageNormals.value,
+      draftCoveragePoints.value as QuadrilateralVectors,
     );
 
     if (face) {
@@ -572,6 +608,7 @@ function selectCurrentCamShortcut() {
           :window-size="false"
           clear-color="#0E0C29"
           tabindex="0"
+          alpha
         >
           <TresPerspectiveCamera
             ref="perspectiveCamera"
@@ -655,6 +692,8 @@ function selectCurrentCamShortcut() {
 
           <FrustumOverlay />
 
+          <AxisGizmo />
+
           <Suspense><Environment preset="city" /></Suspense>
           <TresAmbientLight :intensity="0.4" />
           <TresDirectionalLight :position="[10, 10, 5]" :intensity="1" />
@@ -697,12 +736,14 @@ function selectCurrentCamShortcut() {
               :y-offset="COVERAGE_Y_OFFSET"
             />
 
-            <CoverageCornerGizmos
+            <CoverageCornerGizmo
+              v-for="(p, index) in face.points"
+              :key="`${id}-${index}`"
               :face-id="id"
-              :points="face.points"
+              :corner-index="index"
+              :position="new Vector3(p[0], p[1] + COVERAGE_Y_OFFSET, p[2])"
               :size="0.14"
               :y-offset="COVERAGE_Y_OFFSET"
-              :visible="sceneStates!.selectionMode.value !== 'coverage-area'"
             />
           </template>
         </TresCanvas>
