@@ -179,6 +179,13 @@ function submit() {
                 : "Stop Selecting"
             }}
           </button>
+          <p class="text-[20px] text-muted-foreground text-center mt-1">
+            <kbd
+              class="px-1 py-0.5 rounded border bg-background font-sans text-xs"
+              >Ctrl</kbd
+            >
+            + Click to define corners
+          </p>
         </div>
 
         <button

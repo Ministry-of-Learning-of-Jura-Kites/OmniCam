@@ -9,7 +9,8 @@ import {
   WorkspaceEventResponse,
   WorkspaceEventRequest,
 } from "~/messages/protobufs/workspace_event";
-import { getTrapezoidNormal, type Trapezoid } from "~/types/trapezoid";
+import type { QuadrilateralPoints } from "~/types/trapezoid";
+import { arrayPointsToNormal } from "~/utils/face-helper/get-avg-normal";
 
 function isEqual<T>(a: T, b: T): boolean {
   return JSON.stringify(a) === JSON.stringify(b);
@@ -53,16 +54,14 @@ export function transformProtoToFace(
 ): ProcessedCoverageFace {
   const transFaces = face.points
     .slice(0, 4)
-    .map(threeVector3ToNumbers) as Trapezoid;
+    .map(threeVector3ToNumbers) as QuadrilateralPoints;
 
   return {
     name: face.name,
     points: transFaces,
     color: face.color,
     hidden: face.hidden,
-    normal: face.normal
-      ? threeVector3ToNumbers(face.normal)
-      : getTrapezoidNormal(transFaces),
+    normal: arrayPointsToNormal(transFaces),
   };
 }
 
@@ -76,7 +75,7 @@ export function transformFaceToProto(
     points: face.points.map(numbersToThreeVector3),
     color: face.color,
     hidden: face.hidden,
-    normal: numbersToThreeVector3(face.normal),
+    normal: undefined,
   };
 }
 

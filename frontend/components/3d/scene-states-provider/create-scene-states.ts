@@ -16,7 +16,7 @@ import { useSpectatorPosition } from "../scene-3d/use-spectator-position";
 import type { UseWebSocketReturn } from "@vueuse/core";
 import { useAspectRatio as useAspectRatioManagement } from "../scene-3d/use-aspect-ratio";
 import type { GLTF } from "three-stdlib";
-import type { Trapezoid as TrapezoidPoints } from "~/types/trapezoid";
+import type { QuadrilateralPoints as QuadrilateralPoints } from "~/types/trapezoid";
 import { useOptimize } from "../scene-3d/use-optimize";
 import type { Camera } from "~/messages/protobufs/camera";
 import type { CoverageFace } from "~/messages/protobufs/optimization";
@@ -24,13 +24,14 @@ import type { ProtoVector3 } from "~/messages/protobufs/vector";
 import { useAutosave } from "~/components/3d/scene-3d/use-autosave";
 import type { WorkspaceEventResponse } from "~/messages/protobufs/workspace_event";
 import { useLivestream } from "../scene-3d/use-livestream";
+import { arrayPointsToNormal } from "~/utils/face-helper/get-avg-normal";
 
 export interface ProcessedCoverageFace {
   name: string;
-  points: TrapezoidPoints;
+  points: QuadrilateralPoints;
   color: string | undefined;
   hidden: boolean;
-  normal: [number, number, number];
+  normal: Vector3;
   // Derived field
   center?: [number, number, number];
 }
@@ -111,12 +112,15 @@ function protoVecToNumbers(vec: ProtoVector3): [number, number, number] {
 function transformProtoEventToTrapezoid(
   rawTrapezoid: CoverageFace,
 ): ProcessedCoverageFace {
+  const points = rawTrapezoid.points.map(
+    protoVecToNumbers,
+  ) as QuadrilateralPoints;
   return {
     name: rawTrapezoid.name,
-    points: rawTrapezoid.points.map(protoVecToNumbers) as TrapezoidPoints,
+    points: points,
     color: rawTrapezoid.color,
     hidden: rawTrapezoid.hidden,
-    normal: protoVecToNumbers(rawTrapezoid.normal ?? { x: 0, y: 1, z: 0 }),
+    normal: arrayPointsToNormal(points),
   };
 }
 
@@ -312,28 +316,31 @@ export function createBaseSceneStates(
 
     const newPoints = found.points.map((p, i) =>
       i === cornerIndex ? point : p,
-    ) as TrapezoidPoints;
+    ) as QuadrilateralPoints;
 
+    // Calculate Center
     const center: [number, number, number] = [
-      (newPoints[0]![0] +
-        newPoints[1]![0] +
-        newPoints[2]![0] +
-        newPoints[3]![0]) /
+      (newPoints[0][0] + newPoints[1][0] + newPoints[2][0] + newPoints[3][0]) /
         4,
-      (newPoints[0]![1] +
-        newPoints[1]![1] +
-        newPoints[2]![1] +
-        newPoints[3]![1]) /
+      (newPoints[0][1] + newPoints[1][1] + newPoints[2][1] + newPoints[3][1]) /
         4,
-      (newPoints[0]![2] +
-        newPoints[1]![2] +
-        newPoints[2]![2] +
-        newPoints[3]![2]) /
+      (newPoints[0][2] + newPoints[1][2] + newPoints[2][2] + newPoints[3][2]) /
         4,
     ];
 
+    // We use the same CCW-reliable logic from the build function
+    const p0 = new Vector3(...newPoints[0]);
+    const p1 = new Vector3(...newPoints[1]);
+    const p2 = new Vector3(...newPoints[2]);
+
+    const e1 = new Vector3().subVectors(p1, p0);
+    const e2 = new Vector3().subVectors(p2, p0);
+    const newNormal = new Vector3().crossVectors(e1, e2).normalize();
+
+    // 3. Update the object
     found.points = newPoints;
     found.center = center;
+    found.normal = newNormal; // Now the Gizmo knows the new orientation!
   };
 
   const facesManagement = {
