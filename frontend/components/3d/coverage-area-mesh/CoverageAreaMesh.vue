@@ -195,7 +195,7 @@ function onRotDragged(
   // 2. Update the Normal from the initial state
   const nV = new Vector3(...initialNormal);
   nV.applyMatrix4(rotationMatrix).normalize();
-  model.value!.normal = [nV.x, nV.y, nV.z];
+  model.value!.normal = nV;
 
   // 3. Map initial points to the current pointsRef
   for (let i = 0; i < initialPoints.length; i++) {
@@ -235,38 +235,80 @@ function applyUserData() {
       : { kind: "coverage-corner", cornerIndex: i };
   });
 }
-// update geometry positions
-function setPositions(geom: BufferGeometry, pts: Point3[]) {
+
+function setOutlinePositions(geom: BufferGeometry, pts: Point3[]) {
+  const numPoints = pts.length;
+  if (numPoints < 2) return; // Need at least a line
+
+  const requiredLength = numPoints * 3;
   let attr = geom.getAttribute("position") as
     | Float32BufferAttribute
     | undefined;
 
-  if (!attr || (attr.array as Float32Array).length !== 12) {
-    attr = new Float32BufferAttribute(new Float32Array(12), 3);
+  // 1. Manage Buffer Size
+  if (!attr || (attr.array as Float32Array).length !== requiredLength) {
+    attr = new Float32BufferAttribute(new Float32Array(requiredLength), 3);
+    geom.setAttribute("position", attr);
+  }
+
+  // 2. Fill the buffer
+  const a = attr.array as Float32Array;
+  for (let i = 0; i < numPoints; i++) {
+    const p = pts[i]!;
+    const offset = i * 3;
+    a[offset] = p[0];
+    a[offset + 1] = p[1];
+    a[offset + 2] = p[2];
+  }
+
+  attr.needsUpdate = true;
+
+  // 3. Clear any existing index
+  // Outlines usually rely on the draw order (non-indexed)
+  // especially when using LineLoop
+  if (geom.index) {
+    geom.setIndex(null);
+  }
+
+  // 4. Update Draw Range
+  geom.setDrawRange(0, numPoints);
+
+  geom.computeBoundingSphere();
+}
+
+function setPositions(geom: BufferGeometry, pts: Point3[]) {
+  const numPoints = pts.length;
+  if (numPoints < 3) return;
+
+  const requiredLength = numPoints * 3;
+  let attr = geom.getAttribute("position") as
+    | Float32BufferAttribute
+    | undefined;
+
+  if (!attr || (attr.array as Float32Array).length !== requiredLength) {
+    attr = new Float32BufferAttribute(new Float32Array(requiredLength), 3);
     geom.setAttribute("position", attr);
   }
 
   const a = attr.array as Float32Array;
-
-  const p0 = pts[0]!;
-  const p1 = pts[1]!;
-  const p2 = pts[2]!;
-  const p3 = pts[3]!;
-
-  a[0] = p0[0];
-  a[1] = p0[1];
-  a[2] = p0[2];
-  a[3] = p1[0];
-  a[4] = p1[1];
-  a[5] = p1[2];
-  a[6] = p2[0];
-  a[7] = p2[1];
-  a[8] = p2[2];
-  a[9] = p3[0];
-  a[10] = p3[1];
-  a[11] = p3[2];
-
+  for (let i = 0; i < numPoints; i++) {
+    const p = pts[i]!;
+    const offset = i * 3;
+    a[offset] = p[0];
+    a[offset + 1] = p[1];
+    a[offset + 2] = p[2];
+  }
   attr.needsUpdate = true;
+
+  // --- Handle the Indexing for the Trapezoid ---
+  if (numPoints === 3) {
+    geom.setIndex([0, 1, 2]);
+  } else if (numPoints === 4) {
+    // Two triangles: (0,1,2) and (0,2,3)
+    geom.setIndex([0, 1, 2, 0, 2, 3]);
+  }
+
+  geom.setDrawRange(0, numPoints === 3 ? 3 : 6); // 3 indices for tri, 6 for quad
   geom.computeBoundingSphere();
 }
 
@@ -274,7 +316,7 @@ let meshIndexSet = false;
 
 watchEffect(() => {
   const pts = pointsRef.value ?? [];
-  const ok = pts.length === 4;
+  const ok = pts.length >= 3;
 
   group.visible = ok;
   if (!ok) return;
@@ -292,7 +334,7 @@ watchEffect(() => {
   }
   meshGeometry.computeVertexNormals();
 
-  setPositions(outlineGeometry, ep);
+  setOutlinePositions(outlineGeometry, ep);
 
   // materials
   meshMaterial.color.set(props.color);
@@ -305,9 +347,9 @@ watchEffect(() => {
   // corners
   const show = !!props.showCorners;
   const r = cornerRadius.value;
-  corners.forEach((c, i) => {
+  ep.forEach((p, i) => {
+    const c = corners[i]!;
     c.visible = show;
-    const p = ep[i]!;
     c.position.set(p[0], p[1], p[2]);
     c.scale.setScalar(r);
   });
@@ -343,17 +385,17 @@ onUnmounted(() => {
       v-model="emptyGroup"
       :direction="dir"
       :color="AXIS_COLOR[dir]"
+      :is-hiding="isPreview"
       @down="onPosStart"
       @move="onPosDragged"
     />
-  </TresMesh>
-  <TresMesh :position="center" :visible="!isPreview">
     <RotationWheel
       v-for="dir of ['x', 'y', 'z'] as const"
       :key="dir"
       v-model="emptyGroup"
       :direction="dir"
       :color="AXIS_COLOR[dir]"
+      :is-hiding="isPreview"
       @down="onRotStart"
       @move="onRotDragged"
       @up="onRotEnd"

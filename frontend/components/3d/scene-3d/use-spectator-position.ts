@@ -1,4 +1,4 @@
-import { SPECTATOR_MOVING_SENTIVITY } from "~/constants";
+import { SPECTATOR_MOVING_SENTIVITY, SPECTATOR_SPEED_BOOST } from "~/constants";
 import { Vector3 } from "three";
 import type { SceneStates } from "~/types/scene-states";
 import { useSensitivity } from "#imports";
@@ -7,8 +7,10 @@ const functionalityKeys = [
   "KeyW",
   "KeyS",
   "KeyD",
+  "KeyX",
   "Space",
   "Shift",
+  "Ctrl",
 ] as const;
 
 type FunctionalityKey = (typeof functionalityKeys)[number];
@@ -84,46 +86,35 @@ export function useSpectatorPosition(
       right.crossVectors(forward, up).normalize();
       let deltaVec = new Vector3();
 
+      let multiplier =
+        (SPECTATOR_MOVING_SENTIVITY *
+          duration *
+          userSensitivity.normalizedSensitivity.value.movement) /
+        sceneStates.calibration.scale;
+
+      if (isKeyDown.Shift) {
+        multiplier *= SPECTATOR_SPEED_BOOST;
+      }
+
       switch (key) {
         case "KeyW":
-          deltaVec = forward.multiplyScalar(
-            SPECTATOR_MOVING_SENTIVITY *
-              duration *
-              userSensitivity.normalizedSensitivity.value.movement,
-          );
+          deltaVec = forward.multiplyScalar(multiplier);
           break;
         case "KeyS":
-          deltaVec = forward.multiplyScalar(
-            -SPECTATOR_MOVING_SENTIVITY *
-              duration *
-              userSensitivity.normalizedSensitivity.value.movement,
-          );
+          deltaVec = forward.multiplyScalar(-multiplier);
           break;
         case "KeyA":
-          deltaVec = right.multiplyScalar(
-            -SPECTATOR_MOVING_SENTIVITY *
-              duration *
-              userSensitivity.normalizedSensitivity.value.movement,
-          );
+          deltaVec = right.multiplyScalar(-multiplier);
           break;
         case "KeyD":
-          deltaVec = right.multiplyScalar(
-            SPECTATOR_MOVING_SENTIVITY *
-              duration *
-              userSensitivity.normalizedSensitivity.value.movement,
-          );
+          deltaVec = right.multiplyScalar(multiplier);
           break;
         case "Space":
-          deltaVec.y =
-            SPECTATOR_MOVING_SENTIVITY *
-            duration *
-            userSensitivity.normalizedSensitivity.value.movement;
+          deltaVec.y = multiplier;
           break;
-        case "Shift":
-          deltaVec.y =
-            -SPECTATOR_MOVING_SENTIVITY *
-            duration *
-            userSensitivity.normalizedSensitivity.value.movement;
+        case "KeyX":
+          deltaVec.y = -multiplier;
+          break;
           break;
         default:
           break;

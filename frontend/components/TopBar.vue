@@ -23,6 +23,9 @@ import {
   RulerDimensionLine,
   Check,
   X,
+  Share2,
+  Copy,
+  HelpCircle,
 } from "lucide-vue-next";
 
 import { exportCamerasToJson } from "@/utils/exportScene";
@@ -38,6 +41,7 @@ import Setting3dDialog from "./dialog/Setting3dDialog.vue";
 import { uuidToBase64Url } from "~/lib/uuid";
 import { useWorkspaceApi } from "~/composables/api/use-workspace-api";
 import { useAuth } from "~/composables/api/use-auth";
+import { useClipboard } from "@vueuse/core";
 
 const props = defineProps({
   workspace: {
@@ -71,13 +75,20 @@ const {
 } = inject(PANEL_KEY)!;
 
 const { toggleCalibration, isCalibrating } = calibrationPanelInfo;
-
 // Scenestates can be null to allow skeleton UI
 const sceneStates = inject(SCENE_STATES_KEY);
 
 const { isMapOpen, toggleMap } = inject(MAP_KEY)!;
 
+const isShortcutsDialogOpen = ref(false);
+
+function toggleShortcutsDialog() {
+  isShortcutsDialogOpen.value = true;
+}
+
 const openDialog = ref(false);
+const isShareDialogOpen = ref(false);
+const { copy, copied } = useClipboard();
 
 const dialogTitle = ref("");
 const dialogContent = ref("");
@@ -100,6 +111,7 @@ watch(
     if (currentCamId == undefined) {
       return;
     }
+    console.log("ggg", currentCamId);
     isCameraActive.value = currentCamId !== null;
   },
 );
@@ -242,14 +254,31 @@ function removeOptimizedCams() {
   }
 }
 
-async function openShareModal() {
+const shareUrl = computed(() => {
   const baseUrl = window.location.origin;
-  const projectId = route.params.projectId;
+  const projectId = route.params.projectId as string;
   const modelId = route.params.modelId;
   const userIdBase64 = uuidToBase64Url(user.value!.id);
-  await navigator.clipboard.writeText(
-    `${baseUrl}/projects/${projectId}/models/${modelId}/workspaces/${userIdBase64}`,
-  );
+  return `${baseUrl}/projects/${projectId}/models/${modelId}/workspaces/${userIdBase64}`;
+});
+
+async function openShareDialog(open: boolean) {
+  isShareDialogOpen.value = open;
+  if (open) {
+    await copy(shareUrl.value);
+  }
+}
+
+function toggleFullscreen() {
+  if (!document.fullscreenElement) {
+    // If no element is in fullscreen, request it
+    document.documentElement.requestFullscreen().catch((err) => {
+      console.error(`Error attempting to enable fullscreen: ${err.message}`);
+    });
+  } else {
+    // If already in fullscreen, exit it
+    document.exitFullscreen();
+  }
 }
 </script>
 
@@ -261,12 +290,98 @@ async function openShareModal() {
     @close="openResolver = false"
   />
 
+  <Dialog
+    :open="isShortcutsDialogOpen"
+    @update:open="isShortcutsDialogOpen = $event"
+  >
+    <DialogContent class="sm:max-w-[425px]">
+      <DialogHeader>
+        <DialogTitle>Keyboard Shortcuts</DialogTitle>
+        <DialogDescription>
+          Use these keys to navigate the 3D scene.
+        </DialogDescription>
+      </DialogHeader>
+
+      <div class="grid gap-4 py-4">
+        <div class="grid grid-cols-2 items-center gap-4">
+          <div class="flex gap-1">
+            <kbd class="px-2 py-1 bg-muted rounded border text-xs font-mono"
+              >W</kbd
+            >
+            <kbd class="px-2 py-1 bg-muted rounded border text-xs font-mono"
+              >A</kbd
+            >
+            <kbd class="px-2 py-1 bg-muted rounded border text-xs font-mono"
+              >S</kbd
+            >
+            <kbd class="px-2 py-1 bg-muted rounded border text-xs font-mono"
+              >D</kbd
+            >
+          </div>
+          <span class="text-sm">Move Camera</span>
+        </div>
+
+        <div class="grid grid-cols-2 items-center gap-4">
+          <div class="flex gap-1">
+            <kbd class="px-2 py-1 bg-muted rounded border text-xs font-mono"
+              >Shift</kbd
+            >
+          </div>
+          <span class="text-sm">Sprint / Fast Move</span>
+        </div>
+
+        <div class="grid grid-cols-2 items-center gap-4">
+          <div class="flex gap-1">
+            <kbd class="px-2 py-1 bg-muted rounded border text-xs font-mono"
+              >Q</kbd
+            >
+            /
+            <kbd class="px-2 py-1 bg-muted rounded border text-xs font-mono"
+              >E</kbd
+            >
+          </div>
+          <span class="text-sm">Up / Down</span>
+        </div>
+      </div>
+
+      <DialogFooter>
+        <Button @click="isShortcutsDialogOpen = false">Close</Button>
+      </DialogFooter>
+    </DialogContent>
+  </Dialog>
+
   <Dialog :open="openDialog" @update:open="openDialog = $event">
     <DialogContent class="sm:max-w-[425px]">
       <DialogHeader>
         <DialogTitle>{{ dialogTitle }}</DialogTitle>
         <DialogDescription> {{ dialogContent }} </DialogDescription>
       </DialogHeader>
+      <DialogFooter>
+        <Button type="submit" @click="openDialog = !openDialog">Ok</Button>
+      </DialogFooter>
+    </DialogContent>
+  </Dialog>
+
+  <Dialog :open="isShareDialogOpen" @update:open="isShareDialogOpen = $event">
+    <DialogContent class="sm:max-w-[425px]">
+      <DialogHeader>
+        <DialogTitle>Share</DialogTitle>
+        <DialogDescription
+          >Anyone who has this link will be able to view
+          this.</DialogDescription
+        >
+      </DialogHeader>
+      <div class="flex items-center space-x-2 pt-4">
+        <div class="grid flex-1 gap-2">
+          <Label for="link" class="sr-only">Link</Label>
+          <Input id="link" :default-value="shareUrl" read-only class="h-9" />
+        </div>
+        <Button type="submit" size="sm" class="px-3" @click="copy(shareUrl)">
+          <span class="sr-only">Copy</span>
+          <Copy v-if="!copied" class="h-4 w-4" />
+          <Check v-else class="h-4 w-4 text-green-500" />
+        </Button>
+      </div>
       <DialogFooter>
         <Button type="submit" @click="openDialog = !openDialog">Ok</Button>
       </DialogFooter>
@@ -317,18 +432,24 @@ async function openShareModal() {
       </div>
 
       <!-- Scene Controls -->
-      <div id="middle-menu" class="flex items-center gap-2">
+      <div id="middle-menu" class="flex items-center gap-2 shrink min-w-0">
         <Button
           size="sm"
           variant="outline"
           :disabled="!isCameraActive"
+          class="button-parent"
           :class="isCameraActive ? 'bg-red-500! hover:bg-red-700!' : ''"
           @click="sceneStates?.cameraManagement.switchToSpectator()"
           ><LogOut class="button-icon" />
           <span class="ml-2 button-span-text">Exit Camera</span>
         </Button>
 
-        <Button size="sm" variant="outline">
+        <Button
+          class="button-parent"
+          size="sm"
+          variant="outline"
+          @click="toggleFullscreen"
+        >
           <ClientOnly>
             <Tooltip>
               <TooltipTrigger> <Maximize class="button-icon" /></TooltipTrigger>
@@ -341,6 +462,7 @@ async function openShareModal() {
 
         <Button
           v-if="workspace == 'me'"
+          class="button-parent"
           size="sm"
           variant="outline"
           @click="saveModelToPublic()"
@@ -351,6 +473,7 @@ async function openShareModal() {
 
         <Button
           v-if="workspace == 'me'"
+          class="button-parent"
           size="sm"
           variant="outline"
           @click="
@@ -365,6 +488,7 @@ async function openShareModal() {
         <template v-if="workspace == null">
           <Button
             v-if="sceneStates?.modelInfo.data.workspaceExists"
+            class="button-parent"
             size="sm"
             variant="outline"
             @click="goToMyWorkspace()"
@@ -372,7 +496,13 @@ async function openShareModal() {
             <PackageOpen class="button-icon" />
             <span class="ml-2 button-span-text"> Open Workspace </span>
           </Button>
-          <Button v-else size="sm" variant="outline" @click="createWorkspace()">
+          <Button
+            v-else
+            class="button-parent"
+            size="sm"
+            variant="outline"
+            @click="createWorkspace()"
+          >
             <PackageOpen class="button-icon" />
             <span class="ml-2 button-span-text"> Create Workspace </span>
           </Button>
@@ -380,6 +510,7 @@ async function openShareModal() {
 
         <Button
           v-if="workspace == 'me'"
+          class="button-parent"
           size="sm"
           variant="outline"
           :class="{ 'btn-calibrating': isCalibrating }"
@@ -392,21 +523,30 @@ async function openShareModal() {
           <span v-else class="ml-2 button-span-text"> Calibrating...</span>
         </Button>
 
-        <Button size="sm" variant="outline" @click="() => openShareModal()">
-          Share
+        <Button
+          v-if="workspace != null"
+          class="button-parent"
+          size="sm"
+          variant="outline"
+          @click="() => openShareDialog(true)"
+        >
+          <Share2 class="button-icon" />
+          <span class="ml-2 button-span-text">Share</span>
         </Button>
 
         <Button
+          class="button-parent"
           size="sm"
           variant="outline"
           :class="isMapOpen ? 'bg-green-400! hover:bg-green-500!' : ''"
           @click="() => toggleMap()"
         >
-          <Map class="h-4 w-4" />
-          Map
+          <Map class="h-4 w-4 button-icon" />
+          <span class="ml-2 button-span-text">Map</span>
         </Button>
         <Button
           v-if="workspace == 'me'"
+          class="button-parent"
           size="sm"
           variant="outline"
           @click="() => toggleAlgoPanel()"
@@ -460,6 +600,10 @@ async function openShareModal() {
                 <Upload class="button-icon" />
                 Export
               </DropdownMenuItem>
+              <DropdownMenuItem @click="toggleShortcutsDialog">
+                <HelpCircle class="button-icon" />
+                Shortcuts
+              </DropdownMenuItem>
               <DropdownMenuItem @click="toggleSettingDialog">
                 <Settings2 class="button-icon" />
                 Setting
@@ -504,16 +648,24 @@ async function openShareModal() {
 </template>
 
 <style lang="scss" scoped>
+.button-parent {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  flex: 0 1 auto;
+}
 .button-icon {
   width: calc(4 * 0.25rem);
   height: calc(4 * 0.25rem);
+  flex-shrink: 0;
 }
 .button-span-text {
-  display: none;
+  flex-shrink: 1;
+  white-space: nowrap;
+  display: block;
   text-overflow: ellipsis;
-  @media (width >= 53rem) {
-    display: inline;
-  }
+  overflow: hidden;
+  min-width: 0;
 }
 Button {
   transition-property:
