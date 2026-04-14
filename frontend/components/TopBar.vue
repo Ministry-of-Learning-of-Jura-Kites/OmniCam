@@ -25,6 +25,7 @@ import {
   X,
   Share2,
   Copy,
+  HelpCircle,
 } from "lucide-vue-next";
 
 import { exportCamerasToJson } from "@/utils/exportScene";
@@ -78,6 +79,12 @@ const { toggleCalibration, isCalibrating } = calibrationPanelInfo;
 const sceneStates = inject(SCENE_STATES_KEY);
 
 const { isMapOpen, toggleMap } = inject(MAP_KEY)!;
+
+const isShortcutsDialogOpen = ref(false);
+
+function toggleShortcutsDialog() {
+  isShortcutsDialogOpen.value = true;
+}
 
 const openDialog = ref(false);
 const isShareDialogOpen = ref(false);
@@ -282,6 +289,66 @@ function toggleFullscreen() {
     @resolved="goToModel()"
     @close="openResolver = false"
   />
+
+  <Dialog
+    :open="isShortcutsDialogOpen"
+    @update:open="isShortcutsDialogOpen = $event"
+  >
+    <DialogContent class="sm:max-w-[425px]">
+      <DialogHeader>
+        <DialogTitle>Keyboard Shortcuts</DialogTitle>
+        <DialogDescription>
+          Use these keys to navigate the 3D scene.
+        </DialogDescription>
+      </DialogHeader>
+
+      <div class="grid gap-4 py-4">
+        <div class="grid grid-cols-2 items-center gap-4">
+          <div class="flex gap-1">
+            <kbd class="px-2 py-1 bg-muted rounded border text-xs font-mono"
+              >W</kbd
+            >
+            <kbd class="px-2 py-1 bg-muted rounded border text-xs font-mono"
+              >A</kbd
+            >
+            <kbd class="px-2 py-1 bg-muted rounded border text-xs font-mono"
+              >S</kbd
+            >
+            <kbd class="px-2 py-1 bg-muted rounded border text-xs font-mono"
+              >D</kbd
+            >
+          </div>
+          <span class="text-sm">Move Camera</span>
+        </div>
+
+        <div class="grid grid-cols-2 items-center gap-4">
+          <div class="flex gap-1">
+            <kbd class="px-2 py-1 bg-muted rounded border text-xs font-mono"
+              >Shift</kbd
+            >
+          </div>
+          <span class="text-sm">Sprint / Fast Move</span>
+        </div>
+
+        <div class="grid grid-cols-2 items-center gap-4">
+          <div class="flex gap-1">
+            <kbd class="px-2 py-1 bg-muted rounded border text-xs font-mono"
+              >Q</kbd
+            >
+            /
+            <kbd class="px-2 py-1 bg-muted rounded border text-xs font-mono"
+              >E</kbd
+            >
+          </div>
+          <span class="text-sm">Up / Down</span>
+        </div>
+      </div>
+
+      <DialogFooter>
+        <Button @click="isShortcutsDialogOpen = false">Close</Button>
+      </DialogFooter>
+    </DialogContent>
+  </Dialog>
 
   <Dialog :open="openDialog" @update:open="openDialog = $event">
     <DialogContent class="sm:max-w-[425px]">
@@ -532,6 +599,10 @@ function toggleFullscreen() {
               >
                 <Upload class="button-icon" />
                 Export
+              </DropdownMenuItem>
+              <DropdownMenuItem @click="toggleShortcutsDialog">
+                <HelpCircle class="button-icon" />
+                Shortcuts
               </DropdownMenuItem>
               <DropdownMenuItem @click="toggleSettingDialog">
                 <Settings2 class="button-icon" />
