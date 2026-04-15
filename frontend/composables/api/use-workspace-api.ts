@@ -40,7 +40,7 @@ export function useWorkspaceApi(
 
   async function deleteWorkspaceMe() {
     await $fetch(getWorkspaceMeUrl(projectId, modelId, runtimeConfig), {
-      method: "POST",
+      method: "DELETE",
       credentials: "include",
     });
     useState(`${MODEL_INFO_KEY}-${modelId}`, () => undefined);

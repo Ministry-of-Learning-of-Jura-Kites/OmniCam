@@ -1,10 +1,9 @@
 import asyncio
-import json
 import math
 from os import path
 import sys
 import time
-from typing import Any, Dict, List, Tuple
+from typing import List, Tuple
 import uuid
 import nats
 from pydantic import BaseModel, ValidationError
@@ -28,6 +27,7 @@ import vtk
 from dev.visualization import init_3d_scene, render_from_state
 import pyvista as pv
 from basic_types import Array4x3
+from nats.aio.msg import Msg
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -368,8 +368,7 @@ def cam_state_to_proto(cam_state: CameraState) -> cam_pb.Camera:
 
     # 1. Basic Metadata
     camera.name = cam_state.name
-    # If your dataclass doesn't have an ID, you might use name or a UUID
-    camera.id = cam_state.name
+    camera.id = str(uuid.uuid4())
 
     # 2. Position Mapping (Direct mapping from Array3)
     # Assuming pos is an indexable array-like [x, y, z]
@@ -411,59 +410,34 @@ def cam_state_to_proto(cam_state: CameraState) -> cam_pb.Camera:
 
 
 async def main():
-    async def message_handler(msg):
+    async def message_handler(msg: Msg):
         print("Received message", msg)
         try:
-            payload = OptimizeRequest.model_validate_json(msg)
-
-            resp_topic = env_settings.res_topic_pattern.format(jobId=payload.job_id)
+            payload = OptimizeRequest.model_validate_json(msg.data)
 
             result_state = optimize(payload)
 
-            opti_res = MessageToJson(
-                opt_pb.OptimizationEventResp(
-                    success_resp=opt_pb.SuccessOptimizationEventResp(
-                        cameras=[
-                            cam_state_to_proto(cam) for cam in result_state.cameras
-                        ],
-                    ),
-                    job_id=payload.job_id,
-                )
-            )
-
-            # Publish back to a result topic/stream
-            await nc.publish(
-                resp_topic,
-                {
-                    "job_id": payload.job_id,
-                    "status": "ok",
-                    "data": opti_res,
-                },
+            opti_res = opt_pb.OptimizationEventResp(
+                success_resp=opt_pb.SuccessOptimizationEventResp(
+                    cameras=[cam_state_to_proto(cam) for cam in result_state.cameras],
+                ),
+                job_id=payload.job_id,
             )
         except ValidationError as e:
-            try:
-                parsed_inner_data: Dict[str, Any] = json.loads(msg)
-            except (json.JSONDecodeError, TypeError):
-                parsed_inner_data = {}
-
-            await nc.publish(
-                resp_topic,
-                {
-                    "job_id": parsed_inner_data.get("job_id", ""),
-                    "status": "error",
-                    "error": f"Bad request {e}",
-                },
+            opti_res = opt_pb.OptimizationEventResp(
+                error_resp=opt_pb.ErrorOptimizationEventResp(error=f"Bad request {e}")
             )
         except Exception as e:
             print(e)
-            await nc.publish(
-                resp_topic,
-                {
-                    "job_id": payload.job_id,
-                    "status": "error",
-                    "error": "Internal error",
-                },
+            opti_res = opt_pb.OptimizationEventResp(
+                error_resp=opt_pb.ErrorOptimizationEventResp(error="Internal error")
             )
+        finally:
+            res_str = MessageToJson(
+                opti_res,
+                indent=0,
+            )
+            await msg.respond(res_str.encode("utf-8"))
 
     try:
         print("Trying to connect to nats...")

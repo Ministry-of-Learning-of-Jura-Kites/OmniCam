@@ -399,6 +399,14 @@ export function createBaseSceneStates(
   //   sceneStates.websocket = useWebSocket(websocketUrl);
   // };
 
+  watch(
+    cameras,
+    () => {
+      markedForCheck.value = true;
+    },
+    { deep: true },
+  );
+
   return sceneStates;
 }
 
@@ -421,10 +429,9 @@ export function createSceneStatesWithHelper(
       }
 
       if (resp.optimize.successResp) {
-        for (const [camId, cam] of Object.entries(
-          resp.optimize.successResp.cameras,
-        )) {
-          optimization!.candidateCameras[camId] =
+        console.log(resp.optimize.successResp.cameras);
+        for (const cam of resp.optimize.successResp.cameras) {
+          optimization!.candidateCameras[cam.id] =
             transformProtoEventToCamera(cam);
         }
       }
