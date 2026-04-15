@@ -1,7 +1,6 @@
 package controller_camera
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -245,10 +244,6 @@ func (t *UpdateEventRoute) sendOptimizeInternalError(conn *websocket.Conn, jobId
 }
 
 func (t *UpdateEventRoute) handleOptimizeEvent(projectId uuid.UUID, modelId uuid.UUID, conn *websocket.Conn, casted *protobufs.OptimizationEventReq) {
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
-
-	defer cancel()
-
 	if len(casted.GetCoverageFace()) == 0 {
 		t.Logger.Warn("optimization aborted: no coverage faces provided")
 		return
@@ -296,35 +291,25 @@ func (t *UpdateEventRoute) handleOptimizeEvent(projectId uuid.UUID, modelId uuid
 
 	pubTopic := strings.NewReplacer("{jobId}", jobId).Replace(t.Env.OptiReqTopicPattern)
 
-	if err := t.Nc.Publish(pubTopic, jsonData); err != nil {
+	msg, err := t.Nc.Request(pubTopic, jsonData, 2*time.Minute)
+	if err != nil {
 		t.Logger.Error("Failed to publish to nats stream for optimiz algo",
 			zap.Error(err),
 			zap.String("job_id", jobId),
 		)
 		t.sendOptimizeInternalError(conn, jobId)
+		return
 	}
 
-	respTopic := strings.NewReplacer("{jobId}", jobId).Replace(t.Env.OptiResTopicPattern)
+	optiResp := &protobufs.OptimizationEventResp{}
 
-	sub, err := t.Nc.Subscribe(respTopic, func(msg *nats.Msg) {
-		optiResp := &protobufs.OptimizationEventResp{}
+	if err := protojson.Unmarshal(msg.Data, optiResp); err != nil {
+		t.Logger.Error("failed to unmarshal proto-json", zap.Error(err))
+		t.sendOptimizeInternalError(conn, jobId)
+		return
+	}
 
-		err := protojson.Unmarshal(msg.Data, optiResp)
-		if err != nil {
-			t.Logger.Error("failed to unmarshal proto-json", zap.Error(err))
-			t.sendOptimizeInternalError(conn, jobId)
-			return
-		}
-
-		t.sendOptimizationEventResp(conn, optiResp)
-	})
-
-	sub.AutoUnsubscribe(1)
-
-	go func() {
-		<-ctx.Done()
-		sub.Drain() // Unsub
-	}()
+	t.sendOptimizationEventResp(conn, optiResp)
 }
 
 // Have to use websocket instead of SSE because protobuf is binary

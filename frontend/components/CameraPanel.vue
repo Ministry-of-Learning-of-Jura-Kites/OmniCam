@@ -62,14 +62,6 @@ const selectedCam = computed(() =>
   selectedCamId.value ? sceneStates?.value?.cameras[selectedCamId.value] : null,
 );
 
-watch(
-  () => sceneStates?.value?.cameras,
-  () => {
-    sceneStates!.value!.markedForCheck.value = true;
-  },
-  { deep: true },
-);
-
 const isSelectedActive = computed(
   () => sceneStates?.value?.currentCamId.value === selectedCamId.value,
 );

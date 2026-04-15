@@ -105,16 +105,14 @@ const isCameraActive = ref(false);
 const { user, fetchUser } = useAuth();
 fetchUser();
 
-watch(
-  () => sceneStates?.value?.currentCamId?.value,
-  (currentCamId) => {
-    if (currentCamId == undefined) {
-      return;
-    }
-    console.log("ggg", currentCamId);
-    isCameraActive.value = currentCamId !== null;
-  },
-);
+onMounted(() => {
+  watch(
+    () => sceneStates?.value?.currentCamId?.value,
+    (currentCamId) => {
+      isCameraActive.value = currentCamId !== null;
+    },
+  );
+});
 
 async function saveModelToPublic() {
   // Mocked data
@@ -433,16 +431,18 @@ function toggleFullscreen() {
 
       <!-- Scene Controls -->
       <div id="middle-menu" class="flex items-center gap-2 shrink min-w-0">
-        <Button
-          size="sm"
-          variant="outline"
-          :disabled="!isCameraActive"
-          class="button-parent"
-          :class="isCameraActive ? 'bg-red-500! hover:bg-red-700!' : ''"
-          @click="sceneStates?.cameraManagement.switchToSpectator()"
-          ><LogOut class="button-icon" />
-          <span class="ml-2 button-span-text">Exit Camera</span>
-        </Button>
+        <ClientOnly>
+          <Button
+            size="sm"
+            variant="outline"
+            :disabled="!isCameraActive"
+            class="button-parent"
+            :class="isCameraActive ? 'bg-red-500! hover:bg-red-700!' : ''"
+            @click="sceneStates?.cameraManagement.switchToSpectator()"
+            ><LogOut class="button-icon" />
+            <span class="ml-2 button-span-text">Exit Camera</span>
+          </Button>
+        </ClientOnly>
 
         <Button
           class="button-parent"

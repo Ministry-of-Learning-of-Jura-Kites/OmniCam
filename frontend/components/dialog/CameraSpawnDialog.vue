@@ -189,6 +189,7 @@ function close() {
     <DialogContent class="max-w-lg">
       <DialogHeader>
         <DialogTitle>Select Camera</DialogTitle>
+        <DialogDescription />
       </DialogHeader>
 
       <div class="space-y-4">
