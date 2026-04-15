@@ -20,8 +20,6 @@ class Settings(BaseSettings):
 
     req_topic_pattern: str
 
-    res_topic_pattern: str
-
     req_topic_queue: str
 
     model_file_path: str

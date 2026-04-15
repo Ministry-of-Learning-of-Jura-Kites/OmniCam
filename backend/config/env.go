@@ -33,7 +33,6 @@ type AppEnv struct {
 
 	// Optimization Topics (Redis Streams)
 	OptiReqTopicPattern string `env:"OPTI_REQ_TOPIC_PATTERN"`
-	OptiResTopicPattern string `env:"OPTI_RES_TOPIC_PATTERN"`
 
 	LivestreamTopicPattern string `env:"LIVESTREAM_TOPIC_PATTERN"`
 }
