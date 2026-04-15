@@ -413,81 +413,82 @@ onMounted(() => {
     (context) => {
       if (!context) return;
       const renderer = context.renderer;
+      if (!context) return;
       let frameDurations: number[] = [];
       const WINDOW_SIZE = 60;
 
-      // O(1) Global Tracking for P95
-      let p95GlobalAverage = 0;
-      let p95SampleCount = 0;
+      // Smoothing factor (Alpha).
+      // 0.05 to 0.1 is usually sweet for performance monitoring.
+      const ALPHA = 0.1;
 
-      // O(1) Global Tracking for every single Frame
       let globalFrameAvg = 0;
-      let totalFrameCount = 0;
+
+      let p95RollingAverage = 0;
+      let globalFrameRollingAvg = 0;
+      let initialized = false;
 
       setInterval(() => {
         if (frameDurations.length >= WINDOW_SIZE) {
           const sorted = [...frameDurations].sort((a, b) => a - b);
-          const p95 = sorted[Math.floor(0.95 * (WINDOW_SIZE - 1))]!;
-
+          const p95 = sorted[Math.floor(0.95 * (sorted.length - 1))]!;
           const windowAvg =
-            frameDurations.reduce((a, b) => a + b, 0) / WINDOW_SIZE;
+            frameDurations.reduce((a, b) => a + b, 0) / frameDurations.length;
 
-          // 2. Update Global P95 Average (O(1) space)
-          p95SampleCount++;
-          p95GlobalAverage =
-            (p95 + p95GlobalAverage * (p95SampleCount - 1)) / p95SampleCount;
+          if (!initialized) {
+            // Seed the EMA with the first window's data
+            p95RollingAverage = p95;
+            globalFrameRollingAvg = windowAvg;
+            initialized = true;
+          } else {
+            // 1. Rolling P95 (Responds faster to jitter)
+            p95RollingAverage = p95 * ALPHA + p95RollingAverage * (1 - ALPHA);
 
-          // Local copies for the async log
-          const snapshot = {
-            windowAvg,
-            p95,
-            p95Global: p95GlobalAverage,
-            frameGlobal: globalFrameAvg,
-            totalFrames: totalFrameCount,
-          };
+            // 2. Rolling Global Frame Avg
+            globalFrameRollingAvg =
+              windowAvg * ALPHA + globalFrameRollingAvg * (1 - ALPHA);
+          }
 
           console.log(
-            `[Stats] WinAvg: ${snapshot.windowAvg.toFixed(2)}ms | ` +
-              `%cP95: ${snapshot.p95.toFixed(2)}ms%c | ` +
-              `Global P95: %c${snapshot.p95Global.toFixed(2)}ms%c | ` +
-              `Global Frame: %c${snapshot.frameGlobal.toFixed(3)}ms`,
-            "color: #ffaa00; font-weight: bold;", // P95
-            "color: inherit;",
-            "color: #00d4ff; font-weight: bold;", // Global P95
-            "color: inherit;",
-            "color: #00ff00; font-weight: bold;", // Global Frame
+            `[Stats] Window: ${windowAvg.toFixed(2)}ms | ` +
+              `%cP95: ${p95.toFixed(2)}ms%c | ` +
+              `Rolling P95: %c${p95RollingAverage.toFixed(2)}ms%c | ` +
+              `Rolling Global: %c${globalFrameRollingAvg.toFixed(3)}ms`,
+            "color: #ffaa00; font-weight: bold;",
+            "",
+            "color: #00d4ff; font-weight: bold;",
+            "",
+            "color: #00ff00; font-weight: bold;",
           );
 
+          console.table({
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            "Draw Calls": (renderer.instance as any).info.render.calls,
+            Triangles: renderer.instance.info.render.triangles,
+            "Geometries (Mem)": renderer.instance.info.memory.geometries,
+            "Textures (Mem)": renderer.instance.info.memory.textures,
+          });
           frameDurations = [];
         }
       });
 
+      const FRAME_ALPHA = 0.01; // Lower = smoother/slower, Higher = more reactive
+
       renderer.loop.onBeforeLoop((time: { delta: number; elapsed: number }) => {
-        const delta = time.delta * 1000; // Assuming time.delta is in seconds
+        const delta = time.delta * 1000;
 
-        // 1. Update Global Frame Average (O(1) space)
-        // This updates every single frame for maximum precision
-        totalFrameCount++;
+        // 1. Reactive Global Frame Average (O(1))
+        // Instead of a cumulative average, we use EMA.
+        // This weighs recent frames more heavily than frames from 5 minutes ago.
         globalFrameAvg =
-          (delta + globalFrameAvg * (totalFrameCount - 1)) / totalFrameCount;
+          delta * FRAME_ALPHA + globalFrameAvg * (1 - FRAME_ALPHA);
 
+        // 2. Window Tracking (for P95 calculation in the interval)
         frameDurations.push(delta);
-        // stats!.begin();
+
+        // Safety: Prevent memory leak if the interval fails to clear the array
+        if (frameDurations.length > 1000) frameDurations.shift();
       });
-      // let frameCount = 0;
-      renderer.loop.onLoop(() => {
-        // stats!.end();
-        // if (frameCount % 100 === 0) {
-        //   console.table({
-        //     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        //     "Draw Calls": (renderer.instance as any).info.render.calls,
-        //     Triangles: renderer.instance.info.render.triangles,
-        //     "Geometries (Mem)": renderer.instance.info.memory.geometries,
-        //     "Textures (Mem)": renderer.instance.info.memory.textures,
-        //   });
-        // }
-        // frameCount++;
-      });
+
       sceneStates.value!.tresContext.value = context;
       renderer.instance.domElement.addEventListener(
         "pointerdown",

@@ -4,11 +4,11 @@ import math
 import numpy as np
 
 super = None
-with open("case c.json", "r") as json_file:
+with open("low res case b.json", "r") as json_file:
     export = json.load(json_file)  #
 
-with open("case c super.json", "r") as json_file:
-    super = json.load(json_file)  #
+# with open("case c super.json", "r") as json_file:
+#     super = json.load(json_file)  #
 
 times = export["times"]
 costs = export["costs"]

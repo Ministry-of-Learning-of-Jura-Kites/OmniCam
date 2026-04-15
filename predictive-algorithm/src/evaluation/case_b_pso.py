@@ -37,7 +37,7 @@ cam_config = CameraConfiguration(
 )
 
 # --- Benchmarking Loop ---
-seeds = range(2000, 2000 + 10)  # 2000 to 2014 inclusive
+seeds = range(2000, 2000 + 30)  # 2000 to 2014 inclusive
 times = []
 costs = []
 results_gens = []
