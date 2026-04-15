@@ -1,6 +1,7 @@
 import asyncio
 import math
 from os import path
+import signal
 import sys
 import time
 from typing import List, Tuple
@@ -464,6 +465,15 @@ async def main():
         await nc.close()
         print("Gracefully shutdowning...")
 
+
+def handle_sigterm(signum, frame):
+    print("Received SIGTERM, performing graceful shutdown...")
+    # Add cleanup logic here (e.g., closing DB connections)
+    sys.exit(0)
+
+
+# Register the signal handler
+signal.signal(signal.SIGTERM, handle_sigterm)
 
 if __name__ == "__main__":
     asyncio.run(main())
