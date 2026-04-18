@@ -18,7 +18,7 @@ const sceneStates = inject(SCENE_STATES_KEY)!;
 // --- Minimap Config ---
 const minimapSize = 220;
 const minimapHeight = ref(5);
-const minimapFrustumSize = ref(40);
+const minimapFrustumSize = ref(20 * sceneStates.value!.calibration.scale);
 
 // --- Texture & Sprite Setup ---
 const cursorTexture = createCursorTexture();
@@ -108,9 +108,9 @@ watch(
 const camPos = computed(() => {
   if (mouseOffset.value == undefined) {
     return [
-      sceneStates!.value!.spectatorCameraPosition.x,
+      sceneStates!.value!.currentCam.value!.position.x,
       minimapHeight.value,
-      sceneStates!.value!.spectatorCameraPosition.z,
+      sceneStates!.value!.currentCam.value!.position.z,
     ] as const;
   }
   return [

@@ -5,13 +5,11 @@ import AdjustableInput from "../../adjustable-input/AdjustableInput.vue";
 import { SPECTATOR_ADJ_INPUT_SENTIVITY } from "~/constants";
 import CameraObject from "../camera-object/CameraObject.vue";
 import {
-  type Mesh,
   type PerspectiveCamera,
   Raycaster,
   Vector2,
   DoubleSide,
   Vector3,
-  type OrthographicCamera,
   WebGLCubeRenderTarget,
   LinearFilter,
   type CubeCamera,
@@ -80,9 +78,6 @@ const canvas: Ref<InstanceType<typeof TresCanvas> | null> = ref(null);
 const cubeCamera: Ref<CubeCamera | null> = ref(null);
 // const camera = ref<PerspectiveCamera | null>(null);
 
-const gridParent = ref<Mesh>();
-
-const minimapCamera = ref<OrthographicCamera | null>(null);
 const { isMapOpen } = inject(MAP_KEY)!;
 
 const COVERAGE_Y_OFFSET = 0.01;
@@ -484,14 +479,6 @@ watch(
   },
 );
 
-watch(gridParent, (gridParent) => {
-  if (!gridParent || !gridParent.children[0]) return;
-
-  gridParent.traverse((child) => {
-    child.layers.set(0);
-  });
-});
-
 function selectCurrentCamShortcut() {
   const currentCamId = sceneStates.value!.currentCamId.value;
   if (currentCamId) {
@@ -583,7 +570,7 @@ function selectCurrentCamShortcut() {
         </div>
       </div>
 
-      <LazyMinimap :show="isMapOpen" :minimap-camera="minimapCamera" />
+      <LazyMinimap :show="isMapOpen" />
 
       <div
         :ref="sceneStates!.tresCanvasParent"
@@ -700,22 +687,20 @@ function selectCurrentCamShortcut() {
           </Suspense>
 
           <!-- Grid  1 unit = 1 m -->
-          <TresMesh ref="gridParent">
-            <Grid
-              :position="[0, -sceneStates!.calibration.heightOffset, 0]"
-              :args="[1, 1]"
-              :cell-size="0.2"
-              cell-color="#90EE90"
-              section-color="white"
-              :infinite-grid="true"
-              :side="DoubleSide"
-              :scale="[
-                1 / sceneStates!.calibration.scale,
-                1,
-                1 / sceneStates!.calibration.scale,
-              ]"
-            />
-          </TresMesh>
+          <Grid
+            :position="[0, -sceneStates!.calibration.heightOffset, 0]"
+            :args="[1, 1]"
+            :cell-size="0.2"
+            cell-color="#90EE90"
+            section-color="white"
+            :infinite-grid="true"
+            :side="DoubleSide"
+            :scale="[
+              1 / sceneStates!.calibration.scale,
+              1,
+              1 / sceneStates!.calibration.scale,
+            ]"
+          />
 
           <template v-for="[id, face] of selectedFaces" :key="id">
             <CoverageAreaMesh
