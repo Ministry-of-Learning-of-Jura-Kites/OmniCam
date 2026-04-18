@@ -14,11 +14,13 @@ import {
 } from "~/constants/state-keys";
 import FailDialog from "~/components/dialog/FailDialog.vue";
 import { useFailDialog } from "~/composables/useFailDialog";
+import type { SceneStatesWithHelper } from "~/types/scene-states";
 
 const sceneStatesReady = ref(false);
 provide(SCENE_STATES_READY_KEY, sceneStatesReady);
 
-const sceneStates = inject(SCENE_STATES_KEY);
+const sceneStates = shallowRef<SceneStatesWithHelper | undefined>(undefined);
+provide(SCENE_STATES_KEY, sceneStates);
 
 const { open, message } = useFailDialog();
 const route = useRoute();
@@ -55,6 +57,7 @@ function closePanel() {
 }
 
 function togglePanel() {
+  console.log("Checking camera view: ", sceneStates!.value!.currentCamId.value);
   if (isPanelOpen.value) {
     closePanel();
   } else {
@@ -102,7 +105,7 @@ provide(PANEL_KEY, {
 const workspace = computed(() => route.params.workspaceId as string);
 
 const isInCameraView = computed(() => {
-  return sceneStates?.value?.currentCamId?.value !== null;
+  return sceneStates?.value?.currentCamId.value !== null;
 });
 
 const showPanelWarning = computed(() => {
