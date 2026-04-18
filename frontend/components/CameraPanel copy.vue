@@ -1,0 +1,833 @@
+<script setup lang="ts">
+import { ref } from "vue";
+import { Euler, Vector3, MathUtils } from "three";
+import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
+import Button from "./ui/button/Button.vue";
+import Input from "./ui/input/Input.vue";
+import Label from "./ui/label/Label.vue";
+
+import {
+  Camera,
+  Trash2,
+  Eye,
+  EyeOff,
+  Settings,
+  ChevronLeft,
+  ChevronDown,
+  MapPinPlusInside,
+  LockKeyhole,
+  Pyramid,
+  Dices,
+  LogOut,
+  Video,
+} from "lucide-vue-next";
+import { randomVividColor } from "~/utils/randomVividColor";
+import { PANEL_KEY, SCENE_STATES_KEY } from "@/constants/state-keys";
+import CameraSpawnDialog from "~/components/dialog/CameraSpawnDialog.vue";
+
+export type Camerapreset = {
+  vendor: string;
+  camera: string;
+  sensor_name: string;
+  aspect: string;
+  fov: string;
+  pixel_pitch: string;
+  res_w: string;
+  res_h: string;
+  sensor_w_mm: string;
+  sensor_h_mm: string;
+  focal_length: string;
+  _id?: string;
+};
+
+const props = defineProps({
+  workspace: {
+    type: String,
+    default: null,
+  },
+});
+
+// Scenestates can be null to allow skeleton UI
+const sceneStates = inject(SCENE_STATES_KEY);
+
+const { camPanelInfo } = inject(PANEL_KEY)!;
+const { selectedCamId } = camPanelInfo;
+
+const isCameraPropertiesOpen = ref(true);
+const isFrustumPropertiesOpen = ref(true);
+const isDistortionPropertiesOpen = ref(true);
+const isCameraSpawnDialogOpen = ref(false);
+
+const selectedCam = computed(() =>
+  selectedCamId.value ? sceneStates?.value?.cameras[selectedCamId.value] : null,
+);
+
+const isSelectedActive = computed(
+  () => sceneStates?.value?.currentCamId.value === selectedCamId.value,
+);
+
+watch(
+  [() => selectedCam.value?.widthRes, () => selectedCam.value?.heightRes],
+  () => {
+    sceneStates!.value!.aspectRatioManagement?.updateAspectFromEle();
+  },
+);
+
+// const spawnCamera = () => {
+//   const newCamId = sceneStates.value!.cameraManagement.spawnCameraHere();
+//   if (newCamId) {
+//     selectedCamId.value = newCamId;
+//   }
+// };
+
+const moveCameraHere = (id: string) => {
+  sceneStates!.value!.cameras[id]!.position = new Vector3().copy(
+    sceneStates!.value!.spectatorCameraPosition,
+  );
+  sceneStates!.value!.cameras[id]!.rotation = new Euler().copy(
+    sceneStates!.value!.spectatorCameraRotation,
+  );
+};
+
+const deleteCamera = (id: string) => {
+  if (sceneStates!.value!.currentCamId.value == id) {
+    sceneStates!.value!.currentCamId.value = null;
+  }
+  delete sceneStates!.value!.cameras[id];
+};
+
+function randomNewFrustumColor() {
+  const cam = sceneStates!.value!.cameras[selectedCamId.value!]!;
+  const color = randomVividColor();
+  cam.frustumColor.r = color.r;
+  cam.frustumColor.g = color.g;
+  cam.frustumColor.b = color.b;
+}
+
+function onToggleLockPosition() {
+  const cam = sceneStates!.value!.cameras[selectedCamId.value!]!;
+
+  if (cam.isLockingPosition) {
+    cam.isHidingArrows = true;
+  } else {
+    cam.isHidingArrows = false;
+  }
+}
+
+function onToggleLockRotation() {
+  const cam = sceneStates!.value!.cameras[selectedCamId.value!]!;
+
+  if (cam.isLockingRotation) {
+    cam.isHidingWheels = true;
+  } else {
+    cam.isHidingWheels = false;
+  }
+}
+
+function onFovChange() {
+  const cam = sceneStates!.value!.cameras[selectedCamId.value!]!;
+  if (cam.fov > 179) {
+    cam.isHidingFrustum = true;
+  }
+}
+
+function getUniqueCameraName(baseName: string) {
+  const names = Object.values(sceneStates!.value!.cameras).map((c) => c.name);
+
+  if (!names.includes(baseName)) return baseName;
+
+  let i = 2;
+  while (names.includes(`${baseName} (${i})`)) {
+    i++;
+  }
+  return `${baseName} (${i})`;
+}
+
+const isLockingRotation = computed(() => {
+  return (
+    sceneStates?.value?.currentCam.value.isLockingRotation ||
+    props.workspace != "me"
+  );
+});
+const isLockingPosition = computed(() => {
+  return (
+    sceneStates?.value?.currentCam.value.isLockingPosition ||
+    props.workspace != "me"
+  );
+});
+
+// const gcd = (a: number, b: number): number => {
+//   return b === 0 ? a : gcd(b, a % b);
+// };
+
+const handleSpawnCamera = (preset: Camerapreset) => {
+  if (!sceneStates) {
+    return;
+  }
+  const camId = sceneStates.value!.cameraManagement.spawnCameraHere();
+  const cam = sceneStates.value!.cameras[camId];
+
+  if (cam) {
+    cam.name = getUniqueCameraName(`${preset.vendor} ${preset.camera}`);
+    cam.fov = Number(preset.fov);
+
+    const w = Number(preset.res_w);
+    const h = Number(preset.res_h);
+
+    cam.widthRes = w;
+    cam.heightRes = h;
+
+    cam.frustumLength = Number(preset.focal_length) * 50;
+
+    sceneStates.value!.markedForCheck.value = true;
+
+    if (selectedCamId.value !== undefined) {
+      selectedCamId.value = camId;
+    }
+  }
+};
+
+const createRotationRef = (axis: "x" | "y" | "z") => {
+  return computed({
+    get() {
+      if (!selectedCam.value) return 0;
+      return (
+        Math.round(MathUtils.radToDeg(selectedCam.value.rotation[axis]) * 100) /
+        100
+      );
+    },
+    set(value: number) {
+      if (!selectedCam.value) return;
+      selectedCam.value.rotation[axis] = MathUtils.degToRad(value);
+      sceneStates!.value!.markedForCheck.value = true;
+    },
+  });
+};
+
+const angleX = createRotationRef("x");
+const angleY = createRotationRef("y");
+const angleZ = createRotationRef("z");
+
+function signedAngle(a: Vector3, b: Vector3, normal: Vector3) {
+  const angle = a.angleTo(b);
+
+  const sign = Math.sign(a.clone().cross(b).dot(normal)) || -1;
+
+  return angle * sign;
+}
+
+const directionAngles = computed(() => {
+  if (!selectedCam.value) return { x: 0, y: 0, z: 0 };
+
+  const forward = new Vector3(0, 0, 1)
+    .applyEuler(selectedCam.value.rotation)
+    .normalize();
+
+  return {
+    x:
+      Math.round(
+        MathUtils.radToDeg(
+          signedAngle(forward, new Vector3(1, 0, 0), new Vector3(0, 1, 0)),
+        ) * 100,
+      ) / 100,
+
+    y:
+      Math.round(
+        MathUtils.radToDeg(
+          signedAngle(forward, new Vector3(0, 1, 0), new Vector3(0, 0, 1)),
+        ) * 100,
+      ) / 100,
+
+    z:
+      Math.round(
+        MathUtils.radToDeg(
+          signedAngle(forward, new Vector3(0, 0, 1), new Vector3(0, -1, 0)),
+        ) * 100,
+      ) / 100,
+  };
+});
+
+function toggleCamera(camId: string) {
+  if (isSelectedActive.value) {
+    sceneStates!.value!.cameraManagement.switchToSpectator();
+  } else {
+    sceneStates!.value!.cameraManagement.switchToCam(camId);
+  }
+}
+// cloud point -> glb -> using point to make surface (triangle)
+</script>
+
+<template>
+  <TooltipProvider>
+    <div class="w-80 bg-card border-l border-border p-4 overflow-y-auto h-full">
+      <div class="flex items-center justify-between mb-4">
+        <h2 class="text-lg font-semibold flex items-center gap-2">
+          <Camera class="h-5 w-5" />
+          Camera Gallery
+        </h2>
+        <!-- <Button
+        size="sm"
+        @click="sceneStates.value!.cameraManagement.switchToSpectator()"
+      >
+        <RotateCcw class="h-4 w-4" />
+      </Button> -->
+        <!-- <Button
+        size="sm"
+        :disabled="props.workspace != 'me'"
+        @click="
+          spawnCamera();
+          $event.currentTarget.blur();
+        "
+      >
+        <MapPinPlusInside class="h-4 w-4" />
+      </Button> -->
+        <Button
+          size="sm"
+          :disabled="props.workspace != 'me'"
+          @click="
+            isCameraSpawnDialogOpen = true;
+            $event.currentTarget.blur();
+          "
+        >
+          <MapPinPlusInside class="h-4 w-4" />
+        </Button>
+      </div>
+
+      <!-- Camera Dropdown -->
+      <div class="mb-3">
+        <Label for="camera-select" class="mb-1 block">Select Camera</Label>
+        <select
+          id="camera-select"
+          v-model="selectedCamId"
+          class="w-full border rounded px-3 py-2 bg-background text-foreground"
+        >
+          <option
+            v-for="[camId, camera] of Object.entries(
+              sceneStates?.cameras ?? {},
+            )"
+            :key="camId"
+            :value="camId"
+          >
+            {{ camera.name }} (VFOV: {{ camera.fov }}°)
+          </option>
+        </select>
+        <div class="flex gap-2 mt-2"></div>
+      </div>
+
+      <div class="space-y-3">
+        <!-- Camera Properties -->
+        <Card v-if="selectedCamId && sceneStates?.cameras[selectedCamId]">
+          <CardHeader
+            class="cursor-pointer flex items-center justify-between"
+            @click="isCameraPropertiesOpen = !isCameraPropertiesOpen"
+          >
+            <CardTitle class="text-base flex items-center gap-2">
+              <Settings class="h-4 w-4" />
+              Camera Properties
+            </CardTitle>
+            <span class="text-sm">
+              <ChevronDown
+                v-if="isCameraPropertiesOpen"
+                class="inline h-4 w-4" />
+              <ChevronLeft v-else class="inline h-4 w-4"
+            /></span>
+          </CardHeader>
+          <CardContent v-if="isCameraPropertiesOpen" class="space-y-2">
+            <div>
+              <Label for="camera-name">Name</Label>
+              <Input
+                id="camera-name"
+                v-model="sceneStates.cameras[selectedCamId]!.name"
+                :disabled="props.workspace != 'me'"
+                disabled-class="disabled-input"
+              />
+            </div>
+
+            <div class="grid grid-cols-3 gap-2">
+              <div>
+                <Label for="pos-x">X</Label>
+                <Input
+                  id="pos-x"
+                  v-model.number="
+                    sceneStates.cameras[selectedCamId]!.position.x
+                  "
+                  :disabled="isLockingRotation"
+                  disabled-class="disabled-input"
+                  type="number"
+                />
+              </div>
+              <div>
+                <Label for="pos-y">Y</Label>
+                <Input
+                  id="pos-y"
+                  v-model.number="
+                    sceneStates.cameras[selectedCamId]!.position.y
+                  "
+                  :disabled="isLockingRotation"
+                  disabled-class="disabled-input"
+                  type="number"
+                />
+              </div>
+              <div>
+                <Label for="pos-z">Z</Label>
+                <Input
+                  id="pos-z"
+                  v-model.number="
+                    sceneStates.cameras[selectedCamId]!.position.z
+                  "
+                  :disabled="isLockingRotation"
+                  disabled-class="disabled-input"
+                  type="number"
+                />
+              </div>
+            </div>
+
+            <div class="flex items-center gap-2">
+              <input
+                id="lock-position"
+                v-model="isLockingPosition"
+                :disabled="props.workspace != 'me'"
+                type="checkbox"
+                @change="onToggleLockPosition"
+              />
+              <label for="lock-position">Lock Position</label>
+            </div>
+
+            <div class="grid grid-cols-3 gap-2">
+              <div>
+                <Label for="angle-x"
+                  ><p>θ<sub>x</sub></p></Label
+                >
+                <Input
+                  id="angle-x"
+                  v-model.number="angleX"
+                  :disabled="
+                    selectedCam?.isLockingRotation || props.workspace != 'me'
+                  "
+                  disabled-class="disabled-input"
+                  type="number"
+                  step="0.1"
+                />
+              </div>
+
+              <div>
+                <Label for="angle-y"
+                  ><p>θ<sub>y</sub></p></Label
+                >
+                <Input
+                  id="angle-y"
+                  v-model.number="angleY"
+                  :disabled="
+                    selectedCam?.isLockingRotation || props.workspace != 'me'
+                  "
+                  disabled-class="disabled-input"
+                  type="number"
+                  step="0.1"
+                />
+              </div>
+
+              <div>
+                <Label for="angle-z"
+                  ><p>θ<sub>z</sub></p></Label
+                >
+                <Input
+                  id="angle-z"
+                  v-model.number="angleZ"
+                  :disabled="
+                    selectedCam?.isLockingRotation || props.workspace != 'me'
+                  "
+                  disabled-class="disabled-input"
+                  type="number"
+                  step="0.1"
+                />
+              </div>
+            </div>
+
+            <div v-if="selectedCam" class="mt-2 p-2 rounded text-xs">
+              <Label for="angles-vector">Angles Vector</Label>
+              <div class="grid grid-cols-3 gap-1">
+                <div class="flex flex-col">
+                  <span class="text-[10px] mt-1">X-Axis</span>
+                  <span class="font-mono text-sm"
+                    >{{ directionAngles.x }}°</span
+                  >
+                </div>
+                <div class="flex flex-col">
+                  <span class="text-[10px] mt-1">Y-Axis</span>
+                  <span class="font-mono text-sm"
+                    >{{ directionAngles.y }}°</span
+                  >
+                </div>
+                <div class="flex flex-col">
+                  <span class="text-[10px] mt-1">Z-Axis</span>
+                  <span class="font-mono text-sm"
+                    >{{ directionAngles.z }}°</span
+                  >
+                </div>
+              </div>
+            </div>
+
+            <div class="flex items-center gap-2">
+              <input
+                id="lock-rotation"
+                v-model="sceneStates.cameras[selectedCamId]!.isLockingRotation"
+                :disabled="props.workspace != 'me'"
+                type="checkbox"
+                @change="onToggleLockRotation"
+              />
+              <label for="lock-rotation">Lock Rotation</label>
+            </div>
+
+            <div>
+              <Label><p>Resolution (Aspect Ratio)</p></Label>
+              <div class="flex flex-row gap-2 justify-center items-center">
+                <Input
+                  id="aspect-ratio-width"
+                  v-model.number="sceneStates.cameras[selectedCamId]!.widthRes"
+                  :disabled="props.workspace != 'me'"
+                  disabled-class="disabled-input"
+                  type="number"
+                />
+                <p>:</p>
+                <Input
+                  id="aspect-ratio-height"
+                  v-model.number="sceneStates.cameras[selectedCamId]!.heightRes"
+                  :disabled="props.workspace != 'me'"
+                  disabled-class="disabled-input"
+                  type="number"
+                />
+              </div>
+            </div>
+
+            <div>
+              <Label for="fov">Vertical Field of View</Label>
+              <Input
+                id="fov"
+                v-model.number="sceneStates.cameras[selectedCamId]!.fov"
+                :disabled="props.workspace != 'me'"
+                disabled-class="disabled-input"
+                type="number"
+                min="10"
+                max="180"
+                @change="onFovChange()"
+              />
+            </div>
+
+            <div class="grid grid-flow-row grid-cols-2 gap-2">
+              <Button
+                size="sm"
+                variant="ghost"
+                :disabled="isLockingPosition"
+                disabled-class="disabled-input"
+                @click="
+                  sceneStates.cameras[selectedCamId]!.isHidingArrows =
+                    !sceneStates.cameras[selectedCamId]!.isHidingArrows
+                "
+              >
+                <template
+                  v-if="sceneStates.cameras[selectedCamId]!.isLockingPosition"
+                >
+                  <LockKeyhole class="h-3 w-3" />
+                </template>
+
+                <template v-else>
+                  <Eye
+                    v-if="!sceneStates.cameras[selectedCamId]!.isHidingArrows"
+                    class="h-3 w-3"
+                  />
+                  <EyeOff v-else class="h-3 w-3" />
+                </template>
+                Arrows
+              </Button>
+
+              <Button
+                size="sm"
+                variant="ghost"
+                :disabled="
+                  sceneStates.cameras[selectedCamId]!.isLockingRotation ||
+                  props.workspace != 'me'
+                "
+                disabled-class="disabled-input"
+                @click="
+                  sceneStates.cameras[selectedCamId]!.isHidingWheels =
+                    !sceneStates.cameras[selectedCamId]!.isHidingWheels
+                "
+              >
+                <template
+                  v-if="sceneStates.cameras[selectedCamId]!.isLockingRotation"
+                >
+                  <LockKeyhole class="h-3 w-3" />
+                </template>
+
+                <template v-else>
+                  <Eye
+                    v-if="!sceneStates.cameras[selectedCamId]!.isHidingWheels"
+                    class="h-3 w-3"
+                  />
+                  <EyeOff v-else class="h-3 w-3" />
+                </template>
+                Wheels
+              </Button>
+
+              <Button
+                size="sm"
+                :variant="isSelectedActive ? 'secondary' : 'outline'"
+                :class="isSelectedActive ? 'bg-red-500 hover:bg-red-700' : ''"
+                @click="toggleCamera(selectedCamId)"
+              >
+                <template v-if="isSelectedActive">
+                  <LogOut class="h-3 w-3" />
+                  Exit Camera
+                </template>
+                <template v-else>
+                  <Video class="h-3 w-3" />
+                  View Camera
+                </template>
+              </Button>
+
+              <Button
+                size="sm"
+                variant="ghost"
+                :disabled="
+                  sceneStates.currentCamId.value == selectedCamId ||
+                  props.workspace != 'me'
+                "
+                @click="deleteCamera(selectedCamId)"
+              >
+                <Trash2 class="h-3 w-3" />
+                Delete
+              </Button>
+
+              <Button
+                size="sm"
+                variant="outline"
+                class="flex-1"
+                :disabled="
+                  sceneStates.cameras[selectedCamId]!.isLockingPosition ||
+                  sceneStates.cameras[selectedCamId]!.isLockingRotation ||
+                  props.workspace != 'me'
+                "
+                disabled-class="disabled-input"
+                @click="moveCameraHere(selectedCamId!)"
+              >
+                Move Here
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+
+        <!-- Frustum Properties -->
+        <Card v-if="selectedCamId && sceneStates?.cameras[selectedCamId]">
+          <CardHeader
+            class="cursor-pointer flex items-center justify-between"
+            @click="isFrustumPropertiesOpen = !isFrustumPropertiesOpen"
+          >
+            <CardTitle class="text-base flex items-center gap-2">
+              <Pyramid class="h-4 w-4" />
+              Frustum Properties
+            </CardTitle>
+            <span class="text-sm">
+              <ChevronDown
+                v-if="isFrustumPropertiesOpen"
+                class="inline h-4 w-4" />
+              <ChevronLeft v-else class="inline h-4 w-4"
+            /></span>
+          </CardHeader>
+          <CardContent v-if="isFrustumPropertiesOpen" class="space-y-2">
+            <div class="flex flex-row gap-2">
+              <Tooltip>
+                <TooltipTrigger>
+                  <Button
+                    size="sm"
+                    class="flex-1 w-full"
+                    :disabled="sceneStates?.cameras[selectedCamId]!.fov > 179"
+                    @click="
+                      sceneStates!.cameras[selectedCamId]!.isHidingFrustum =
+                        !sceneStates!.cameras[selectedCamId]!.isHidingFrustum
+                    "
+                  >
+                    <Eye
+                      v-if="
+                        !sceneStates?.cameras[selectedCamId]!.isHidingFrustum
+                      "
+                      class="h-3 w-3"
+                    />
+                    <EyeOff v-else class="h-3 w-3" />
+                    Frustum
+                  </Button></TooltipTrigger
+                >
+                <TooltipContent
+                  v-if="sceneStates?.cameras[selectedCamId]!.fov > 179"
+                >
+                  Fov is too high for frustum visualization
+                </TooltipContent>
+              </Tooltip>
+
+              <Button
+                size="sm"
+                class="flex-1"
+                variant="outline"
+                @click="randomNewFrustumColor()"
+              >
+                <Dices class="h-3 w-3" />
+                Random Color
+              </Button>
+            </div>
+            <div class="grid grid-cols-3 gap-2">
+              <div>
+                <Label for="color-r"><p>R</p></Label>
+                <Input
+                  v-if="sceneStates.cameras"
+                  id="color-r"
+                  v-model.number="
+                    sceneStates.cameras[selectedCamId]!.frustumColor.r
+                  "
+                  type="number"
+                  min="0"
+                  max="1"
+                />
+              </div>
+              <div>
+                <Label for="color-g"><p>G</p></Label>
+                <Input
+                  id="color-g"
+                  v-model.number="
+                    sceneStates.cameras[selectedCamId]!.frustumColor.g
+                  "
+                  type="number"
+                  min="0"
+                  max="1"
+                />
+              </div>
+              <div>
+                <Label for="color-b"><p>B</p></Label>
+                <Input
+                  id="color-b"
+                  v-model.number="
+                    sceneStates.cameras[selectedCamId]!.frustumColor.b
+                  "
+                  type="number"
+                  min="0"
+                  max="1"
+                />
+              </div>
+            </div>
+            <div class="grid grid-cols-2 gap-2">
+              <div>
+                <Label for="opacity">Opacity</Label>
+                <Input
+                  id="opacity"
+                  v-model.number="
+                    sceneStates.cameras[selectedCamId]!.frustumColor.a
+                  "
+                  type="number"
+                  min="0"
+                  max="1"
+                />
+              </div>
+              <div>
+                <Label for="length">Length</Label>
+                <Input
+                  id="length"
+                  v-model.number="
+                    sceneStates.cameras[selectedCamId]!.frustumLength
+                  "
+                  type="number"
+                  min="0"
+                  max="1e6"
+                />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card v-if="selectedCamId && sceneStates?.cameras[selectedCamId]">
+          <CardHeader
+            class="cursor-pointer flex items-center justify-between"
+            @click="isDistortionPropertiesOpen = !isDistortionPropertiesOpen"
+          >
+            <CardTitle class="text-base flex items-center gap-2">
+              <Pyramid class="h-4 w-4" />
+              Distortion
+            </CardTitle>
+            <span class="text-sm">
+              <ChevronDown
+                v-if="isDistortionPropertiesOpen"
+                class="inline h-4 w-4" />
+              <ChevronLeft v-else class="inline h-4 w-4"
+            /></span>
+          </CardHeader>
+          <CardContent v-if="isDistortionPropertiesOpen" class="space-y-2">
+            <div class="flex items-center gap-2">
+              <input
+                id="distortion-enabled"
+                v-model="sceneStates.cameras[selectedCamId]!.distortion.enabled"
+                type="checkbox"
+                :disabled="props.workspace != 'me'"
+                disabled-class="disabled-input"
+              />
+              <label for="distortion-enabled">Enable Distortion</label>
+            </div>
+            <div class="flex items-center gap-2">
+              <input
+                v-if="sceneStates"
+                id="is-fisheye"
+                v-model="
+                  sceneStates.cameras[selectedCamId]!.distortion.isFisheye
+                "
+                type="checkbox"
+                :disabled="props.workspace != 'me'"
+                disabled-class="disabled-input"
+              />
+              <label for="is-fisheye">Is Fisheye</label>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+      <CameraSpawnDialog
+        v-model="isCameraSpawnDialogOpen"
+        :on-confirm="handleSpawnCamera"
+      />
+    </div>
+  </TooltipProvider>
+</template>
+
+<style lang="scss" scoped>
+input {
+  field-sizing: content;
+}
+
+/* For WebKit browsers (Chrome, Safari) */
+input[type="number"]::-webkit-outer-spin-button,
+input[type="number"]::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0; /* Important for removing extra space */
+}
+
+/* For Mozilla Firefox */
+input[type="number"] {
+  appearance: textfield;
+  -moz-appearance: textfield;
+}
+
+input[type="number"] {
+  border-radius: 5px;
+  border: 1px solid black;
+  outline: 1px solid white;
+  box-sizing: border-box;
+
+  margin-top: 4px;
+}
+
+.disabled-input {
+  background-color: var(--background);
+  cursor: not-allowed;
+}
+
+Button {
+  transition-property:
+    color, background-color, border-color, text-decoration-color, fill, stroke;
+  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+  transition-duration: 150ms;
+}
+</style>

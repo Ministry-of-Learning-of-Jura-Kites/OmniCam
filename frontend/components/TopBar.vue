@@ -414,20 +414,6 @@ function toggleFullscreen() {
       <!-- MIDDLE: Grouped controls -->
       <div id="middle-menu" class="flex items-center gap-2 shrink min-w-0">
         <!-- View Group: always visible -->
-        <ClientOnly>
-          <Button
-            size="sm"
-            variant="outline"
-            :disabled="!isCameraActive"
-            class="button-parent"
-            :class="isCameraActive ? 'bg-red-500! hover:bg-red-700!' : ''"
-            @click="sceneStates?.cameraManagement.switchToSpectator()"
-          >
-            <LogOut class="button-icon" />
-            <span class="ml-2 button-span-text">Exit Camera</span>
-          </Button>
-        </ClientOnly>
-
         <Button
           class="button-parent"
           size="sm"
