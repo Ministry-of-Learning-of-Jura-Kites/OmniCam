@@ -102,8 +102,6 @@ function updateIntersections() {
       const bakedMeshA = new Mesh(bakedGeomA);
       const bakedMeshB = new Mesh(bakedGeomB);
 
-      console.log(bakedMeshA, bakedMeshB);
-
       const intersectMesh = CSG.intersect(bakedMeshA, bakedMeshB);
 
       bakedGeomA.dispose();
