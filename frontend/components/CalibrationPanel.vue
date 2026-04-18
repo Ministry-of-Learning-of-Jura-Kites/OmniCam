@@ -8,9 +8,8 @@ import {
   Pyramid,
   ArrowUpFromLine,
 } from "lucide-vue-next";
-const { calibrationPanelInfo } = inject(PANEL_KEY)!;
-const { isCalibrating, calibrationGridScale, toggleCalibration } =
-  calibrationPanelInfo;
+const { currentPanel, calibrationPanelInfo } = inject(PANEL_KEY)!;
+const { calibrationGridScale, toggleCalibration } = calibrationPanelInfo;
 
 const realWorldSizeCm = ref(100);
 const previousScaleFactor = ref(1);
@@ -46,7 +45,7 @@ const resetCalibration = () => {
 </script>
 
 <template>
-  <template v-if="isCalibrating">
+  <template v-if="currentPanel == 'calibration'">
     <div
       class="w-80 bg-card border-l border-border p-4 overflow-y-auto h-full shadow-lg"
     >
