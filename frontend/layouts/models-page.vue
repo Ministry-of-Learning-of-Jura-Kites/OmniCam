@@ -57,7 +57,6 @@ function closePanel() {
 }
 
 function togglePanel() {
-  console.log("Checking camera view: ", sceneStates!.value!.currentCamId.value);
   if (isPanelOpen.value) {
     closePanel();
   } else {
@@ -159,8 +158,8 @@ const showPanelWarning = computed(() => {
             </div>
 
             <button
-              @click="toggleCameraPanel"
               class="text-[9px] font-black uppercase tracking-widest text-red-600 dark:text-red-500 hover:text-red-700 underline underline-offset-4 decoration-red-500/30 hover:decoration-red-500 transition-all"
+              @click="toggleCameraPanel"
             >
               Return to Camera
             </button>
