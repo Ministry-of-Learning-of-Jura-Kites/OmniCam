@@ -101,7 +101,7 @@ watch(mesh, (mesh) => {
       <MovableArrow
         v-model="cam"
         :is-hiding="
-          cam.isHidingArrows ||
+          cam.isLockingPosition ||
           sceneStates!.currentCamId.value == props.camId ||
           props.workspace != 'me'
         "
@@ -112,7 +112,7 @@ watch(mesh, (mesh) => {
       <MovableArrow
         v-model="cam"
         :is-hiding="
-          cam.isHidingArrows ||
+          cam.isLockingPosition ||
           sceneStates!.currentCamId.value == props.camId ||
           props.workspace != 'me'
         "
@@ -123,7 +123,7 @@ watch(mesh, (mesh) => {
       <MovableArrow
         v-model="cam"
         :is-hiding="
-          cam.isHidingArrows ||
+          cam.isLockingPosition ||
           sceneStates!.currentCamId.value == props.camId ||
           props.workspace != 'me'
         "
@@ -134,7 +134,7 @@ watch(mesh, (mesh) => {
       <RotationWheel
         v-model="cam"
         :is-hiding="
-          cam.isHidingWheels ||
+          cam.isLockingRotation ||
           sceneStates!.currentCamId.value == props.camId ||
           props.workspace != 'me'
         "
@@ -144,7 +144,7 @@ watch(mesh, (mesh) => {
       <RotationWheel
         v-model="cam"
         :is-hiding="
-          cam.isHidingWheels ||
+          cam.isLockingRotation ||
           sceneStates!.currentCamId.value == props.camId ||
           props.workspace != 'me'
         "
@@ -154,7 +154,7 @@ watch(mesh, (mesh) => {
       <RotationWheel
         v-model="cam"
         :is-hiding="
-          cam.isHidingWheels ||
+          cam.isLockingRotation ||
           sceneStates!.currentCamId.value == props.camId ||
           props.workspace != 'me'
         "
