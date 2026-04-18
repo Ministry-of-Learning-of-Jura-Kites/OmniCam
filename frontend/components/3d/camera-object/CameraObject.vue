@@ -5,7 +5,7 @@ import MovableArrow from "../movable-arrow/MovableArrow.vue";
 import TresMesh from "@tresjs/core";
 import RotationWheel from "../rotation-wheel/RotationWheel.vue";
 import CameraFrustum from "../camera-frustum/CameraFrustum.vue";
-import type { Color } from "three";
+import type { Color, Mesh } from "three";
 import { Quaternion } from "three";
 import { safeGetAspectRatio } from "~/utils/aspect-ratio";
 import type { ICamera } from "~/types/camera";
@@ -27,6 +27,8 @@ const props = withDefaults(
 
 const sceneStates = inject(SCENE_STATES_KEY)!;
 
+const mesh = ref<Mesh>();
+
 let cam: Ref<ICamera>;
 if (props.instance == undefined) {
   cam = toRef(sceneStates.value!.cameras, props.camId);
@@ -38,10 +40,15 @@ const camQuat = computed(() => {
   const quaternion = new Quaternion().setFromEuler(cam!.value.rotation);
   return quaternion;
 });
+
+watch(mesh, (mesh) => {
+  mesh!.layers.enable(1);
+});
 </script>
 
 <template>
   <TresMesh
+    ref="mesh"
     :visible="sceneStates!.currentCamId.value !== props.camId"
     :position="[cam!.position.x, cam!.position.y, cam!.position.z]"
   >

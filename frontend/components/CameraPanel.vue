@@ -18,6 +18,7 @@ import {
   Move3D,
   Aperture,
   Palette,
+  LockKeyholeOpen,
 } from "lucide-vue-next";
 import { randomVividColor } from "~/utils/randomVividColor";
 import { PANEL_KEY, SCENE_STATES_KEY } from "@/constants/state-keys";
@@ -79,6 +80,37 @@ const moveCameraHere = (id: string) => {
   );
 };
 
+// Use this to reduce garbage collection overhead
+const tempVec = new Vector3();
+
+const moveToCamera = async (id: string) => {
+  if (sceneStates?.value == undefined) {
+    return;
+  }
+
+  const states = sceneStates.value;
+
+  states.transformingInfo.value = {
+    position: states.spectatorCameraPosition.clone(),
+    rotation: states.spectatorCameraRotation.clone(),
+    fov: states.spectatorCameraFov.value,
+  };
+
+  const forward = new Vector3(0, 0, -1).applyEuler(
+    states.cameras[id]!.rotation,
+  );
+
+  tempVec.copy(states.cameras[id]!.position);
+  tempVec.addScaledVector(forward, -4);
+
+  states.spectatorCameraPosition.copy(tempVec);
+  states.spectatorCameraRotation.copy(states.cameras[id]!.rotation);
+
+  await states.cameraManagement.interpolateTransform(states.spectatorCam);
+  states.currentCamId.value = null;
+  states.transformingInfo.value = undefined;
+};
+
 const deleteCamera = (id: string) => {
   if (sceneStates!.value!.currentCamId.value == id) {
     sceneStates!.value!.currentCamId.value = null;
@@ -92,16 +124,6 @@ function randomNewFrustumColor() {
   cam.frustumColor.r = color.r;
   cam.frustumColor.g = color.g;
   cam.frustumColor.b = color.b;
-}
-
-function onToggleLockPosition() {
-  const cam = sceneStates!.value!.cameras[selectedCamId.value!]!;
-  cam.isHidingArrows = cam.isLockingPosition;
-}
-
-function onToggleLockRotation() {
-  const cam = sceneStates!.value!.cameras[selectedCamId.value!]!;
-  cam.isHidingWheels = cam.isLockingRotation;
 }
 
 function onFovChange() {
@@ -378,10 +400,10 @@ function toggleCamera(camId: string) {
                   v-model="isLockingPosition"
                   :disabled="props.workspace != 'me'"
                   type="checkbox"
-                  @change="onToggleLockPosition"
                 />
-                <LockKeyhole class="h-3.5 w-3.5" />
-                Lock
+                <LockKeyhole v-if="isLockingPosition" class="h-3.5 w-3.5" />
+                <LockKeyholeOpen v-else class="h-3.5 w-3.5" />
+                {{ isLockingPosition ? "Locked" : "Unlocked" }}
               </label>
             </div>
             <div class="grid grid-cols-3 gap-2">
@@ -435,15 +457,13 @@ function toggleCamera(camId: string) {
               >
                 <input
                   id="lock-rotation"
-                  v-model="
-                    sceneStates.cameras[selectedCamId]!.isLockingRotation
-                  "
+                  v-model="isLockingRotation"
                   :disabled="props.workspace != 'me'"
                   type="checkbox"
-                  @change="onToggleLockRotation"
                 />
-                <LockKeyhole class="h-3.5 w-3.5" />
-                Lock
+                <LockKeyhole v-if="isLockingRotation" class="h-3.5 w-3.5" />
+                <LockKeyholeOpen v-else class="h-3.5 w-3.5" />
+                {{ isLockingRotation ? "Locked" : "Unlocked" }}
               </label>
             </div>
             <div class="grid grid-cols-3 gap-2">
@@ -510,60 +530,6 @@ function toggleCamera(camId: string) {
 
           <!-- Gizmo toggles -->
           <div class="space-y-2">
-            <div class="grid grid-cols-2 gap-2">
-              <Button
-                size="sm"
-                variant="outline"
-                :disabled="isLockingPosition"
-                disabled-class="disabled-input"
-                @click="
-                  sceneStates.cameras[selectedCamId]!.isHidingArrows =
-                    !sceneStates.cameras[selectedCamId]!.isHidingArrows
-                "
-              >
-                <template
-                  v-if="sceneStates.cameras[selectedCamId]!.isLockingPosition"
-                >
-                  <LockKeyhole class="h-4 w-4 mr-1.5" />
-                </template>
-                <template v-else>
-                  <Eye
-                    v-if="!sceneStates.cameras[selectedCamId]!.isHidingArrows"
-                    class="h-4 w-4 mr-1.5"
-                  />
-                  <EyeOff v-else class="h-4 w-4 mr-1.5" />
-                </template>
-                Arrows
-              </Button>
-              <Button
-                size="sm"
-                variant="outline"
-                :disabled="
-                  sceneStates.cameras[selectedCamId]!.isLockingRotation ||
-                  props.workspace != 'me'
-                "
-                disabled-class="disabled-input"
-                @click="
-                  sceneStates.cameras[selectedCamId]!.isHidingWheels =
-                    !sceneStates.cameras[selectedCamId]!.isHidingWheels
-                "
-              >
-                <template
-                  v-if="sceneStates.cameras[selectedCamId]!.isLockingRotation"
-                >
-                  <LockKeyhole class="h-4 w-4 mr-1.5" />
-                </template>
-                <template v-else>
-                  <Eye
-                    v-if="!sceneStates.cameras[selectedCamId]!.isHidingWheels"
-                    class="h-4 w-4 mr-1.5"
-                  />
-                  <EyeOff v-else class="h-4 w-4 mr-1.5" />
-                </template>
-                Wheels
-              </Button>
-            </div>
-
             <!-- Teleport / Delete -->
             <div class="space-y-2">
               <Button
@@ -579,6 +545,15 @@ function toggleCamera(camId: string) {
                 @click="moveCameraHere(selectedCamId!)"
               >
                 Teleport Camera to Me
+              </Button>
+
+              <Button
+                size="sm"
+                variant="outline"
+                class="flex-1"
+                @click="moveToCamera(selectedCamId!)"
+              >
+                Warp to Camera
               </Button>
 
               <Button
@@ -743,7 +718,7 @@ function toggleCamera(camId: string) {
               <div class="flex gap-2">
                 <!-- Visibility Toggle -->
                 <Tooltip>
-                  <TooltipTrigger asChild>
+                  <TooltipTrigger as-child>
                     <Button
                       size="icon"
                       variant="ghost"

@@ -369,6 +369,7 @@ export function createBaseSceneStates(
     currentCamId,
     currentCam,
     transformingInfo,
+    spectatorCam,
     spectatorCameraPosition,
     spectatorCameraRotation,
     spectatorCameraFov,

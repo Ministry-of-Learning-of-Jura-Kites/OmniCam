@@ -5,6 +5,7 @@ import AdjustableInput from "../../adjustable-input/AdjustableInput.vue";
 import { SPECTATOR_ADJ_INPUT_SENTIVITY } from "~/constants";
 import CameraObject from "../camera-object/CameraObject.vue";
 import {
+  type Mesh,
   type PerspectiveCamera,
   Raycaster,
   Vector2,
@@ -78,6 +79,8 @@ const perspectiveCamera = ref<PerspectiveCamera | null>(null);
 const canvas: Ref<InstanceType<typeof TresCanvas> | null> = ref(null);
 const cubeCamera: Ref<CubeCamera | null> = ref(null);
 // const camera = ref<PerspectiveCamera | null>(null);
+
+const gridParent = ref<Mesh>();
 
 const minimapCamera = ref<OrthographicCamera | null>(null);
 const { isMapOpen } = inject(MAP_KEY)!;
@@ -180,33 +183,13 @@ function buildCoverageFaceFromPickedPoints(
   const v = new Vector3().subVectors(p3Raw, p0);
   const p3 = p0.clone().add(dir.multiplyScalar(v.dot(dir)));
 
-  let finalPoints = [p0, p1, p2, p3];
+  const finalPoints = [p0, p1, p2, p3];
   const centerV = averageVector(finalPoints);
 
   // 2. Initial Normal Calculation (Vector3)
   const e1 = new Vector3().subVectors(p1, p0);
   const e2 = new Vector3().subVectors(p2, p0);
   const finalNormal = new Vector3().crossVectors(e1, e2).normalize();
-
-  // 3. Winding Order Check
-  // We check the cross product of vectors from the center to points 0 and 1
-  const v0 = new Vector3().subVectors(p0, centerV);
-  const v1 = new Vector3().subVectors(p1, centerV);
-  const windingCheck = new Vector3().crossVectors(v0, v1).dot(finalNormal);
-
-  console.log("--- Winding Validation ---");
-  console.log("Winding Check Dot:", windingCheck);
-
-  if (windingCheck < 0) {
-    console.warn("Winding is Clockwise. Normalizing to Counter-Clockwise.");
-    // Reverse order to [0, 3, 2, 1] to flip winding
-    finalPoints = [p0, p3, p2, p1];
-
-    // We flip the normal so it points "outward" relative to the new CCW order
-    finalNormal.multiplyScalar(-1);
-  } else {
-    console.log("Winding is already Counter-Clockwise.");
-  }
 
   // 4. Final Validation
   const width = p0.distanceTo(p1);
@@ -501,6 +484,14 @@ watch(
   },
 );
 
+watch(gridParent, (gridParent) => {
+  if (!gridParent || !gridParent.children[0]) return;
+
+  gridParent.traverse((child) => {
+    child.layers.set(0);
+  });
+});
+
 function selectCurrentCamShortcut() {
   const currentCamId = sceneStates.value!.currentCamId.value;
   if (currentCamId) {
@@ -632,8 +623,6 @@ function selectCurrentCamShortcut() {
           <!-- <Distortion /> -->
           <CubeDistortion />
 
-          <TresOrthographicCamera ref="minimapCamera" :manual="true" />
-
           <!-- <TresMesh>
             <TresBoxGeometry :args="[2, 2, 2, 32, 32, 32]" />
             <TresMeshStandardMaterial
@@ -710,21 +699,23 @@ function selectCurrentCamShortcut() {
             />
           </Suspense>
 
-          <!-- Grid  1 unit = 1 virtual m -->
-          <Grid
-            :position="[0, -sceneStates!.calibration.heightOffset, 0]"
-            :args="[1, 1]"
-            :cell-size="0.2"
-            cell-color="#90EE90"
-            section-color="white"
-            :infinite-grid="true"
-            :side="DoubleSide"
-            :scale="[
-              1 / sceneStates!.calibration.scale,
-              1,
-              1 / sceneStates!.calibration.scale,
-            ]"
-          />
+          <!-- Grid  1 unit = 1 m -->
+          <TresMesh ref="gridParent">
+            <Grid
+              :position="[0, -sceneStates!.calibration.heightOffset, 0]"
+              :args="[1, 1]"
+              :cell-size="0.2"
+              cell-color="#90EE90"
+              section-color="white"
+              :infinite-grid="true"
+              :side="DoubleSide"
+              :scale="[
+                1 / sceneStates!.calibration.scale,
+                1,
+                1 / sceneStates!.calibration.scale,
+              ]"
+            />
+          </TresMesh>
 
           <template v-for="[id, face] of selectedFaces" :key="id">
             <CoverageAreaMesh
