@@ -15,7 +15,6 @@ export interface CamPanelInfo {
 }
 
 export interface CalibrationPanelInfo {
-  isCalibrating: Ref<boolean>;
   toggleCalibration: () => void;
   calibrationGridScale: Ref<number>;
 }
@@ -23,8 +22,9 @@ export interface CalibrationPanelInfo {
 export interface PanelInfo {
   camPanelInfo: CamPanelInfo;
   calibrationPanelInfo: CalibrationPanelInfo;
-  currentPanel: Ref<"camera" | "algo">;
+  currentPanel: Ref<"camera" | "calibration" | "algo">;
   toggleAlgoPanel: () => void;
+  toggleCameraPanel: () => void;
   togglePanel: () => void;
   isPanelOpen: Ref<boolean>;
 }
