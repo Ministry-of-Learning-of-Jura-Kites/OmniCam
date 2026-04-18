@@ -51,6 +51,7 @@ export interface ModelWithCamsResp {
     imageExtension: string;
     cameras: Record<string, Camera>;
     targetTrapezoids?: Record<string, CoverageFace>;
+    // Realife meter / virtual meter
     scaleFactor?: number;
     modelHeight?: number;
   };
