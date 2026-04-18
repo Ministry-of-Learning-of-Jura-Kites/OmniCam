@@ -7,6 +7,7 @@ export type ModuleName = "CAMERA_OBJECT";
 
 export type UniversalGeoName = CameraObjectGeo;
 
+// TODO: Prevent mem leak
 export function useGeoCache() {
   const camObj = useCamObjGeoCache();
   function get(module: ModuleName, geoName: UniversalGeoName) {

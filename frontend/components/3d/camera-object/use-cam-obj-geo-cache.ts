@@ -1,13 +1,12 @@
-import type { BufferGeometry } from "three";
-import { CylinderGeometry } from "three";
+import { CylinderGeometry } from "three/webgpu";
 import { mergeGeometries } from "three/addons/utils/BufferGeometryUtils.js";
 
+// useCamObjGeoCache.ts
 export type CameraObjectGeo = "body" | "lens";
 
-const store = {} as Record<CameraObjectGeo, BufferGeometry>;
-
-export function useCamObjGeoCache() {
-  function create(geoName: CameraObjectGeo) {
+export const useCamObjGeoCache = createGeoCache<CameraObjectGeo>({
+  name: "CameraCache",
+  create(geoName) {
     switch (geoName) {
       case "body": {
         const body = new CylinderGeometry(0.2, 0.2, 0.5);
@@ -25,7 +24,7 @@ export function useCamObjGeoCache() {
         const handleTop = new CylinderGeometry(0.15, 0.15, 0.02);
         handleTop.rotateX(Math.PI / 5);
         handleTop.translate(0, 0.17, 0.78);
-        console.log("called");
+
         return mergeGeometries([body, backCyl, handleArm, handleTop]);
       }
       case "lens": {
@@ -35,16 +34,5 @@ export function useCamObjGeoCache() {
         return lens;
       }
     }
-  }
-
-  function get(geoName: CameraObjectGeo) {
-    if (store[geoName] == undefined) {
-      const newGeo = create(geoName);
-      store[geoName] = newGeo;
-      return newGeo;
-    }
-    return store[geoName];
-  }
-
-  return { get };
-}
+  },
+});
