@@ -10,7 +10,7 @@ import { useAuth } from "~/composables/api/use-auth";
 import ContentCard from "~/components/card/ContentCard.vue";
 import CustomPagination from "~/components/pagination/CustomPagination.vue";
 import { uuidToBase64Url } from "~/lib/uuid";
-import { Plus } from "lucide-vue-next";
+import { Plus, ArrowLeft } from "lucide-vue-next";
 import { useProject, type ProjectMember } from "~/composables/api/use-project";
 import {
   type Model,
@@ -25,6 +25,8 @@ export type ModelForm = {
   image: File | null;
 };
 export type ModelWithoutId = Omit<Model, "modelId">;
+
+const config = useRuntimeConfig();
 
 const route = useRoute();
 const { user, fetchUser } = useAuth();
@@ -106,19 +108,58 @@ watch(project, (newVal) => {
   projectDetail.value = newVal;
 });
 
+// const { data: modelsRaw, refresh } = await useAsyncData(
+//   `models-list-${projectId}`,
+//   () => modelApi.listModels(page.value, pageSize.value),
+//   {
+//     watch: [page, pageSize],
+
+//     transform: (respData) => {
+//       if (!respData?.data) return { record: {}, count: 0 };
+//       const record = respData.data.reduce<Record<string, ModelWithoutId>>(
+//         (acc, model) => {
+//           const { modelId, imagePath, imageExtension, ...rest } = model;
+
+//           let urlHref: string | undefined = undefined;
+//           if (imageExtension != null && imagePath) {
+//             urlHref = getUrlForModelImage(
+//               projectId,
+//               modelId,
+//               imageExtension,
+//             ).href;
+//           }
+
+//           acc[modelId] = {
+//             ...rest,
+//             imagePath: urlHref,
+//           };
+//           console.log("record", record);
+//           return acc;
+//         },
+//         {},
+//       );
+//       return { record, count: respData.count };
+//     },
+//   },
+// );
+
+const asyncKey = computed(
+  () => `models-list-${projectId}-page-${page.value}-size-${pageSize.value}`,
+);
+
 const { data: modelsRaw, refresh } = await useAsyncData(
-  `models-list-${projectId}-${page.value}`,
+  asyncKey.value,
   () => modelApi.listModels(page.value, pageSize.value),
   {
+    // server: false, // Disable server-side fetching to ensure it only runs on the client,
     watch: [page, pageSize],
-
+    default: () => ({ record: {} as Record<string, ModelWithoutId>, count: 0 }),
     transform: (respData) => {
+      console.log("transform called with:", JSON.stringify(respData));
       if (!respData?.data) return { record: {}, count: 0 };
-
       const record = respData.data.reduce<Record<string, ModelWithoutId>>(
         (acc, model) => {
           const { modelId, imagePath, imageExtension, ...rest } = model;
-
           let urlHref: string | undefined = undefined;
           if (imageExtension != null && imagePath) {
             urlHref = getUrlForModelImage(
@@ -127,11 +168,7 @@ const { data: modelsRaw, refresh } = await useAsyncData(
               imageExtension,
             ).href;
           }
-
-          acc[modelId] = {
-            ...rest,
-            imagePath: urlHref,
-          };
+          acc[modelId] = { ...rest, imagePath: urlHref };
           return acc;
         },
         {},
@@ -141,8 +178,9 @@ const { data: modelsRaw, refresh } = await useAsyncData(
   },
 );
 
-const models = ref(modelsRaw.value!.record);
-const totalData = ref(modelsRaw.value!.count);
+// console.log("modelsRaw", modelsRaw.value);
+const models = computed(() => modelsRaw.value?.record ?? {});
+const totalData = computed(() => modelsRaw.value?.count ?? 0);
 
 async function createModel() {
   const formData = new FormData();
@@ -161,7 +199,7 @@ async function createModel() {
   successDialog.value = true;
   successMessage.value = `You have successfully created ${response.data.name}`;
 
-  refresh();
+  await refresh();
 }
 
 async function updateModel(hexId: string) {
@@ -333,6 +371,13 @@ async function handleUpdateImage(file: File | undefined, modelId: string) {
   }
 }
 
+function goToProjects() {
+  navigateTo(
+    `http://${config.public.nuxtHost}:${config.public.nuxtPort}/projects`,
+    { external: true },
+  );
+}
+
 fetchMembers();
 </script>
 
@@ -345,9 +390,17 @@ fetchMembers();
       <div
         class="flex flex-col md:flex-row md:items-center md:justify-between mb-4"
       >
-        <h1 class="text-2xl font-semibold">
-          {{ projectDetail?.name }}
-        </h1>
+        <div class="flex items-center gap-3">
+          <Button
+            class="cursor-pointer hover:bg-gray-100"
+            variant="ghost"
+            size="sm"
+            @click="goToProjects()"
+          >
+            <ArrowLeft class="w-4 h-4" />
+          </Button>
+          <h1 class="text-2xl font-semibold">{{ projectDetail?.name }}</h1>
+        </div>
       </div>
 
       <div class="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">

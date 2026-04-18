@@ -10,7 +10,7 @@ services:
     env_file:
       - db/.env.prod
     ports:
-      - "5433:5432"
+      - "15433:5432"
     networks:
       - private_net
     volumes:
