@@ -14,11 +14,13 @@ import {
 } from "~/constants/state-keys";
 import FailDialog from "~/components/dialog/FailDialog.vue";
 import { useFailDialog } from "~/composables/useFailDialog";
+import type { SceneStatesWithHelper } from "~/types/scene-states";
 
 const sceneStatesReady = ref(false);
 provide(SCENE_STATES_READY_KEY, sceneStatesReady);
 
-const sceneStates = inject(SCENE_STATES_KEY);
+const sceneStates = shallowRef<SceneStatesWithHelper | undefined>(undefined);
+provide(SCENE_STATES_KEY, sceneStates);
 
 const { open, message } = useFailDialog();
 const route = useRoute();
@@ -102,7 +104,7 @@ provide(PANEL_KEY, {
 const workspace = computed(() => route.params.workspaceId as string);
 
 const isInCameraView = computed(() => {
-  return sceneStates?.value?.currentCamId?.value !== null;
+  return sceneStates?.value?.currentCamId.value !== null;
 });
 
 const showPanelWarning = computed(() => {
@@ -156,8 +158,8 @@ const showPanelWarning = computed(() => {
             </div>
 
             <button
-              @click="toggleCameraPanel"
               class="text-[9px] font-black uppercase tracking-widest text-red-600 dark:text-red-500 hover:text-red-700 underline underline-offset-4 decoration-red-500/30 hover:decoration-red-500 transition-all"
+              @click="toggleCameraPanel"
             >
               Return to Camera
             </button>
