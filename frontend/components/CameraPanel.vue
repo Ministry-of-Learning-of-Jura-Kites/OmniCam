@@ -550,7 +550,7 @@ function toggleCamera(camId: string) {
               <Button
                 size="sm"
                 variant="outline"
-                class="flex-1"
+                class="w-full flex-1"
                 @click="moveToCamera(selectedCamId!)"
               >
                 Warp to Camera
