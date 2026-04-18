@@ -591,7 +591,7 @@ function selectCurrentCamShortcut() {
         <CameraDirection
           v-if="selectedCam"
           :target-pos="selectedCam.position"
-          label="gg"
+          label="Selected Camera"
         />
 
         <TresCanvas
