@@ -37,6 +37,7 @@ import type {
   QuadrilateralPoints,
   QuadrilateralVectors,
 } from "~/types/trapezoid";
+import CameraDirection from "../camera-direction/CameraDirection.vue";
 
 const { isPanelOpen, currentPanel, camPanelInfo } = inject(PANEL_KEY)!;
 const { selectedCamId } = camPanelInfo;
@@ -103,6 +104,13 @@ const draftPointMarkers = computed<Point3[]>(() => {
   if (sceneStates.value!.selectionMode.value !== "coverage-area") return [];
 
   return draftCoveragePoints.value.map((p) => [p.x, p.y, p.z] as Point3);
+});
+
+const selectedCam = computed(() => {
+  if (selectedCamId.value == null) {
+    return null;
+  }
+  return sceneStates.value!.cameras[selectedCamId.value];
 });
 
 usePromptUnsaved(sceneStates.value!);
@@ -580,6 +588,12 @@ function selectCurrentCamShortcut() {
         }"
         class="relative"
       >
+        <CameraDirection
+          v-if="selectedCam"
+          :target-pos="selectedCam.position"
+          label="gg"
+        />
+
         <TresCanvas
           id="canvas"
           ref="canvas"
