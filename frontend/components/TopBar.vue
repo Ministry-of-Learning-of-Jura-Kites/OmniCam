@@ -4,6 +4,7 @@ import Badge from "./ui/badge/Badge.vue";
 import Card from "./ui/card/Card.vue";
 import {
   PackageOpen,
+  ArrowLeft,
   RefreshCcw,
   Maximize,
   CloudCheck,
@@ -234,6 +235,9 @@ function goToModel() {
     `/projects/${route.params.projectId}/models/${route.params.modelId}`,
   );
 }
+function goToModels() {
+  navigateTo(`/projects/${route.params.projectId}`);
+}
 function goToMyWorkspace() {
   navigateTo(
     `/projects/${route.params.projectId}/models/${route.params.modelId}/workspaces/me`,
@@ -392,6 +396,14 @@ function toggleFullscreen() {
     >
       <!-- Project Info -->
       <div id="left-menu" class="flex items-center gap-4">
+        <Button
+          class="cursor-pointer hover:bg-gray-100"
+          variant="ghost"
+          size="sm"
+          @click="goToModels()"
+        >
+          <ArrowLeft class="w-4 h-4" />
+        </Button>
         <Card class="px-3 py-1 bg-survey-surface">
           <div class="flex items-center gap-2">
             <div class="w-2 h-2 bg-survey-accent rounded-full" />
