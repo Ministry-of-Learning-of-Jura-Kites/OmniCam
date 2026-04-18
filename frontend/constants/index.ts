@@ -32,3 +32,5 @@ export const AXIS_COLOR = {
   y: "red",
   z: "blue",
 };
+
+export const MINIMAP_LAYER = 1;

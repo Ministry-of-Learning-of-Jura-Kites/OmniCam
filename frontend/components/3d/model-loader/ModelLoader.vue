@@ -8,8 +8,10 @@ import {
   disposeBoundsTree,
   acceleratedRaycast,
 } from "three-mesh-bvh";
+import { MINIMAP_LAYER } from "~/constants";
 
 const sceneStates = inject(SCENE_STATES_KEY)!;
+const mesh = ref<Mesh>();
 
 const props = withDefaults(
   defineProps<{
@@ -74,6 +76,7 @@ onMounted(() => {
               state.value = s;
 
               s.scene.traverse((child) => {
+                child.layers.enable(MINIMAP_LAYER);
                 if ((child as Mesh).isMesh) {
                   const mesh = child as Mesh;
                   mesh.geometry.computeBoundsTree();
@@ -128,7 +131,7 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <primitive v-if="state?.scene" :object="state.scene" />
+  <primitive v-if="state?.scene" ref="mesh" :object="state.scene" />
 
   <!-- Block Placeholder  -->
   <TresMesh v-if="state?.scene == null" :position="props.position ?? [0, 0, 0]">
