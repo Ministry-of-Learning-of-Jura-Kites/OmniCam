@@ -2,15 +2,13 @@
 import { PANEL_KEY, SCENE_STATES_KEY } from "~/constants/state-keys";
 import {
   Ruler,
-  X,
   Check,
   Scaling,
   Pyramid,
   ArrowUpFromLine,
 } from "lucide-vue-next";
-const { calibrationPanelInfo } = inject(PANEL_KEY)!;
-const { isCalibrating, calibrationGridScale, toggleCalibration } =
-  calibrationPanelInfo;
+const { currentPanel, calibrationPanelInfo } = inject(PANEL_KEY)!;
+const { calibrationGridScale } = calibrationPanelInfo;
 
 const realWorldSizeCm = ref(100);
 const previousScaleFactor = ref(1);
@@ -46,7 +44,7 @@ const resetCalibration = () => {
 </script>
 
 <template>
-  <template v-if="isCalibrating">
+  <template v-if="currentPanel == 'calibration'">
     <div
       class="w-80 bg-card border-l border-border p-4 overflow-y-auto h-full shadow-lg"
     >
@@ -55,9 +53,6 @@ const resetCalibration = () => {
           <Ruler class="h-5 w-5" />
           Calibration Manager
         </h2>
-        <Button size="icon" variant="ghost" @click="toggleCalibration()">
-          <X class="h-4 w-4" />
-        </Button>
       </div>
 
       <div class="space-y-2">
@@ -65,7 +60,7 @@ const resetCalibration = () => {
           <CardHeader class="pb-1">
             <CardTitle class="text-sm font-medium flex items-center gap-2">
               <Pyramid class="h-4 w-4" />
-              1. Set Real-World Distance
+              Set Real-World Distance
             </CardTitle>
           </CardHeader>
           <CardContent class="space-y-1">
@@ -92,7 +87,7 @@ const resetCalibration = () => {
           <CardHeader class="pb-1">
             <CardTitle class="text-sm font-medium flex items-center gap-2">
               <Scaling class="h-4 w-4" />
-              2. Adjust Calibration Grid
+              Adjust Calibration Grid
             </CardTitle>
           </CardHeader>
           <CardContent class="space-y-4">
@@ -129,7 +124,7 @@ const resetCalibration = () => {
         <div class="pt-2 space-y-2">
           <Button class="w-full gap-2" @click="confirmCalibration">
             <Check class="h-4 w-4" />
-            Calibration
+            Apply Calibration
           </Button>
           <div class="grid grid-cols-2 gap-2">
             <Button

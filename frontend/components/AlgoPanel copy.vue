@@ -1,15 +1,7 @@
 <script setup lang="ts">
 import { computed, inject, ref } from "vue";
 import { SCENE_STATES_KEY } from "@/constants/state-keys";
-import {
-  Eye,
-  EyeOff,
-  Plus,
-  Trash,
-  SlidersHorizontal,
-  Crosshair,
-  Video,
-} from "lucide-vue-next";
+import { Eye, EyeOff, Plus, Trash } from "lucide-vue-next";
 import type { Camerapreset } from "./CameraPanel.vue";
 import LazyCameraSpawnDialog from "./dialog/CameraSpawnDialog.vue";
 import Card from "./ui/card/Card.vue";
@@ -164,28 +156,21 @@ function submit() {
     />
     <div class="w-80 bg-card border-l border-border p-4 overflow-y-auto h-full">
       <div class="flex items-center justify-between mb-4">
-        <h2 class="text-lg font-semibold flex items-center gap-2 text-primary">
-          <SlidersHorizontal class="h-5 w-5" />
+        <h2 class="text-lg font-semibold flex items-center gap-2">
           Predictive Camera Placement
         </h2>
       </div>
 
       <div class="rounded-xl border border-border p-3 mb-4 bg-muted/20">
-        <p class="text-sm font-medium mb-1 flex items-center gap-2">
-          <Crosshair class="h-4 w-4" />
-          Target Area Selection Mode
-        </p>
+        <p class="text-sm font-medium mb-1">Target Area Selection Mode</p>
 
         <div class="mt-3 grid grid-cols-1 gap-2">
-          <Button
-            size="sm"
-            variant="outline"
-            class="w-full"
-            :class="
-              sceneStates?.selectionMode.value !== 'none'
-                ? 'bg-red-500! hover:bg-red-700! text-white border-red-600!'
-                : 'bg-blue-500! hover:bg-blue-700! text-white border-blue-600!'
-            "
+          <button
+            class="py-2 bg-blue-600 hover:bg-blue-700 rounded-lg font-medium transition text-white"
+            :class="{
+              'bg-red-600': sceneStates?.selectionMode.value !== 'none',
+              'hover:bg-red-700': sceneStates?.selectionMode.value !== 'none',
+            }"
             @click="toggleAreaSelection"
           >
             {{
@@ -193,8 +178,8 @@ function submit() {
                 ? "Start Selecting"
                 : "Stop Selecting"
             }}
-          </Button>
-          <p class="text-[11px] text-muted-foreground text-center mt-1">
+          </button>
+          <p class="text-[20px] text-muted-foreground text-center mt-1">
             <kbd
               class="px-1 py-0.5 rounded border bg-background font-sans text-xs"
               >Ctrl</kbd
@@ -203,33 +188,23 @@ function submit() {
           </p>
         </div>
 
-        <div class="grid grid-cols-2 gap-2 mt-2">
-          <Button
-            size="sm"
-            variant="outline"
-            class="w-full"
-            @click="clearAreas"
-          >
-            <Trash class="h-4 w-4 mr-1" /> Clear Areas
-          </Button>
-          <Button
-            size="sm"
-            variant="outline"
-            class="w-full"
-            @click="toggleAllAreasVisibility"
-          >
-            <EyeOff v-if="!isAllCoverageHidden" class="h-4 w-4 mr-1" />
-            <Eye v-else class="h-4 w-4 mr-1" />
-            {{ isAllCoverageHidden ? "Show All" : "Hide All" }}
-          </Button>
-        </div>
+        <button
+          class="w-full mt-2 py-2 bg-gray-300 dark:bg-zinc-800 hover:bg-gray-200 hover:dark:bg-zinc-700 rounded-lg font-medium transition"
+          @click="clearAreas"
+        >
+          Clear Selected Areas
+        </button>
+        <button
+          class="w-full mt-2 py-2 bg-gray-300 dark:bg-zinc-800 hover:bg-gray-200 hover:dark:bg-zinc-700 rounded-lg font-medium transition"
+          @click="toggleAllAreasVisibility"
+        >
+          {{ isAllCoverageHidden ? "Show All Areas" : "Hide All Areas" }}
+        </button>
       </div>
 
       <div class="rounded-xl border border-border p-3 mb-4 bg-muted/20">
         <div class="flex flex-row justify-between items-center">
-          <span class="block text-sm font-medium flex items-center gap-2">
-            <Video class="h-4 w-4" /> Cameras To Use
-          </span>
+          <span class="block text-sm font-medium">Cameras To Use</span>
           <Button
             size="sm"
             variant="outline"
@@ -401,7 +376,7 @@ function submit() {
           facesCount === 0 || cameraConfigs.length == 0 || selectedIds.size == 0
         "
         variant="default"
-        class="w-full text-white bg-emerald-400! hover:bg-emerald-500! disabled:bg-red-800 transition"
+        class="w-full text-white bg-emerald-400! hover:bg-emerald-500! disabled:bg-red-800 text-lg transition"
         @click="submit()"
       >
         {{
@@ -422,7 +397,6 @@ function submit() {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  gap: 0.75rem;
-  font-size: 0.875rem;
+  gap: calc(var(--spacing) * 6);
 }
 </style>
