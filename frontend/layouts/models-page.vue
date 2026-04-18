@@ -11,7 +11,6 @@ import {
   type PanelInfo,
   SCENE_STATES_READY_KEY,
 } from "~/constants/state-keys";
-
 import FailDialog from "~/components/dialog/FailDialog.vue";
 import { useFailDialog } from "~/composables/useFailDialog";
 
@@ -53,40 +52,45 @@ function closePanel() {
 }
 
 function togglePanel() {
-  if (currentPanel.value === "camera" && isPanelOpen.value) {
+  if (isPanelOpen.value) {
     closePanel();
-    return;
+  } else {
+    openPanel();
   }
+}
 
+function toggleCameraPanel() {
   currentPanel.value = "camera";
   openPanel();
 }
 
 function toggleAlgoPanel() {
   if (currentPanel.value === "algo" && isPanelOpen.value) {
-    closePanel();
-    return;
+    currentPanel.value = "camera";
+  } else {
+    currentPanel.value = "algo";
+    openPanel();
   }
-
-  currentPanel.value = "algo";
-  openPanel();
 }
 
 function toggleCalibration() {
-  isCalibrating.value = !isCalibrating.value;
+  if (currentPanel.value === "calibration" && isPanelOpen.value) {
+    currentPanel.value = "camera";
+  } else {
+    currentPanel.value = "calibration";
+    openPanel();
+  }
 }
-
 const calibrationGridScale = ref(1);
-const isCalibrating = ref(false);
 
 provide(PANEL_KEY, {
   currentPanel,
   togglePanel,
   isPanelOpen,
   toggleAlgoPanel,
+  toggleCameraPanel,
   camPanelInfo: { selectedCamId: camPanelSelectedCamId },
   calibrationPanelInfo: {
-    isCalibrating,
     toggleCalibration,
     calibrationGridScale,
   },
@@ -119,7 +123,7 @@ const workspace = computed(() => route.params.workspaceId as string);
           class="h-full transition-all duration-300 overflow-hidden"
           :style="{ width: isPanelOpen ? '20rem' : '0' }"
         >
-          <LazyCalibrationPanel v-if="isCalibrating" />
+          <LazyCalibrationPanel v-if="currentPanel == 'calibration'" />
           <LazyCameraPanel
             v-else-if="currentPanel === 'camera'"
             :workspace="workspace"

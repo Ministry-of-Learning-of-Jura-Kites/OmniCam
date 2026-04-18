@@ -26,6 +26,8 @@ import {
   Share2,
   Copy,
   HelpCircle,
+  Cpu,
+  Camera,
 } from "lucide-vue-next";
 
 import { exportCamerasToJson } from "@/utils/exportScene";
@@ -68,13 +70,14 @@ const candidateEntries = computed(() =>
 
 const {
   currentPanel,
+  toggleCameraPanel,
   toggleAlgoPanel,
   togglePanel,
   calibrationPanelInfo,
   isPanelOpen,
 } = inject(PANEL_KEY)!;
 
-const { toggleCalibration, isCalibrating } = calibrationPanelInfo;
+const { toggleCalibration } = calibrationPanelInfo;
 // Scenestates can be null to allow skeleton UI
 const sceneStates = inject(SCENE_STATES_KEY);
 
@@ -115,41 +118,6 @@ onMounted(() => {
 });
 
 async function saveModelToPublic() {
-  // Mocked data
-  // const respJson = {
-  //   noChanges: false,
-  //   conflicts: {
-  //     "c6a9ff22-0962-4d88-bbbd-2053d883f43b": {
-  //       angleX: {
-  //         base: 1,
-  //         main: 2,
-  //         workspace: 1,
-  //       },
-  //       angleY: {
-  //         base: 1,
-  //         main: 2,
-  //         workspace: 1,
-  //       },
-  //       angleZ: {
-  //         base: 1,
-  //         main: 2,
-  //         workspace: 1,
-  //       },
-  //       test: {
-  //         base: {
-  //           "123": 456,
-  //         },
-  //         main: {
-  //           "123": 456,
-  //         },
-  //         workspace: {
-  //           "123": 451,
-  //         },
-  //       },
-  //     },
-  //   },
-  // };
-
   const { resp } = await postMerge();
   if (!resp.ok) {
     console.error(resp);
@@ -331,11 +299,11 @@ function toggleFullscreen() {
         <div class="grid grid-cols-2 items-center gap-4">
           <div class="flex gap-1">
             <kbd class="px-2 py-1 bg-muted rounded border text-xs font-mono"
-              >Q</kbd
+              >Space Bar</kbd
             >
             /
             <kbd class="px-2 py-1 bg-muted rounded border text-xs font-mono"
-              >E</kbd
+              >X</kbd
             >
           </div>
           <span class="text-sm">Up / Down</span>
@@ -390,7 +358,7 @@ function toggleFullscreen() {
     <div
       class="h-16 border-b border-border px-6 flex items-center justify-between"
     >
-      <!-- Project Info -->
+      <!-- LEFT: Project info + save status -->
       <div id="left-menu" class="flex items-center gap-4">
         <Card class="px-3 py-1 bg-survey-surface">
           <div class="flex items-center gap-2">
@@ -417,20 +385,23 @@ function toggleFullscreen() {
           >
             <TooltipTrigger>
               <RefreshCcw
-                class="animate-spin"
+                class="animate-spin text-yellow-500"
                 style="animation-direction: reverse"
             /></TooltipTrigger>
             <TooltipContent> Saving </TooltipContent>
           </Tooltip>
           <Tooltip v-else>
-            <TooltipTrigger><CloudCheck /></TooltipTrigger>
+            <TooltipTrigger
+              ><CloudCheck class="text-green-500"
+            /></TooltipTrigger>
             <TooltipContent> Saved to Cloud </TooltipContent>
           </Tooltip>
         </div>
       </div>
 
-      <!-- Scene Controls -->
+      <!-- MIDDLE: Grouped controls -->
       <div id="middle-menu" class="flex items-center gap-2 shrink min-w-0">
+        <!-- View Group: always visible -->
         <ClientOnly>
           <Button
             size="sm"
@@ -439,7 +410,8 @@ function toggleFullscreen() {
             class="button-parent"
             :class="isCameraActive ? 'bg-red-500! hover:bg-red-700!' : ''"
             @click="sceneStates?.cameraManagement.switchToSpectator()"
-            ><LogOut class="button-icon" />
+          >
+            <LogOut class="button-icon" />
             <span class="ml-2 button-span-text">Exit Camera</span>
           </Button>
         </ClientOnly>
@@ -452,12 +424,94 @@ function toggleFullscreen() {
         >
           <ClientOnly>
             <Tooltip>
-              <TooltipTrigger> <Maximize class="button-icon" /></TooltipTrigger>
-              <TooltipContent> Fullscreen </TooltipContent>
+              <TooltipTrigger><Maximize class="button-icon" /></TooltipTrigger>
+              <TooltipContent>Fullscreen</TooltipContent>
             </Tooltip>
           </ClientOnly>
         </Button>
 
+        <Button
+          class="button-parent"
+          size="sm"
+          variant="outline"
+          :class="isMapOpen ? 'bg-green-400! hover:bg-green-500!' : ''"
+          @click="() => toggleMap()"
+        >
+          <Map class="button-icon" />
+          <span class="ml-2 button-span-text">Map</span>
+        </Button>
+
+        <!-- Tools Group: workspace == 'me' only -->
+        <template v-if="workspace == 'me'">
+          <div class="h-6 w-px bg-border mx-2" />
+
+          <Button
+            class="button-parent"
+            size="sm"
+            variant="outline"
+            :class="{ 'btn-camera-mode': currentPanel == 'camera' }"
+            @click="() => toggleCameraPanel()"
+          >
+            <Camera class="button-icon" />
+          </Button>
+
+          <Button
+            class="button-parent"
+            size="sm"
+            variant="outline"
+            :class="{ 'btn-calibrating': currentPanel == 'calibration' }"
+            @click="() => toggleCalibration()"
+          >
+            <RulerDimensionLine class="button-icon" />
+            <span
+              v-if="currentPanel != 'calibration'"
+              class="ml-2 button-span-text"
+              >Calibration</span
+            >
+            <span v-else class="ml-2 button-span-text">Calibrating...</span>
+          </Button>
+
+          <Button
+            class="button-parent"
+            size="sm"
+            variant="outline"
+            :class="{ 'btn-algo': currentPanel == 'algo' }"
+            @click="() => toggleAlgoPanel()"
+          >
+            <Cpu class="tb-icon" />
+            <span v-if="currentPanel != 'algo'" class="ml-2 button-span-text"
+              >Algorithm</span
+            >
+            <span v-else class="ml-2 button-span-text">Algo Running...</span>
+          </Button>
+        </template>
+
+        <!-- Optimization Group: candidate cameras pending review -->
+        <template v-if="candidateEntries.length != 0">
+          <div class="h-6 w-px bg-border mx-2" />
+
+          <Button
+            class="button-parent"
+            size="sm"
+            variant="outline"
+            @click="confirmOptimizedCams"
+          >
+            <Check class="button-icon" />
+            <span class="ml-2 button-span-text">Confirm</span>
+          </Button>
+
+          <Button
+            class="button-parent"
+            size="sm"
+            variant="outline"
+            @click="removeOptimizedCams"
+          >
+            <X class="button-icon" />
+            <span class="ml-2 button-span-text">Cancel</span>
+          </Button>
+        </template>
+
+        <!-- Workspace Actions Group -->
         <div class="h-6 w-px bg-border mx-2" />
 
         <Button
@@ -468,7 +522,7 @@ function toggleFullscreen() {
           @click="saveModelToPublic()"
         >
           <Save class="button-icon" />
-          <span class="ml-2 button-span-text"> Publish </span>
+          <span class="ml-2 button-span-text">Publish</span>
         </Button>
 
         <Button
@@ -478,11 +532,11 @@ function toggleFullscreen() {
           variant="outline"
           @click="
             goToModel();
-            isCalibrating = false;
+            toggleCameraPanel();
           "
         >
           <LogOut class="button-icon" />
-          <span class="button-span-text"> Exit Workspace </span>
+          <span class="ml-2 button-span-text">Exit Workspace</span>
         </Button>
 
         <template v-if="workspace == null">
@@ -494,7 +548,7 @@ function toggleFullscreen() {
             @click="goToMyWorkspace()"
           >
             <PackageOpen class="button-icon" />
-            <span class="ml-2 button-span-text"> Open Workspace </span>
+            <span class="ml-2 button-span-text">Open Workspace</span>
           </Button>
           <Button
             v-else
@@ -504,83 +558,40 @@ function toggleFullscreen() {
             @click="createWorkspace()"
           >
             <PackageOpen class="button-icon" />
-            <span class="ml-2 button-span-text"> Create Workspace </span>
+            <span class="ml-2 button-span-text">Create Workspace</span>
           </Button>
         </template>
-
-        <Button
-          v-if="workspace == 'me'"
-          class="button-parent"
-          size="sm"
-          variant="outline"
-          :class="{ 'btn-calibrating': isCalibrating }"
-          @click="() => toggleCalibration()"
-        >
-          <RulerDimensionLine class="button-icon" />
-          <span v-if="!isCalibrating" class="ml-2 button-span-text">
-            Calibration</span
-          >
-          <span v-else class="ml-2 button-span-text"> Calibrating...</span>
-        </Button>
-
-        <Button
-          v-if="workspace != null"
-          class="button-parent"
-          size="sm"
-          variant="outline"
-          @click="() => openShareDialog(true)"
-        >
-          <Share2 class="button-icon" />
-          <span class="ml-2 button-span-text">Share</span>
-        </Button>
-
-        <Button
-          class="button-parent"
-          size="sm"
-          variant="outline"
-          :class="isMapOpen ? 'bg-green-400! hover:bg-green-500!' : ''"
-          @click="() => toggleMap()"
-        >
-          <Map class="h-4 w-4 button-icon" />
-          <span class="ml-2 button-span-text">Map</span>
-        </Button>
-        <Button
-          v-if="workspace == 'me'"
-          class="button-parent"
-          size="sm"
-          variant="outline"
-          @click="() => toggleAlgoPanel()"
-        >
-          <IndentIncrease v-if="currentPanel == 'algo'" class="button-icon" />
-          <IndentDecrease v-else class="button-icon" />
-          <span class="ml-2 button-span-text"> Algo </span>
-        </Button>
-
-        <Button
-          v-if="candidateEntries.length != 0"
-          @click="confirmOptimizedCams"
-        >
-          <Check /> Confirm
-        </Button>
-        <Button
-          v-if="candidateEntries.length != 0"
-          @click="removeOptimizedCams"
-        >
-          <X /> Cancel
-        </Button>
       </div>
 
+      <!-- RIGHT: System controls -->
       <div
         id="right-menu"
         class="flex flex-row justify-center items-center gap-2"
       >
-        <Button size="sm" variant="outline" @click="() => togglePanel()">
-          <IndentIncrease
-            v-if="isPanelOpen && currentPanel === 'camera'"
-            class="button-icon"
-          />
-          <IndentDecrease v-else class="button-icon" />
-        </Button>
+        <Tooltip v-if="workspace != null">
+          <TooltipTrigger as-child>
+            <Button
+              class="button-parent"
+              size="sm"
+              variant="outline"
+              @click="() => openShareDialog(true)"
+            >
+              <Share2 class="tb-icon" />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>Share workspace link</TooltipContent>
+        </Tooltip>
+
+        <Tooltip>
+          <TooltipTrigger as-child>
+            <Button size="sm" variant="outline" @click="() => togglePanel()">
+              <IndentIncrease v-if="isPanelOpen" class="button-icon" />
+              <IndentDecrease v-else class="button-icon" />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>Toggle camera panel</TooltipContent>
+        </Tooltip>
+
         <DropdownMenu>
           <DropdownMenuTrigger as-child>
             <Button size="sm" variant="outline">
@@ -609,14 +620,19 @@ function toggleFullscreen() {
                 Setting
               </DropdownMenuItem>
             </DropdownMenuGroup>
-            <!-- <DropdownMenuSeparator /> -->
+            <DropdownMenuSeparator v-if="workspace == 'me'" />
             <DropdownMenuGroup>
               <DropdownMenuItem
                 v-if="workspace == 'me'"
-                @click="deleteWorkspace()"
+                @click="
+                  deleteWorkspace();
+                  toggleCameraPanel();
+                "
               >
-                <Trash2 class="button-icon" />
-                <span class="button-span-text"> Delete Workspace </span>
+                <Trash2 class="button-icon text-red-500" />
+                <span class="button-span-text text-red-500">
+                  Delete Workspace
+                </span>
               </DropdownMenuItem>
             </DropdownMenuGroup>
           </DropdownMenuContent>
@@ -628,19 +644,33 @@ function toggleFullscreen() {
           @update:open="isSettingDialogOpen = $event"
         />
 
-        <Button size="sm" variant="outline" @click="lightDarkTheme.toggleTheme">
-          <Moon
-            v-if="lightDarkTheme.theme.value == 'light'"
-            class="button-icon"
-          />
-          <Sun v-else class="button-icon" />
-        </Button>
+        <Tooltip>
+          <TooltipTrigger as-child>
+            <Button
+              size="sm"
+              variant="outline"
+              @click="lightDarkTheme.toggleTheme"
+            >
+              <Sun
+                v-if="lightDarkTheme.theme.value == 'light'"
+                class="button-icon"
+              />
+              <Moon v-else class="button-icon" />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>Toggle theme</TooltipContent>
+        </Tooltip>
 
         <!-- User Actions -->
         <div class="flex items-center gap-2">
-          <Button size="sm" variant="outline">
-            <User class="button-icon" />
-          </Button>
+          <Tooltip>
+            <TooltipTrigger as-child>
+              <Button size="sm" variant="outline">
+                <User class="button-icon" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>{{ user?.username ?? "Account" }}</TooltipContent>
+          </Tooltip>
         </div>
       </div>
     </div>
@@ -673,6 +703,11 @@ Button {
   transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
   transition-duration: 150ms;
 }
+.btn-camera-mode {
+  background-color: #00c200 !important; /* blue-500 */
+  color: white !important;
+  border-color: #019701 !important;
+}
 .btn-calibrating {
   background-color: #ef4444 !important; /* สีแดง (Tailwind red-500) */
   color: white !important;
@@ -680,6 +715,15 @@ Button {
 }
 .btn-calibrating:hover {
   background-color: #dc2626 !important;
+  opacity: 0.9;
+}
+.btn-algo {
+  background-color: #3b82f6 !important; /* blue-500 */
+  color: white !important;
+  border-color: #2563eb !important;
+}
+.btn-algo:hover {
+  background-color: #2563eb !important;
   opacity: 0.9;
 }
 </style>
