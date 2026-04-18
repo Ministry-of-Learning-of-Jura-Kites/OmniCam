@@ -77,10 +77,7 @@ export function useProject() {
 
   async function updateProject(hexId: string, body: ProjectUpdateRequest) {
     const headers = useRequestHeaders(["cookie"]);
-    const url = new URL(
-      uuidToBase64Url(hexId),
-      getProjectBaseUrl(import.meta.server),
-    );
+    const url = new URL(uuidToBase64Url(hexId), getProjectBaseUrl(false));
     return await $fetch<{ data: Project }>(url.href, {
       method: "PUT",
       body,

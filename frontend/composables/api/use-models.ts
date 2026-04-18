@@ -55,7 +55,7 @@ export function getModelBaseUrl(id: string, allowServerSide: boolean) {
 export function useModels(projectId: string) {
   async function listModels(page = 1, pageSize = 4) {
     const headers = useRequestHeaders(["cookie"]);
-    const base = getModelBaseUrl(projectId, import.meta.server);
+    const base = getModelBaseUrl(projectId, true);
     return await $fetch<ModelGetResponse>(base.href, {
       method: "GET",
       query: {
