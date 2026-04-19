@@ -127,11 +127,20 @@ async function submitUpdateProject(hexId: string) {
       name: projectForm.name,
       description: projectForm.description,
     };
+
     const { data } = await projectApi.updateProject(hexId, body);
-    const { id: pid, ...rest } = data;
-    projects.value[pid] = rest;
+    const { id: pid } = data;
+
+    projects.value[pid] = {
+      ...projects.value[pid],
+      ...data,
+      imagePath: projects.value[pid]?.imagePath,
+    };
+
     successMessage.value = `Project "${data.name}" updated successfully.`;
     isSuccessDialogOpen.value = true;
+
+    await refresh();
   } catch (err) {
     console.error("Error updating project:", err);
   }
@@ -139,16 +148,26 @@ async function submitUpdateProject(hexId: string) {
 
 async function updateProjectImage(id: string, file: File) {
   if (!file) return;
+
   const formData = new FormData();
   formData.append("image", file);
+
   try {
-    const { imagePath } = await projectApi.updateProjectImage(id, formData);
+    const { imagePath, fileExtension } = await projectApi.updateProjectImage(
+      id,
+      formData,
+    );
+
     if (projects.value[id]) {
+      const imagePathWithExt = `${imagePath}${fileExtension}`;
+      const newImageUrl = getUrlForProjectImage(id, imagePathWithExt).href;
+
       projects.value[id] = {
         ...projects.value[id],
-        imagePath: `${imagePath}?t=${Date.now()}`,
+        imagePath: newImageUrl,
       };
     }
+
     successMessage.value = `Image for project updated successfully.`;
     isSuccessDialogOpen.value = true;
   } catch (err) {
