@@ -86,17 +86,17 @@ watch(mesh, (mesh) => {
       <TresMesh :geometry="cameraLensGeo">
         <TresMeshBasicMaterial :color="'black'" />
       </TresMesh>
+      <CameraFrustum
+        :id="camId"
+        :fov="cam!.fov"
+        :aspect="safeGetAspectRatio(cam.widthRes, cam.heightRes)"
+        :length="cam!.frustumLength"
+        :color="cam!.frustumColor"
+        :is-hiding="
+          cam!.isHidingFrustum || camId == sceneStates!.currentCamId.value
+        "
+      />
     </TresObject3D>
-    <CameraFrustum
-      :id="camId"
-      :fov="cam!.fov"
-      :aspect="safeGetAspectRatio(cam.widthRes, cam.heightRes)"
-      :length="cam!.frustumLength"
-      :color="cam!.frustumColor"
-      :is-hiding="
-        cam!.isHidingFrustum || camId == sceneStates!.currentCamId.value
-      "
-    />
     <template v-if="cam != null">
       <MovableArrow
         v-model="cam"
