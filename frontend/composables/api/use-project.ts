@@ -105,11 +105,15 @@ export function useProject() {
       `${uuidToBase64Url(hexId)}/image`,
       addTrailingSlash(getProjectBaseUrl(false)),
     );
-    return await $fetch<{ imagePath: string }>(url.href, {
-      method: "PUT",
-      body,
-      credentials: "include",
-    });
+
+    return await $fetch<{ imagePath: string; fileExtension: string }>(
+      url.href,
+      {
+        method: "PUT",
+        body,
+        credentials: "include",
+      },
+    );
   }
 
   async function getProject(projectId: string) {

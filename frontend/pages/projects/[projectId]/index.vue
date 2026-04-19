@@ -324,22 +324,15 @@ function handleCreateFormSubmit() {
 
 async function handleUpdateImage(file: File | undefined, modelId: string) {
   if (!file || !modelId) return;
+
   const formData = new FormData();
   formData.append("image", file);
 
   try {
-    const res = await modelApi.updateModelImage(modelId, formData);
+    const encodedModelId = uuidToBase64Url(modelId);
+    await modelApi.updateModelImage(encodedModelId, formData);
 
-    const updatedImagePath = res.imagePath;
-    const timestamp = new Date().getTime();
-    await new Promise((resolve) => setTimeout(resolve, 500));
-    // Ensure the model exists and then create a new object
-    if (models.value[modelId]) {
-      models.value[modelId] = {
-        ...models.value[modelId],
-        imagePath: `${updatedImagePath}?t=${timestamp}`,
-      };
-    }
+    await refresh();
 
     successDialog.value = true;
     successMessage.value = `Image updated successfully for model ${modelId}`;
