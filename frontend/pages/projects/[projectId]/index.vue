@@ -26,8 +26,6 @@ export type ModelForm = {
 };
 export type ModelWithoutId = Omit<Model, "modelId">;
 
-const config = useRuntimeConfig();
-
 const route = useRoute();
 const { user, fetchUser } = useAuth();
 await fetchUser();
@@ -342,10 +340,7 @@ async function handleUpdateImage(file: File | undefined, modelId: string) {
 }
 
 function goToProjects() {
-  navigateTo(
-    `http://${config.public.nuxtHost}:${config.public.nuxtPort}/projects`,
-    { external: true },
-  );
+  navigateTo(`/projects`, { external: false });
 }
 
 fetchMembers();

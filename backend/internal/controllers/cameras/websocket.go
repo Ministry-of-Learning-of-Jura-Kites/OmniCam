@@ -265,7 +265,7 @@ func (t *UpdateEventRoute) handleOptimizeEvent(projectId uuid.UUID, modelId uuid
 			"name":   c.GetName(),
 			"vfov":   c.GetFov(),
 			"pixels": []float64{c.GetWidthRes(), c.GetHeightRes()}, // Maps to Tuple[float, float]
-			"amount": 1,                                            // 'amount' is required by your Pydantic model
+			"amount": c.GetAmount(),
 		})
 	}
 
@@ -457,7 +457,9 @@ func (t *UpdateEventRoute) getAutosave(c *gin.Context) {
 				t.handleAutosaveEvent(e, &currentVersion, casted.Autosave)
 				t.Nc.Publish(e.Subject, rawMsg)
 			case *protobufs.WorkspaceEventRequest_Optimize:
-				t.handleOptimizeEvent(projectId, modelId, conn, casted.Optimize)
+				go func() {
+					t.handleOptimizeEvent(projectId, modelId, conn, casted.Optimize)
+				}()
 			}
 		}
 	}()
