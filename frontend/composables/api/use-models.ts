@@ -1,3 +1,4 @@
+import { uuidToBase64Url } from "~/lib/uuid";
 import { getBaseProjectImageUrl, getProjectBaseUrl } from "./use-project";
 
 export interface Model {
@@ -38,9 +39,10 @@ export function getUrlForModelImage(
   modelId: string,
   imageExt: string,
 ) {
-  const base = getBaseProjectImageUrl(projectId);
-  const ext = imageExt?.slice(1, imageExt?.length);
-  const url = new URL(`models/${modelId}/file/${ext}`, base);
+  const ext = imageExt?.slice(1);
+  const encodedModelId = uuidToBase64Url(modelId);
+  const base = getBaseProjectImageUrl(projectId).href;
+  const url = new URL(`${base}/models/${encodedModelId}/file/${ext}`);
   url.searchParams.append("t", String(Date.now()));
   return url;
 }

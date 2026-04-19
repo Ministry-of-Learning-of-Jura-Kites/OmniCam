@@ -30,7 +30,7 @@ const config = useRuntimeConfig();
 
 const route = useRoute();
 const { user, fetchUser } = useAuth();
-fetchUser();
+await fetchUser();
 
 const projectId = route.params.projectId as string;
 
@@ -149,57 +149,51 @@ const asyncKey = computed(
 
 const { data: modelsRaw, refresh } = await useAsyncData(
   asyncKey.value,
-  () => modelApi.listModels(page.value, pageSize.value),
+  async () => {
+    const resp = await modelApi.listModels(page.value, pageSize.value);
+    return resp;
+  },
   {
     // server: false, // Disable server-side fetching to ensure it only runs on the client,
     watch: [page, pageSize],
-    default: () => ({ record: {} as Record<string, ModelWithoutId>, count: 0 }),
-    transform: (respData) => {
-      console.log("transform called with:", JSON.stringify(respData));
-      if (!respData?.data) return { record: {}, count: 0 };
-      const record = respData.data.reduce<Record<string, ModelWithoutId>>(
-        (acc, model) => {
-          const { modelId, imagePath, imageExtension, ...rest } = model;
-          let urlHref: string | undefined = undefined;
-          if (imageExtension != null && imagePath) {
-            urlHref = getUrlForModelImage(
-              projectId,
-              modelId,
-              imageExtension,
-            ).href;
-          }
-          acc[modelId] = { ...rest, imagePath: urlHref };
-          return acc;
-        },
-        {},
-      );
-      return { record, count: respData.count };
-    },
+    default: () => ({ data: [], count: 0 }),
   },
 );
 
-// console.log("modelsRaw", modelsRaw.value);
-const models = computed(() => modelsRaw.value?.record ?? {});
-const totalData = computed(() => modelsRaw.value?.count ?? 0);
+const totalData = computed<number>(() => modelsRaw.value?.count ?? 0);
+
+const models = computed<Record<string, ModelWithoutId>>(() => {
+  const rows = modelsRaw.value?.data ?? [];
+
+  return rows.reduce<Record<string, ModelWithoutId>>((acc, model) => {
+    const { modelId, imagePath, imageExtension, ...rest } = model;
+
+    let urlHref: string | undefined = undefined;
+    if (imageExtension && imagePath) {
+      urlHref = getUrlForModelImage(projectId, modelId, imageExtension).href;
+    }
+
+    acc[modelId] = {
+      ...rest,
+      imagePath: urlHref,
+    };
+
+    return acc;
+  }, {});
+});
 
 async function createModel() {
   const formData = new FormData();
   formData.append("name", modelForm.name);
   formData.append("description", modelForm.description);
-  if (modelForm.file) {
-    formData.append("file", modelForm.file);
-  }
-
-  if (modelForm.image) {
-    formData.append("image", modelForm.image);
-  }
+  if (modelForm.file) formData.append("file", modelForm.file);
+  if (modelForm.image) formData.append("image", modelForm.image);
 
   const response = await modelApi.postCreateModel(formData);
+  await refresh();
 
   successDialog.value = true;
   successMessage.value = `You have successfully created ${response.data.name}`;
-
-  await refresh();
 }
 
 async function updateModel(hexId: string) {
@@ -209,19 +203,7 @@ async function updateModel(hexId: string) {
       name: modelForm.name,
       description: modelForm.description,
     });
-    models.value = {
-      ...models.value,
-      [hexId]: {
-        name: response.data.name,
-        description: response.data.description,
-        imagePath: response.data.imagePath,
-        version: response.data.version,
-        createdAt: response.data.createdAt,
-        updatedAt: response.data.updatedAt,
-        projectId: response.data.projectId,
-      },
-    };
-    console.log("models : ", models.value);
+    await refresh();
     successDialog.value = true;
     successMessage.value = `You have successfully update ${response.data.name}`;
   } catch (err) {
@@ -233,14 +215,9 @@ async function deleteRow(id: string) {
   try {
     const modelId = uuidToBase64Url(id);
     await modelApi.deleteModel(modelId);
-
-    models.value = Object.fromEntries(
-      Object.entries(models.value).filter(([key]) => key !== id),
-    );
+    await refresh();
     successDialog.value = true;
     successMessage.value = `You have successfully delete ${id}`;
-
-    await refresh();
   } catch (err) {
     console.error("Delete failed", err);
   }
@@ -347,22 +324,15 @@ function handleCreateFormSubmit() {
 
 async function handleUpdateImage(file: File | undefined, modelId: string) {
   if (!file || !modelId) return;
+
   const formData = new FormData();
   formData.append("image", file);
 
   try {
-    const res = await modelApi.updateModelImage(modelId, formData);
+    const encodedModelId = uuidToBase64Url(modelId);
+    await modelApi.updateModelImage(encodedModelId, formData);
 
-    const updatedImagePath = res.imagePath;
-    const timestamp = new Date().getTime();
-    await new Promise((resolve) => setTimeout(resolve, 500));
-    // Ensure the model exists and then create a new object
-    if (models.value[modelId]) {
-      models.value[modelId] = {
-        ...models.value[modelId],
-        imagePath: `${updatedImagePath}?t=${timestamp}`,
-      };
-    }
+    await refresh();
 
     successDialog.value = true;
     successMessage.value = `Image updated successfully for model ${modelId}`;

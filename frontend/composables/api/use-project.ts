@@ -41,9 +41,9 @@ export function getUrlForProjectImage(id: string, imagePath: string) {
   const extMatch = imagePath.match(/\.(\w+)$/);
   const ext = extMatch ? extMatch[1] : "png";
   const base = getApiBaseUrlWithProtocol("http", config, false);
-  const url = new URL(`assets/projects/${id}/file/${ext}`, base);
-  const now = Date.now();
-  url.searchParams.append("t", String(now));
+  const encodedId = uuidToBase64Url(id);
+  const url = new URL(`assets/projects/${encodedId}/file/${ext}`, base);
+  url.searchParams.append("t", String(Date.now()));
   return url;
 }
 
@@ -77,7 +77,10 @@ export function useProject() {
 
   async function updateProject(hexId: string, body: ProjectUpdateRequest) {
     const headers = useRequestHeaders(["cookie"]);
-    const url = new URL(uuidToBase64Url(hexId), getProjectBaseUrl(false));
+    const url = new URL(
+      uuidToBase64Url(hexId),
+      addTrailingSlash(getProjectBaseUrl(false)),
+    );
     return await $fetch<{ data: Project }>(url.href, {
       method: "PUT",
       body,
@@ -87,7 +90,10 @@ export function useProject() {
   }
 
   async function deleteProject(hexId: string) {
-    const url = new URL(uuidToBase64Url(hexId), getProjectBaseUrl(false));
+    const url = new URL(
+      uuidToBase64Url(hexId),
+      addTrailingSlash(getProjectBaseUrl(false)),
+    );
     return await $fetch<{ data: Project }>(url.href, {
       method: "DELETE",
       credentials: "include",
@@ -99,19 +105,26 @@ export function useProject() {
       `${uuidToBase64Url(hexId)}/image`,
       addTrailingSlash(getProjectBaseUrl(false)),
     );
-    return await $fetch<{ imagePath: string }>(url.href, {
-      method: "PUT",
-      body,
-      credentials: "include",
-    });
+
+    return await $fetch<{ imagePath: string; fileExtension: string }>(
+      url.href,
+      {
+        method: "PUT",
+        body,
+        credentials: "include",
+      },
+    );
   }
 
   async function getProject(projectId: string) {
-    const base = getProjectBaseUrl(false);
+    const base = getProjectBaseUrl(true);
+    const headers = useRequestHeaders(["cookie"]);
+
     return await $fetch<{ data: Project }>(
       new URL(projectId, addTrailingSlash(base.href)).href,
       {
         method: "GET",
+        headers,
         credentials: "include",
       },
     );
