@@ -48,15 +48,17 @@ export function useAuth() {
 
   const user = useState<User | null>("user", () => null);
 
-  const { data, execute: fetchUser } = useAsyncData("auth-me", getMe, {
-    immediate: false,
-    transform: (resp) => resp.data,
-    lazy: true,
-  });
-
-  watch(data, (data) => {
-    user.value = data ?? null;
-  });
+  async function fetchUser() {
+    try {
+      const resp = await getMe();
+      user.value = resp.data;
+      return resp.data;
+    } catch (err) {
+      console.error("fetch /me error", err);
+      user.value = null;
+      return null;
+    }
+  }
 
   async function postLogin(loginForm: LoginRequest) {
     const base = getApiBaseUrlWithProtocol("http", config, false);
@@ -65,6 +67,7 @@ export function useAuth() {
       body: loginForm,
       credentials: "include",
     });
+    await fetchUser();
   }
 
   async function postRegister(registerForm: RegisterRequest) {
