@@ -10,13 +10,17 @@ import {
   PANEL_KEY as PANEL_KEY,
   type PanelInfo,
   SCENE_STATES_READY_KEY,
+  SCENE_STATES_KEY,
 } from "~/constants/state-keys";
-
 import FailDialog from "~/components/dialog/FailDialog.vue";
 import { useFailDialog } from "~/composables/useFailDialog";
+import type { SceneStatesWithHelper } from "~/types/scene-states";
 
 const sceneStatesReady = ref(false);
 provide(SCENE_STATES_READY_KEY, sceneStatesReady);
+
+const sceneStates = shallowRef<SceneStatesWithHelper | undefined>(undefined);
+provide(SCENE_STATES_KEY, sceneStates);
 
 const { open, message } = useFailDialog();
 const route = useRoute();
@@ -53,46 +57,59 @@ function closePanel() {
 }
 
 function togglePanel() {
-  if (currentPanel.value === "camera" && isPanelOpen.value) {
+  if (isPanelOpen.value) {
     closePanel();
-    return;
+  } else {
+    openPanel();
   }
+}
 
+function toggleCameraPanel() {
   currentPanel.value = "camera";
   openPanel();
 }
 
 function toggleAlgoPanel() {
   if (currentPanel.value === "algo" && isPanelOpen.value) {
-    closePanel();
-    return;
+    currentPanel.value = "camera";
+  } else {
+    currentPanel.value = "algo";
+    openPanel();
   }
-
-  currentPanel.value = "algo";
-  openPanel();
 }
 
 function toggleCalibration() {
-  isCalibrating.value = !isCalibrating.value;
+  if (currentPanel.value === "calibration" && isPanelOpen.value) {
+    currentPanel.value = "camera";
+  } else {
+    currentPanel.value = "calibration";
+    openPanel();
+  }
 }
-
 const calibrationGridScale = ref(1);
-const isCalibrating = ref(false);
 
 provide(PANEL_KEY, {
   currentPanel,
   togglePanel,
   isPanelOpen,
   toggleAlgoPanel,
+  toggleCameraPanel,
   camPanelInfo: { selectedCamId: camPanelSelectedCamId },
   calibrationPanelInfo: {
-    isCalibrating,
     toggleCalibration,
     calibrationGridScale,
   },
 });
 
 const workspace = computed(() => route.params.workspaceId as string);
+
+const isInCameraView = computed(() => {
+  return sceneStates?.value?.currentCamId.value !== null;
+});
+
+const showPanelWarning = computed(() => {
+  return isInCameraView.value && currentPanel.value !== "camera";
+});
 </script>
 
 <template>
@@ -119,7 +136,36 @@ const workspace = computed(() => route.params.workspaceId as string);
           class="h-full transition-all duration-300 overflow-hidden"
           :style="{ width: isPanelOpen ? '20rem' : '0' }"
         >
-          <LazyCalibrationPanel v-if="isCalibrating" />
+          <div
+            v-if="showPanelWarning"
+            class="w-full bg-red-500/10 border-b border-red-500/20 px-4 py-2 flex items-center justify-between group"
+          >
+            <div class="flex items-center gap-2">
+              <div class="relative flex h-2 w-2">
+                <span
+                  class="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"
+                ></span>
+                <span
+                  class="relative inline-flex rounded-full h-2 w-2 bg-red-600"
+                ></span>
+              </div>
+
+              <span
+                class="text-[10px] font-bold uppercase tracking-[0.2em] text-red-600 dark:text-red-500"
+              >
+                Active Camera View
+              </span>
+            </div>
+
+            <button
+              class="text-[9px] font-black uppercase tracking-widest text-red-600 dark:text-red-500 hover:text-red-700 underline underline-offset-4 decoration-red-500/30 hover:decoration-red-500 transition-all"
+              @click="toggleCameraPanel"
+            >
+              Return to Camera
+            </button>
+          </div>
+
+          <LazyCalibrationPanel v-if="currentPanel == 'calibration'" />
           <LazyCameraPanel
             v-else-if="currentPanel === 'camera'"
             :workspace="workspace"

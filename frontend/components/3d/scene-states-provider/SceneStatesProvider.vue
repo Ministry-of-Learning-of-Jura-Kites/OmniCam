@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { SceneStates, SceneStatesWithHelper } from "~/types/scene-states";
+import type { SceneStates } from "~/types/scene-states";
 import {
   createBaseSceneStates,
   createSceneStatesWithHelper,
@@ -47,9 +47,8 @@ const { livestreamWs } = useLivestreamWs(
   runtimeConfig,
 );
 
-const sceneStates = shallowRef<SceneStatesWithHelper | undefined>(undefined);
 const sceneStatesReady = inject(SCENE_STATES_READY_KEY);
-provide(SCENE_STATES_KEY, sceneStates);
+const sceneStates = inject(SCENE_STATES_KEY)!;
 
 await fetchModel();
 

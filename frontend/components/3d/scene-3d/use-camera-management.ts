@@ -2,7 +2,7 @@ import { v4 as uuidv4 } from "uuid";
 import { gsap } from "gsap";
 import type { SceneStates } from "~/types/scene-states";
 import { Vector3, Euler } from "three";
-import { cameraDefault } from "~/types/camera";
+import { cameraDefault, type ICamera } from "~/types/camera";
 import { randomVividColor } from "~/utils/randomVividColor";
 export function useCameraManagement(sceneStates: SceneStates) {
   function spawnCameraHere() {
@@ -32,6 +32,15 @@ export function useCameraManagement(sceneStates: SceneStates) {
       rotation: sceneStates.spectatorCameraRotation.clone(),
       fov: sceneStates.spectatorCameraFov.value,
     };
+    await interpolateTransform(cam);
+    sceneStates.currentCamId.value = camId;
+    sceneStates.transformingInfo.value = undefined;
+  }
+
+  async function interpolateTransform(cam: ICamera) {
+    if (sceneStates.transformingInfo.value == undefined) {
+      return;
+    }
     const tasks = [
       gsap.to(sceneStates.transformingInfo.value.position, {
         x: cam.position.x,
@@ -46,46 +55,21 @@ export function useCameraManagement(sceneStates: SceneStates) {
         y: cam.rotation.y,
         z: cam.rotation.z,
       }),
-      // gsap.to(sceneStates.distortionStrength, {
-      //   value: calcFisheyeStrength(
-      //     "atan",
-      //     0.5,
-      //     sceneStates.transformingInfo.value.fov,
-      //   ),
-      // }),
     ];
     await Promise.all(tasks);
-    sceneStates.currentCamId.value = camId;
-    sceneStates.transformingInfo.value = undefined;
   }
 
   async function switchToSpectator() {
-    const camId = sceneStates.currentCamId.value;
-    const cam = sceneStates.cameras[camId!]!;
+    // Use currentCam to support teleporting from spectator to sp
+    const cam = sceneStates.currentCam.value!;
     sceneStates.transformingInfo.value = {
       position: cam.position.clone(),
       rotation: cam.rotation.clone(),
       fov: cam?.fov,
     };
-    const tasks = [
-      gsap.to(sceneStates.transformingInfo.value.position, {
-        x: sceneStates.spectatorCameraPosition.x,
-        y: sceneStates.spectatorCameraPosition.y,
-        z: sceneStates.spectatorCameraPosition.z,
-      }),
-      gsap.to(sceneStates.transformingInfo.value!, {
-        fov: sceneStates.spectatorCameraFov.value,
-      }),
-      gsap.to(sceneStates.transformingInfo.value.rotation!, {
-        x: sceneStates.spectatorCameraRotation.x,
-        y: sceneStates.spectatorCameraRotation.y,
-        z: sceneStates.spectatorCameraRotation.z,
-      }),
-      // gsap.to(sceneStates.distortionStrength, {
-      //   value: 0,
-      // }),
-    ];
-    await Promise.all(tasks);
+
+    await interpolateTransform(sceneStates.spectatorCam);
+
     sceneStates.currentCamId.value = null;
     sceneStates.transformingInfo.value = undefined;
   }
@@ -93,6 +77,7 @@ export function useCameraManagement(sceneStates: SceneStates) {
     spawnCameraHere,
     switchToCam,
     getCams,
+    interpolateTransform,
     switchToSpectator,
   };
 }
