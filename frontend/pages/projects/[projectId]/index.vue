@@ -28,7 +28,7 @@ export type ModelWithoutId = Omit<Model, "modelId">;
 
 const route = useRoute();
 const { user, fetchUser } = useAuth();
-fetchUser();
+await fetchUser();
 
 const projectId = route.params.projectId as string;
 
@@ -107,61 +107,51 @@ watch(project, (newVal) => {
 });
 
 const { data: modelsRaw, refresh } = await useAsyncData(
-  `models-list-${projectId}-${page.value}`,
-  () => modelApi.listModels(page.value, pageSize.value),
+  `models-list-${projectId}`,
+  async () => {
+    const resp = await modelApi.listModels(page.value, pageSize.value);
+    return resp;
+  },
   {
     watch: [page, pageSize],
-
-    transform: (respData) => {
-      if (!respData?.data) return { record: {}, count: 0 };
-
-      const record = respData.data.reduce<Record<string, ModelWithoutId>>(
-        (acc, model) => {
-          const { modelId, imagePath, imageExtension, ...rest } = model;
-
-          let urlHref: string | undefined = undefined;
-          if (imageExtension != null && imagePath) {
-            urlHref = getUrlForModelImage(
-              projectId,
-              modelId,
-              imageExtension,
-            ).href;
-          }
-
-          acc[modelId] = {
-            ...rest,
-            imagePath: urlHref,
-          };
-          return acc;
-        },
-        {},
-      );
-      return { record, count: respData.count };
-    },
+    default: () => ({ data: [], count: 0 }),
   },
 );
 
-const models = ref(modelsRaw.value!.record);
-const totalData = ref(modelsRaw.value!.count);
+const totalData = computed<number>(() => modelsRaw.value?.count ?? 0);
+
+const models = computed<Record<string, ModelWithoutId>>(() => {
+  const rows = modelsRaw.value?.data ?? [];
+
+  return rows.reduce<Record<string, ModelWithoutId>>((acc, model) => {
+    const { modelId, imagePath, imageExtension, ...rest } = model;
+
+    let urlHref: string | undefined = undefined;
+    if (imageExtension && imagePath) {
+      urlHref = getUrlForModelImage(projectId, modelId, imageExtension).href;
+    }
+
+    acc[modelId] = {
+      ...rest,
+      imagePath: urlHref,
+    };
+
+    return acc;
+  }, {});
+});
 
 async function createModel() {
   const formData = new FormData();
   formData.append("name", modelForm.name);
   formData.append("description", modelForm.description);
-  if (modelForm.file) {
-    formData.append("file", modelForm.file);
-  }
-
-  if (modelForm.image) {
-    formData.append("image", modelForm.image);
-  }
+  if (modelForm.file) formData.append("file", modelForm.file);
+  if (modelForm.image) formData.append("image", modelForm.image);
 
   const response = await modelApi.postCreateModel(formData);
+  await refresh();
 
   successDialog.value = true;
   successMessage.value = `You have successfully created ${response.data.name}`;
-
-  refresh();
 }
 
 async function updateModel(hexId: string) {
@@ -171,19 +161,7 @@ async function updateModel(hexId: string) {
       name: modelForm.name,
       description: modelForm.description,
     });
-    models.value = {
-      ...models.value,
-      [hexId]: {
-        name: response.data.name,
-        description: response.data.description,
-        imagePath: response.data.imagePath,
-        version: response.data.version,
-        createdAt: response.data.createdAt,
-        updatedAt: response.data.updatedAt,
-        projectId: response.data.projectId,
-      },
-    };
-    console.log("models : ", models.value);
+    await refresh();
     successDialog.value = true;
     successMessage.value = `You have successfully update ${response.data.name}`;
   } catch (err) {
@@ -195,14 +173,9 @@ async function deleteRow(id: string) {
   try {
     const modelId = uuidToBase64Url(id);
     await modelApi.deleteModel(modelId);
-
-    models.value = Object.fromEntries(
-      Object.entries(models.value).filter(([key]) => key !== id),
-    );
+    await refresh();
     successDialog.value = true;
     successMessage.value = `You have successfully delete ${id}`;
-
-    await refresh();
   } catch (err) {
     console.error("Delete failed", err);
   }
