@@ -7,6 +7,7 @@ import { SCENE_STATES_KEY } from "~/constants/state-keys";
 const props = defineProps<{
   targetPos: Vector3;
   label?: string;
+  show: boolean;
 }>();
 
 const sceneStates = inject(SCENE_STATES_KEY)!;
@@ -32,12 +33,15 @@ watchDebounced(
     sceneStates.value!.currentCam.value.rotation,
   ],
   () => {
+    if (!props.show) {
+      return;
+    }
     const pos = clonedTargetPos.copy(props.targetPos).project(camera.value!);
 
-    // 2. Determine if it is behind the camera
+    // Determine if it is behind the camera
     const isBehind = pos.z > 1;
 
-    // 3. Check boundaries
+    // Check boundaries
     const margin = 0.12; // 8% padding from edge
     const limit = 1 - margin;
 
@@ -51,15 +55,15 @@ watchDebounced(
     isOffscreen.value =
       Math.abs(pos.x) > limit || Math.abs(pos.y) > limit || isBehind;
 
-    // 4. Clamping logic
+    // Clamping
     const clampedX = Math.max(-limit, Math.min(limit, pos.x));
     const clampedY = Math.max(-limit, Math.min(limit, pos.y));
 
-    // 5. Convert to Screen Pixels
+    // Convert to Screen Pixels
     style.left = `${(clampedX * 0.5 + 0.5) * sceneStates.value!.screenSize.width!}px`;
     style.top = `${(-clampedY * 0.5 + 0.5) * sceneStates.value!.screenSize.height!}px`;
 
-    // 6. Calculate rotation for the arrow (only useful when off-screen)
+    // Calculate rotation for the arrow (when off-screen)
     if (isOffscreen.value) {
       const angle = Math.atan2(pos.y - clampedY, pos.x - clampedX);
       style.arrowRotation = `${Math.PI / 2 - angle}rad`;
@@ -70,7 +74,7 @@ watchDebounced(
 </script>
 
 <template>
-  <div class="beacon-container" :style="style">
+  <div v-if="props.show" class="beacon-container" :style="style">
     <div :class="['beacon', { 'is-offscreen': isOffscreen }]">
       <div
         v-if="isOffscreen"
@@ -117,6 +121,8 @@ watchDebounced(
 .label {
   position: absolute;
   top: 20px;
+  left: 50%;
+  transform: translateX(-50%);
   white-space: nowrap;
   background: rgba(0, 0, 0, 0.7);
   color: white;

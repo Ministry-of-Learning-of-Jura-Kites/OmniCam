@@ -495,6 +495,13 @@ function selectCurrentCamShortcut() {
     currentPanel.value = "camera";
   }
 }
+
+const isShowingCamDirection = computed(() => {
+  return (
+    selectedCamId.value != null &&
+    sceneStates.value!.currentCamId.value != selectedCamId.value
+  );
+});
 </script>
 
 <template>
@@ -592,6 +599,7 @@ function selectCurrentCamShortcut() {
           v-if="selectedCam"
           :target-pos="selectedCam.position"
           label="Selected Camera"
+          :show="isShowingCamDirection"
         />
 
         <TresCanvas

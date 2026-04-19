@@ -4,6 +4,7 @@ from os import path
 import signal
 import sys
 import time
+import traceback
 from typing import List, Tuple
 import uuid
 import nats
@@ -263,21 +264,45 @@ def optimize(req: OptimizeRequest, seed: int = 2000) -> State:
 
         pl = BackgroundPlotter()
 
-    gltf = (
-        pv.read(
-            path.join(
-                env_settings.model_file_path,
-                "3d_models",
-                req.project_id,
-                req.model_id + ".glb",
-            )
+    raw_data = pv.read(
+        path.join(
+            env_settings.model_file_path,
+            "3d_models",
+            req.project_id,
+            req.model_id + ".glb",
         )
-        .combine()
-        .extract_surface()
-        .triangulate()
-        .clean()
     )
 
+    combined_mesh = raw_data.combine()
+
+    surface = combined_mesh.extract_surface()
+
+    # 4. Final Optimization (The 5-30s target pipeline)
+    gltf = surface.clean(tolerance=1e-5).triangulate()
+
+    # Ensure only triangles exist before decimation
+    if not gltf.is_all_triangles:
+        gltf = gltf.extract_cells_by_type(vtk.VTK_TRIANGLE)
+
+    current_cells = gltf.n_cells
+    target_cells = 40000  # The "Sweet Spot" for fast ray-casting
+
+    if current_cells > target_cells:
+        # Calculate how much to remove (e.g., if 100k cells, reduction is 0.6)
+        reduction_fraction = 1.0 - (target_cells / current_cells)
+
+        # Clip the fraction to ensure we don't go below 0 or above 0.99
+        reduction_fraction = max(0.0, min(0.99, reduction_fraction))
+
+        # Perform decimation
+        gltf = gltf.decimate_pro(reduction_fraction, preserve_topology=True)
+        print(
+            f"Dynamic Decimation: Reduced {current_cells} -> {gltf.n_cells} cells ({reduction_fraction:.2%})"
+        )
+    else:
+        print(f"Model is already lean ({current_cells} cells). Skipping decimation.")
+
+    # 5. Build the High-Speed Locator
     gltf_locator = vtk.vtkStaticCellLocator()
     gltf_locator.SetDataSet(gltf)
     gltf_locator.BuildLocator()
@@ -325,6 +350,7 @@ def optimize(req: OptimizeRequest, seed: int = 2000) -> State:
 
     if env_settings.dev_mode:
         render_from_state(pl, final_state)
+        breakpoint()
 
     total = total_cost(final_state, True)
     print("total cost: ", total)
@@ -429,6 +455,7 @@ async def main():
                 error_resp=opt_pb.ErrorOptimizationEventResp(error=f"Bad request {e}")
             )
         except Exception as e:
+            traceback.print_exc()
             print(e)
             opti_res = opt_pb.OptimizationEventResp(
                 error_resp=opt_pb.ErrorOptimizationEventResp(error="Internal error")

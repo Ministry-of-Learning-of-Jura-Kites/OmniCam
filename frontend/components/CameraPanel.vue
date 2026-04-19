@@ -305,15 +305,20 @@ function toggleCamera(camId: string) {
         <ClientOnly>
           <Button
             size="sm"
-            :variant="isSelectedActive ? 'secondary' : 'outline'"
+            :variant="
+              isSelectedActive && selectedCamId != null
+                ? 'secondary'
+                : 'outline'
+            "
             :class="
-              isSelectedActive
+              isSelectedActive && selectedCamId != null
                 ? 'bg-red-500 hover:bg-red-700 text-white w-full'
                 : 'w-full'
             "
+            :disabled="selectedCamId == null"
             @click="toggleCamera(selectedCamId!)"
           >
-            <template v-if="isSelectedActive">
+            <template v-if="isSelectedActive && selectedCamId != null">
               <LogOut class="h-4 w-4 mr-2" />
               <!-- TODO: If select a different camera while still within the camera's view, a warning to exit should still appear. -->
               Exit Camera
