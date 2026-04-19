@@ -26,7 +26,11 @@ const intersectMaterial = new MeshBasicMaterial({
   depthTest: true,
 });
 
-const visibleFrustum = ref<[string, ICamera][]>([]);
+const visibleFrustum = computed(() => {
+  return Object.entries(sceneStates.value?.cameras || {}).filter(
+    ([_, cam]) => !cam.isHidingFrustum,
+  );
+});
 
 const { getFrustumGeometry } = useFrustumGeometries();
 
@@ -37,12 +41,6 @@ const boxA = new Box3();
 const boxB = new Box3();
 const overlayGroup = new Group();
 const workingQuaternion = new Quaternion();
-
-watch(sceneStates, (sceneStates) => {
-  visibleFrustum.value = Object.entries(sceneStates!.cameras).filter(
-    ([_, cam]: [string, ICamera]) => !cam.isHidingFrustum,
-  );
-});
 
 function syncMeshToCamera(
   mesh: Mesh,
@@ -101,8 +99,6 @@ function updateIntersections() {
 
       const bakedMeshA = new Mesh(bakedGeomA);
       const bakedMeshB = new Mesh(bakedGeomB);
-
-      console.log(bakedMeshA, bakedMeshB);
 
       const intersectMesh = CSG.intersect(bakedMeshA, bakedMeshB);
 

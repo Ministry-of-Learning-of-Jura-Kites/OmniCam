@@ -10,7 +10,6 @@ import {
   Vector2,
   DoubleSide,
   Vector3,
-  type OrthographicCamera,
   WebGLCubeRenderTarget,
   LinearFilter,
   type CubeCamera,
@@ -38,6 +37,7 @@ import type {
   QuadrilateralPoints,
   QuadrilateralVectors,
 } from "~/types/trapezoid";
+import CameraDirection from "../camera-direction/CameraDirection.vue";
 
 const { isPanelOpen, currentPanel, camPanelInfo } = inject(PANEL_KEY)!;
 const { selectedCamId } = camPanelInfo;
@@ -79,7 +79,6 @@ const canvas: Ref<InstanceType<typeof TresCanvas> | null> = ref(null);
 const cubeCamera: Ref<CubeCamera | null> = ref(null);
 // const camera = ref<PerspectiveCamera | null>(null);
 
-const minimapCamera = ref<OrthographicCamera | null>(null);
 const { isMapOpen } = inject(MAP_KEY)!;
 
 const COVERAGE_Y_OFFSET = 0.01;
@@ -105,6 +104,13 @@ const draftPointMarkers = computed<Point3[]>(() => {
   if (sceneStates.value!.selectionMode.value !== "coverage-area") return [];
 
   return draftCoveragePoints.value.map((p) => [p.x, p.y, p.z] as Point3);
+});
+
+const selectedCam = computed(() => {
+  if (selectedCamId.value == null) {
+    return null;
+  }
+  return sceneStates.value!.cameras[selectedCamId.value];
 });
 
 usePromptUnsaved(sceneStates.value!);
@@ -180,33 +186,13 @@ function buildCoverageFaceFromPickedPoints(
   const v = new Vector3().subVectors(p3Raw, p0);
   const p3 = p0.clone().add(dir.multiplyScalar(v.dot(dir)));
 
-  let finalPoints = [p0, p1, p2, p3];
+  const finalPoints = [p0, p1, p2, p3];
   const centerV = averageVector(finalPoints);
 
   // 2. Initial Normal Calculation (Vector3)
   const e1 = new Vector3().subVectors(p1, p0);
   const e2 = new Vector3().subVectors(p2, p0);
   const finalNormal = new Vector3().crossVectors(e1, e2).normalize();
-
-  // 3. Winding Order Check
-  // We check the cross product of vectors from the center to points 0 and 1
-  const v0 = new Vector3().subVectors(p0, centerV);
-  const v1 = new Vector3().subVectors(p1, centerV);
-  const windingCheck = new Vector3().crossVectors(v0, v1).dot(finalNormal);
-
-  console.log("--- Winding Validation ---");
-  console.log("Winding Check Dot:", windingCheck);
-
-  if (windingCheck < 0) {
-    console.warn("Winding is Clockwise. Normalizing to Counter-Clockwise.");
-    // Reverse order to [0, 3, 2, 1] to flip winding
-    finalPoints = [p0, p3, p2, p1];
-
-    // We flip the normal so it points "outward" relative to the new CCW order
-    finalNormal.multiplyScalar(-1);
-  } else {
-    console.log("Winding is already Counter-Clockwise.");
-  }
 
   // 4. Final Validation
   const width = p0.distanceTo(p1);
@@ -592,7 +578,7 @@ function selectCurrentCamShortcut() {
         </div>
       </div>
 
-      <LazyMinimap :show="isMapOpen" :minimap-camera="minimapCamera" />
+      <LazyMinimap :show="isMapOpen" />
 
       <div
         :ref="sceneStates!.tresCanvasParent"
@@ -602,6 +588,12 @@ function selectCurrentCamShortcut() {
         }"
         class="relative"
       >
+        <CameraDirection
+          v-if="selectedCam"
+          :target-pos="selectedCam.position"
+          label="Selected Camera"
+        />
+
         <TresCanvas
           id="canvas"
           ref="canvas"
@@ -631,8 +623,6 @@ function selectCurrentCamShortcut() {
 
           <!-- <Distortion /> -->
           <CubeDistortion />
-
-          <TresOrthographicCamera ref="minimapCamera" :manual="true" />
 
           <!-- <TresMesh>
             <TresBoxGeometry :args="[2, 2, 2, 32, 32, 32]" />
@@ -710,7 +700,7 @@ function selectCurrentCamShortcut() {
             />
           </Suspense>
 
-          <!-- Grid  1 unit = 1 virtual m -->
+          <!-- Grid  1 unit = 1 m -->
           <Grid
             :position="[0, -sceneStates!.calibration.heightOffset, 0]"
             :args="[1, 1]"

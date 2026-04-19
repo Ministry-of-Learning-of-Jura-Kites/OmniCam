@@ -9,12 +9,14 @@ import {
   Vector3,
   CircleGeometry,
   DoubleSide,
+  Euler,
 } from "three";
 import { AXIS_COLOR, AXIS_GIZMO } from "~/constants";
 import { SCENE_STATES_KEY } from "~/constants/state-keys";
 import type { Font } from "three/examples/jsm/loaders/FontLoader.js";
 import { FontLoader } from "three/examples/jsm/loaders/FontLoader.js";
 import { TextGeometry } from "three/addons/geometries/TextGeometry.js";
+import { debouncedWatch } from "@vueuse/core";
 
 const d = 1.5;
 
@@ -109,15 +111,21 @@ function setupLabels(font: Font) {
   }
 }
 
+const eul = new Euler();
 const forward = new Vector3(0, 0, 1);
 
-watch(
-  () => sceneStates?.value?.currentCam.value.rotation,
-  (eul) => {
-    if (eul == undefined) {
+debouncedWatch(
+  () => [
+    sceneStates?.value?.currentCam.value.rotation.x,
+    sceneStates?.value?.currentCam.value.rotation.y,
+    sceneStates?.value?.currentCam.value.rotation.z,
+  ],
+  ([x, y, z]) => {
+    if (x == undefined || y == undefined || z == undefined) {
       return;
     }
     forward.set(0, 0, 1);
+    eul.set(x, y, z);
     forward.applyEuler(eul);
     axisCam.position.set(forward.x, forward.y, forward.z);
     axisCam.lookAt(0, 0, 0);
@@ -129,7 +137,7 @@ watch(
       }
     }
   },
-  { deep: true },
+  { deep: true, debounce: 10, maxWait: 100 },
 );
 
 const renderer = sceneStates!.value!.tresContext.value!.renderer;

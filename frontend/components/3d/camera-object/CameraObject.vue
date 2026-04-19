@@ -5,10 +5,11 @@ import MovableArrow from "../movable-arrow/MovableArrow.vue";
 import TresMesh from "@tresjs/core";
 import RotationWheel from "../rotation-wheel/RotationWheel.vue";
 import CameraFrustum from "../camera-frustum/CameraFrustum.vue";
-import type { Color } from "three";
+import type { Color, Mesh } from "three";
 import { Quaternion } from "three";
 import { safeGetAspectRatio } from "~/utils/aspect-ratio";
 import type { ICamera } from "~/types/camera";
+import { useCamObjGeoCache } from "./use-cam-obj-geo-cache";
 
 const props = withDefaults(
   defineProps<{
@@ -25,7 +26,14 @@ const props = withDefaults(
   },
 );
 
+const { get: getGeo } = useCamObjGeoCache();
+
+const cameraBodyGeo = getGeo("body");
+const cameraLensGeo = getGeo("lens");
+
 const sceneStates = inject(SCENE_STATES_KEY)!;
+
+const mesh = ref<Mesh>();
 
 let cam: Ref<ICamera>;
 if (props.instance == undefined) {
@@ -38,16 +46,21 @@ const camQuat = computed(() => {
   const quaternion = new Quaternion().setFromEuler(cam!.value.rotation);
   return quaternion;
 });
+
+watch(mesh, (mesh) => {
+  mesh!.layers.enable(1);
+});
 </script>
 
 <template>
   <TresMesh
+    ref="mesh"
     :visible="sceneStates!.currentCamId.value !== props.camId"
     :position="[cam!.position.x, cam!.position.y, cam!.position.z]"
   >
     <TresObject3D :quaternion="camQuat">
       <!-- Use quaternion for applying on top of local rotation -->
-      <TresMesh :rotation="[Math.PI / 2, 0, 0]" :position="[0, 0, 0.25 + 0.06]">
+      <!-- <TresMesh :rotation="[Math.PI / 2, 0, 0]" :position="[0, 0, 0.25 + 0.06]">
         <TresCylinderGeometry :args="[0.2, 0.2, 0.5]" />
         <TresMeshBasicMaterial :color="props.color" />
       </TresMesh>
@@ -66,23 +79,29 @@ const camQuat = computed(() => {
       <TresMesh :rotation="[Math.PI / 5, 0, 0]" :position="[0, 0.17, 0.78]">
         <TresCylinderGeometry :args="[0.15, 0.15, 0.02]" />
         <TresMeshBasicMaterial :color="props.color" />
+      </TresMesh> -->
+      <TresMesh :geometry="cameraBodyGeo">
+        <TresMeshBasicMaterial :color="props.color" />
       </TresMesh>
-      <CameraFrustum
-        :id="camId"
-        :fov="cam!.fov"
-        :aspect="safeGetAspectRatio(cam.widthRes, cam.heightRes)"
-        :length="cam!.frustumLength"
-        :color="cam!.frustumColor"
-        :is-hiding="
-          cam!.isHidingFrustum || camId == sceneStates!.currentCamId.value
-        "
-      />
+      <TresMesh :geometry="cameraLensGeo">
+        <TresMeshBasicMaterial :color="'black'" />
+      </TresMesh>
     </TresObject3D>
+    <CameraFrustum
+      :id="camId"
+      :fov="cam!.fov"
+      :aspect="safeGetAspectRatio(cam.widthRes, cam.heightRes)"
+      :length="cam!.frustumLength"
+      :color="cam!.frustumColor"
+      :is-hiding="
+        cam!.isHidingFrustum || camId == sceneStates!.currentCamId.value
+      "
+    />
     <template v-if="cam != null">
       <MovableArrow
         v-model="cam"
         :is-hiding="
-          cam.isHidingArrows ||
+          cam.isLockingPosition ||
           sceneStates!.currentCamId.value == props.camId ||
           props.workspace != 'me'
         "
@@ -93,7 +112,7 @@ const camQuat = computed(() => {
       <MovableArrow
         v-model="cam"
         :is-hiding="
-          cam.isHidingArrows ||
+          cam.isLockingPosition ||
           sceneStates!.currentCamId.value == props.camId ||
           props.workspace != 'me'
         "
@@ -104,7 +123,7 @@ const camQuat = computed(() => {
       <MovableArrow
         v-model="cam"
         :is-hiding="
-          cam.isHidingArrows ||
+          cam.isLockingPosition ||
           sceneStates!.currentCamId.value == props.camId ||
           props.workspace != 'me'
         "
@@ -115,7 +134,7 @@ const camQuat = computed(() => {
       <RotationWheel
         v-model="cam"
         :is-hiding="
-          cam.isHidingWheels ||
+          cam.isLockingRotation ||
           sceneStates!.currentCamId.value == props.camId ||
           props.workspace != 'me'
         "
@@ -125,7 +144,7 @@ const camQuat = computed(() => {
       <RotationWheel
         v-model="cam"
         :is-hiding="
-          cam.isHidingWheels ||
+          cam.isLockingRotation ||
           sceneStates!.currentCamId.value == props.camId ||
           props.workspace != 'me'
         "
@@ -135,7 +154,7 @@ const camQuat = computed(() => {
       <RotationWheel
         v-model="cam"
         :is-hiding="
-          cam.isHidingWheels ||
+          cam.isLockingRotation ||
           sceneStates!.currentCamId.value == props.camId ||
           props.workspace != 'me'
         "

@@ -10,8 +10,8 @@ const props = defineProps({
     default: null,
   },
 });
-const { calibrationPanelInfo } = inject(PANEL_KEY)!;
-const { isCalibrating, calibrationGridScale } = calibrationPanelInfo;
+const { currentPanel, calibrationPanelInfo } = inject(PANEL_KEY)!;
+const { calibrationGridScale } = calibrationPanelInfo;
 const movableObject = reactive<MovableObject>({
   position: new Vector3(0, 0, 0),
   rotation: new Euler(0, 0, 0),
@@ -25,12 +25,11 @@ const rotationQuat = computed(() => {
   const quaternion = new Quaternion().setFromEuler(movableObject!.rotation);
   return quaternion;
 });
-// v-if="isCalibrating" && props.workspace == 'me'"
 </script>
 
 <template>
   <TresGroup
-    v-if="isCalibrating && props.workspace == 'me'"
+    v-if="currentPanel == 'calibration' && props.workspace == 'me'"
     :position-x="movableObject.position.x"
     :position-y="movableObject.position.y"
     :position-z="movableObject.position.z"
