@@ -305,7 +305,11 @@ function toggleCamera(camId: string) {
         <ClientOnly>
           <Button
             size="sm"
-            :variant="isSelectedActive && selectedCamId != null ? 'secondary' : 'outline'"
+            :variant="
+              isSelectedActive && selectedCamId != null
+                ? 'secondary'
+                : 'outline'
+            "
             :class="
               isSelectedActive && selectedCamId != null
                 ? 'bg-red-500 hover:bg-red-700 text-white w-full'
