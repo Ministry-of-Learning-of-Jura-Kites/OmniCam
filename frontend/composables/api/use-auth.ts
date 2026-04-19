@@ -91,7 +91,7 @@ export function useAuth() {
   async function getMe() {
     const headers = useRequestHeaders(["cookie"]);
 
-    const base = getApiBaseUrlWithProtocol("http", config, true);
+    const base = getApiBaseUrlWithProtocol("http", config, false);
     return $fetch<{ data: User }>(new URL(`me`, base).href, {
       method: "GET",
       headers: headers,

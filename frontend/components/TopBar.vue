@@ -107,6 +107,7 @@ const isSettingDialogOpen = ref<boolean>(false);
 const isCameraActive = ref(false);
 
 const { user, fetchUser } = useAuth();
+console.log("fetching user");
 fetchUser();
 
 onMounted(() => {
