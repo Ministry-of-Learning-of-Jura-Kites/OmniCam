@@ -331,13 +331,6 @@ func (t *UpdateEventRoute) getLivestream(c *gin.Context) {
 		return
 	}
 
-	_, err = utils.GetUuidFromCtx(c, "userId")
-	if err != nil {
-		t.Logger.Error("error while getting userId", zap.Error(err))
-		c.JSON(http.StatusInternalServerError, gin.H{})
-		return
-	}
-
 	// Check owner
 	_, err = t.DB.Queries.GetWorkspaceByID(c, db_sqlc_gen.GetWorkspaceByIDParams{
 		UserID:  workspaceOwnerId,

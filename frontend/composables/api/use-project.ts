@@ -144,6 +144,20 @@ export function useProject() {
     );
   }
 
+  async function getAllMembers(projectId: string) {
+    const headers = useRequestHeaders(["cookie"]);
+    const base = getProjectBaseUrl(false);
+    const url = new URL(
+      `${projectId}/userForAddMembers`,
+      addTrailingSlash(base),
+    );
+    return $fetch<{ data: ProjectMember[]; count: number }>(url.href, {
+      method: "GET",
+      headers,
+      credentials: "include",
+    });
+  }
+
   async function getProjectMembers(projectId: string) {
     const headers = useRequestHeaders(["cookie"]);
     const base = getProjectBaseUrl(false);
@@ -227,6 +241,7 @@ export function useProject() {
     getProjectMembers,
     getUsersForAddMembers,
     addProjectMembers,
+    getAllMembers,
     removeProjectMember,
     updateProjectMember,
   };

@@ -244,6 +244,7 @@ onUnmounted(() => {
 
     <div
       class="rounded-lg overflow-hidden border border-gray-600/50 shadow-2xl"
+      :style="{ width: minimapSize + 'px', height: minimapSize + 'px' }"
     >
       <TresCanvas
         ref="canvas"
