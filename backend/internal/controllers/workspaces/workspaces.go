@@ -675,19 +675,35 @@ func (t *WorkspaceRoute) getWorkspace(c *gin.Context) {
 		return
 	}
 
-	userID, err := utils.GetUuidFromCtx(c, "userId")
-	if err != nil {
-		t.Logger.Error("error while getting userId form", zap.Error(err))
-		c.JSON(http.StatusInternalServerError, gin.H{})
-		return
-	}
-
-	username := c.GetString("username")
-
 	strWorkspaceId := c.Param("workspaceId")
 	isWorkspaceMe := strWorkspaceId == "me"
 	var workspaceId uuid.UUID
-	if !isWorkspaceMe {
+	var ownerID uuid.UUID
+	if isWorkspaceMe {
+		userID, err := utils.GetUuidFromCtx(c, "userId")
+		if err != nil {
+			t.Logger.Error("error while getting userId form", zap.Error(err))
+			c.JSON(http.StatusInternalServerError, gin.H{})
+			return
+		}
+
+		ownerID = userID
+
+		username := c.GetString("username")
+
+		_, err = t.DB.Queries.GetUserOfProject(c, db_sqlc_gen.GetUserOfProjectParams{
+			Username: pgtype.Text{
+				String: username,
+				Valid:  true,
+			},
+			Projectid: projectId,
+		})
+		if err != nil {
+			t.Logger.Error("user of project not found", zap.String("projectId", strProjectId), zap.String("username", username), zap.Error(err))
+			c.JSON(http.StatusNotFound, gin.H{})
+			return
+		}
+	} else {
 		parsed, err := utils.ParseUuidBase64(strWorkspaceId)
 		workspaceId = parsed
 		if err != nil {
@@ -695,28 +711,10 @@ func (t *WorkspaceRoute) getWorkspace(c *gin.Context) {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid workspace ID"})
 			return
 		}
-	}
-
-	_, err = t.DB.Queries.GetUserOfProject(c, db_sqlc_gen.GetUserOfProjectParams{
-		Username: pgtype.Text{
-			String: username,
-			Valid:  true,
-		},
-		Projectid: projectId,
-	})
-	if err != nil {
-		t.Logger.Error("user of project not found", zap.String("projectId", strProjectId), zap.String("username", username), zap.Error(err))
-		c.JSON(http.StatusNotFound, gin.H{})
-		return
+		ownerID = workspaceId
 	}
 
 	includedFields := c.QueryArray("fields")
-	var ownerID uuid.UUID
-	if isWorkspaceMe {
-		ownerID = userID
-	} else {
-		ownerID = workspaceId
-	}
 
 	data, err := t.DB.Queries.GetWorkspaceByID(c, db_sqlc_gen.GetWorkspaceByIDParams{
 		Fields:  includedFields,

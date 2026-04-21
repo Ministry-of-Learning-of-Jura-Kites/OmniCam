@@ -353,7 +353,9 @@ function toggleFullscreen() {
         </Button>
       </div>
       <DialogFooter>
-        <Button type="submit" @click="openDialog = !openDialog">Ok</Button>
+        <Button type="submit" @click="isShareDialogOpen = !isShareDialogOpen"
+          >Ok</Button
+        >
       </DialogFooter>
     </DialogContent>
   </Dialog>
