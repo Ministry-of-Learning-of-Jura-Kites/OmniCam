@@ -29,13 +29,7 @@ def download_all_assets(page_url, tmp_dir, capture_id):
     resp = requests.get(page_url)
     resp.raise_for_status()
 
-    video_match = re.search(r'meta property="og:video" content="([^"]+)"', resp.text)
-    if not video_match:
-        raise Exception("Could not find og:video metadata in page")
-
-    video_url = video_match.group(1)
-    hostname = urlparse(video_url).hostname
-    base_asset_url = f"https://{hostname}/captures/{capture_id}/"
+    base_asset_url = f"https://poly.cam/api/capture/{capture_id}/artifacts/"
 
     # 2. Download and parse raw.gltf
     gltf_path = Path(tmp_dir) / "raw.gltf"
