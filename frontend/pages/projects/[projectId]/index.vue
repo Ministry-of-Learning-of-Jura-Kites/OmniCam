@@ -38,6 +38,9 @@ const modelApi = useModels(projectId);
 const members = ref<ProjectMember[]>([]);
 const currentEditId = ref<string | null>(null);
 const editingMember = ref<ProjectMember | null>(null);
+const searchQuery = ref("");
+const searchedModelsRaw = ref<Model[]>([]);
+const isSearchLoading = ref(false);
 const modelForm = reactive<ModelForm>({
   name: "",
   description: "",
@@ -160,9 +163,7 @@ const { data: modelsRaw, refresh } = await useAsyncData(
 
 const totalData = computed<number>(() => modelsRaw.value?.count ?? 0);
 
-const models = computed<Record<string, ModelWithoutId>>(() => {
-  const rows = modelsRaw.value?.data ?? [];
-
+function buildModelRecord(rows: Model[]) {
   return rows.reduce<Record<string, ModelWithoutId>>((acc, model) => {
     const { modelId, imagePath, imageExtension, ...rest } = model;
 
@@ -178,6 +179,64 @@ const models = computed<Record<string, ModelWithoutId>>(() => {
 
     return acc;
   }, {});
+}
+
+const models = computed<Record<string, ModelWithoutId>>(() => {
+  const rows = modelsRaw.value?.data ?? [];
+  return buildModelRecord(rows);
+});
+
+const normalizedSearchQuery = computed(() => searchQuery.value.trim().toLowerCase());
+
+const filteredModels = computed<Record<string, ModelWithoutId>>(() => {
+  if (!normalizedSearchQuery.value) return models.value;
+
+  const filteredRows = searchedModelsRaw.value.filter((model) =>
+    model.name.toLowerCase().includes(normalizedSearchQuery.value),
+  );
+
+  return buildModelRecord(filteredRows);
+});
+
+const displayedModels = computed<Record<string, ModelWithoutId>>(() => {
+  return normalizedSearchQuery.value ? filteredModels.value : models.value;
+});
+
+const displayedTotal = computed<number>(() => {
+  return Object.keys(displayedModels.value).length;
+});
+
+async function loadSearchModels() {
+  if (!normalizedSearchQuery.value || totalData.value === 0) {
+    searchedModelsRaw.value = [];
+    return;
+  }
+
+  if (searchedModelsRaw.value.length === totalData.value) return;
+
+  try {
+    isSearchLoading.value = true;
+    const resp = await modelApi.listModels(1, totalData.value);
+    searchedModelsRaw.value = resp.data ?? [];
+  } catch (err) {
+    console.error("Failed to load models for search", err);
+  } finally {
+    isSearchLoading.value = false;
+  }
+}
+
+watch(
+  [normalizedSearchQuery, totalData],
+  async ([query]) => {
+    if (!query) return;
+    page.value = 1;
+    await loadSearchModels();
+  },
+  { immediate: false },
+);
+
+watch(totalData, () => {
+  searchedModelsRaw.value = [];
 });
 
 async function createModel() {
@@ -408,6 +467,7 @@ fetchMembers();
         <div class="flex items-center justify-between mb-4">
           <h2 class="text-lg font-semibold">3D Models</h2>
           <input
+            v-model="searchQuery"
             type="text"
             placeholder="Search models by name..."
             class="border border-gray-300 rounded-lg px-3 py-2 text-sm w-60 focus:ring-2 focus:ring-blue-400"
@@ -422,7 +482,7 @@ fetchMembers();
           class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-6 justify-items-center overflow-y-auto max-h-[750px]"
         >
           <ContentCard
-            v-for="(model, id) in models"
+            v-for="(model, id) in displayedModels"
             :key="id"
             class="w-full max-w-[280px]"
             :name="model.name"
@@ -437,8 +497,15 @@ fetchMembers();
           />
         </div>
 
+        <div
+          v-if="normalizedSearchQuery && !isSearchLoading && displayedTotal === 0"
+          class="text-sm text-gray-500 text-center py-6"
+        >
+          No models found for "{{ searchQuery }}".
+        </div>
+
         <!-- Pagination -->
-        <div class="flex justify-center mt-6">
+        <div v-if="!normalizedSearchQuery" class="flex justify-center mt-6">
           <CustomPagination
             v-model:page="page"
             :page-size="pageSize"

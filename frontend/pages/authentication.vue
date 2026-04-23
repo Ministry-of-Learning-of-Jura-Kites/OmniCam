@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { Eye, EyeOff } from "lucide-vue-next";
 import {
   useAuth,
   type LoginRequest,
@@ -12,6 +13,17 @@ definePageMeta({
 const { postLogin, postRegister } = useAuth();
 
 const activeTab = ref<"signup" | "signin">("signup");
+const showRegisterPassword = ref(false);
+const showLoginPassword = ref(false);
+const loginErrorMessage = ref("");
+
+const registerFirstNameInput = ref<HTMLInputElement | null>(null);
+const registerLastNameInput = ref<HTMLInputElement | null>(null);
+const registerUsernameInput = ref<HTMLInputElement | null>(null);
+const registerEmailInput = ref<HTMLInputElement | null>(null);
+const registerPasswordInput = ref<HTMLInputElement | null>(null);
+const loginIdentifierInput = ref<HTMLInputElement | null>(null);
+const loginPasswordInput = ref<HTMLInputElement | null>(null);
 
 const registerForm = reactive<RegisterRequest>({
   firstName: "",
@@ -37,8 +49,9 @@ const loginForm = reactive<LoginRequest>({
 async function register() {
   // console.log(registerForm);
   try {
-    postRegister(registerForm);
-    navigateTo("/");
+    await postRegister(registerForm);
+    await clearNuxtData("projects-list");
+    await navigateTo("/");
   } catch (err) {
     console.log(err);
   }
@@ -49,10 +62,13 @@ async function register() {
 async function login() {
   // console.log(loginForm);
   try {
-    postLogin(loginForm);
-    navigateTo("/");
+    loginErrorMessage.value = "";
+    await postLogin(loginForm);
+    await clearNuxtData("projects-list");
+    await navigateTo("/");
   } catch (err) {
     console.log(err);
+    loginErrorMessage.value = "Username or password is incorrect.";
   }
 
   return;
@@ -106,6 +122,41 @@ const isDirty = computed(() => {
     registerForm.password !== ""
   );
 });
+
+function focusInput(inputRef: Ref<HTMLInputElement | null>) {
+  inputRef.value?.focus();
+}
+
+async function handleRegisterEnter(
+  nextField:
+    | "lastName"
+    | "username"
+    | "email"
+    | "password"
+    | "submit",
+) {
+  if (nextField === "lastName") return focusInput(registerLastNameInput);
+  if (nextField === "username") return focusInput(registerUsernameInput);
+  if (nextField === "email") return focusInput(registerEmailInput);
+  if (nextField === "password") return focusInput(registerPasswordInput);
+  await register();
+}
+
+async function handleLoginEnter(nextField: "password" | "submit") {
+  if (nextField === "password") return focusInput(loginPasswordInput);
+  await login();
+}
+
+watch(activeTab, () => {
+  loginErrorMessage.value = "";
+});
+
+watch(
+  () => [loginForm.identifier, loginForm.password],
+  () => {
+    loginErrorMessage.value = "";
+  },
+);
 </script>
 
 <template>
@@ -139,10 +190,12 @@ const isDirty = computed(() => {
             <div class="form-group">
               <label>First Name <span class="required">*</span></label>
               <input
+                ref="registerFirstNameInput"
                 v-model="registerForm.firstName"
                 type="text"
                 placeholder="First Name"
                 @blur="markTouched('firstName')"
+                @keydown.enter.prevent="handleRegisterEnter('lastName')"
               />
               <p v-if="errors.firstName" class="text-red-600">
                 {{ errors.firstName }}
@@ -152,10 +205,12 @@ const isDirty = computed(() => {
             <div class="form-group">
               <label>Last Name <span class="required">*</span></label>
               <input
+                ref="registerLastNameInput"
                 v-model="registerForm.lastName"
                 type="text"
                 placeholder="Last Name"
                 @blur="markTouched('lastName')"
+                @keydown.enter.prevent="handleRegisterEnter('username')"
               />
               <p v-if="errors.lastName" class="text-red-600">
                 {{ errors.lastName }}
@@ -165,10 +220,12 @@ const isDirty = computed(() => {
             <div class="form-group">
               <label>Username <span class="required">*</span></label>
               <input
+                ref="registerUsernameInput"
                 v-model="registerForm.username"
                 type="text"
                 placeholder="Username"
                 @blur="markTouched('username')"
+                @keydown.enter.prevent="handleRegisterEnter('email')"
               />
               <p v-if="errors.username" class="text-red-600">
                 {{ errors.username }}
@@ -178,22 +235,39 @@ const isDirty = computed(() => {
             <div class="form-group">
               <label>Email <span class="required">*</span></label>
               <input
+                ref="registerEmailInput"
                 v-model="registerForm.email"
                 type="email"
                 placeholder="Email"
                 @blur="markTouched('email')"
+                @keydown.enter.prevent="handleRegisterEnter('password')"
               />
               <p v-if="errors.email" class="text-red-600">{{ errors.email }}</p>
             </div>
 
             <div class="form-group">
               <label>Password <span class="required">*</span></label>
-              <input
-                v-model="registerForm.password"
-                type="password"
-                placeholder="Password"
-                @blur="markTouched('password')"
-              />
+              <div class="password-wrapper">
+                <input
+                  ref="registerPasswordInput"
+                  v-model="registerForm.password"
+                  :type="showRegisterPassword ? 'text' : 'password'"
+                  placeholder="Password"
+                  @blur="markTouched('password')"
+                  @keydown.enter.prevent="handleRegisterEnter('submit')"
+                />
+                <button
+                  type="button"
+                  class="password-toggle"
+                  :aria-label="
+                    showRegisterPassword ? 'Hide password' : 'Show password'
+                  "
+                  @click="showRegisterPassword = !showRegisterPassword"
+                >
+                  <EyeOff v-if="showRegisterPassword" class="password-icon" />
+                  <Eye v-else class="password-icon" />
+                </button>
+              </div>
               <p v-if="errors.password" class="text-red-600">
                 {{ errors.password }}
               </p>
@@ -209,22 +283,41 @@ const isDirty = computed(() => {
             <div class="form-group">
               <label>Identifier <span class="required">*</span></label>
               <input
+                ref="loginIdentifierInput"
                 v-model="loginForm.identifier"
                 type="text"
                 placeholder="Email or Username"
                 required
+                @keydown.enter.prevent="handleLoginEnter('password')"
               />
             </div>
 
             <div class="form-group">
               <label>Password <span class="required">*</span></label>
-              <input
-                v-model="loginForm.password"
-                type="password"
-                placeholder="Password"
-                required
-              />
+              <div class="password-wrapper">
+                <input
+                  ref="loginPasswordInput"
+                  v-model="loginForm.password"
+                  :type="showLoginPassword ? 'text' : 'password'"
+                  placeholder="Password"
+                  required
+                  @keydown.enter.prevent="handleLoginEnter('submit')"
+                />
+                <button
+                  type="button"
+                  class="password-toggle"
+                  :aria-label="showLoginPassword ? 'Hide password' : 'Show password'"
+                  @click="showLoginPassword = !showLoginPassword"
+                >
+                  <EyeOff v-if="showLoginPassword" class="password-icon" />
+                  <Eye v-else class="password-icon" />
+                </button>
+              </div>
             </div>
+
+            <p v-if="loginErrorMessage" class="text-red-600 text-sm mb-3">
+              {{ loginErrorMessage }}
+            </p>
 
             <button @click.prevent="login">Sign In</button>
           </div>
@@ -305,9 +398,41 @@ input {
   border: none;
   background-color: #1b2433;
   color: white;
+  width: 100%;
 }
 
 input::placeholder {
+  color: #a0aec0;
+}
+
+.password-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.password-wrapper input {
+  padding-right: 44px;
+}
+
+.password-toggle {
+  position: absolute;
+  right: 10px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  background: transparent;
+  border: none;
+}
+
+.password-toggle:hover {
+  background: transparent;
+}
+
+.password-icon {
+  width: 18px;
+  height: 18px;
   color: #a0aec0;
 }
 
