@@ -79,7 +79,10 @@ async function fetchUsers() {
   try {
     const baseWithProtocol = getApiBaseUrlWithProtocol("http", config);
     const res = await $fetch<{ data: UserItem[]; count: number }>(
-      new URL(`projects/${props.projectId}/members`, baseWithProtocol).href,
+      new URL(
+        `projects/${props.projectId}/userForAddMembers`,
+        baseWithProtocol,
+      ).href,
       {
         method: "GET",
         query: {

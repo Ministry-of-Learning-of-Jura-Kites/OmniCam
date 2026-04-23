@@ -11,6 +11,7 @@ import {
   useProject,
   type Project,
 } from "~/composables/api/use-project";
+import { useAuth } from "~/composables/api/use-auth";
 
 type ProjectWithoutId = Omit<Project, "id">;
 type ProjectForm = { name: string; description: string; image: File | null };
@@ -57,17 +58,25 @@ const projectForm = reactive<ProjectForm>({
   image: null,
 });
 
+const { user, fetchUser } = useAuth();
+await fetchUser();
+
 const projectApi = useProject();
+
+const projectsAsyncKey = computed(() => {
+  const username = user.value?.username ?? "guest";
+  return `projects-list-${username}-page-${page.value}-size-${pageSize.value}`;
+});
 
 const {
   data: respData,
   error: fetchError,
   refresh,
 } = await useAsyncData(
-  "projects-list", // A unique key ensures the client finds the server's work
+  projectsAsyncKey,
   () => projectApi.listProjects(page.value, pageSize.value),
   {
-    watch: [page, pageSize],
+    watch: [page, pageSize, () => user.value?.username],
   },
 );
 
