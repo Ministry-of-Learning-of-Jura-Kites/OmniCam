@@ -648,6 +648,7 @@ const isShowingCamDirection = computed(() => {
             :show-corners="false"
             :opacity="0.12"
             :y-offset="COVERAGE_Y_OFFSET"
+            :workspace="props.workspace"
           />
 
           <template v-if="sceneStates!.selectionMode.value === 'coverage-area'">
@@ -732,17 +733,20 @@ const isShowingCamDirection = computed(() => {
               :selected="true"
               :show-corners="false"
               :y-offset="COVERAGE_Y_OFFSET"
+              :workspace="props.workspace"
             />
 
-            <CoverageCornerGizmo
-              v-for="(p, index) in face.points"
-              :key="`${id}-${index}`"
-              :face-id="id"
-              :corner-index="index"
-              :position="new Vector3(p[0], p[1] + COVERAGE_Y_OFFSET, p[2])"
-              :size="0.14"
-              :y-offset="COVERAGE_Y_OFFSET"
-            />
+            <template v-if="props.workspace == 'me'">
+              <CoverageCornerGizmo
+                v-for="(p, index) in face.points"
+                :key="`${id}-${index}`"
+                :face-id="id"
+                :corner-index="index"
+                :position="new Vector3(p[0], p[1] + COVERAGE_Y_OFFSET, p[2])"
+                :size="0.14"
+                :y-offset="COVERAGE_Y_OFFSET"
+              />
+            </template>
           </template>
         </TresCanvas>
       </div>
