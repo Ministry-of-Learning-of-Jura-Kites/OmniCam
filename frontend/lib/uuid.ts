@@ -1,3 +1,5 @@
+export const BASE64_UUID_SIZE = 22;
+
 export function uuidToBase64Url(uuidString: string) {
   // Remove hyphens and convert to a continuous hex string
   const hex = uuidString.replace(/-/g, "");

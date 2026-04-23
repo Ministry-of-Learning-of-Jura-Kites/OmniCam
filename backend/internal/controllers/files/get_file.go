@@ -125,7 +125,8 @@ func (t *FileRoute) getModelFile(c *gin.Context) {
 	}
 
 	if !hasAccess {
-		c.JSON(http.StatusForbidden, gin.H{"message": "permission denied"})
+		// Return not found for security
+		c.JSON(http.StatusNotFound, gin.H{})
 		return
 	}
 

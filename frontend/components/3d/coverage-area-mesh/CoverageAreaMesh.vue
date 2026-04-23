@@ -36,6 +36,7 @@ const props = withDefaults(
     selected?: boolean;
     showCorners?: boolean;
     yOffset?: number;
+    workspace?: string | null;
   }>(),
   {
     faceId: "",
@@ -46,6 +47,7 @@ const props = withDefaults(
     showCorners: true,
     yOffset: 0.01,
     previewPoints: () => [],
+    workspace: null,
   },
 );
 
@@ -378,7 +380,11 @@ onUnmounted(() => {
 
 <template>
   <primitive :object="group" />
-  <TresMesh :position="center" :visible="!isPreview">
+  <TresMesh
+    v-if="props.workspace == 'me'"
+    :position="center"
+    :visible="!isPreview"
+  >
     <MovableArrow
       v-for="dir of ['x', 'y', 'z'] as const"
       :key="dir"

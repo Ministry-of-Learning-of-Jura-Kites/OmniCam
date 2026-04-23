@@ -10,6 +10,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
+	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/nats-io/nats.go"
 	"go.uber.org/zap"
 	"google.golang.org/protobuf/encoding/protojson"
@@ -331,14 +332,20 @@ func (t *UpdateEventRoute) getLivestream(c *gin.Context) {
 		return
 	}
 
-	_, err = utils.GetUuidFromCtx(c, "userId")
+	username := c.GetString("username")
+
+	_, err = t.DB.Queries.GetUserWithModel(c, db_sqlc_gen.GetUserWithModelParams{
+		Username: pgtype.Text{Valid: true, String: username},
+		ModelID:  modelId,
+	})
 	if err != nil {
-		t.Logger.Error("error while getting userId", zap.Error(err))
-		c.JSON(http.StatusInternalServerError, gin.H{})
+		// Respond not found for security
+		t.Logger.Error("not a member of project", zap.String("modelId", modelId.String()), zap.Error(err))
+		c.JSON(http.StatusNotFound, gin.H{})
 		return
 	}
 
-	// Check owner
+	// Get workspace
 	_, err = t.DB.Queries.GetWorkspaceByID(c, db_sqlc_gen.GetWorkspaceByIDParams{
 		UserID:  workspaceOwnerId,
 		ModelID: modelId,
