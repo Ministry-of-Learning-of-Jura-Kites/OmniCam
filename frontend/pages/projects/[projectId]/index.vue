@@ -186,7 +186,9 @@ const models = computed<Record<string, ModelWithoutId>>(() => {
   return buildModelRecord(rows);
 });
 
-const normalizedSearchQuery = computed(() => searchQuery.value.trim().toLowerCase());
+const normalizedSearchQuery = computed(() =>
+  searchQuery.value.trim().toLowerCase(),
+);
 
 const filteredModels = computed<Record<string, ModelWithoutId>>(() => {
   if (!normalizedSearchQuery.value) return models.value;
@@ -498,7 +500,9 @@ fetchMembers();
         </div>
 
         <div
-          v-if="normalizedSearchQuery && !isSearchLoading && displayedTotal === 0"
+          v-if="
+            normalizedSearchQuery && !isSearchLoading && displayedTotal === 0
+          "
           class="text-sm text-gray-500 text-center py-6"
         >
           No models found for "{{ searchQuery }}".
