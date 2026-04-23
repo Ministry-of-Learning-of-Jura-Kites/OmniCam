@@ -29,6 +29,20 @@ export interface ProjectMemberUpdateReq {
   role: string;
 }
 
+export interface AddProjectMemberReq {
+  userId: string;
+  role: string;
+}
+
+export interface UserForAddMembers {
+  role: null;
+  id: string;
+  username: string;
+  email?: string | null;
+  first_name?: string | null;
+  last_name?: string | null;
+}
+
 export function getBaseProjectImageUrl(id: string) {
   const config = useRuntimeConfig();
   const base = getApiBaseUrlWithProtocol("http", config, false);
@@ -141,10 +155,43 @@ export function useProject() {
     });
   }
 
+  async function getUsersForAddMembers(
+    projectId: string,
+    page = 1,
+    pageSize = 10,
+    search = "",
+  ) {
+    const headers = useRequestHeaders(["cookie"]);
+    const base = getProjectBaseUrl(false);
+    const url = new URL(
+      `${projectId}/userForAddMembers`,
+      addTrailingSlash(base),
+    );
+    return $fetch<{ data: UserForAddMembers[]; count: number }>(url.href, {
+      method: "GET",
+      query: { page, pageSize, search },
+      headers,
+      credentials: "include",
+    });
+  }
+
+  async function addProjectMembers(
+    projectId: string,
+    body: AddProjectMemberReq[],
+  ) {
+    const base = getProjectBaseUrl(false);
+    const url = new URL(`${projectId}/members`, addTrailingSlash(base));
+    return $fetch(url.href, {
+      method: "POST",
+      body,
+      credentials: "include",
+    });
+  }
+
   async function removeProjectMember(projectId: string, memberId: string) {
     const base = getProjectBaseUrl(false);
     const url = new URL(
-      `${projectId}/members/${memberId}`,
+      `${projectId}/member/${memberId}`,
       addTrailingSlash(base),
     );
     return $fetch<{ data: ProjectMember[]; count: number }>(url.href, {
@@ -178,6 +225,8 @@ export function useProject() {
     deleteProject,
     getProject,
     getProjectMembers,
+    getUsersForAddMembers,
+    addProjectMembers,
     removeProjectMember,
     updateProjectMember,
   };
