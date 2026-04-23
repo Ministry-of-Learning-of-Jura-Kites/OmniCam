@@ -128,12 +128,7 @@ function focusInput(inputRef: Ref<HTMLInputElement | null>) {
 }
 
 async function handleRegisterEnter(
-  nextField:
-    | "lastName"
-    | "username"
-    | "email"
-    | "password"
-    | "submit",
+  nextField: "lastName" | "username" | "email" | "password" | "submit",
 ) {
   if (nextField === "lastName") return focusInput(registerLastNameInput);
   if (nextField === "username") return focusInput(registerUsernameInput);
@@ -306,7 +301,9 @@ watch(
                 <button
                   type="button"
                   class="password-toggle"
-                  :aria-label="showLoginPassword ? 'Hide password' : 'Show password'"
+                  :aria-label="
+                    showLoginPassword ? 'Hide password' : 'Show password'
+                  "
                   @click="showLoginPassword = !showLoginPassword"
                 >
                   <EyeOff v-if="showLoginPassword" class="password-icon" />
