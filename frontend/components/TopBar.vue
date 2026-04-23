@@ -92,7 +92,7 @@ function toggleShortcutsDialog() {
 
 const openDialog = ref(false);
 const isShareDialogOpen = ref(false);
-const { copy, copied } = useClipboard();
+const { copy, copied } = useClipboard({ legacy: true });
 
 const dialogTitle = ref("");
 const dialogContent = ref("");
@@ -107,7 +107,12 @@ const isSettingDialogOpen = ref<boolean>(false);
 const isCameraActive = ref(false);
 
 const { user, fetchUser } = useAuth();
-fetchUser();
+try {
+  fetchUser();
+} catch {
+  /* empty */
+}
+// Allow guest for livestream
 
 onMounted(() => {
   watch(
@@ -337,7 +342,7 @@ function toggleFullscreen() {
       <DialogHeader>
         <DialogTitle>Share</DialogTitle>
         <DialogDescription
-          >Anyone who has this link will be able to view
+          >Anyone in this project who has this link will be able to view
           this.</DialogDescription
         >
       </DialogHeader>
