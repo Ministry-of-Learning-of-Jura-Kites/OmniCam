@@ -40,6 +40,10 @@ const touched = reactive({
   email: false,
   password: false,
 });
+const loginTouched = reactive({
+  identifier: false,
+  password: false,
+});
 
 const loginForm = reactive<LoginRequest>({
   identifier: "",
@@ -48,6 +52,22 @@ const loginForm = reactive<LoginRequest>({
 
 async function register() {
   // console.log(registerForm);
+  touched.firstName = true;
+  touched.lastName = true;
+  touched.username = true;
+  touched.email = true;
+  touched.password = true;
+
+  if (
+    errors.value.firstName ||
+    errors.value.lastName ||
+    errors.value.username ||
+    errors.value.email ||
+    errors.value.password
+  ) {
+    return;
+  }
+
   try {
     await postRegister(registerForm);
     await clearNuxtData("projects-list");
@@ -61,6 +81,11 @@ async function register() {
 
 async function login() {
   // console.log(loginForm);
+  loginTouched.identifier = true;
+  loginTouched.password = true;
+
+  if (loginErrors.value.identifier || loginErrors.value.password) return;
+
   try {
     loginErrorMessage.value = "";
     await postLogin(loginForm);
@@ -78,6 +103,10 @@ function markTouched(field: keyof RegisterRequest) {
   touched[field] = true;
 }
 
+function markLoginTouched(field: keyof LoginRequest) {
+  loginTouched[field] = true;
+}
+
 function checkPasswordFormat(password: string): boolean {
   if (password.length < 8 || password.length > 255) return false;
 
@@ -92,6 +121,10 @@ function checkPasswordFormat(password: string): boolean {
   return hasNumber && hasSymbol;
 }
 
+function checkEmailFormat(email: string): boolean {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+}
+
 const errors = computed(() => {
   return {
     firstName:
@@ -102,13 +135,31 @@ const errors = computed(() => {
       touched.lastName && !registerForm.lastName ? "Last name is required" : "",
     username:
       touched.username && !registerForm.username ? "Username is required" : "",
-    email: touched.email && !registerForm.email ? "Email is required" : "",
+    email:
+      touched.email && !registerForm.email
+        ? "Email is required"
+        : touched.email && !checkEmailFormat(registerForm.email)
+          ? "Email format is invalid"
+          : "",
     password:
       touched.password && !registerForm.password
         ? "Password is required"
         : touched.password && !checkPasswordFormat(registerForm.password)
           ? "Password must be at least character 8, contain a number and a symbol"
           : "",
+  };
+});
+
+const loginErrors = computed(() => {
+  return {
+    identifier:
+      loginTouched.identifier && !loginForm.identifier
+        ? "Username or email is required"
+        : "",
+    password:
+      loginTouched.password && !loginForm.password
+        ? "Password is required"
+        : "",
   };
 });
 
@@ -144,6 +195,8 @@ async function handleLoginEnter(nextField: "password" | "submit") {
 
 watch(activeTab, () => {
   loginErrorMessage.value = "";
+  loginTouched.identifier = false;
+  loginTouched.password = false;
 });
 
 watch(
@@ -283,8 +336,12 @@ watch(
                 type="text"
                 placeholder="Email or Username"
                 required
+                @blur="markLoginTouched('identifier')"
                 @keydown.enter.prevent="handleLoginEnter('password')"
               />
+              <p v-if="loginErrors.identifier" class="text-red-600">
+                {{ loginErrors.identifier }}
+              </p>
             </div>
 
             <div class="form-group">
@@ -296,6 +353,7 @@ watch(
                   :type="showLoginPassword ? 'text' : 'password'"
                   placeholder="Password"
                   required
+                  @blur="markLoginTouched('password')"
                   @keydown.enter.prevent="handleLoginEnter('submit')"
                 />
                 <button
@@ -310,6 +368,9 @@ watch(
                   <Eye v-else class="password-icon" />
                 </button>
               </div>
+              <p v-if="loginErrors.password" class="text-red-600">
+                {{ loginErrors.password }}
+              </p>
             </div>
 
             <p v-if="loginErrorMessage" class="text-red-600 text-sm mb-3">
