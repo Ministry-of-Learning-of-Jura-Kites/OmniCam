@@ -18,9 +18,10 @@ import {
   SelectContent,
   SelectItem,
 } from "@/components/ui/select";
-import { getApiBaseUrlWithProtocol } from "~/utils/url";
-
-const config = useRuntimeConfig();
+import {
+  useProject,
+  type UserForAddMembers,
+} from "~/composables/api/use-project";
 
 const props = defineProps<{
   open: boolean;
@@ -38,12 +39,7 @@ const emit = defineEmits<{
   (e: "members-added"): void;
 }>();
 
-type UserItem = {
-  id: string;
-  username: string;
-  email: string | null;
-  first_name: string | null;
-  last_name: string | null;
+type UserItem = UserForAddMembers & {
   role?: string | null;
 };
 
@@ -61,6 +57,7 @@ const searchText = ref("");
 const loading = ref(false);
 const debounceTimer = ref<number | null>(null);
 const selected = reactive<Record<string, SelectedEntry>>({});
+const projectApi = useProject();
 const globalRole = ref<"project_manager" | "collaborator">(
   props.userRole === "owner" ? "project_manager" : "collaborator",
 );
@@ -77,18 +74,11 @@ const availableRoles = computed(() => {
 async function fetchUsers() {
   loading.value = true;
   try {
-    const baseWithProtocol = getApiBaseUrlWithProtocol("http", config);
-    const res = await $fetch<{ data: UserItem[]; count: number }>(
-      new URL(`projects/${props.projectId}/members`, baseWithProtocol).href,
-      {
-        method: "GET",
-        query: {
-          pageSize: pageSize.value,
-          page: page.value,
-          search: searchText.value,
-        },
-        credentials: "include",
-      },
+    const res = await projectApi.getUsersForAddMembers(
+      props.projectId,
+      page.value,
+      pageSize.value,
+      searchText.value,
     );
 
     const fetched = res.data.map((d) => ({
@@ -127,15 +117,7 @@ async function fetchUsers() {
 async function addMembers(out: { userId: string; role: string }[]) {
   console.log("Submitting selected users:", out);
   try {
-    const baseWithProtocol = getApiBaseUrlWithProtocol("http", config);
-    const res = await $fetch(
-      new URL(`projects/${props.projectId}/members`, baseWithProtocol).href,
-      {
-        method: "POST",
-        body: out,
-        credentials: "include",
-      },
-    );
+    const res = await projectApi.addProjectMembers(props.projectId, out);
 
     console.log("Add members response:", res);
 

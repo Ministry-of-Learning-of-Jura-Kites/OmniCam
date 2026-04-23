@@ -17,12 +17,13 @@ const { open, message } = useFailDialog();
 
 const { theme, toggleTheme } = useLightDarkTheme();
 const { user, fetchUser, postLogout } = useAuth();
-fetchUser();
+await fetchUser();
 
-const handleLogout = () => {
+const handleLogout = async () => {
   try {
-    postLogout();
-    navigateTo("/authentication");
+    await postLogout();
+    await clearNuxtData("projects-list");
+    await navigateTo("/authentication");
   } catch (err) {
     console.log(err);
   }
