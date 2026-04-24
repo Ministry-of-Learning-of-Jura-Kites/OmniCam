@@ -28,7 +28,10 @@ export type ModelWithoutId = Omit<Model, "modelId">;
 
 const route = useRoute();
 const { user, fetchUser } = useAuth();
-await fetchUser();
+
+onMounted(async () => {
+  await fetchUser();
+});
 
 const projectId = route.params.projectId as string;
 

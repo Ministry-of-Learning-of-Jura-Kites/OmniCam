@@ -59,7 +59,10 @@ const projectForm = reactive<ProjectForm>({
 });
 
 const { user, fetchUser } = useAuth();
-await fetchUser();
+
+onMounted(async () => {
+  await fetchUser();
+});
 
 const projectApi = useProject();
 
