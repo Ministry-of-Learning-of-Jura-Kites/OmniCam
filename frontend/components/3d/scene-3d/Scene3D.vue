@@ -14,6 +14,7 @@ import {
   LinearFilter,
   type CubeCamera,
   Matrix3,
+  Euler,
 } from "three";
 import { MAP_KEY, PANEL_KEY, SCENE_STATES_KEY } from "@/constants/state-keys";
 import Stats from "stats.js";
@@ -426,6 +427,60 @@ onMounted(() => {
       let p95RollingAverage = 0;
       let globalFrameRollingAvg = 0;
       let initialized = false;
+
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (window as any)["addCams"] = (n: number = 1) => {
+        const radius = 10;
+
+        for (let i = 0; i < n; i++) {
+          const id = uuidv4();
+
+          // 1. Position: Random point on the surface of a sphere
+          // This distributes them evenly at 'radius' distance from center
+          const phi = Math.acos(1 - 2 * Math.random());
+          const theta = 2 * Math.PI * Math.random();
+
+          const x = radius * Math.sin(phi) * Math.cos(theta);
+          const y = radius * Math.sin(phi) * Math.sin(theta);
+          const z = radius * Math.cos(phi);
+
+          // 2. Rotation: Random Euler angles (0 to 2*PI)
+          const rx = Math.random() * Math.PI * 2;
+          const ry = Math.random() * Math.PI * 2;
+          const rz = Math.random() * Math.PI * 2;
+
+          sceneStates.value!.cameras[id] = {
+            name: `cam_${Object.keys(sceneStates.value!.cameras).length}`,
+
+            // Using new Class instances
+            position: new Vector3(x, y, z),
+            rotation: new Euler(rx, ry, rz),
+
+            fov: 75,
+            widthRes: 1920,
+            heightRes: 1080,
+            frustumColor: { r: 0.5, g: 0.5, b: 0.5, a: 0.5 }, // Assuming ColorRGBA also needs 'new'
+            frustumLength: 5,
+            distortion: {
+              enabled: false,
+              isFisheye: false,
+            },
+            isHidingArrows: false,
+            isHidingWheels: false,
+            isHidingFrustum: true,
+            isLockingPosition: false,
+            isLockingRotation: false,
+            controlling: undefined,
+          };
+        }
+      };
+
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (window as any)["removeCams"] = (n: number = 1) => {
+        for (const id of Object.keys(sceneStates.value!.cameras).slice(0, n)) {
+          delete sceneStates.value!.cameras[id];
+        }
+      };
 
       setInterval(() => {
         if (frameDurations.length >= WINDOW_SIZE) {
