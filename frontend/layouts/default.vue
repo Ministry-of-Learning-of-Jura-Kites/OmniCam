@@ -17,7 +17,10 @@ const { open, message } = useFailDialog();
 
 const { theme, toggleTheme } = useLightDarkTheme();
 const { user, fetchUser, postLogout } = useAuth();
-await fetchUser();
+
+onMounted(async () => {
+  await fetchUser();
+});
 
 const handleLogout = async () => {
   try {

@@ -107,10 +107,9 @@ const isSettingDialogOpen = ref<boolean>(false);
 const isCameraActive = ref(false);
 
 const { user, fetchUser } = useAuth();
-try {
-  fetchUser();
-} catch {
-  /* empty */
+
+if (import.meta.client) {
+  await fetchUser();
 }
 // Allow guest for livestream
 

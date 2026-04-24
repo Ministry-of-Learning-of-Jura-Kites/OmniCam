@@ -1,12 +1,12 @@
 <script setup lang="ts">
-import { Mesh, MeshBasicMaterial, TorusGeometry } from "three";
+import { Mesh, MeshBasicMaterial } from "three";
 import { SCENE_STATES_KEY } from "@/constants/state-keys";
 
 import { ROTATING_TYPE, RotatingUserData } from "./rotating-event-handle";
 import { useTresContext } from "@tresjs/core";
 import type { Obj3DWithUserData } from "~/types/obj-3d-user-data";
-import { ROTATING_TORUS_CONFIG } from "~/constants";
 import type { MovableObject } from "~/types/movable";
+import { useWheelObjGeoCache } from "./use-wheel-obj-geo-cache";
 
 const object = defineModel<MovableObject>({ required: true });
 
@@ -39,12 +39,8 @@ const sceneStates = inject(SCENE_STATES_KEY)!;
 
 const context = useTresContext();
 
-const geometry = new TorusGeometry(
-  ROTATING_TORUS_CONFIG.RADIUS,
-  ROTATING_TORUS_CONFIG.TUBE_RADIUS,
-  16,
-  100,
-);
+const { get } = useWheelObjGeoCache();
+const geometry = get("wheel");
 const material = new MeshBasicMaterial({ color: props.color });
 const wheelBase = new Mesh(geometry, material);
 
