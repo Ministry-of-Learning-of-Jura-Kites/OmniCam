@@ -45,8 +45,8 @@ export interface UserForAddMembers {
 
 export function getBaseProjectImageUrl(id: string) {
   const config = useRuntimeConfig();
-  const base = getApiBaseUrlWithProtocol("http", config, false);
-  const url = new URL(`assets/projects/${id}`, base);
+  const base = getApiBaseUrlWithProtocol("http", config);
+  const url = concatUrl(`assets/projects/${id}`, base);
   return url;
 }
 
@@ -54,24 +54,24 @@ export function getUrlForProjectImage(id: string, imagePath: string) {
   const config = useRuntimeConfig();
   const extMatch = imagePath.match(/\.(\w+)$/);
   const ext = extMatch ? extMatch[1] : "png";
-  const base = getApiBaseUrlWithProtocol("http", config, false);
+  const base = getApiBaseUrlWithProtocol("http", config);
   const encodedId = uuidToBase64Url(id);
-  const url = new URL(`assets/projects/${encodedId}/file/${ext}`, base);
+  const url = concatUrl(`assets/projects/${encodedId}/file/${ext}`, base);
   url.searchParams.append("t", String(Date.now()));
   return url;
 }
 
-export function getProjectBaseUrl(allowServerSide: boolean) {
+export function getProjectBaseUrl() {
   const config = useRuntimeConfig();
-  const base = getApiBaseUrlWithProtocol("http", config, allowServerSide);
-  return new URL(`projects`, base);
+  const base = getApiBaseUrlWithProtocol("http", config);
+  return concatUrl(`projects`, base);
 }
 
 export function useProject() {
   async function listProjects(page = 1, pageSize = 4) {
     const headers = useRequestHeaders(["cookie"]);
     return await $fetch<{ data: Project[]; count: number }>(
-      getProjectBaseUrl(true).href,
+      getProjectBaseUrl().href,
       {
         method: "GET",
         query: { page: page, pageSize: pageSize },
@@ -82,7 +82,7 @@ export function useProject() {
   }
 
   async function createProject(formData: FormData) {
-    return await $fetch<{ data: Project }>(getProjectBaseUrl(false).href, {
+    return await $fetch<{ data: Project }>(getProjectBaseUrl().href, {
       method: "POST",
       body: formData,
       credentials: "include",
@@ -91,10 +91,7 @@ export function useProject() {
 
   async function updateProject(hexId: string, body: ProjectUpdateRequest) {
     const headers = useRequestHeaders(["cookie"]);
-    const url = new URL(
-      uuidToBase64Url(hexId),
-      addTrailingSlash(getProjectBaseUrl(false)),
-    );
+    const url = concatUrl(uuidToBase64Url(hexId), getProjectBaseUrl());
     return await $fetch<{ data: Project }>(url.href, {
       method: "PUT",
       body,
@@ -104,10 +101,7 @@ export function useProject() {
   }
 
   async function deleteProject(hexId: string) {
-    const url = new URL(
-      uuidToBase64Url(hexId),
-      addTrailingSlash(getProjectBaseUrl(false)),
-    );
+    const url = concatUrl(uuidToBase64Url(hexId), getProjectBaseUrl());
     return await $fetch<{ data: Project }>(url.href, {
       method: "DELETE",
       credentials: "include",
@@ -115,9 +109,9 @@ export function useProject() {
   }
 
   async function updateProjectImage(hexId: string, body: FormData) {
-    const url = new URL(
+    const url = concatUrl(
       `${uuidToBase64Url(hexId)}/image`,
-      addTrailingSlash(getProjectBaseUrl(false)),
+      getProjectBaseUrl(),
     );
 
     return await $fetch<{ imagePath: string; fileExtension: string }>(
@@ -131,11 +125,11 @@ export function useProject() {
   }
 
   async function getProject(projectId: string) {
-    const base = getProjectBaseUrl(true);
+    const base = getProjectBaseUrl();
     const headers = useRequestHeaders(["cookie"]);
 
     return await $fetch<{ data: Project }>(
-      new URL(projectId, addTrailingSlash(base.href)).href,
+      concatUrl(projectId, base.href).href,
       {
         method: "GET",
         headers,
@@ -146,8 +140,8 @@ export function useProject() {
 
   async function getProjectMembers(projectId: string) {
     const headers = useRequestHeaders(["cookie"]);
-    const base = getProjectBaseUrl(false);
-    const url = new URL(`${projectId}/members`, addTrailingSlash(base));
+    const base = getProjectBaseUrl();
+    const url = concatUrl(`${projectId}/members`, base);
     return $fetch<{ data: ProjectMember[]; count: number }>(url.href, {
       method: "GET",
       headers,
@@ -162,11 +156,8 @@ export function useProject() {
     search = "",
   ) {
     const headers = useRequestHeaders(["cookie"]);
-    const base = getProjectBaseUrl(false);
-    const url = new URL(
-      `${projectId}/userForAddMembers`,
-      addTrailingSlash(base),
-    );
+    const base = getProjectBaseUrl();
+    const url = concatUrl(`${projectId}/userForAddMembers`, base);
     return $fetch<{ data: UserForAddMembers[]; count: number }>(url.href, {
       method: "GET",
       query: { page, pageSize, search },
@@ -179,8 +170,8 @@ export function useProject() {
     projectId: string,
     body: AddProjectMemberReq[],
   ) {
-    const base = getProjectBaseUrl(false);
-    const url = new URL(`${projectId}/members`, addTrailingSlash(base));
+    const base = getProjectBaseUrl();
+    const url = concatUrl(`${projectId}/members`, base);
     return $fetch(url.href, {
       method: "POST",
       body,
@@ -189,11 +180,8 @@ export function useProject() {
   }
 
   async function removeProjectMember(projectId: string, memberId: string) {
-    const base = getProjectBaseUrl(false);
-    const url = new URL(
-      `${projectId}/member/${memberId}`,
-      addTrailingSlash(base),
-    );
+    const base = getProjectBaseUrl();
+    const url = concatUrl(`${projectId}/member/${memberId}`, base);
     return $fetch<{ data: ProjectMember[]; count: number }>(url.href, {
       method: "DELETE",
       credentials: "include",
@@ -205,11 +193,8 @@ export function useProject() {
     userId: string,
     body: ProjectMemberUpdateReq,
   ) {
-    const base = getProjectBaseUrl(false);
-    const url = new URL(
-      `${projectId}/user/${userId}/role`,
-      addTrailingSlash(base),
-    );
+    const base = getProjectBaseUrl();
+    const url = concatUrl(`${projectId}/user/${userId}/role`, base);
     return $fetch(url.href, {
       method: "PUT",
       body,

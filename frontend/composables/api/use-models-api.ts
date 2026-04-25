@@ -1,5 +1,5 @@
 import { uuidToBase64Url } from "~/lib/uuid";
-import { getBaseProjectImageUrl, getProjectBaseUrl } from "./use-project";
+import { getBaseProjectImageUrl, getProjectBaseUrl } from "./use-project-api";
 
 export interface Model {
   modelId: string;
@@ -42,22 +42,19 @@ export function getUrlForModelImage(
   const ext = imageExt?.slice(1);
   const encodedModelId = uuidToBase64Url(modelId);
   const base = getBaseProjectImageUrl(projectId).href;
-  const url = new URL(`${base}/models/${encodedModelId}/file/${ext}`);
+  const url = concatUrl(`models/${encodedModelId}/file/${ext}`, base);
   url.searchParams.append("t", String(Date.now()));
   return url;
 }
 
-export function getModelBaseUrl(id: string, allowServerSide: boolean) {
-  return new URL(
-    `${id}/models`,
-    addTrailingSlash(getProjectBaseUrl(allowServerSide)),
-  );
+export function getModelBaseUrl(id: string) {
+  return concatUrl(`${id}/models`, getProjectBaseUrl());
 }
 
 export function useModels(projectId: string) {
   async function listModels(page = 1, pageSize = 4) {
     const headers = useRequestHeaders(["cookie"]);
-    const base = getModelBaseUrl(projectId, true);
+    const base = getModelBaseUrl(projectId);
     return await $fetch<ModelGetResponse>(base.href, {
       method: "GET",
       query: {
@@ -70,19 +67,16 @@ export function useModels(projectId: string) {
   }
 
   async function postCreateModel(body: FormData) {
-    return await $fetch<CreateModelResponse>(
-      getModelBaseUrl(projectId, false).href,
-      {
-        method: "POST",
-        body,
-        credentials: "include",
-      },
-    );
+    return await $fetch<CreateModelResponse>(getModelBaseUrl(projectId).href, {
+      method: "POST",
+      body,
+      credentials: "include",
+    });
   }
 
   async function updateModel(modelId: string, body: ModelUpdateRequest) {
-    const base = getModelBaseUrl(projectId, false);
-    const url = new URL(modelId, addTrailingSlash(base));
+    const base = getModelBaseUrl(projectId);
+    const url = concatUrl(modelId, base);
     return $fetch<CreateModelResponse>(url.href, {
       method: "PUT",
       body,
@@ -91,8 +85,8 @@ export function useModels(projectId: string) {
   }
 
   async function deleteModel(modelId: string) {
-    const base = getModelBaseUrl(projectId, false);
-    const url = new URL(modelId, addTrailingSlash(base));
+    const base = getModelBaseUrl(projectId);
+    const url = concatUrl(modelId, base);
     return await $fetch(url.href, {
       method: "DELETE",
       credentials: "include",
@@ -100,8 +94,8 @@ export function useModels(projectId: string) {
   }
 
   async function updateModelImage(modelId: string, body: FormData) {
-    const base = getModelBaseUrl(projectId, false);
-    const url = new URL(`${modelId}/image`, addTrailingSlash(base));
+    const base = getModelBaseUrl(projectId);
+    const url = concatUrl(`${modelId}/image`, base);
     return await $fetch<{ imagePath: string; message: string }>(url.href, {
       method: "PUT",
       body,

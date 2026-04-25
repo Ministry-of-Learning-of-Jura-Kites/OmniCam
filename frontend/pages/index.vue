@@ -10,7 +10,7 @@ import {
   getUrlForProjectImage,
   useProject,
   type Project,
-} from "~/composables/api/use-project";
+} from "~/composables/api/use-project-api";
 import { useAuth } from "~/composables/api/use-auth";
 
 type ProjectWithoutId = Omit<Project, "id">;
