@@ -702,7 +702,7 @@ const isShowingCamDirection = computed(() => {
           <TresDirectionalLight :position="[10, 10, 5]" :intensity="1" />
 
           <CalibrationGrid
-            v-if="props.workspace"
+            v-if="currentPanel == 'calibration' && props.workspace"
             :initial-pos="[
               sceneStates!.currentCam.value.position.x,
               sceneStates!.currentCam.value.position.y,
