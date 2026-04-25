@@ -703,6 +703,11 @@ const isShowingCamDirection = computed(() => {
 
           <CalibrationGrid
             v-if="props.workspace"
+            :initial-pos="[
+              sceneStates!.currentCam.value.position.x,
+              sceneStates!.currentCam.value.position.y,
+              sceneStates!.currentCam.value.position.z,
+            ]"
             :workspace="props.workspace"
           />
 
