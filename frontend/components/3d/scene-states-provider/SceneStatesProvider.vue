@@ -60,6 +60,7 @@ const baseSceneStates = createBaseSceneStates(
   autosaveWs,
   livestreamWs,
   modelWithCamsResp.value!,
+  props.workspace,
 );
 
 if (baseSceneStates.error != null) {
