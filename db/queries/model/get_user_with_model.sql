@@ -11,7 +11,7 @@ SELECT
 FROM
   "user" u
   LEFT JOIN "user_to_project" utp ON u.id = utp.user_id
-  LEFT JOIN "model" m ON m.project_id = utp.id
+  LEFT JOIN "model" m ON m.project_id = utp.project_id
 WHERE
   (
     COALESCE(u.username = SQLC.NARG(username), FALSE)

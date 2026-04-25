@@ -11,12 +11,15 @@ import ContentCard from "~/components/card/ContentCard.vue";
 import CustomPagination from "~/components/pagination/CustomPagination.vue";
 import { uuidToBase64Url } from "~/lib/uuid";
 import { Plus, ArrowLeft } from "lucide-vue-next";
-import { useProject, type ProjectMember } from "~/composables/api/use-project";
+import {
+  useProject,
+  type ProjectMember,
+} from "~/composables/api/use-project-api";
 import {
   type Model,
   useModels,
   getUrlForModelImage,
-} from "~/composables/api/use-models";
+} from "~/composables/api/use-models-api";
 
 export type ModelForm = {
   name: string;

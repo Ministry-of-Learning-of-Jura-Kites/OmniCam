@@ -31,7 +31,7 @@ import type { ProcessedCoverageFace } from "../scene-states-provider/create-scen
 import CoverageCornerGizmo from "../coverage-area-mesh/CoverageCornerGizmo.vue";
 import { averageVector } from "~/utils/face-helper/avg-vec";
 import { v4 as uuidv4 } from "uuid";
-import { get3dModelPathClient } from "~/composables/api/use-fetch-model";
+import { get3dModelPathClient } from "~/composables/api/use-fetch-model-api";
 import AxisGizmo from "../axis-gizmo/axis-gizmo.vue";
 import type {
   QuadrilateralPoints,
