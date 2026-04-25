@@ -23,6 +23,10 @@ import {
 import { randomVividColor } from "~/utils/randomVividColor";
 import { PANEL_KEY, SCENE_STATES_KEY } from "@/constants/state-keys";
 import CameraSpawnDialog from "~/components/dialog/CameraSpawnDialog.vue";
+import Tooltip from "./ui/tooltip/Tooltip.vue";
+import TooltipTrigger from "./ui/tooltip/TooltipTrigger.vue";
+import TooltipContent from "./ui/tooltip/TooltipContent.vue";
+import TooltipProvider from "./ui/tooltip/TooltipProvider.vue";
 
 export type Camerapreset = {
   vendor: string;
@@ -387,7 +391,7 @@ function toggleCamera(camId: string) {
             @click="activeCamTab = 'style'"
           >
             <Palette class="h-4 w-4" />
-            Style
+            Frustum
           </button>
         </div>
 
@@ -724,23 +728,29 @@ function toggleCamera(camId: string) {
                 <!-- Visibility Toggle -->
                 <Tooltip>
                   <TooltipTrigger as-child>
-                    <Button
-                      size="icon"
-                      variant="ghost"
-                      :disabled="sceneStates?.cameras[selectedCamId]!.fov > 179"
-                      @click="
-                        sceneStates!.cameras[selectedCamId]!.isHidingFrustum =
-                          !sceneStates!.cameras[selectedCamId]!.isHidingFrustum
-                      "
-                    >
-                      <Eye
-                        v-if="
-                          !sceneStates?.cameras[selectedCamId]!.isHidingFrustum
+                    <div class="inline-block">
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        :disabled="
+                          sceneStates?.cameras[selectedCamId]!.fov > 179
                         "
-                        class="h-4 w-4"
-                      />
-                      <EyeOff v-else class="h-4 w-4" />
-                    </Button>
+                        @click="
+                          sceneStates!.cameras[selectedCamId]!.isHidingFrustum =
+                            !sceneStates!.cameras[selectedCamId]!
+                              .isHidingFrustum
+                        "
+                      >
+                        <Eye
+                          v-if="
+                            !sceneStates?.cameras[selectedCamId]!
+                              .isHidingFrustum
+                          "
+                          class="h-4 w-4"
+                        />
+                        <EyeOff v-else class="h-4 w-4" />
+                      </Button>
+                    </div>
                   </TooltipTrigger>
                   <TooltipContent
                     v-if="sceneStates?.cameras[selectedCamId]!.fov > 179"
