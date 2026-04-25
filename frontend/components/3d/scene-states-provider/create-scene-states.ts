@@ -145,6 +145,7 @@ export function createBaseSceneStates(
   autosaveWebsocket: UseWebSocketReturn<unknown> | undefined,
   livestreamWebsocket: UseWebSocketReturn<unknown> | undefined,
   modelWithCamsResp: ModelWithCamsResp,
+  workspace: string | undefined,
 ) {
   const tresContext = ref<TresContext | null>(null);
 
@@ -401,13 +402,15 @@ export function createBaseSceneStates(
   //   sceneStates.websocket = useWebSocket(websocketUrl);
   // };
 
-  watch(
-    cameras,
-    () => {
-      markedForCheck.value = true;
-    },
-    { deep: true },
-  );
+  if (workspace == "me") {
+    watch(
+      cameras,
+      () => {
+        markedForCheck.value = true;
+      },
+      { deep: true },
+    );
+  }
 
   return sceneStates;
 }
