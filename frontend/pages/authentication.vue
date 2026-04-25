@@ -12,7 +12,7 @@ definePageMeta({
 
 const { postLogin, postRegister } = useAuth();
 
-const activeTab = ref<"signup" | "signin">("signup");
+const activeTab = ref<"signup" | "signin">("signin");
 const showRegisterPassword = ref(false);
 const showLoginPassword = ref(false);
 const loginErrorMessage = ref("");
