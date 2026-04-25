@@ -151,6 +151,8 @@ export function createBaseSceneStates(
 
   const draggableObjects: Set<Obj3DWithUserData> = new Set();
 
+  const clickableObjects: Set<Obj3DWithUserData> = new Set();
+
   const isDraggingObject: Ref<boolean> = ref(false);
 
   const transformingInfo: Ref<
@@ -367,6 +369,7 @@ export function createBaseSceneStates(
     modelRef,
     selectionMode,
     draggableObjects,
+    clickableObjects,
     isDraggingObject,
     currentCamId,
     currentCam,

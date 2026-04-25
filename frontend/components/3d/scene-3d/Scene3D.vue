@@ -320,10 +320,13 @@ function onCanvasPointer(event: PointerEvent) {
   mouse.x = ((event.clientX - rect.left) / rect.width!) * 2 - 1;
   mouse.y = -((event.clientY - rect.top) / rect.height!) * 2 + 1;
   raycaster.setFromCamera(mouse, perspectiveCamera.value!);
-  const intersects = raycaster.intersectObjects(
-    [...sceneStates.value!.draggableObjects],
-    false,
-  );
+  const objectsToSearch = [...sceneStates.value!.draggableObjects];
+  if (event.type === "pointerdown" || event.type === "pointerup") {
+    for (const obj of sceneStates.value!.clickableObjects) {
+      objectsToSearch.push(obj);
+    }
+  }
+  const intersects = raycaster.intersectObjects(objectsToSearch, false);
   if (intersects.length > 0) {
     const foundObj = intersects[0];
     const userData = foundObj?.object.userData as IUserData;
@@ -416,6 +419,7 @@ onMounted(() => {
           stats!.end();
         });
       }
+
       sceneStates.value!.tresContext.value = context;
       renderer.instance.domElement.addEventListener(
         "pointerdown",
