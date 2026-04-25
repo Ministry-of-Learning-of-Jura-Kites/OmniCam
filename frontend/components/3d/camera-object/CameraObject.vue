@@ -1,15 +1,16 @@
 <script setup lang="ts">
-import { SCENE_STATES_KEY } from "@/constants/state-keys";
+import { PANEL_KEY, SCENE_STATES_KEY } from "@/constants/state-keys";
 
 import MovableArrow from "../movable-arrow/MovableArrow.vue";
 import TresMesh from "@tresjs/core";
 import RotationWheel from "../rotation-wheel/RotationWheel.vue";
 import CameraFrustum from "../camera-frustum/CameraFrustum.vue";
-import type { Color, Group } from "three";
+import type { Color, Group, Mesh } from "three";
 import { Quaternion } from "three";
 import { safeGetAspectRatio } from "~/utils/aspect-ratio";
 import type { ICamera } from "~/types/camera";
 import { useCamObjGeoCache } from "./use-cam-obj-geo-cache";
+import type { Obj3DWithUserData } from "~/types/obj-3d-user-data";
 
 const props = withDefaults(
   defineProps<{
@@ -26,6 +27,9 @@ const props = withDefaults(
   },
 );
 
+const { camPanelInfo } = inject(PANEL_KEY)!;
+const { selectedCamId } = camPanelInfo;
+
 const { get: getGeo } = useCamObjGeoCache();
 
 const cameraBodyGeo = getGeo("body");
@@ -34,6 +38,8 @@ const cameraLensGeo = getGeo("lens");
 const sceneStates = inject(SCENE_STATES_KEY)!;
 
 const group = ref<Group>();
+const lensMesh = ref<Mesh>();
+const bodyMesh = ref<Mesh>();
 
 let cam: Ref<ICamera>;
 if (props.instance == undefined) {
@@ -41,6 +47,40 @@ if (props.instance == undefined) {
 } else {
   cam = ref(props.instance);
 }
+
+watch([lensMesh, bodyMesh], (meshes) => {
+  for (const obj of meshes) {
+    let downTime = performance.now();
+    obj!.userData = {
+      type: "",
+      target: group!,
+      handleEvent: (eventType: string, event: Event) => {
+        if (event.type == "pointerdown") {
+          downTime = performance.now();
+        }
+        if (event.type == "pointerup") {
+          const upTime = performance.now();
+          if (upTime - downTime < 100) {
+            selectedCamId.value = props.camId;
+          }
+        }
+      },
+    };
+    sceneStates.value!.clickableObjects.add(
+      obj as unknown as Obj3DWithUserData,
+    );
+  }
+});
+
+onUnmounted(() => {
+  for (const obj of [lensMesh.value, bodyMesh.value]) {
+    if (obj != undefined) {
+      sceneStates.value!.clickableObjects.delete(
+        obj as unknown as Obj3DWithUserData,
+      );
+    }
+  }
+});
 
 const camQuat = computed(() => {
   const quaternion = new Quaternion().setFromEuler(cam!.value.rotation);
@@ -59,10 +99,10 @@ watch(group, (group) => {
     :position="[cam!.position.x, cam!.position.y, cam!.position.z]"
   >
     <TresObject3D :quaternion="camQuat">
-      <TresMesh :geometry="cameraBodyGeo">
+      <TresMesh ref="bodyMesh" :geometry="cameraBodyGeo">
         <TresMeshBasicMaterial :color="props.color" />
       </TresMesh>
-      <TresMesh :geometry="cameraLensGeo">
+      <TresMesh ref="lensMesh" :geometry="cameraLensGeo">
         <TresMeshBasicMaterial :color="'black'" />
       </TresMesh>
       <CameraFrustum
