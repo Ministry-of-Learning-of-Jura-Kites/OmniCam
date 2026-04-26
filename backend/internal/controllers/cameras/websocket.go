@@ -504,6 +504,7 @@ func (t *UpdateEventRoute) getAutosave(c *gin.Context) {
 			switch casted := msg.Event.(type) {
 			case *protobufs.WorkspaceEventRequest_Autosave:
 				t.handleAutosaveEvent(e, &currentVersion, casted.Autosave)
+				t.Nc.Publish(e.Subject, rawMsg)
 			case *protobufs.WorkspaceEventRequest_Optimize:
 				go func() {
 					t.handleOptimizeEvent(projectId, modelId, conn, casted.Optimize)
