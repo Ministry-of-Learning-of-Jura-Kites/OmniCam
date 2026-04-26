@@ -18,16 +18,16 @@ export function addTrailingSlash(host: string | URL) {
   return urlString.endsWith("/") ? urlString : `${urlString}/`;
 }
 
+export function concatUrl(extended: string | URL, base: string | URL) {
+  return new URL(extended, addTrailingSlash(base));
+}
+
 export function getApiBaseUrlWithProtocol(
   type: "http" | "websocket",
   config: RuntimeConfig,
-  allowServerSide: boolean = false,
 ) {
   const protocol = getApiProtocol(type, config);
-  let host = config.public.externalBackendHost;
-  if (allowServerSide) {
-    host = getHostFromRuntime(config, import.meta.client);
-  }
+  const host = getHostFromRuntime(config, import.meta.client);
   const apiBase = addTrailingSlash(host);
   return new URL(`${protocol}://${apiBase}`);
 }

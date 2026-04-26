@@ -10,7 +10,7 @@ export function get3dModelPathClient(
   const config = useRuntimeConfig();
   const baseApiWithProtocol = getApiBaseUrlWithProtocol("http", config);
 
-  return new URL(
+  return concatUrl(
     `assets/projects/${projectId}/models/${modelId}/file/${fileExtension.slice(1)}`,
     baseApiWithProtocol,
   );
@@ -40,8 +40,8 @@ export function useFetchModel(
       const fields = getRequiredFields(workspace, currentData);
 
       const headers = useRequestHeaders(["cookie"]);
-      const apiBase = getApiBaseUrlWithProtocol("http", runtimeConfig, true);
-      const url = new URL(
+      const apiBase = getApiBaseUrlWithProtocol("http", runtimeConfig);
+      const url = concatUrl(
         `projects/${projectId}/models/${modelId}${workspaceSuffix.value}`,
         apiBase,
       );

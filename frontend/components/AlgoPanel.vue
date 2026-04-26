@@ -194,12 +194,22 @@ function submit() {
                 : "Stop Selecting"
             }}
           </Button>
-          <p class="text-[11px] text-muted-foreground text-center mt-1">
-            <kbd
-              class="px-1 py-0.5 rounded border bg-background font-sans text-xs"
-              >Ctrl</kbd
-            >
-            + Click to define corners
+
+          <p
+            class="text-[11px] text-muted-foreground text-center mt-1 flex items-center justify-center gap-1"
+          >
+            <span class="flex items-center gap-0.5">
+              <kbd
+                class="px-1 py-0.5 rounded border bg-background font-sans text-xs"
+                >Ctrl</kbd
+              >
+              <span class="text-muted-foreground">/</span>
+              <kbd
+                class="px-1 py-0.5 rounded border bg-background font-sans text-xs"
+                >⌘</kbd
+              >
+            </span>
+            <span>+ Click to define corners</span>
           </p>
         </div>
 

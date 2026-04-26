@@ -28,9 +28,11 @@ const style = reactive({
 const clonedTargetPos = new Vector3();
 
 watchDebounced(
-  [
+  () => [
     sceneStates.value!.currentCam.value.position,
     sceneStates.value!.currentCam.value.rotation,
+    props.targetPos,
+    sceneStates.value!.screenSize,
   ],
   () => {
     if (!props.show) {

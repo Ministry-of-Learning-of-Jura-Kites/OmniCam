@@ -31,7 +31,7 @@ import type { ProcessedCoverageFace } from "../scene-states-provider/create-scen
 import CoverageCornerGizmo from "../coverage-area-mesh/CoverageCornerGizmo.vue";
 import { averageVector } from "~/utils/face-helper/avg-vec";
 import { v4 as uuidv4 } from "uuid";
-import { get3dModelPathClient } from "~/composables/api/use-fetch-model";
+import { get3dModelPathClient } from "~/composables/api/use-fetch-model-api";
 import AxisGizmo from "../axis-gizmo/axis-gizmo.vue";
 import type {
   QuadrilateralPoints,
@@ -213,7 +213,9 @@ function buildCoverageFaceFromPickedPoints(
 function handleCoverageAreaPointer(event: PointerEvent) {
   if (sceneStates.value!.selectionMode.value !== "coverage-area") return false;
 
-  if (event.type !== "pointerdown" || !event.ctrlKey) {
+  const isModifierPressed = event.ctrlKey || event.metaKey;
+
+  if (event.type !== "pointerdown" || !isModifierPressed) {
     return false;
   }
 
@@ -223,7 +225,7 @@ function handleCoverageAreaPointer(event: PointerEvent) {
 
   const hit = getSurfaceHit(event);
 
-  if (!hit) return {};
+  if (!hit) return false;
 
   const forward = new Vector3(0, 0, 1);
   forward.applyEuler(sceneStates.value!.spectatorCameraRotation!);
@@ -320,10 +322,13 @@ function onCanvasPointer(event: PointerEvent) {
   mouse.x = ((event.clientX - rect.left) / rect.width!) * 2 - 1;
   mouse.y = -((event.clientY - rect.top) / rect.height!) * 2 + 1;
   raycaster.setFromCamera(mouse, perspectiveCamera.value!);
-  const intersects = raycaster.intersectObjects(
-    [...sceneStates.value!.draggableObjects],
-    false,
-  );
+  const objectsToSearch = [...sceneStates.value!.draggableObjects];
+  if (event.type === "pointerdown" || event.type === "pointerup") {
+    for (const obj of sceneStates.value!.clickableObjects) {
+      objectsToSearch.push(obj);
+    }
+  }
+  const intersects = raycaster.intersectObjects(objectsToSearch, false);
   if (intersects.length > 0) {
     const foundObj = intersects[0];
     const userData = foundObj?.object.userData as IUserData;
@@ -416,6 +421,7 @@ onMounted(() => {
           stats!.end();
         });
       }
+
       sceneStates.value!.tresContext.value = context;
       renderer.instance.domElement.addEventListener(
         "pointerdown",
@@ -698,7 +704,12 @@ const isShowingCamDirection = computed(() => {
           <TresDirectionalLight :position="[10, 10, 5]" :intensity="1" />
 
           <CalibrationGrid
-            v-if="props.workspace"
+            v-if="currentPanel == 'calibration' && props.workspace"
+            :initial-pos="[
+              sceneStates!.currentCam.value.position.x,
+              sceneStates!.currentCam.value.position.y,
+              sceneStates!.currentCam.value.position.z,
+            ]"
             :workspace="props.workspace"
           />
 

@@ -21,7 +21,7 @@ import {
 import {
   useProject,
   type UserForAddMembers,
-} from "~/composables/api/use-project";
+} from "~/composables/api/use-project-api";
 
 const props = defineProps<{
   open: boolean;

@@ -8,7 +8,7 @@ import {
   SCENE_STATES_KEY,
   SCENE_STATES_READY_KEY,
 } from "~/constants/state-keys";
-import { useFetchModel } from "~/composables/api/use-fetch-model";
+import { useFetchModel } from "~/composables/api/use-fetch-model-api";
 import { useAutosaveWs } from "~/composables/api/use-autosave-ws";
 import { useLivestreamWs } from "~/composables/api/use-livestream-ws";
 
@@ -60,6 +60,7 @@ const baseSceneStates = createBaseSceneStates(
   autosaveWs,
   livestreamWs,
   modelWithCamsResp.value!,
+  props.workspace,
 );
 
 if (baseSceneStates.error != null) {

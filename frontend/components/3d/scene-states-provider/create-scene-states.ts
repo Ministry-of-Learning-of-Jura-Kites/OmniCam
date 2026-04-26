@@ -145,10 +145,13 @@ export function createBaseSceneStates(
   autosaveWebsocket: UseWebSocketReturn<unknown> | undefined,
   livestreamWebsocket: UseWebSocketReturn<unknown> | undefined,
   modelWithCamsResp: ModelWithCamsResp,
+  workspace: string | undefined,
 ) {
   const tresContext = ref<TresContext | null>(null);
 
   const draggableObjects: Set<Obj3DWithUserData> = new Set();
+
+  const clickableObjects: Set<Obj3DWithUserData> = new Set();
 
   const isDraggingObject: Ref<boolean> = ref(false);
 
@@ -366,6 +369,7 @@ export function createBaseSceneStates(
     modelRef,
     selectionMode,
     draggableObjects,
+    clickableObjects,
     isDraggingObject,
     currentCamId,
     currentCam,
@@ -401,13 +405,15 @@ export function createBaseSceneStates(
   //   sceneStates.websocket = useWebSocket(websocketUrl);
   // };
 
-  watch(
-    cameras,
-    () => {
-      markedForCheck.value = true;
-    },
-    { deep: true },
-  );
+  if (workspace == "me") {
+    watch(
+      cameras,
+      () => {
+        markedForCheck.value = true;
+      },
+      { deep: true },
+    );
+  }
 
   return sceneStates;
 }

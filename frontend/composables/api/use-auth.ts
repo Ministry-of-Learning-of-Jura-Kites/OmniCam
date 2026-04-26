@@ -61,8 +61,8 @@ export function useAuth() {
   }
 
   async function postLogin(loginForm: LoginRequest) {
-    const base = getApiBaseUrlWithProtocol("http", config, false);
-    await $fetch<Response>(new URL("login", base).href, {
+    const base = getApiBaseUrlWithProtocol("http", config);
+    await $fetch<Response>(concatUrl("login", base).href, {
       method: "POST",
       body: loginForm,
       credentials: "include",
@@ -71,8 +71,8 @@ export function useAuth() {
   }
 
   async function postRegister(registerForm: RegisterRequest) {
-    const base = getApiBaseUrlWithProtocol("http", config, false);
-    return await $fetch<Response>(new URL("register", base).href, {
+    const base = getApiBaseUrlWithProtocol("http", config);
+    return await $fetch<Response>(concatUrl("register", base).href, {
       method: "POST",
       body: registerForm,
       credentials: "include",
@@ -80,9 +80,9 @@ export function useAuth() {
   }
 
   async function postLogout() {
-    const base = getApiBaseUrlWithProtocol("http", config, false);
+    const base = getApiBaseUrlWithProtocol("http", config);
 
-    await $fetch<null>(new URL(`logout`, base).href, {
+    await $fetch<null>(concatUrl(`logout`, base).href, {
       method: "POST",
       credentials: "include",
     });
@@ -92,8 +92,8 @@ export function useAuth() {
   async function getMe() {
     const headers = useRequestHeaders(["cookie"]);
 
-    const base = getApiBaseUrlWithProtocol("http", config, false);
-    return $fetch<{ data: User }>(new URL(`me`, base).href, {
+    const base = getApiBaseUrlWithProtocol("http", config);
+    return $fetch<{ data: User }>(concatUrl(`me`, base).href, {
       method: "GET",
       headers: headers,
       credentials: "include",
