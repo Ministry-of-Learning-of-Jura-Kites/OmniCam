@@ -38,6 +38,8 @@ type EventContext struct {
 	ModelID uuid.UUID
 	UserID  uuid.UUID
 	Subject string
+	Scale   float64
+	Height  float64
 }
 
 // Camera handlers
@@ -200,20 +202,58 @@ func (t *UpdateEventRoute) handleAutosaveEvent(
 	if casted.Version <= uint32(*currentVersion) {
 		return // stale
 	}
+
+	camUpserts := make(map[string]interface{})
+	camDeletes := []string{}
+	trapUpserts := make(map[string]interface{})
+	trapDeletes := []string{}
+
+	scale := e.Scale
+	height := e.Height
+
 	for _, camEvent := range casted.Events {
 		switch ce := camEvent.GetEvent().(type) {
-		case *protobufs.AutosaveEvent_Delete:
-			t.handleEventDelete(e, ce.Delete.Id)
 		case *protobufs.AutosaveEvent_Upsert:
-			t.handleEventUpsert(e, ce.Upsert.Camera)
-		case *protobufs.AutosaveEvent_Calibrate:
-			t.handleCalibration(e, ce, casted.Version, currentVersion)
-		case *protobufs.AutosaveEvent_FaceDelete:
-			t.handleFaceDelete(e, ce, casted.Version, currentVersion)
+			camUpserts[ce.Upsert.Camera.Id] = messages_cameras.ProtoCamToCam(ce.Upsert.Camera)
+		case *protobufs.AutosaveEvent_Delete:
+			camDeletes = append(camDeletes, ce.Delete.Id)
 		case *protobufs.AutosaveEvent_FaceUpsert:
-			t.handleFaceUpsert(e, ce, casted.Version, currentVersion)
+			trapUpserts[ce.FaceUpsert.CoverageFace.Id] = messsages_trapezoids.ProtoTrapezoidToTrapezoid(ce.FaceUpsert.CoverageFace)
+		case *protobufs.AutosaveEvent_FaceDelete:
+			trapDeletes = append(trapDeletes, ce.FaceDelete.Id)
+		case *protobufs.AutosaveEvent_Calibrate:
+			scale = ce.Calibrate.ScaleFactor
+			height = ce.Calibrate.ModelHeight
 		}
 	}
+
+	camJSON, _ := json.Marshal(camUpserts)
+	trapJSON, _ := json.Marshal(trapUpserts)
+
+	// One DB call, one version increment
+	newVersion, err := t.DB.Queries.BulkUpdateWorkspace(e.Gin, db_sqlc_gen.BulkUpdateWorkspaceParams{
+		UserID:      e.UserID,
+		ModelID:     e.ModelID,
+		CamUpserts:  camJSON,
+		CamDeletes:  camDeletes,
+		TrapUpserts: trapJSON,
+		TrapDeletes: trapDeletes,
+		ScaleFactor: scale,
+		ModelHeight: height,
+	})
+
+	if err != nil {
+		t.Logger.Error("batch update failed", zap.Error(err))
+		return
+	}
+
+	e.Scale = scale
+	e.Height = height
+
+	*currentVersion = newVersion
+	t.sendAutosaveEventResponse(e, &protobufs.AutosaveEventResponse{
+		LastUpdatedVersion: newVersion,
+	})
 }
 
 func (t *UpdateEventRoute) sendOptimizationEventResp(conn *websocket.Conn, optiResp *protobufs.OptimizationEventResp) {
@@ -437,6 +477,8 @@ func (t *UpdateEventRoute) getAutosave(c *gin.Context) {
 			ModelID: modelId,
 			UserID:  userId,
 			Subject: subject,
+			Scale:   workspace.ScaleFactor,
+			Height:  workspace.ModelHeight,
 		}
 
 		// Send initial state on connect — both camera version + calibration values
@@ -462,7 +504,6 @@ func (t *UpdateEventRoute) getAutosave(c *gin.Context) {
 			switch casted := msg.Event.(type) {
 			case *protobufs.WorkspaceEventRequest_Autosave:
 				t.handleAutosaveEvent(e, &currentVersion, casted.Autosave)
-				t.Nc.Publish(e.Subject, rawMsg)
 			case *protobufs.WorkspaceEventRequest_Optimize:
 				go func() {
 					t.handleOptimizeEvent(projectId, modelId, conn, casted.Optimize)
