@@ -6,6 +6,7 @@ import {
   Scaling,
   Pyramid,
   ArrowUpFromLine,
+  Scale3D,
 } from "lucide-vue-next";
 const { currentPanel, calibrationPanelInfo } = inject(PANEL_KEY)!;
 const { calibrationGridScale } = calibrationPanelInfo;
@@ -56,6 +57,35 @@ const resetCalibration = () => {
       </div>
 
       <div class="space-y-2">
+        <Card class="gap-2">
+          <div class="px-4 py-2 flex justify-between items-center">
+            <CardTitle class="text-sm font-medium flex items-center gap-2"
+              ><Scale3D class="h-4 w-4" />Current Scale</CardTitle
+            >
+          </div>
+          <CardContent class="px-4">
+            <div class="flex items-center gap-4">
+              <div class="flex flex-col">
+                <span
+                  class="text-[10px] uppercase text-muted-foreground font-semibold"
+                  >Virtual</span
+                >
+                <span class="text-2xl font-mono font-bold">1m</span>
+              </div>
+              <div class="h-8 w-[1px] bg-border rotate-[20deg]"></div>
+              <div class="flex flex-col">
+                <span
+                  class="text-[10px] uppercase text-muted-foreground font-semibold"
+                  >Real World</span
+                >
+                <span class="text-2xl font-mono font-bold text-primary">
+                  {{ sceneStates?.calibration.scale ?? 1 }}m
+                </span>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
         <Card class="gap-2">
           <CardHeader class="pb-1">
             <CardTitle class="text-sm font-medium flex items-center gap-2">
