@@ -10,7 +10,7 @@ export function useAutosaveWs(
   let autosaveWs: UseWebSocketReturn<unknown> | undefined = undefined;
   if (workspace == "me" && import.meta.client) {
     const base = getApiBaseUrlWithProtocol("websocket", runtimeConfig);
-    const websocketUrl = new URL(
+    const websocketUrl = concatUrl(
       `projects/${projectId}/models/${modelId}/autosave`,
       base,
     );

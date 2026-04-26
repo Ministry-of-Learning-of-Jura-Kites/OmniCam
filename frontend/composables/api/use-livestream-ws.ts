@@ -10,7 +10,7 @@ export function useLivestreamWs(
   let livestreamWs: UseWebSocketReturn<unknown> | undefined = undefined;
   if (workspace != undefined && workspace != "me" && import.meta.client) {
     const base = getApiBaseUrlWithProtocol("websocket", runtimeConfig);
-    const websocketUrl = new URL(
+    const websocketUrl = concatUrl(
       `models/${modelId}/livestream/${workspace}`,
       base,
     );

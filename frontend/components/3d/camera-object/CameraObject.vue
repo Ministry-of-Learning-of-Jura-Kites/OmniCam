@@ -1,15 +1,16 @@
 <script setup lang="ts">
-import { SCENE_STATES_KEY } from "@/constants/state-keys";
+import { PANEL_KEY, SCENE_STATES_KEY } from "@/constants/state-keys";
 
 import MovableArrow from "../movable-arrow/MovableArrow.vue";
 import TresMesh from "@tresjs/core";
 import RotationWheel from "../rotation-wheel/RotationWheel.vue";
 import CameraFrustum from "../camera-frustum/CameraFrustum.vue";
-import type { Color, Mesh } from "three";
+import type { Color, Group, Mesh } from "three";
 import { Quaternion } from "three";
 import { safeGetAspectRatio } from "~/utils/aspect-ratio";
 import type { ICamera } from "~/types/camera";
 import { useCamObjGeoCache } from "./use-cam-obj-geo-cache";
+import type { Obj3DWithUserData } from "~/types/obj-3d-user-data";
 
 const props = withDefaults(
   defineProps<{
@@ -26,6 +27,9 @@ const props = withDefaults(
   },
 );
 
+const { camPanelInfo } = inject(PANEL_KEY)!;
+const { selectedCamId } = camPanelInfo;
+
 const { get: getGeo } = useCamObjGeoCache();
 
 const cameraBodyGeo = getGeo("body");
@@ -33,7 +37,9 @@ const cameraLensGeo = getGeo("lens");
 
 const sceneStates = inject(SCENE_STATES_KEY)!;
 
-const mesh = ref<Mesh>();
+const group = ref<Group>();
+const lensMesh = ref<Mesh>();
+const bodyMesh = ref<Mesh>();
 
 let cam: Ref<ICamera>;
 if (props.instance == undefined) {
@@ -42,48 +48,61 @@ if (props.instance == undefined) {
   cam = ref(props.instance);
 }
 
+watch([lensMesh, bodyMesh], (meshes) => {
+  for (const obj of meshes) {
+    let downTime = performance.now();
+    obj!.userData = {
+      type: "",
+      target: group!,
+      handleEvent: (eventType: string, event: Event) => {
+        if (event.type == "pointerdown") {
+          downTime = performance.now();
+        }
+        if (event.type == "pointerup") {
+          const upTime = performance.now();
+          if (upTime - downTime < 100) {
+            selectedCamId.value = props.camId;
+          }
+        }
+      },
+    };
+    sceneStates.value!.clickableObjects.add(
+      obj as unknown as Obj3DWithUserData,
+    );
+  }
+});
+
+onUnmounted(() => {
+  for (const obj of [lensMesh.value, bodyMesh.value]) {
+    if (obj != undefined) {
+      sceneStates.value!.clickableObjects.delete(
+        obj as unknown as Obj3DWithUserData,
+      );
+    }
+  }
+});
+
 const camQuat = computed(() => {
   const quaternion = new Quaternion().setFromEuler(cam!.value.rotation);
   return quaternion;
 });
 
-watch(mesh, (mesh) => {
-  mesh!.layers.enable(1);
+watch(group, (group) => {
+  group!.layers.enable(1);
 });
 </script>
 
 <template>
-  <TresMesh
-    ref="mesh"
+  <TresGroup
+    ref="group"
     :visible="sceneStates!.currentCamId.value !== props.camId"
     :position="[cam!.position.x, cam!.position.y, cam!.position.z]"
   >
     <TresObject3D :quaternion="camQuat">
-      <!-- Use quaternion for applying on top of local rotation -->
-      <!-- <TresMesh :rotation="[Math.PI / 2, 0, 0]" :position="[0, 0, 0.25 + 0.06]">
-        <TresCylinderGeometry :args="[0.2, 0.2, 0.5]" />
+      <TresMesh ref="bodyMesh" :geometry="cameraBodyGeo">
         <TresMeshBasicMaterial :color="props.color" />
       </TresMesh>
-      <TresMesh :rotation="[Math.PI / 2, 0, 0]" :position="[0, 0, 0.06]">
-        <TresCylinderGeometry :args="[0.05, 0.05, 0.12]" />
-        <TresMeshBasicMaterial color="black" />
-      </TresMesh>
-      <TresMesh :rotation="[Math.PI / 2, 0, 0]" :position="[0, 0, 0.5 + 0.1]">
-        <TresCylinderGeometry :args="[0.05, 0.05, 0.1]" />
-        <TresMeshBasicMaterial :color="props.color" />
-      </TresMesh>
-      <TresMesh :rotation="[Math.PI / 5, 0, 0]" :position="[0, 0.07, 0.71]">
-        <TresCylinderGeometry :args="[0.05, 0.05, 0.25]" />
-        <TresMeshBasicMaterial :color="props.color" />
-      </TresMesh>
-      <TresMesh :rotation="[Math.PI / 5, 0, 0]" :position="[0, 0.17, 0.78]">
-        <TresCylinderGeometry :args="[0.15, 0.15, 0.02]" />
-        <TresMeshBasicMaterial :color="props.color" />
-      </TresMesh> -->
-      <TresMesh :geometry="cameraBodyGeo">
-        <TresMeshBasicMaterial :color="props.color" />
-      </TresMesh>
-      <TresMesh :geometry="cameraLensGeo">
+      <TresMesh ref="lensMesh" :geometry="cameraLensGeo">
         <TresMeshBasicMaterial :color="'black'" />
       </TresMesh>
       <CameraFrustum
@@ -162,5 +181,5 @@ watch(mesh, (mesh) => {
         color="blue"
       />
     </template>
-  </TresMesh>
+  </TresGroup>
 </template>

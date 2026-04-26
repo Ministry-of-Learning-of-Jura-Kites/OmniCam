@@ -4,16 +4,21 @@ import { PANEL_KEY } from "~/constants/state-keys";
 import type { MovableObject } from "~/types/movable";
 import MovableArrow from "../movable-arrow/MovableArrow.vue";
 import RotationWheel from "../rotation-wheel/RotationWheel.vue";
-const props = defineProps({
-  workspace: {
-    type: String,
-    default: null,
-  },
-});
+const props = withDefaults(
+  defineProps<{
+    initialPos?: [number, number, number];
+    workspace?: string | null;
+  }>(),
+  { initialPos: () => [0, 0, 0] as const, workspace: null },
+);
 const { currentPanel, calibrationPanelInfo } = inject(PANEL_KEY)!;
 const { calibrationGridScale } = calibrationPanelInfo;
 const movableObject = reactive<MovableObject>({
-  position: new Vector3(0, 0, 0),
+  position: new Vector3(
+    props.initialPos[0],
+    props.initialPos[1],
+    props.initialPos[2],
+  ),
   rotation: new Euler(0, 0, 0),
   controlling: undefined,
 });

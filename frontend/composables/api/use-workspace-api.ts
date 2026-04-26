@@ -9,8 +9,10 @@ function getWorkspaceMeUrl(
 ) {
   const base = getApiBaseUrlWithProtocol("http", config, true);
 
-  return new URL(`projects/${projectId}/models/${modelId}/workspaces/me`, base)
-    .href;
+  return concatUrl(
+    `projects/${projectId}/models/${modelId}/workspaces/me`,
+    base,
+  ).href;
 }
 
 export function useWorkspaceApi(
@@ -20,7 +22,7 @@ export function useWorkspaceApi(
 ) {
   async function postMerge() {
     const baseUrl = getWorkspaceMeUrl(projectId, modelId, runtimeConfig);
-    const resp = await fetch(new URL("merge", baseUrl).href, {
+    const resp = await fetch(concatUrl("merge", baseUrl).href, {
       method: "POST",
       credentials: "include",
     });
@@ -49,7 +51,7 @@ export function useWorkspaceApi(
   async function postResolve(results: Record<string, Record<string, unknown>>) {
     const error = ref<Error | undefined>();
     const baseUrl = getWorkspaceMeUrl(projectId, modelId, runtimeConfig);
-    await $fetch<{ error?: string }>(new URL("resolve", baseUrl).href, {
+    await $fetch<{ error?: string }>(concatUrl("resolve", baseUrl).href, {
       method: "POST",
       credentials: "include",
       body: { merged: results },
