@@ -213,7 +213,9 @@ function buildCoverageFaceFromPickedPoints(
 function handleCoverageAreaPointer(event: PointerEvent) {
   if (sceneStates.value!.selectionMode.value !== "coverage-area") return false;
 
-  if (event.type !== "pointerdown" || !event.ctrlKey) {
+  const isModifierPressed = event.ctrlKey || event.metaKey;
+
+  if (event.type !== "pointerdown" || !isModifierPressed) {
     return false;
   }
 
@@ -223,7 +225,7 @@ function handleCoverageAreaPointer(event: PointerEvent) {
 
   const hit = getSurfaceHit(event);
 
-  if (!hit) return {};
+  if (!hit) return false;
 
   const forward = new Vector3(0, 0, 1);
   forward.applyEuler(sceneStates.value!.spectatorCameraRotation!);
