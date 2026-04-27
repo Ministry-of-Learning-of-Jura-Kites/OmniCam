@@ -19,10 +19,6 @@ package "Backend Service" {
   [Camera Module] as Camera
 }
 
-package "Batch Persistence Service" {
-  [Batch Updater] as BatchUpdater
-}
-
 package "Machine Learning Service" {
   [Placement Predictor] as PlacementPredictor
 }
@@ -48,14 +44,14 @@ UI --> Model
 UI --> Camera
 UI --> PlacementPredictor
 
-PlacementPredictor <-> Workspace
+PlacementPredictor <-> MessageQueue
 PlacementPredictor <--> Camera
 PlacementPredictor <--> Repo
 
 ' Workspace Livestream
 Workspace <-> Livestream
-BatchUpdater <-- MessageQueue
-BatchUpdater -down-> DB
+Workspace <--> MessageQueue
+Workspace <--> DB
 
 ' Backend to storage
 Auth <-> DB
@@ -63,7 +59,6 @@ Project <-> DB
 Project <-> Repo
 Model <-> DB
 Model <-> Repo
-Workspace -> MessageQueue
 Livestream <-> MessageQueue
 Camera <--> DB
 
