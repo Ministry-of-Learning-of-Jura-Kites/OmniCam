@@ -10,7 +10,8 @@ import quaternion
 from utils import center_of_face
 import vtk
 import pyvista as pv
-from main import assign_faces
+from main import assign_faces, init_3d_scene, render_from_state
+from env import env_settings
 
 # --- Static Setup ---
 gltf_path = "/home/frook/Downloads/omnicam/test case a.glb"
@@ -70,6 +71,16 @@ for seed in seeds:
 
     elapsed = end_time - start_time
     cost = total_cost(final_state, True)
+
+    if env_settings.dev_mode:
+        from pyvistaqt import BackgroundPlotter
+
+        pl = BackgroundPlotter()
+
+        init_3d_scene(pl, final_state)
+        render_from_state(pl, final_state)
+        pl.show()
+        breakpoint()
 
     times.append(elapsed)
     costs.append(cost)

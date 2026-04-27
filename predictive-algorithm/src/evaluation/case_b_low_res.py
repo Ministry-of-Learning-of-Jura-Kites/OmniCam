@@ -31,7 +31,7 @@ gltf_locator.BuildLocator()
 
 face = np.array([[2, 2 + 1, 2], [-2, 2 + 1, 2], [-2, -2 + 1, 2], [2, -2 + 1, 2]])
 cam_config = CameraConfiguration(
-    pixels=[5000, 5000],
+    pixels=[500, 500],
     vfov=60,
     name="f",
 )
@@ -101,6 +101,6 @@ export = {
 }
 
 
-with open("case b.json", "w") as json_file:
+with open("low res case b.json", "w") as json_file:
     # Step 5: Format the output with 4-space indentation
     json.dump(export, json_file, indent=4)  #
