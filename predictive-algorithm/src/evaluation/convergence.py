@@ -234,7 +234,7 @@ def parse_uuid_base64(base64_str: str) -> uuid.UUID:
 
 small_model_id_raw = "/home/frook/Downloads/living 1.14"
 
-trials = 10
+trials = 30
 results_summary = []
 op_fitness_histories = []
 ref_fitness_histories = []
