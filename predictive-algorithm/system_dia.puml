@@ -13,7 +13,7 @@ package "Visualization Layer (User Entity)" {
 
 package "Synchronization Bridge (Device Communication Entity)" {
     [Go Concurrency Engine] as Bridge
-    database "Redis Streams" as Redis
+    queue "Nats" as Nats
     [Protocol Buffers] as Protobuf
     
     interface "WebSocket (Full-Duplex)" as WS
@@ -30,9 +30,10 @@ WS -- Goro
 Goro <--> Bridge
 
 Bridge -down-> Protobuf : "Serialization"
-Protobuf -down-> Redis : "High-dimensional\nUpdates"
+Bridge <-- Protobuf : "Deserialization"
+Protobuf <-down-> Nats : "Optimization\nRequest/Response"
 
-Redis <-> opt
+Nats <-> opt
 
 Bridge -up-> UI : "Real-time Spatial Feedback"
 

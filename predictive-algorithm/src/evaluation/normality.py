@@ -9,18 +9,13 @@ names = ["Scenario A", "Scenario B", "Scenario C"]
 
 
 def generate_distribution_report(
-    file_list, names, output_name="scenarios_normality.pdf"
+    file_list, names, output_name="scenarios_normality_horizontal.pdf"
 ):
     num_cases = len(file_list)
-    fig, axes = plt.subplots(num_cases, 2, figsize=(10, 3.5 * num_cases))
 
-    if num_cases == 1:
-        axes = axes.reshape(1, 2)
-
-    # Set Column Headers (Only on the top row)
-    # We use larger titles here to ensure they stand out as group headers
-    axes[0, 0].set_title("Cost Distribution", fontsize=16, pad=25, fontweight="bold")
-    axes[0, 1].set_title("Normal Q-Q Plot", fontsize=16, pad=25, fontweight="bold")
+    # Grid: 2 rows (Distributions, Q-Q Plots), num_cases columns (Scenarios)
+    # Adjusted figsize to be wider for more scenarios
+    fig, axes = plt.subplots(2, num_cases, figsize=(5 * num_cases, 9), squeeze=False)
 
     for i, filename in enumerate(file_list):
         try:
@@ -31,40 +26,46 @@ def generate_distribution_report(
             print(f"File {filename} not found.")
             continue
 
-        # --- Column 1: Histogram ---
-        sns.histplot(costs, kde=True, ax=axes[i, 0], color="steelblue")
-        axes[i, 0].set_ylabel(
-            f"{names[i]}\n\nFrequency", fontweight="bold", fontsize=12
-        )
-        axes[i, 0].set_xlabel("Final Cost", fontsize=11)
+        # --- Row 1: Cost Distribution (Histogram) ---
+        ax_hist = axes[0, i]
+        sns.histplot(costs, kde=True, ax=ax_hist, color="steelblue")
 
-        # --- Column 2: Q-Q Plot ---
-        stats.probplot(costs, dist="norm", plot=axes[i, 1])
+        # Scenario Name as Column Title
+        ax_hist.set_title(names[i], fontsize=16, pad=15, fontweight="bold")
+        ax_hist.set_xlabel("Final Cost", fontsize=11)
 
-        # 1. Manually override the title probplot creates
+        # Label the Row (Only on the leftmost plot)
         if i == 0:
-            axes[i, 1].set_title(
-                "Normal Q-Q Plot", fontsize=16, pad=25, fontweight="bold"
+            ax_hist.set_ylabel(
+                "Cost Distribution\n\nFrequency", fontweight="bold", fontsize=12
             )
         else:
-            axes[i, 1].set_title("")  # Remove titles for subsequent rows
+            ax_hist.set_ylabel("Frequency")
 
-        # 2. Styling the plot points
-        axes[i, 1].get_lines()[0].set_markerfacecolor("grey")
-        axes[i, 1].get_lines()[0].set_alpha(0.5)
-        axes[i, 1].get_lines()[0].set_markersize(5)
+        # --- Row 2: Normal Q-Q Plot ---
+        ax_qq = axes[1, i]
+        stats.probplot(costs, dist="norm", plot=ax_qq)
 
-        # 3. Fixing labels that probplot overrides
-        axes[i, 1].set_xlabel("Theoretical Quantiles", fontsize=11)
-        axes[i, 1].set_ylabel("Ordered Values", fontsize=11)
+        # Styling the plot points
+        ax_qq.get_lines()[0].set_markerfacecolor("grey")
+        ax_qq.get_lines()[0].set_alpha(0.5)
+        ax_qq.get_lines()[0].set_markersize(5)
 
-        # --- Clean up Repetitive Titles ---
-        if i > 0:
-            axes[i, 0].set_title("")
+        # Fixing labels and removing the default title
+        ax_qq.set_title("")
+        ax_qq.set_xlabel("Theoretical Quantiles", fontsize=11)
+
+        # Label the Row (Only on the leftmost plot)
+        if i == 0:
+            ax_qq.set_ylabel(
+                "Normal Q-Q Plot\n\nOrdered Values", fontweight="bold", fontsize=12
+            )
+        else:
+            ax_qq.set_ylabel("Ordered Values")
 
     plt.tight_layout()
     plt.savefig(output_name, bbox_inches="tight")
-    print(f"Successfully saved analysis to {output_name}")
+    print(f"Successfully saved horizontal analysis to {output_name}")
     plt.show()
 
 

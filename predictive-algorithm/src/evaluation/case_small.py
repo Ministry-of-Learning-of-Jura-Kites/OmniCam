@@ -5,15 +5,14 @@ from main import OptimizeRequest, optimize
 import uuid
 import base64
 
-
 small_model_id_raw = "/home/frook/Downloads/living 1.14"
 medium_model_id_raw = "/home/frook/Downloads/living 5.57"
 large_model_id_raw = "/home/frook/Downloads/living"
 
 times_avg = []
-for id in [small_model_id_raw, medium_model_id_raw, large_model_id_raw]:
+for id in [large_model_id_raw]:
     times = []
-    for i in range(10):
+    for i in range(30):
         with open("src/evaluation/ff.json", "r") as file:
             req = json.loads(file.read())
             data = json.loads(req["data"])
@@ -26,6 +25,8 @@ for id in [small_model_id_raw, medium_model_id_raw, large_model_id_raw]:
         end = time.perf_counter()
 
         times.append(end - start)
+        print("ggg", id, end - start)
+        print("avg", np.array(times).mean())
     times_avg.append(np.array(times).mean())
 
 print(times_avg)

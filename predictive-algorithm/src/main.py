@@ -284,23 +284,23 @@ def optimize(req: OptimizeRequest, seed: int = 2000) -> State:
     if not gltf.is_all_triangles:
         gltf = gltf.extract_cells_by_type(vtk.VTK_TRIANGLE)
 
-    current_cells = gltf.n_cells
-    target_cells = 40000  # The "Sweet Spot" for fast ray-casting
+    # current_cells = gltf.n_cells
+    # target_cells = 40000  # The "Sweet Spot" for fast ray-casting
 
-    if current_cells > target_cells:
-        # Calculate how much to remove (e.g., if 100k cells, reduction is 0.6)
-        reduction_fraction = 1.0 - (target_cells / current_cells)
+    # if current_cells > target_cells:
+    #     # Calculate how much to remove (e.g., if 100k cells, reduction is 0.6)
+    #     reduction_fraction = 1.0 - (target_cells / current_cells)
 
-        # Clip the fraction to ensure we don't go below 0 or above 0.99
-        reduction_fraction = max(0.0, min(0.99, reduction_fraction))
+    #     # Clip the fraction to ensure we don't go below 0 or above 0.99
+    #     reduction_fraction = max(0.0, min(0.99, reduction_fraction))
 
-        # Perform decimation
-        gltf = gltf.decimate_pro(reduction_fraction, preserve_topology=True)
-        print(
-            f"Dynamic Decimation: Reduced {current_cells} -> {gltf.n_cells} cells ({reduction_fraction:.2%})"
-        )
-    else:
-        print(f"Model is already lean ({current_cells} cells). Skipping decimation.")
+    #     # Perform decimation
+    #     gltf = gltf.decimate_pro(reduction_fraction, preserve_topology=True)
+    #     print(
+    #         f"Dynamic Decimation: Reduced {current_cells} -> {gltf.n_cells} cells ({reduction_fraction:.2%})"
+    #     )
+    # else:
+    #     print(f"Model is already lean ({current_cells} cells). Skipping decimation.")
 
     # 5. Build the High-Speed Locator
     gltf_locator = vtk.vtkStaticCellLocator()
