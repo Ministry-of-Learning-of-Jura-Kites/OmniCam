@@ -65,7 +65,7 @@ services:
     build:
       context: .
       dockerfile: ./backend/Dockerfile
-    image: ghcr.io/ministry-of-learning-of-jura-kites/omnicam_backend:${IMAGE_TAG:-latest}
+    image: crg.apkg.io/oxygenai/omnicam_backend:${IMAGE_TAG:-latest}
     container_name: omnicam_backend
     env_file:
       - ./backend/.env.prod
@@ -90,7 +90,7 @@ services:
     build:
       context: .
       dockerfile: ./frontend/Dockerfile
-    image: ghcr.io/ministry-of-learning-of-jura-kites/omnicam_frontend:${IMAGE_TAG:-latest}
+    image: crg.apkg.io/oxygenai/omnicam_frontend:${IMAGE_TAG:-latest}
     container_name: omnicam_frontend
     env_file:
       - ./frontend/.env.prod
@@ -107,7 +107,7 @@ services:
     build:
       context: .
       dockerfile: ./predictive-algorithm/Dockerfile
-    image: ghcr.io/ministry-of-learning-of-jura-kites/omnicam_algo:${IMAGE_TAG:-latest}
+    image: crg.apkg.io/oxygenai/omnicam_algo:${IMAGE_TAG:-latest}
     container_name: omnicam_algo
     env_file:
       - ./predictive-algorithm/.env.prod
