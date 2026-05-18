@@ -165,6 +165,7 @@ function createCursorTexture() {
   return new CanvasTexture(canvas);
 }
 
+let pointerDownEvent: PointerEvent | undefined;
 let foundMove = false;
 const mouseOffset = ref<{ x: number; y: number } | undefined>(undefined);
 
@@ -174,12 +175,37 @@ const canvaDom = computed(
   () => canvas.value?.context?.renderer.instance.domElement,
 );
 
+function teleportToMinimapClick(e: PointerEvent) {
+  const rect = canvaDom.value!.getBoundingClientRect();
+
+  const px = e.clientX - rect.left;
+  const py = e.clientY - rect.top;
+
+  const offsetPx = px - minimapSize / 2;
+  const offsetPy = py - minimapSize / 2;
+
+  const scale = minimapFrustumSize.value / minimapSize;
+
+  const viewCenterX = camPos.value[0];
+  const viewCenterZ = camPos.value[2];
+
+  const worldX = viewCenterX + offsetPx * scale;
+  const worldZ = viewCenterZ + offsetPy * scale;
+
+  const mainCam = sceneStates.value!.currentCam.value;
+  mainCam.position.x = worldX;
+  mainCam.position.z = worldZ;
+
+  mouseOffset.value = undefined;
+}
+
 function onPointerDown(_e: PointerEvent) {
   if (canvaDom.value) {
     document.addEventListener("pointermove", onPointerMove);
     document.addEventListener("pointerup", onPointerUp);
   }
   foundMove = false;
+  pointerDownEvent = _e;
 }
 
 function onPointerMove(e: PointerEvent) {
@@ -199,6 +225,7 @@ function onPointerUp(_e: PointerEvent) {
     document.removeEventListener("pointerup", onPointerUp);
   }
   if (!foundMove) {
+    teleportToMinimapClick(pointerDownEvent!);
     mouseOffset.value = undefined;
   }
 }
