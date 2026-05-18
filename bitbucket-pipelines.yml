@@ -1,44 +1,13 @@
 image: atlassian/default-image:latest
 
+definitions:
+  services:
+    docker:
+      memory: 2048
+  caches:
+    node-custom: node_modules
+
 pipelines:
-  # Triggered automatically when a release tag is created
-  tags:
-    "*":
-      - step: &build-and-push
-          name: Build and Push to Bitbucket Registry
-          services:
-            - docker
-          caches:
-            - docker
-          script:
-            # 1. Prepare lowercase workspace/owner name
-            - OWNER_LC=$(echo "${BITBUCKET_WORKSPACE}" | tr '[:upper:]' '[:lower:]')
-
-            # 2. Log in to Bitbucket Packages Registry using built-in native credentials
-            - docker login crg.apkg.io -u "$BITBUCKET_PACKAGES_USERNAME" -p "$BITBUCKET_PACKAGES_TOKEN"
-
-            # 3. Determine the final tag (Uses BITBUCKET_TAG or falls back to MANUAL_TAG)
-            - |
-              if [ -n "$BITBUCKET_TAG" ]; then
-                FINAL_TAG="$BITBUCKET_TAG"
-              else
-                FINAL_TAG="${MANUAL_TAG:-manual-build}"
-              fi
-
-            # 4. Build and Push Frontend
-            - docker build -t crg.apkg.io/${OWNER_LC}/omnicam_frontend:${FINAL_TAG} -t crg.apkg.io/${OWNER_LC}/omnicam_frontend:latest -f ./frontend/Dockerfile .
-            - docker push crg.apkg.io/${OWNER_LC}/omnicam_frontend:${FINAL_TAG}
-            - docker push crg.apkg.io/${OWNER_LC}/omnicam_frontend:latest
-
-            # 5. Build and Push Backend
-            - docker build -t crg.apkg.io/${OWNER_LC}/omnicam_backend:${FINAL_TAG} -t crg.apkg.io/${OWNER_LC}/omnicam_backend:latest -f ./backend/Dockerfile .
-            - docker push crg.apkg.io/${OWNER_LC}/omnicam_backend:${FINAL_TAG}
-            - docker push crg.apkg.io/${OWNER_LC}/omnicam_backend:latest
-
-            # 6. Build and Push Algo
-            - docker build -t crg.apkg.io/${OWNER_LC}/omnicam_algo:${FINAL_TAG} -t crg.apkg.io/${OWNER_LC}/omnicam_algo:latest -f ./predictive-algorithm/Dockerfile .
-            - docker push crg.apkg.io/${OWNER_LC}/omnicam_algo:${FINAL_TAG}
-            - docker push crg.apkg.io/${OWNER_LC}/omnicam_algo:latest
   branches:
     main:
       - step: &lint-step
@@ -56,16 +25,106 @@ pipelines:
       - step:
           <<: *lint-step
 
-  # 4. Custom (Allows you to manually trigger the Docker Build from the UI)
+  tags:
+    "*":
+      - parallel:
+          - step:
+              name: Build & Push Frontend
+              services:
+                - docker
+              # Only runs if files inside /frontend change, OR if it's a manual custom build
+              condition:
+                changesets:
+                  includePaths:
+                    - "frontend/**"
+                    - package-lock.json
+                    - package.json
+                    - protobufs
+                    - nuxt.config.ts
+                    - tailwind.config.js
+                    - components.json
+                    - tsconfig.json
+              script:
+                - OWNER_LC=$(echo "${BITBUCKET_WORKSPACE}" | tr '[:upper:]' '[:lower:]')
+                - docker login crg.apkg.io -u "$BITBUCKET_PACKAGES_USERNAME" -p "$BITBUCKET_PACKAGES_TOKEN"
+                - FINAL_TAG="${BITBUCKET_TAG:-${MANUAL_TAG:-manual-build}}"
+                - docker build -t crg.apkg.io/${OWNER_LC}/omnicam_frontend:${FINAL_TAG} -t crg.apkg.io/${OWNER_LC}/omnicam_frontend:latest -f ./frontend/Dockerfile .
+                - docker push crg.apkg.io/${OWNER_LC}/omnicam_frontend:${FINAL_TAG}
+                - docker push crg.apkg.io/${OWNER_LC}/omnicam_frontend:latest
+
+          - step:
+              name: Build & Push Backend
+              services:
+                - docker
+              condition:
+                changesets:
+                  includePaths:
+                    - "backend/**"
+                    - .dockerignore
+                    - go.mod
+                    - go.sum
+                    - sqlc.yaml
+                    - "db/**"
+                    - protobufs
+              script:
+                - OWNER_LC=$(echo "${BITBUCKET_WORKSPACE}" | tr '[:upper:]' '[:lower:]')
+                - docker login crg.apkg.io -u "$BITBUCKET_PACKAGES_USERNAME" -p "$BITBUCKET_PACKAGES_TOKEN"
+                - FINAL_TAG="${BITBUCKET_TAG:-${MANUAL_TAG:-manual-build}}"
+                - docker build -t crg.apkg.io/${OWNER_LC}/omnicam_backend:${FINAL_TAG} -t crg.apkg.io/${OWNER_LC}/omnicam_backend:latest -f ./backend/Dockerfile .
+                - docker push crg.apkg.io/${OWNER_LC}/omnicam_backend:${FINAL_TAG}
+                - docker push crg.apkg.io/${OWNER_LC}/omnicam_backend:latest
+
+          - step:
+              name: Build & Push Algo
+              services:
+                - docker
+              condition:
+                changesets:
+                  includePaths:
+                    - "predictive-algorithm/**"
+              script:
+                - OWNER_LC=$(echo "${BITBUCKET_WORKSPACE}" | tr '[:upper:]' '[:lower:]')
+                - docker login crg.apkg.io -u "$BITBUCKET_PACKAGES_USERNAME" -p "$BITBUCKET_PACKAGES_TOKEN"
+                - FINAL_TAG="${BITBUCKET_TAG:-${MANUAL_TAG:-manual-build}}"
+                - docker build -t crg.apkg.io/${OWNER_LC}/omnicam_algo:${FINAL_TAG} -t crg.apkg.io/${OWNER_LC}/omnicam_algo:latest -f ./predictive-algorithm/Dockerfile .
+                - docker push crg.apkg.io/${OWNER_LC}/omnicam_algo:${FINAL_TAG}
+                - docker push crg.apkg.io/${OWNER_LC}/omnicam_algo:latest
+
   custom:
     manual-release-build:
       - variables:
           - name: MANUAL_TAG
             default: "manual-build"
             description: "Custom tag for the image"
-      - step:
-          <<: *build-and-push
-
-definitions:
-  caches:
-    node-custom: node_modules
+      # IMPORTANT: YAML reference expanded cleanly
+      - parallel:
+          - step:
+              name: Build & Push Frontend
+              services: [docker]
+              script:
+                - OWNER_LC=$(echo "${BITBUCKET_WORKSPACE}" | tr '[:upper:]' '[:lower:]')
+                - docker login crg.apkg.io -u "$BITBUCKET_PACKAGES_USERNAME" -p "$BITBUCKET_PACKAGES_TOKEN"
+                - FINAL_TAG="${MANUAL_TAG:-manual-build}"
+                - docker build -t crg.apkg.io/${OWNER_LC}/omnicam_frontend:${FINAL_TAG} -t crg.apkg.io/${OWNER_LC}/omnicam_frontend:latest -f ./frontend/Dockerfile .
+                - docker push crg.apkg.io/${OWNER_LC}/omnicam_frontend:${FINAL_TAG}
+                - docker push crg.apkg.io/${OWNER_LC}/omnicam_frontend:latest
+          - step:
+              name: Build & Push Backend
+              services: [docker]
+              script:
+                - OWNER_LC=$(echo "${BITBUCKET_WORKSPACE}" | tr '[:upper:]' '[:lower:]')
+                - docker login crg.apkg.io -u "$BITBUCKET_PACKAGES_USERNAME" -p "$BITBUCKET_PACKAGES_TOKEN"
+                - FINAL_TAG="${MANUAL_TAG:-manual-build}"
+                - docker build -t crg.apkg.io/${OWNER_LC}/omnicam_backend:${FINAL_TAG} -t crg.apkg.io/${OWNER_LC}/omnicam_backend:latest -f ./backend/Dockerfile .
+                - docker push crg.apkg.io/${OWNER_LC}/omnicam_backend:${FINAL_TAG}
+                - docker push crg.apkg.io/${OWNER_LC}/omnicam_backend:latest
+          - step:
+              name: Build & Push Algo
+              services: [docker]
+              script:
+                - OWNER_LC=$(echo "${BITBUCKET_WORKSPACE}" | tr '[:upper:]' '[:lower:]')
+                - docker login crg.apkg.io -u "$BITBUCKET_PACKAGES_USERNAME" -p "$BITBUCKET_PACKAGES_TOKEN"
+                - FINAL_TAG="${MANUAL_TAG:-manual-build}"
+                - docker build -t crg.apkg.io/${OWNER_LC}/omnicam_algo:${FINAL_TAG} -t crg.apkg.io/${OWNER_LC}/omnicam_algo:latest -f ./predictive-algorithm/Dockerfile .
+                - docker push crg.apkg.io/${OWNER_LC}/omnicam_algo:${FINAL_TAG}
+                - docker push crg.apkg.io/${OWNER_LC}/omnicam_algo:latest
