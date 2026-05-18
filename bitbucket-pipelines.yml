@@ -40,15 +40,16 @@ pipelines:
             - docker push crg.apkg.io/${OWNER_LC}/omnicam_algo:${FINAL_TAG}
             - docker push crg.apkg.io/${OWNER_LC}/omnicam_algo:latest
   branches:
-    - step: &lint-step
-        name: Lint and Style Check
-        image: node:22.18.0
-        caches:
-          - node-custom
-        script:
-          - npm ci
-          - npm run style-check
-          - npm run lint
+    main:
+      - step: &lint-step
+          name: Lint and Style Check
+          image: node:22.18.0
+          caches:
+            - node-custom
+          script:
+            - npm ci
+            - npm run style-check
+            - npm run lint
 
   pull-requests:
     "main":
