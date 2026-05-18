@@ -1,0 +1,70 @@
+image: atlassian/default-image:latest
+
+pipelines:
+  # Triggered automatically when a release tag is created
+  tags:
+    "*":
+      - step: &build-and-push
+          name: Build and Push to Bitbucket Registry
+          services:
+            - docker
+          caches:
+            - docker
+          script:
+            # 1. Prepare lowercase workspace/owner name
+            - OWNER_LC=$(echo "${BITBUCKET_WORKSPACE}" | tr '[:upper:]' '[:lower:]')
+
+            # 2. Log in to Bitbucket Packages Registry using built-in native credentials
+            - docker login crg.apkg.io -u "$BITBUCKET_PACKAGES_USERNAME" -p "$BITBUCKET_PACKAGES_TOKEN"
+
+            # 3. Determine the final tag (Uses BITBUCKET_TAG or falls back to MANUAL_TAG)
+            - |
+              if [ -n "$BITBUCKET_TAG" ]; then
+                FINAL_TAG="$BITBUCKET_TAG"
+              else
+                FINAL_TAG="${MANUAL_TAG:-manual-build}"
+              fi
+
+            # 4. Build and Push Frontend
+            - docker build -t crg.apkg.io/${OWNER_LC}/omnicam_frontend:${FINAL_TAG} -t crg.apkg.io/${OWNER_LC}/omnicam_frontend:latest -f ./frontend/Dockerfile .
+            - docker push crg.apkg.io/${OWNER_LC}/omnicam_frontend:${FINAL_TAG}
+            - docker push crg.apkg.io/${OWNER_LC}/omnicam_frontend:latest
+
+            # 5. Build and Push Backend
+            - docker build -t crg.apkg.io/${OWNER_LC}/omnicam_backend:${FINAL_TAG} -t crg.apkg.io/${OWNER_LC}/omnicam_backend:latest -f ./backend/Dockerfile .
+            - docker push crg.apkg.io/${OWNER_LC}/omnicam_backend:${FINAL_TAG}
+            - docker push crg.apkg.io/${OWNER_LC}/omnicam_backend:latest
+
+            # 6. Build and Push Algo
+            - docker build -t crg.apkg.io/${OWNER_LC}/omnicam_algo:${FINAL_TAG} -t crg.apkg.io/${OWNER_LC}/omnicam_algo:latest -f ./predictive-algorithm/Dockerfile .
+            - docker push crg.apkg.io/${OWNER_LC}/omnicam_algo:${FINAL_TAG}
+            - docker push crg.apkg.io/${OWNER_LC}/omnicam_algo:latest
+  branches:
+    - step: &lint-step
+        name: Lint and Style Check
+        image: node:22.18.0
+        caches:
+          - node-custom
+        script:
+          - npm ci
+          - npm run style-check
+          - npm run lint
+
+  pull-requests:
+    "main":
+      - step:
+          <<: *lint-step
+
+  # 4. Custom (Allows you to manually trigger the Docker Build from the UI)
+  custom:
+    manual-release-build:
+      - variables:
+          - name: MANUAL_TAG
+            default: "manual-build"
+            description: "Custom tag for the image"
+      - step:
+          <<: *build-and-push
+
+definitions:
+  caches:
+    node-custom: node_modules
