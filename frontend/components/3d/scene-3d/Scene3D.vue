@@ -878,7 +878,7 @@ const isShowingCamDirection = computed(() => {
 
           <FrustumOverlay />
 
-          <AxisGizmo />
+          <!-- <AxisGizmo /> -->
 
           <Suspense><Environment preset="city" /></Suspense>
           <TresAmbientLight :intensity="0.4" />
@@ -952,6 +952,14 @@ const isShowingCamDirection = computed(() => {
           >
             {{ line.label }}
           </div>
+        </div>
+        <div :ref="sceneStates!.tresCanvasParent" class="relative">
+          <!-- <TresCanvas ...>
+            AxisGizmo gone from here -->
+          <!-- </TresCanvas> -->
+
+          <!-- ✅ HTML overlay — clicks work natively -->
+          <AxisGizmo />
         </div>
       </div>
     </div>

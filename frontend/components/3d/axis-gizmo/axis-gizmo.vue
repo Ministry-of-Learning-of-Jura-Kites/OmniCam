@@ -1,173 +1,255 @@
 <script setup lang="ts">
-import {
-  Mesh,
-  CylinderGeometry,
-  MeshBasicMaterial,
-  Group,
-  Scene,
-  OrthographicCamera,
-  Vector3,
-  CircleGeometry,
-  DoubleSide,
-  Euler,
-} from "three";
-import { AXIS_COLOR, AXIS_GIZMO } from "~/constants";
+import { ref, onMounted, onBeforeUnmount } from "vue";
+import { Vector3, Euler, Matrix4 } from "three";
 import { SCENE_STATES_KEY } from "~/constants/state-keys";
-import type { Font } from "three/examples/jsm/loaders/FontLoader.js";
-import { FontLoader } from "three/examples/jsm/loaders/FontLoader.js";
-import { TextGeometry } from "three/addons/geometries/TextGeometry.js";
-import { debouncedWatch } from "@vueuse/core";
-
-const d = 1.5;
 
 const sceneStates = inject(SCENE_STATES_KEY);
-const axisScene = new Scene();
-const axisCam = new OrthographicCamera(-d, d, d, -d, 0.01, 1000);
+const gizmoCanvas = ref<HTMLCanvasElement | null>(null);
 
-const cylinder = new CylinderGeometry(
-  AXIS_GIZMO.RADIUS,
-  AXIS_GIZMO.RADIUS,
-  AXIS_GIZMO.LENGTH,
-  8,
-);
+const SIZE = 128;
+const CENTER = SIZE / 2;
+const ARM_LENGTH = 44;
+const DOT_R = 11;
+const NEG_DOT_R = 7;
 
-const axes = new Group();
-const labels = new Group();
+type AxisKey = "x" | "y" | "z";
 
-axisScene.add(labels);
-axisScene.add(axes);
-axisScene.background = null;
+const AXES = [
+  {
+    key: "x" as const,
+    vec: new Vector3(1, 0, 0),
+    color: "#E85555",
+    dim: "#6B2222",
+  },
+  {
+    key: "y" as const,
+    vec: new Vector3(0, 1, 0),
+    color: "#5ABF5A",
+    dim: "#1F5C1F",
+  },
+  {
+    key: "z" as const,
+    vec: new Vector3(0, 0, 1),
+    color: "#5588E8",
+    dim: "#1F3470",
+  },
+];
 
-const disposables: { dispose: () => void }[] = [];
+const PRESETS: Record<
+  AxisKey,
+  {
+    pos: { x: number; y: number; z: number };
+    neg: { x: number; y: number; z: number };
+  }
+> = {
+  x: {
+    pos: { x: 0, y: -Math.PI / 2, z: 0 },
+    neg: { x: 0, y: Math.PI / 2, z: 0 },
+  },
+  y: {
+    pos: { x: -Math.PI / 2, y: 0, z: 0 },
+    neg: { x: Math.PI / 2, y: 0, z: 0 },
+  },
+  z: {
+    pos: { x: 0, y: 0, z: 0 },
+    neg: { x: 0, y: Math.PI, z: 0 },
+  },
+};
 
-const loader = new FontLoader();
-// Public CDN font
-const fontUrl =
-  "https://threejs.org/examples/fonts/helvetiker_regular.typeface.json";
+let rafId: number | null = null;
 
-loader.load(fontUrl, (font) => {
-  setupLabels(font);
-});
+// Each axis produces a + end and a - end
+interface ProjectedEnd {
+  key: AxisKey;
+  isNeg: boolean;
+  sx: number;
+  sy: number;
+  depth: number;
+  color: string;
+  dim: string;
+}
 
-const textMat = new MeshBasicMaterial({
-  color: "white",
-  side: DoubleSide,
-  depthTest: false,
-});
-disposables.push(textMat);
+function project(rotX: number, rotY: number, rotZ: number): ProjectedEnd[] {
+  const inv = new Matrix4()
+    .makeRotationFromEuler(new Euler(rotX, rotY, rotZ, "YXZ"))
+    .invert();
 
-function setupLabels(font: Font) {
-  for (const axis of ["x", "y", "z"] as const) {
-    const color = AXIS_COLOR[axis];
-    const material = new MeshBasicMaterial({ color, side: DoubleSide });
-    disposables.push(material);
+  const result: ProjectedEnd[] = [];
 
-    const cylinderMesh = new Mesh(cylinder, material);
-    cylinderMesh.renderOrder = 3;
-    const offset = AXIS_GIZMO.LENGTH / 2;
-
-    axes.add(cylinderMesh);
-
-    const textGeo = new TextGeometry(axis, {
-      font: font,
-      size: 0.2,
+  for (const axis of AXES) {
+    // positive end
+    const vPos = axis.vec.clone().applyMatrix4(inv);
+    result.push({
+      key: axis.key,
+      isNeg: false,
+      sx: CENTER + vPos.x * ARM_LENGTH,
+      sy: CENTER - vPos.y * ARM_LENGTH,
+      depth: vPos.z,
+      color: axis.color,
+      dim: axis.dim,
     });
-    textGeo.center();
-    disposables.push(textGeo);
 
-    const textMesh = new Mesh(textGeo, textMat);
-    textMesh.renderOrder = 2;
+    // negative end (opposite direction)
+    const vNeg = axis.vec.clone().negate().applyMatrix4(inv);
+    result.push({
+      key: axis.key,
+      isNeg: true,
+      sx: CENTER + vNeg.x * ARM_LENGTH,
+      sy: CENTER - vNeg.y * ARM_LENGTH,
+      depth: vNeg.z,
+      color: axis.color,
+      dim: axis.dim,
+    });
+  }
 
-    const circleGeo = new CircleGeometry(AXIS_GIZMO.LABEL_RADIUS, 32);
-    disposables.push(circleGeo);
+  return result;
+}
 
-    const circleMesh = new Mesh(circleGeo, material);
-    circleMesh.renderOrder = 1;
+function draw() {
+  const canvas = gizmoCanvas.value;
+  const ctx = canvas?.getContext("2d");
+  if (!canvas || !ctx) {
+    rafId = requestAnimationFrame(draw);
+    return;
+  }
 
-    const billboard = new Group();
-    billboard.add(circleMesh);
-    billboard.add(textMesh);
+  const rot = sceneStates?.value?.currentCam.value.rotation;
+  const ends = project(rot?.x ?? 0, rot?.y ?? 0, rot?.z ?? 0);
 
-    switch (axis) {
-      case "x":
-        cylinderMesh.rotateZ(Math.PI / 2);
-        cylinderMesh.position.setX(offset);
-        billboard.position.setX(AXIS_GIZMO.LENGTH + AXIS_GIZMO.LABEL_RADIUS);
-        break;
-      case "y":
-        cylinderMesh.position.setY(offset);
-        billboard.position.setY(AXIS_GIZMO.LENGTH + AXIS_GIZMO.LABEL_RADIUS);
-        break;
-      case "z":
-        cylinderMesh.rotateX(Math.PI / 2);
-        cylinderMesh.position.setZ(offset);
-        billboard.position.setZ(AXIS_GIZMO.LENGTH + AXIS_GIZMO.LABEL_RADIUS);
-        break;
-      default:
-        break;
+  ctx.clearRect(0, 0, SIZE, SIZE);
+
+  // Background circle
+  ctx.beginPath();
+  ctx.arc(CENTER, CENTER, CENTER - 1, 0, Math.PI * 2);
+  ctx.fillStyle = "rgba(20, 18, 42, 0.55)";
+  ctx.fill();
+
+  // Sort back → front so front axes render on top
+  const sorted = [...ends].sort((a, b) => a.depth - b.depth);
+
+  // Draw arms first (under dots)
+  for (const end of sorted) {
+    if (end.isNeg) continue; // only draw arms for positive ends (center → tip)
+    const posEnd = end;
+    const negEnd = ends.find((e) => e.key === end.key && e.isNeg)!;
+
+    // Draw full line from neg to pos
+    ctx.beginPath();
+    ctx.moveTo(negEnd.sx, negEnd.sy);
+    ctx.lineTo(posEnd.sx, posEnd.sy);
+    ctx.strokeStyle = posEnd.depth > negEnd.depth ? posEnd.color : posEnd.dim;
+    ctx.lineWidth = 2.5;
+    ctx.globalAlpha = 0.8;
+    ctx.stroke();
+    ctx.globalAlpha = 1;
+  }
+
+  // Draw dots + labels front to back
+  for (const end of sorted) {
+    const isFront = end.depth >= 0;
+    const r = end.isNeg ? NEG_DOT_R : DOT_R;
+    const fillColor = isFront ? end.color : end.dim;
+    const alpha = isFront ? 1 : 0.5;
+
+    ctx.globalAlpha = alpha;
+
+    // Dot
+    ctx.beginPath();
+    ctx.arc(end.sx, end.sy, r, 0, Math.PI * 2);
+    ctx.fillStyle = fillColor;
+    ctx.fill();
+
+    // Stroke on negative dots so they're visually distinct
+    if (end.isNeg) {
+      ctx.strokeStyle = fillColor;
+      ctx.lineWidth = 1;
+      ctx.stroke();
     }
 
-    labels.add(billboard);
+    // Label — positive shows "X", negative shows "-X" but smaller
+    if (!end.isNeg || isFront) {
+      ctx.fillStyle = "white";
+      const label = end.isNeg
+        ? `-${end.key.toUpperCase()}`
+        : end.key.toUpperCase();
+      ctx.font = end.isNeg ? `bold 7px sans-serif` : `bold 11px sans-serif`;
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillText(label, end.sx, end.sy);
+    }
+  }
+
+  // Center dot
+  ctx.globalAlpha = 1;
+  ctx.beginPath();
+  ctx.arc(CENTER, CENTER, 4, 0, Math.PI * 2);
+  ctx.fillStyle = "white";
+  ctx.fill();
+
+  rafId = requestAnimationFrame(draw);
+}
+
+function onGizmoClick(e: MouseEvent) {
+  const canvas = gizmoCanvas.value;
+  if (!canvas) return;
+
+  const rect = canvas.getBoundingClientRect();
+  const mx = (e.clientX - rect.left) * (SIZE / rect.width);
+  const my = (e.clientY - rect.top) * (SIZE / rect.height);
+
+  const rot = sceneStates?.value?.currentCam.value.rotation;
+  const ends = project(rot?.x ?? 0, rot?.y ?? 0, rot?.z ?? 0);
+
+  // Sort front → back so frontmost dot wins on overlap
+  const frontFirst = [...ends].sort((a, b) => b.depth - a.depth);
+
+  for (const end of frontFirst) {
+    const r = end.isNeg ? NEG_DOT_R + 4 : DOT_R + 4;
+    const dist = Math.hypot(mx - end.sx, my - end.sy);
+    if (dist <= r) {
+      const cam = sceneStates?.value?.currentCam.value;
+      const preset = end.isNeg ? PRESETS[end.key].neg : PRESETS[end.key].pos;
+      if (!cam) return;
+      cam.rotation.x = preset.x;
+      cam.rotation.y = preset.y;
+      cam.rotation.z = preset.z;
+      return;
+    }
   }
 }
 
-const eul = new Euler();
-const forward = new Vector3(0, 0, 1);
-
-debouncedWatch(
-  () => [
-    sceneStates?.value?.currentCam.value.rotation.x,
-    sceneStates?.value?.currentCam.value.rotation.y,
-    sceneStates?.value?.currentCam.value.rotation.z,
-  ],
-  ([x, y, z]) => {
-    if (x == undefined || y == undefined || z == undefined) {
-      return;
-    }
-    forward.set(0, 0, 1);
-    eul.set(x, y, z);
-    forward.applyEuler(eul);
-    axisCam.position.set(forward.x, forward.y, forward.z);
-    axisCam.lookAt(0, 0, 0);
-
-    for (const child of labels.children) {
-      for (const obj of child.children) {
-        // obj.setRotationFromEuler(eul);
-        obj.quaternion.copy(axisCam.quaternion);
-      }
-    }
-  },
-  { deep: true, debounce: 10, maxWait: 100 },
-);
-
-const renderer = sceneStates!.value!.tresContext.value!.renderer;
-const onRender = renderer.onRender;
-onRender((renderer) => {
-  renderer.autoClear = false;
-  renderer.clearDepth();
-  renderer.setScissorTest(true);
-  renderer.setViewport(0, 0, AXIS_GIZMO.GIZMO_WIDTH, AXIS_GIZMO.GIZMO_WIDTH);
-  renderer.setScissor(0, 0, AXIS_GIZMO.GIZMO_WIDTH, AXIS_GIZMO.GIZMO_WIDTH);
-  renderer.setClearColor(0x000000, 0);
-  renderer.render(axisScene, axisCam);
-
-  renderer.setScissorTest(false);
-  renderer.setViewport(
-    0,
-    0,
-    renderer.domElement.clientWidth,
-    renderer.domElement.clientHeight,
-  );
-  renderer.autoClear = true;
+onMounted(() => {
+  rafId = requestAnimationFrame(draw);
 });
-
 onBeforeUnmount(() => {
-  disposables.forEach((obj) => obj.dispose());
-  axisScene.clear();
-  axes.clear();
-  labels.clear();
+  if (rafId !== null) cancelAnimationFrame(rafId);
 });
 </script>
+
 <template>
-  <slot></slot>
+  <canvas
+    ref="gizmoCanvas"
+    :width="SIZE"
+    :height="SIZE"
+    class="axis-gizmo"
+    title="Click axis to snap view"
+    @click="onGizmoClick"
+  />
 </template>
+
+<style scoped>
+.axis-gizmo {
+  position: absolute;
+  bottom: 16px;
+  left: 16px;
+  width: 128px;
+  height: 128px;
+  z-index: 20;
+  cursor: pointer;
+  border-radius: 50%;
+  transition: filter 0.15s;
+}
+.axis-gizmo:hover {
+  filter: brightness(1.2);
+}
+</style>
