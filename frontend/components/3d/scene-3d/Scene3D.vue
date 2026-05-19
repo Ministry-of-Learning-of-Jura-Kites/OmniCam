@@ -14,7 +14,6 @@ import {
   LinearFilter,
   type CubeCamera,
   Matrix3,
-  Object3D,
 } from "three";
 import { MAP_KEY, PANEL_KEY, SCENE_STATES_KEY } from "@/constants/state-keys";
 import Stats from "stats.js";
@@ -509,51 +508,6 @@ const isShowingCamDirection = computed(() => {
     sceneStates.value!.currentCamId.value != selectedCamId.value
   );
 });
-
-const geometryDebugMap = new Map<string, number>();
-
-function logSceneGeometry(scene: Object3D, label = "scene-scan") {
-  let meshCount = 0;
-
-  scene.traverse((obj: any) => {
-    if (!obj.isMesh) return;
-
-    meshCount++;
-
-    const geometry = obj.geometry;
-    const material = obj.material;
-
-    const geoUUID = geometry?.uuid ?? "no-geo";
-    const matUUID = material?.uuid ?? "no-mat";
-
-    const key = `${geoUUID}_${matUUID}`;
-
-    const current = geometryDebugMap.get(key) ?? 0;
-    geometryDebugMap.set(key, current + 1);
-
-    console.log("----- MESH -----");
-    console.log("name:", obj.name);
-    console.log("mesh uuid:", obj.uuid);
-    console.log("geometry uuid:", geoUUID);
-    console.log("material uuid:", matUUID);
-    console.log("geometry type:", geometry?.type);
-    console.log("material type:", material?.type);
-    console.log("count:", geometryDebugMap.get(key));
-  });
-
-  console.log(`[${label}] total meshes:`, meshCount);
-}
-
-watch(
-  () => sceneStates.value!.modelRef.value?.scene,
-  (scene) => {
-    if (!scene) return;
-
-    console.log("MODEL LOADED");
-    logSceneGeometry(scene, "initial-load");
-  },
-  { immediate: true },
-);
 </script>
 
 <template>
