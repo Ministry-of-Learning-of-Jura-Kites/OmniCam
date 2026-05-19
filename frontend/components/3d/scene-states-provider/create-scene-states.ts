@@ -370,6 +370,7 @@ export function createBaseSceneStates(
 
     lines: [] as {
       id: string;
+      label: string;
       start: Vector3;
       end: Vector3;
       virtualDistance: number;
@@ -380,8 +381,11 @@ export function createBaseSceneStates(
       const virtualdistance = start.distanceTo(end);
       const realDistance = virtualdistance * calibration.scale;
 
+      const index = this.lines.length + 1;
+
       this.lines.push({
         id: uuidv4(),
+        label: `Measurement ${index} - ${realDistance.toFixed(2)}m`,
         start: start.clone(),
         end: end.clone(),
         virtualDistance: virtualdistance,

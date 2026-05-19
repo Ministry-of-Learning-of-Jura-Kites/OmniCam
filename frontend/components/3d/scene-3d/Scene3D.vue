@@ -220,39 +220,70 @@ function handleMeasurementPointer(event: PointerEvent) {
     return false;
   }
 
-  console.log("🔥 measurement ctrl+click");
-
   const hit = getSurfaceHit(event);
 
   if (!hit) {
-    console.log("❌ no hit");
     return false;
   }
 
   const point = hit.point.clone();
 
-  console.log("📍 Measurement point:", point);
-
   // first click
   if (!measurement.draftStartPoint) {
     measurement.draftStartPoint = point;
-
-    console.log("🟢 Start point set");
-
     return true;
   }
 
-  // second click
-  console.log("🔵 End point set");
-
   measurement.addLine(measurement.draftStartPoint, point);
-
-  console.log("📏 Line added:", measurement.lines);
 
   measurement.resetDraft();
 
   return true;
 }
+
+// function getLineMidpoint(start: Vector3, end: Vector3) {
+//   return new Vector3().addVectors(start, end).multiplyScalar(0.5);
+// }
+
+function worldToScreen(position: Vector3) {
+  const camera = perspectiveCamera.value;
+
+  if (
+    !camera ||
+    !sceneStates!.value?.screenSize.width ||
+    !sceneStates!.value?.screenSize.height
+  ) {
+    return {
+      x: 0,
+      y: 0,
+    };
+  }
+
+  const projected = position.clone().project(camera);
+
+  return {
+    x: (projected.x + 1) * 0.5 * sceneStates!.value?.screenSize.width,
+    y: (-projected.y + 1) * 0.5 * sceneStates!.value?.screenSize.height,
+  };
+}
+
+function getMeasurementLabelStyle(line: { start: Vector3; end: Vector3 }) {
+  // label attached above starting point
+  const worldPos = line.start.clone().add(new Vector3(0, 0.08, 0));
+
+  const screen = worldToScreen(worldPos);
+
+  return {
+    left: `${screen.x}px`,
+    top: `${screen.y}px`,
+    transform: "translate(-50%, -100%)",
+  };
+}
+
+function createLinePoints(start: Vector3, end: Vector3) {
+  return new Float32Array([start.x, start.y, start.z, end.x, end.y, end.z]);
+}
+
 function handleCoverageAreaPointer(event: PointerEvent) {
   if (sceneStates.value!.selectionMode.value !== "coverage-area") return false;
 
@@ -548,6 +579,40 @@ function selectCurrentCamShortcut() {
     currentPanel.value = "camera";
   }
 }
+// log geometry for mem leak check
+// function logRendererMemory(tag = "") {
+//   const renderer = sceneStates.value?.tresContext.value?.renderer
+//     .instance as any;
+
+//   if (!renderer) {
+//     console.warn("Renderer not ready");
+//     return;
+//   }
+
+//   // flush internal render list caches
+//   renderer.renderLists?.dispose?.();
+
+//   const info = renderer.info;
+
+//   console.group(`THREE MEMORY ${tag}`);
+
+//   console.log("Geometries:", info.memory.geometries);
+//   console.log("Textures:", info.memory.textures);
+
+//   // shader programs
+//   console.log("Programs:", info.programs?.length ?? "unknown");
+
+//   console.log("Render Calls:", info.render.calls);
+//   console.log("Triangles:", info.render.triangles);
+//   console.log("Lines:", info.render.lines);
+//   console.log("Points:", info.render.points);
+
+//   console.groupEnd();
+// }
+
+// onMounted(() => {
+//   (window as any).memcheck = logRendererMemory;
+// });
 
 const isShowingCamDirection = computed(() => {
   return (
@@ -663,6 +728,41 @@ const isShowingCamDirection = computed(() => {
           tabindex="0"
           alpha
         >
+          <template
+            v-for="line in sceneStates!.measurement!.lines"
+            :key="line.id"
+          >
+            <TresLine>
+              <TresBufferGeometry>
+                <TresBufferAttribute
+                  attach="attributes-position"
+                  :array="createLinePoints(line.start, line.end)"
+                  :count="2"
+                  :item-size="3"
+                />
+              </TresBufferGeometry>
+
+              <TresLineBasicMaterial color="#00ff88" :linewidth="2" />
+            </TresLine>
+          </template>
+
+          <template
+            v-for="line in sceneStates!.measurement!.lines"
+            :key="`points-${line.id}`"
+          >
+            <!-- Start Dot -->
+            <TresMesh :position="line.start">
+              <TresSphereGeometry :args="[0.03, 16, 16]" />
+              <TresMeshBasicMaterial color="#00ff88" />
+            </TresMesh>
+
+            <!-- End Dot -->
+            <TresMesh :position="line.end">
+              <TresSphereGeometry :args="[0.03, 16, 16]" />
+              <TresMeshBasicMaterial color="#00ff88" />
+            </TresMesh>
+          </template>
+
           <TresPerspectiveCamera
             ref="perspectiveCamera"
             :position="
@@ -807,6 +907,18 @@ const isShowingCamDirection = computed(() => {
             </template>
           </template>
         </TresCanvas>
+        <div
+          v-for="line in sceneStates!.measurement!.lines"
+          :key="`label-${line.id}`"
+          class="absolute z-20 pointer-events-none"
+          :style="getMeasurementLabelStyle(line)"
+        >
+          <div
+            class="px-2 py-1 rounded bg-black/70 text-white text-xs whitespace-nowrap border border-white/20"
+          >
+            {{ line.label }}
+          </div>
+        </div>
       </div>
     </div>
   </ClientOnly>
