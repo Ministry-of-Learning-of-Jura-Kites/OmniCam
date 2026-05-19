@@ -165,7 +165,6 @@ function createCursorTexture() {
   return new CanvasTexture(canvas);
 }
 
-let pointerDownEvent: PointerEvent | undefined;
 let foundMove = false;
 const mouseOffset = ref<{ x: number; y: number } | undefined>(undefined);
 
@@ -205,7 +204,6 @@ function onPointerDown(_e: PointerEvent) {
     document.addEventListener("pointerup", onPointerUp);
   }
   foundMove = false;
-  pointerDownEvent = _e;
 }
 
 function onPointerMove(e: PointerEvent) {
@@ -225,7 +223,7 @@ function onPointerUp(_e: PointerEvent) {
     document.removeEventListener("pointerup", onPointerUp);
   }
   if (!foundMove) {
-    teleportToMinimapClick(pointerDownEvent!);
+    teleportToMinimapClick(_e);
     mouseOffset.value = undefined;
   }
 }
