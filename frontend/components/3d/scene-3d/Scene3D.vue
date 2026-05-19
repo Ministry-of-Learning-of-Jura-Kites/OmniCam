@@ -39,7 +39,8 @@ import type {
 } from "~/types/trapezoid";
 import CameraDirection from "../camera-direction/CameraDirection.vue";
 
-const { isPanelOpen, currentPanel, camPanelInfo } = inject(PANEL_KEY)!;
+const { isPanelOpen, currentPanel, currentToolMode, camPanelInfo } =
+  inject(PANEL_KEY)!;
 const { selectedCamId } = camPanelInfo;
 
 const selectedFaces = computed(() =>
@@ -210,6 +211,48 @@ function buildCoverageFaceFromPickedPoints(
   };
 }
 
+function handleMeasurementPointer(event: PointerEvent) {
+  const measurement = sceneStates.value!.measurement!;
+
+  const isModifierPressed = event.ctrlKey || event.altKey;
+
+  if (event.type !== "pointerdown" || !isModifierPressed) {
+    return false;
+  }
+
+  console.log("🔥 measurement ctrl+click");
+
+  const hit = getSurfaceHit(event);
+
+  if (!hit) {
+    console.log("❌ no hit");
+    return false;
+  }
+
+  const point = hit.point.clone();
+
+  console.log("📍 Measurement point:", point);
+
+  // first click
+  if (!measurement.draftStartPoint) {
+    measurement.draftStartPoint = point;
+
+    console.log("🟢 Start point set");
+
+    return true;
+  }
+
+  // second click
+  console.log("🔵 End point set");
+
+  measurement.addLine(measurement.draftStartPoint, point);
+
+  console.log("📏 Line added:", measurement.lines);
+
+  measurement.resetDraft();
+
+  return true;
+}
 function handleCoverageAreaPointer(event: PointerEvent) {
   if (sceneStates.value!.selectionMode.value !== "coverage-area") return false;
 
@@ -315,6 +358,10 @@ function onCanvasPointer(event: PointerEvent) {
   if (!sceneStates.value!.tresContext.value || !perspectiveCamera.value) return;
   if (sceneStates.value!.selectionMode.value === "coverage-area") {
     const handled = handleCoverageAreaPointer(event);
+    if (handled) return;
+  }
+  if (currentToolMode.value === "measurement") {
+    const handled = handleMeasurementPointer(event);
     if (handled) return;
   }
   const ele = sceneStates.value!.tresContext.value.renderer.instance.domElement;
