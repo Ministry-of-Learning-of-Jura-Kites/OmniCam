@@ -38,6 +38,7 @@ import type {
   QuadrilateralVectors,
 } from "~/types/trapezoid";
 import CameraDirection from "../camera-direction/CameraDirection.vue";
+import { watchDebounced } from "@vueuse/core";
 
 const { isPanelOpen, currentPanel, currentToolMode, camPanelInfo } =
   inject(PANEL_KEY)!;
@@ -247,38 +248,71 @@ function handleMeasurementPointer(event: PointerEvent) {
 
 function worldToScreen(position: Vector3) {
   const camera = perspectiveCamera.value;
-
   if (
     !camera ||
     !sceneStates!.value?.screenSize.width ||
     !sceneStates!.value?.screenSize.height
   ) {
-    return {
-      x: 0,
-      y: 0,
-    };
+    return null;
   }
 
   const projected = position.clone().project(camera);
 
+  // Point is behind the camera
+  if (projected.z > 1) return null;
+
   return {
-    x: (projected.x + 1) * 0.5 * sceneStates!.value?.screenSize.width,
-    y: (-projected.y + 1) * 0.5 * sceneStates!.value?.screenSize.height,
+    x: (projected.x + 1) * 0.5 * sceneStates!.value.screenSize.width,
+    y: (-projected.y + 1) * 0.5 * sceneStates!.value.screenSize.height,
   };
 }
 
 function getMeasurementLabelStyle(line: { start: Vector3; end: Vector3 }) {
-  // label attached above starting point
   const worldPos = line.start.clone().add(new Vector3(0, 0.08, 0));
-
   const screen = worldToScreen(worldPos);
 
+  if (!screen) return { display: "none" };
+
   return {
+    display: "block",
     left: `${screen.x}px`,
     top: `${screen.y}px`,
     transform: "translate(-50%, -100%)",
   };
 }
+
+const labelStyles = ref<
+  Record<string, ReturnType<typeof getMeasurementLabelStyle>>
+>({});
+
+function updateLabelStyles() {
+  if (sceneStates.value?.measurement?.lines?.length) {
+    const updated: typeof labelStyles.value = {};
+    for (const line of sceneStates.value.measurement.lines) {
+      updated[line.id] = getMeasurementLabelStyle(line);
+    }
+    labelStyles.value = updated;
+  }
+}
+
+watchDebounced(
+  () => [
+    sceneStates.value?.measurement?.lines?.length,
+    sceneStates.value?.currentCam?.value?.position?.x,
+    sceneStates.value?.currentCam?.value?.position?.y,
+    sceneStates.value?.currentCam?.value?.position?.z,
+    sceneStates.value?.currentCam?.value?.rotation?.x,
+    sceneStates.value?.currentCam?.value?.rotation?.y,
+    sceneStates.value?.currentCam?.value?.rotation?.z,
+  ],
+  () => {
+    updateLabelStyles();
+  },
+  {
+    debounce: 50,
+    maxWait: 20,
+  },
+);
 
 function createLinePoints(start: Vector3, end: Vector3) {
   return new Float32Array([start.x, start.y, start.z, end.x, end.y, end.z]);
@@ -579,7 +613,7 @@ function selectCurrentCamShortcut() {
     currentPanel.value = "camera";
   }
 }
-// log geometry for mem leak check
+
 // function logRendererMemory(tag = "") {
 //   const renderer = sceneStates.value?.tresContext.value?.renderer
 //     .instance as any;
@@ -911,7 +945,7 @@ const isShowingCamDirection = computed(() => {
           v-for="line in sceneStates!.measurement!.lines"
           :key="`label-${line.id}`"
           class="absolute z-20 pointer-events-none"
-          :style="getMeasurementLabelStyle(line)"
+          :style="labelStyles[line.id]"
         >
           <div
             class="px-2 py-1 rounded bg-black/70 text-white text-xs whitespace-nowrap border border-white/20"
