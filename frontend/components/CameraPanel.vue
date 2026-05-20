@@ -259,6 +259,23 @@ function toggleCamera(camId: string) {
     sceneStates!.value!.cameraManagement.switchToCam(camId);
   }
 }
+
+function openMiniScene() {
+  console.log("is in here");
+  console.log(sceneStates!.value);
+  if (!selectedCam.value) {
+    return;
+  }
+
+  if (!sceneStates!.value!.miniScene.visible) {
+    sceneStates!.value!.miniScene.visible = true;
+  } else {
+    sceneStates!.value!.miniScene.visible = false;
+  }
+
+  sceneStates!.value!.miniScene.targetCameraId = selectedCamId.value!;
+  console.log("state change", sceneStates?.value!.miniScene);
+}
 </script>
 
 <template>
@@ -563,6 +580,15 @@ function toggleCamera(camId: string) {
                 @click="moveToCamera(selectedCamId!)"
               >
                 Warp to Camera
+              </Button>
+
+              <Button
+                size="sm"
+                variant="outline"
+                class="w-full"
+                @click="openMiniScene()"
+              >
+                Show Mini Scene
               </Button>
 
               <Button
