@@ -24,7 +24,7 @@ pipelines:
                 - npm ci
                 - npm run style-check
                 - npm run lint
-          - step:
+          - step: &sonarqube
               name: sonarqube
               image: sonarsource/sonar-scanner-cli:12
               runs-on:
@@ -47,6 +47,8 @@ pipelines:
     "**":
       - step:
           <<: *lint-step
+      - step:
+          <<: *sonarqube
 
   tags:
     "*":
