@@ -3,7 +3,7 @@ import type { SceneStatesWithHelper } from "~/types/scene-states";
 
 export const MODEL_INFO_KEY = "model_info";
 
-export const DEFAULT_TOOL_MODE: ToolMode = "orbit";
+// export const DEFAULT_TOOL_MODE: ToolMode = "orbit";
 
 export interface MiniMapInfo {
   toggleMap: () => void;
@@ -23,7 +23,7 @@ export interface CalibrationPanelInfo {
 
 export type PanelType = "camera" | "calibration" | "measurement" | "algo";
 
-export type ToolMode = "none" | "orbit" | "measurement" | "calibration";
+// export type ToolMode = "none" | "orbit" | "measurement" | "calibration";
 
 export interface PanelInfo {
   camPanelInfo: CamPanelInfo;
@@ -32,7 +32,7 @@ export interface PanelInfo {
 
   currentPanel: Ref<PanelType>;
 
-  currentToolMode: Ref<ToolMode>;
+  // currentToolMode: Ref<ToolMode>;
 
   toggleAlgoPanel: () => void;
 

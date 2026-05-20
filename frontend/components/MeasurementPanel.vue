@@ -18,7 +18,7 @@ import CardTitle from "./ui/card/CardTitle.vue";
 import CardContent from "./ui/card/CardContent.vue";
 
 const sceneStates = inject(SCENE_STATES_KEY)!;
-const { currentToolMode } = inject(PANEL_KEY)!;
+const { currentPanel } = inject(PANEL_KEY)!;
 
 const measurementLines = sceneStates.value!.measurement.lines;
 const pendingPoint = computed(
@@ -46,7 +46,7 @@ function formatDistance(distance: number) {
 </script>
 
 <template>
-  <template v-if="currentToolMode === 'measurement'">
+  <template v-if="currentPanel === 'measurement'">
     <div
       class="w-80 bg-card border-l border-border p-4 overflow-y-auto h-full shadow-lg"
     >

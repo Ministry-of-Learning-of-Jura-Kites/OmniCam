@@ -41,7 +41,7 @@ const isPanelOpen = ref(true);
 const slotWidth = ref("100%");
 const currentPanel: PanelInfo["currentPanel"] = ref("camera");
 const camPanelSelectedCamId: CamPanelInfo["selectedCamId"] = ref(null);
-const currentToolMode = ref<"orbit" | "measurement" | "calibration">("orbit");
+// const currentToolMode = ref<"orbit" | "measurement" | "calibration">("orbit");
 
 onMounted(() => {
   slotWidth.value = isPanelOpen.value ? "calc(100% - 20rem)" : "100%";
@@ -67,13 +67,10 @@ function togglePanel() {
 
 function toggleCameraPanel() {
   currentPanel.value = "camera";
-  currentToolMode.value = "orbit";
   openPanel();
 }
 
 function toggleAlgoPanel() {
-  currentToolMode.value = "orbit";
-
   if (currentPanel.value === "algo" && isPanelOpen.value) {
     currentPanel.value = "camera";
   } else {
@@ -85,10 +82,8 @@ function toggleAlgoPanel() {
 function toggleCalibration() {
   if (currentPanel.value === "calibration" && isPanelOpen.value) {
     currentPanel.value = "camera";
-    currentToolMode.value = "orbit";
   } else {
     currentPanel.value = "calibration";
-    currentToolMode.value = "calibration";
     openPanel();
   }
 }
@@ -96,10 +91,8 @@ function toggleCalibration() {
 function toggleMeasurement() {
   if (currentPanel.value === "measurement" && isPanelOpen.value) {
     currentPanel.value = "camera";
-    currentToolMode.value = "orbit";
   } else {
     currentPanel.value = "measurement";
-    currentToolMode.value = "measurement";
     openPanel();
   }
 }
@@ -107,7 +100,6 @@ const calibrationGridScale = ref(1);
 
 provide(PANEL_KEY, {
   currentPanel,
-  currentToolMode,
   togglePanel,
   isPanelOpen,
   toggleAlgoPanel,
