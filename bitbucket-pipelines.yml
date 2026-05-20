@@ -31,8 +31,10 @@ pipelines:
                 - self.hosted
                 - linux
                 - operation.internal
-              script:
+              caches:
                 - sonar
+              script:
+                - sonar-scanner
                   -Dsonar.host.url=${SONAR_HOST_URL}
                   -Dsonar.token=${SONAR_TOKEN}
                   -Dsonar.projectKey=OmniCam
