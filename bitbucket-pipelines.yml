@@ -36,12 +36,6 @@ pipelines:
                   -Dsonar.host.url=${SONAR_HOST_URL}
                   -Dsonar.token=${SONAR_TOKEN}
                   -Dsonar.projectKey=OmniCam
-              condition:
-                changesets:
-                  includePaths:
-                    - "backend/**"
-                    - "frontend/**"
-                    - "predictive-algorithm/**"
 
   pull-requests:
     "**":
