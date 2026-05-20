@@ -10,9 +10,18 @@ const SIZE = 128;
 const CENTER = SIZE / 2;
 const ARM_LENGTH = 44;
 const DOT_R = 11;
-const NEG_DOT_R = 7;
+const NEG_DOT_R = 11;
+const EPS = 0.0001;
 
 type AxisKey = "x" | "y" | "z";
+
+interface ActiveState {
+  key: AxisKey;
+  isNeg: boolean;
+  label: string;
+}
+
+const activeView = ref<ActiveState | null>(null);
 
 const AXES = [
   {
@@ -35,6 +44,12 @@ const AXES = [
   },
 ];
 
+const VIEW_LABELS: Record<AxisKey, { pos: string; neg: string }> = {
+  x: { pos: "RIGHT (+X)", neg: "LEFT (-X)" },
+  y: { pos: "TOP (+Y)", neg: "BOTTOM (-Y)" },
+  z: { pos: "FRONT (+Z)", neg: "BACK (-Z)" },
+};
+
 const PRESETS: Record<
   AxisKey,
   {
@@ -43,8 +58,8 @@ const PRESETS: Record<
   }
 > = {
   x: {
-    pos: { x: 0, y: -Math.PI / 2, z: 0 },
-    neg: { x: 0, y: Math.PI / 2, z: 0 },
+    pos: { x: 0, y: Math.PI / 2, z: 0 },
+    neg: { x: 0, y: -Math.PI / 2, z: 0 },
   },
   y: {
     pos: { x: -Math.PI / 2, y: 0, z: 0 },
@@ -58,7 +73,6 @@ const PRESETS: Record<
 
 let rafId: number | null = null;
 
-// Each axis produces a + end and a - end
 interface ProjectedEnd {
   key: AxisKey;
   isNeg: boolean;
@@ -75,9 +89,7 @@ function project(rotX: number, rotY: number, rotZ: number): ProjectedEnd[] {
     .invert();
 
   const result: ProjectedEnd[] = [];
-
   for (const axis of AXES) {
-    // positive end
     const vPos = axis.vec.clone().applyMatrix4(inv);
     result.push({
       key: axis.key,
@@ -88,8 +100,6 @@ function project(rotX: number, rotY: number, rotZ: number): ProjectedEnd[] {
       color: axis.color,
       dim: axis.dim,
     });
-
-    // negative end (opposite direction)
     const vNeg = axis.vec.clone().negate().applyMatrix4(inv);
     result.push({
       key: axis.key,
@@ -101,7 +111,6 @@ function project(rotX: number, rotY: number, rotZ: number): ProjectedEnd[] {
       dim: axis.dim,
     });
   }
-
   return result;
 }
 
@@ -124,67 +133,92 @@ function draw() {
   ctx.fillStyle = "rgba(20, 18, 42, 0.55)";
   ctx.fill();
 
-  // Sort back → front so front axes render on top
+  // Active axis ring on background circle edge
+  if (activeView.value) {
+    const activeAxis = AXES.find((a) => a.key === activeView.value!.key)!;
+    ctx.beginPath();
+    ctx.arc(CENTER, CENTER, CENTER - 1, 0, Math.PI * 2);
+    ctx.strokeStyle = activeAxis.color;
+    ctx.lineWidth = 2;
+    ctx.globalAlpha = 0.6;
+    ctx.stroke();
+    ctx.globalAlpha = 1;
+  }
+
   const sorted = [...ends].sort((a, b) => a.depth - b.depth);
 
-  // Draw arms first (under dots)
+  // Arms (neg → pos, drawn under dots)
   for (const end of sorted) {
-    if (end.isNeg) continue; // only draw arms for positive ends (center → tip)
-    const posEnd = end;
+    if (end.isNeg) continue;
     const negEnd = ends.find((e) => e.key === end.key && e.isNeg)!;
-
-    // Draw full line from neg to pos
     ctx.beginPath();
     ctx.moveTo(negEnd.sx, negEnd.sy);
-    ctx.lineTo(posEnd.sx, posEnd.sy);
-    ctx.strokeStyle = posEnd.depth > negEnd.depth ? posEnd.color : posEnd.dim;
+    ctx.lineTo(end.sx, end.sy);
+    ctx.strokeStyle = end.depth > negEnd.depth ? end.color : end.dim;
     ctx.lineWidth = 2.5;
     ctx.globalAlpha = 0.8;
     ctx.stroke();
     ctx.globalAlpha = 1;
   }
 
-  // Draw dots + labels front to back
+  // Dots + labels
   for (const end of sorted) {
-    const isFront = end.depth >= 0;
+    const isFront = end.depth >= -EPS; // treat near-zero depth as front-facing to avoid flicker
     const r = end.isNeg ? NEG_DOT_R : DOT_R;
     const fillColor = isFront ? end.color : end.dim;
     const alpha = isFront ? 1 : 0.5;
 
+    const isActive =
+      activeView.value?.key === end.key &&
+      activeView.value?.isNeg === end.isNeg;
+
     ctx.globalAlpha = alpha;
 
-    // Dot
+    // Dot fill
     ctx.beginPath();
     ctx.arc(end.sx, end.sy, r, 0, Math.PI * 2);
-    ctx.fillStyle = fillColor;
+    ctx.fillStyle = isActive ? "white" : fillColor;
     ctx.fill();
 
-    // Stroke on negative dots so they're visually distinct
-    if (end.isNeg) {
+    // Active dot: colored ring + axis-color inner circle so text still reads
+    if (isActive) {
+      // outer white ring
       ctx.strokeStyle = fillColor;
-      ctx.lineWidth = 1;
+      ctx.lineWidth = 2.5;
       ctx.stroke();
+      // inner colored fill so label contrasts
+      ctx.beginPath();
+      ctx.arc(end.sx, end.sy, r - 3, 0, Math.PI * 2);
+      ctx.fillStyle = fillColor;
+      ctx.fill();
     }
 
-    // Label — positive shows "X", negative shows "-X" but smaller
+    // Label
     if (!end.isNeg || isFront) {
       ctx.fillStyle = "white";
+      ctx.font = "bold 11px sans-serif";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
       const label = end.isNeg
         ? `-${end.key.toUpperCase()}`
         : end.key.toUpperCase();
-      ctx.font = end.isNeg ? `bold 7px sans-serif` : `bold 11px sans-serif`;
-      ctx.textAlign = "center";
-      ctx.textBaseline = "middle";
       ctx.fillText(label, end.sx, end.sy);
     }
+
+    ctx.globalAlpha = 1;
   }
 
-  // Center dot
-  ctx.globalAlpha = 1;
-  ctx.beginPath();
-  ctx.arc(CENTER, CENTER, 4, 0, Math.PI * 2);
-  ctx.fillStyle = "white";
-  ctx.fill();
+  // View label at bottom of gizmo circle
+  if (activeView.value) {
+    const axisColor = AXES.find((a) => a.key === activeView.value!.key)!.color;
+    ctx.font = "bold 8px sans-serif";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillStyle = axisColor;
+    ctx.globalAlpha = 0.95;
+    ctx.fillText(activeView.value.label, CENTER, SIZE - 9);
+    ctx.globalAlpha = 1;
+  }
 
   rafId = requestAnimationFrame(draw);
 }
@@ -199,8 +233,6 @@ function onGizmoClick(e: MouseEvent) {
 
   const rot = sceneStates?.value?.currentCam.value.rotation;
   const ends = project(rot?.x ?? 0, rot?.y ?? 0, rot?.z ?? 0);
-
-  // Sort front → back so frontmost dot wins on overlap
   const frontFirst = [...ends].sort((a, b) => b.depth - a.depth);
 
   for (const end of frontFirst) {
@@ -213,6 +245,12 @@ function onGizmoClick(e: MouseEvent) {
       cam.rotation.x = preset.x;
       cam.rotation.y = preset.y;
       cam.rotation.z = preset.z;
+      // ← set active so gizmo highlights it
+      activeView.value = {
+        key: end.key,
+        isNeg: end.isNeg,
+        label: VIEW_LABELS[end.key][end.isNeg ? "neg" : "pos"],
+      };
       return;
     }
   }

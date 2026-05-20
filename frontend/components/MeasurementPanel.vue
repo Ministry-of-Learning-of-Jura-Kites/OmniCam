@@ -12,7 +12,6 @@ import {
 
 // UI Components
 import Button from "./ui/button/Button.vue";
-import Badge from "./ui/badge/Badge.vue";
 import Card from "./ui/card/Card.vue";
 import CardHeader from "./ui/card/CardHeader.vue";
 import CardTitle from "./ui/card/CardTitle.vue";
@@ -21,25 +20,24 @@ import CardContent from "./ui/card/CardContent.vue";
 const sceneStates = inject(SCENE_STATES_KEY)!;
 const { currentToolMode } = inject(PANEL_KEY)!;
 
-const measurementLines = computed(
-  () => sceneStates.value?.measurement?.lines ?? [],
-);
-
+const measurementLines = sceneStates.value!.measurement.lines;
 const pendingPoint = computed(
-  () => sceneStates.value?.measurement?.draftStartPoint,
+  () => sceneStates.value!.measurement.draftStartPoint,
 );
-
-const totalMeasurements = computed(() => measurementLines.value.length);
+watch(
+  () => measurementLines.length,
+  (newLength) => {
+    console.log("Measurement lines count:", newLength);
+    console.log("Current lines:", measurementLines);
+  },
+);
+const totalMeasurements = computed(() => measurementLines.length);
 
 function clearMeasurements() {
   if (sceneStates.value?.measurement) {
-    sceneStates.value.measurement.lines = [];
+    sceneStates.value.measurement.lines.splice(0);
     sceneStates.value.measurement.draftStartPoint = null;
   }
-}
-
-function clearLastMeasurement() {
-  sceneStates.value?.measurement?.lines?.pop();
 }
 
 function formatDistance(distance: number) {
@@ -72,22 +70,27 @@ function formatDistance(distance: number) {
 
           <CardContent class="px-4 space-y-3">
             <div class="flex items-center justify-between text-sm">
-              <span class="text-muted-foreground">Mode</span>
-              <Badge class="bg-amber-500 text-white hover:bg-amber-600">
-                Active
-              </Badge>
-            </div>
-
-            <div class="flex items-center justify-between text-sm">
               <span class="text-muted-foreground">Waiting For</span>
               <span class="font-medium">
                 {{ pendingPoint ? "Second Point" : "First Point" }}
               </span>
             </div>
-
-            <div class="text-xs text-muted-foreground">
-              Click two points in the scene to measure real-world distance.
-            </div>
+            <p
+              class="text-[11px] text-muted-foreground text-center mt-1 flex items-center justify-center gap-1"
+            >
+              <span class="flex items-center gap-0.5">
+                <kbd
+                  class="px-1 py-0.5 rounded border bg-background font-sans text-xs"
+                  >Ctrl</kbd
+                >
+                <span class="text-muted-foreground">/</span>
+                <kbd
+                  class="px-1 py-0.5 rounded border bg-background font-sans text-xs"
+                  >alt</kbd
+                >
+              </span>
+              <span>+ Click to define point</span>
+            </p>
           </CardContent>
         </Card>
 
@@ -111,7 +114,7 @@ function formatDistance(distance: number) {
                 <span class="text-2xl font-mono font-bold">1m</span>
               </div>
 
-              <div class="h-8 w-[1px] bg-border rotate-[20deg]" />
+              <div class="h-8 w-px bg-border rotate-20" />
 
               <div class="flex flex-col">
                 <span
@@ -153,13 +156,24 @@ function formatDistance(distance: number) {
           </CardContent>
         </Card>
 
-        <!-- MEASUREMENTS LIST -->
         <Card class="gap-2">
           <CardHeader class="pb-1">
-            <CardTitle class="text-sm font-medium flex items-center gap-2">
-              <CircleDot class="h-4 w-4" />
-              Measurements
-            </CardTitle>
+            <div class="flex items-center justify-between">
+              <CardTitle class="text-sm font-medium flex items-center gap-2">
+                <CircleDot class="h-4 w-4" />
+                Measurements
+              </CardTitle>
+              <Button
+                variant="destructive"
+                size="sm"
+                class="h-8 px-3"
+                :disabled="measurementLines.length === 0"
+                @click="clearMeasurements"
+              >
+                <Trash2 class="h-4 w-4 mr-1" />
+                Clear All
+              </Button>
+            </div>
           </CardHeader>
 
           <CardContent>
@@ -176,46 +190,35 @@ function formatDistance(distance: number) {
                 :key="measurement.id"
                 class="border rounded-md p-3 bg-muted/40"
               >
-                <div class="flex justify-between items-center">
+                <div class="flex justify-between items-start">
                   <div class="flex flex-col">
                     <span class="text-xs text-muted-foreground">
                       Measurement {{ index + 1 }}
                     </span>
+
                     <span class="font-mono font-semibold">
                       {{ formatDistance(measurement.realDistance) }}
                     </span>
+
+                    <span class="text-xs text-muted-foreground mt-1">
+                      Virtual:
+                      {{ formatDistance(measurement.virtualDistance) }}
+                    </span>
                   </div>
 
-                  <Badge variant="secondary">
-                    {{ formatDistance(measurement.virtualDistance) }}
-                  </Badge>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    class="h-8 w-8 text-destructive hover:text-destructive"
+                    @click="sceneStates!.measurement.lines.splice(index, 1)"
+                  >
+                    <Trash2 class="h-4 w-4" />
+                  </Button>
                 </div>
               </div>
             </div>
           </CardContent>
         </Card>
-
-        <!-- ACTIONS -->
-        <div class="pt-2 space-y-2">
-          <Button
-            variant="outline"
-            class="w-full"
-            :disabled="measurementLines.length === 0"
-            @click="clearLastMeasurement"
-          >
-            Remove Last Measurement
-          </Button>
-
-          <Button
-            variant="destructive"
-            class="w-full gap-2"
-            :disabled="measurementLines.length === 0"
-            @click="clearMeasurements"
-          >
-            <Trash2 class="h-4 w-4" />
-            Clear All Measurements
-          </Button>
-        </div>
       </div>
     </div>
   </template>
