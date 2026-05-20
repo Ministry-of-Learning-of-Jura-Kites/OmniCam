@@ -14,22 +14,30 @@ clone:
 pipelines:
   branches:
     main:
-      - step: &lint-step
-          name: Lint and Style Check
-          image: node:22.18.0
-          caches:
-            - node-custom
-          script:
-            - npm ci
-            - npm run style-check
-            - npm run lint
-      - step:
-          name: sonarqube
-          script:
-            - pipe: sonarsource/sonarqube-scan:3.0.2
-              variables:
-                SONAR_HOST_URL: ${SONAR_HOST_URL} # Get the value from the repository/workspace variable.
-                SONAR_TOKEN: ${SONAR_TOKEN}
+      - parallel:
+          - step: &lint-step
+              name: Lint and Style Check
+              image: node:22.18.0
+              caches:
+                - node-custom
+              script:
+                - npm ci
+                - npm run style-check
+                - npm run lint
+          - step:
+              name: sonarqube
+              image: sonarsource/sonar-scanner-cli:12
+              script:
+                - sonar
+                  -Dsonar.host.url=${SONAR_HOST_URL}
+                  -Dsonar.token=${SONAR_TOKEN}
+                  -Dsonar.projectKey=OmniCam
+              condition:
+                changesets:
+                  includePaths:
+                    - "backend/**"
+                    - "frontend/**"
+                    - "predictive-algorithm/**"
 
   pull-requests:
     "**":
