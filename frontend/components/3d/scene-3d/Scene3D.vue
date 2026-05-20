@@ -33,11 +33,13 @@ import { averageVector } from "~/utils/face-helper/avg-vec";
 import { v4 as uuidv4 } from "uuid";
 import { get3dModelPathClient } from "~/composables/api/use-fetch-model-api";
 import AxisGizmo from "../axis-gizmo/axis-gizmo.vue";
+import LineMeasurement from "../line-measurement/line-measurement.vue";
 import type {
   QuadrilateralPoints,
   QuadrilateralVectors,
 } from "~/types/trapezoid";
 import CameraDirection from "../camera-direction/CameraDirection.vue";
+// import { watchDebounced } from "@vueuse/core";
 
 const { isPanelOpen, currentPanel, camPanelInfo } = inject(PANEL_KEY)!;
 const { selectedCamId } = camPanelInfo;
@@ -61,6 +63,9 @@ const props = withDefaults(
     workspace: null,
   },
 );
+
+// line measurement
+const lineMeasurement = ref<InstanceType<typeof LineMeasurement> | null>(null);
 
 const config = useRuntimeConfig();
 const sceneStates = inject(SCENE_STATES_KEY)!;
@@ -112,6 +117,24 @@ const selectedCam = computed(() => {
   }
   return sceneStates.value!.cameras[selectedCamId.value];
 });
+
+const lineColors = reactive<Record<string, string>>({});
+
+const MEASUREMENT_PALETTE = [
+  "#f97316", // orange
+  "#a855f7", // purple
+  "#06b6d4", // cyan
+  "#f59e0b", // amber
+  "#ec4899", // pink
+  "#84cc16", // lime
+  "#14b8a6", // teal
+  "#fb923c", // light orange
+];
+
+function getNextMeasurementColor(): string {
+  const used = Object.keys(lineColors).length;
+  return MEASUREMENT_PALETTE[used % MEASUREMENT_PALETTE.length]!;
+}
 
 usePromptUnsaved(sceneStates.value!);
 
@@ -209,6 +232,119 @@ function buildCoverageFaceFromPickedPoints(
     center: [centerV.x, centerV.y, centerV.z],
   };
 }
+
+function handleMeasurementPointer(event: PointerEvent) {
+  const measurement = sceneStates.value!.measurement!;
+
+  const isModifierPressed = event.ctrlKey || event.altKey;
+
+  if (event.type !== "pointerdown" || !isModifierPressed) {
+    return false;
+  }
+
+  const hit = getSurfaceHit(event);
+
+  if (!hit) {
+    return false;
+  }
+
+  const point = hit.point.clone();
+
+  // first click
+  if (!measurement.draftStartPoint) {
+    measurement.draftStartPoint = point;
+    return true;
+  }
+
+  measurement.addLine(measurement.draftStartPoint, point);
+
+  measurement.resetDraft();
+
+  return true;
+}
+
+// function getLineMidpoint(start: Vector3, end: Vector3) {
+//   return new Vector3().addVectors(start, end).multiplyScalar(0.5);
+// }
+
+function worldToScreen(position: Vector3) {
+  const camera = perspectiveCamera.value;
+  if (
+    !camera ||
+    !sceneStates!.value?.screenSize.width ||
+    !sceneStates!.value?.screenSize.height
+  ) {
+    return null;
+  }
+
+  const projected = position.clone().project(camera);
+
+  // Point is behind the camera
+  if (projected.z > 1) return null;
+
+  return {
+    x: (projected.x + 1) * 0.5 * sceneStates!.value.screenSize.width,
+    y: (-projected.y + 1) * 0.5 * sceneStates!.value.screenSize.height,
+  };
+}
+
+function getMeasurementLabelStyle(line: { start: Vector3; end: Vector3 }) {
+  const worldPos = line.start.clone().add(new Vector3(0, 0.08, 0));
+  const screen = worldToScreen(worldPos);
+
+  if (!screen) return { display: "none" };
+
+  return {
+    display: "block",
+    left: `${screen.x}px`,
+    top: `${screen.y}px`,
+    transform: "translate(-50%, -100%)",
+  };
+}
+
+const labelStyles = ref<
+  Record<string, ReturnType<typeof getMeasurementLabelStyle>>
+>({});
+
+function updateLabelStyles() {
+  if (sceneStates.value?.measurement?.lines?.length) {
+    const updated: typeof labelStyles.value = {};
+    for (const line of sceneStates.value.measurement.lines) {
+      updated[line.id] = getMeasurementLabelStyle(line);
+    }
+    labelStyles.value = updated;
+  }
+}
+
+let labelRafId: number | null = null;
+
+function labelLoop() {
+  updateLabelStyles();
+  labelRafId = requestAnimationFrame(labelLoop);
+}
+
+// watch(
+//   () => [
+//     sceneStates.value?.currentCam?.value?.position?.x,
+//     sceneStates.value?.currentCam?.value?.position?.y,
+//     sceneStates.value?.currentCam?.value?.position?.z,
+//     sceneStates.value?.currentCam?.value?.rotation?.x,
+//     sceneStates.value?.currentCam?.value?.rotation?.y,
+//     sceneStates.value?.currentCam?.value?.rotation?.z,
+//   ],
+//   () => {},
+// );
+
+onMounted(() => {
+  labelRafId = requestAnimationFrame(labelLoop);
+});
+
+onUnmounted(() => {
+  if (labelRafId !== null) {
+    cancelAnimationFrame(labelRafId);
+    labelRafId = null;
+  }
+});
 
 function handleCoverageAreaPointer(event: PointerEvent) {
   if (sceneStates.value!.selectionMode.value !== "coverage-area") return false;
@@ -313,21 +449,30 @@ function onCanvasKeydown(event: KeyboardEvent) {
 
 function onCanvasPointer(event: PointerEvent) {
   if (!sceneStates.value!.tresContext.value || !perspectiveCamera.value) return;
-  if (sceneStates.value!.selectionMode.value === "coverage-area") {
-    const handled = handleCoverageAreaPointer(event);
-    if (handled) return;
-  }
   const ele = sceneStates.value!.tresContext.value.renderer.instance.domElement;
   const rect = ele.getBoundingClientRect();
   mouse.x = ((event.clientX - rect.left) / rect.width!) * 2 - 1;
   mouse.y = -((event.clientY - rect.top) / rect.height!) * 2 + 1;
   raycaster.setFromCamera(mouse, perspectiveCamera.value!);
+
+  if (lineMeasurement.value?.onPointerEvent(event, raycaster)) return;
+
+  if (sceneStates.value!.selectionMode.value === "coverage-area") {
+    const handled = handleCoverageAreaPointer(event);
+    if (handled) return;
+  }
+  if (currentPanel.value === "measurement") {
+    const handled = handleMeasurementPointer(event);
+    if (handled) return;
+  }
+
   const objectsToSearch = [...sceneStates.value!.draggableObjects];
   if (event.type === "pointerdown" || event.type === "pointerup") {
     for (const obj of sceneStates.value!.clickableObjects) {
       objectsToSearch.push(obj);
     }
   }
+
   const intersects = raycaster.intersectObjects(objectsToSearch, false);
   if (intersects.length > 0) {
     const foundObj = intersects[0];
@@ -502,6 +647,57 @@ function selectCurrentCamShortcut() {
   }
 }
 
+watch(
+  () => sceneStates.value!.measurement.lines.length,
+  () => {
+    for (const line of sceneStates.value!.measurement.lines) {
+      if (!lineColors[line.id]) {
+        lineColors[line.id] = getNextMeasurementColor();
+      }
+    }
+    // clean up removed lines
+    for (const id of Object.keys(lineColors)) {
+      if (!sceneStates.value!.measurement.lines.find((l) => l.id === id)) {
+        delete lineColors[id];
+      }
+    }
+  },
+);
+
+// function logRendererMemory(tag = "") {
+//   const renderer = sceneStates.value?.tresContext.value?.renderer
+//     .instance as any;
+
+//   if (!renderer) {
+//     console.warn("Renderer not ready");
+//     return;
+//   }
+
+//   // flush internal render list caches
+//   renderer.renderLists?.dispose?.();
+
+//   const info = renderer.info;
+
+//   console.group(`THREE MEMORY ${tag}`);
+
+//   console.log("Geometries:", info.memory.geometries);
+//   console.log("Textures:", info.memory.textures);
+
+//   // shader programs
+//   console.log("Programs:", info.programs?.length ?? "unknown");
+
+//   console.log("Render Calls:", info.render.calls);
+//   console.log("Triangles:", info.render.triangles);
+//   console.log("Lines:", info.render.lines);
+//   console.log("Points:", info.render.points);
+
+//   console.groupEnd();
+// }
+
+// onMounted(() => {
+//   (window as any).memcheck = logRendererMemory;
+// });
+
 const isShowingCamDirection = computed(() => {
   return (
     selectedCamId.value != null &&
@@ -616,6 +812,12 @@ const isShowingCamDirection = computed(() => {
           tabindex="0"
           alpha
         >
+          <LineMeasurement
+            ref="lineMeasurement"
+            :perspective-camera="perspectiveCamera"
+            :get-surface-hit="getSurfaceHit"
+          />
+
           <TresPerspectiveCamera
             ref="perspectiveCamera"
             :position="
@@ -697,7 +899,7 @@ const isShowingCamDirection = computed(() => {
 
           <FrustumOverlay />
 
-          <AxisGizmo />
+          <!-- <AxisGizmo /> -->
 
           <Suspense><Environment preset="city" /></Suspense>
           <TresAmbientLight :intensity="0.4" />
@@ -760,6 +962,27 @@ const isShowingCamDirection = computed(() => {
             </template>
           </template>
         </TresCanvas>
+
+        <div
+          id="measurement-labels"
+          class="absolute inset-0 pointer-events-none"
+        >
+          <div
+            v-for="line in sceneStates!.measurement.lines"
+            :key="`label-${line.id}`"
+            class="absolute z-20 pointer-events-none"
+            :style="labelStyles[line.id]"
+          >
+            <div
+              class="px-2 py-1 rounded bg-black/70 text-white text-xs whitespace-nowrap border border-white/20"
+            >
+              {{ line.label }}
+            </div>
+          </div>
+        </div>
+        <div :ref="sceneStates!.tresCanvasParent" class="relative">
+          <AxisGizmo />
+        </div>
       </div>
     </div>
   </ClientOnly>
