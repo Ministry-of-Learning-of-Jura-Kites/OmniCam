@@ -6,6 +6,10 @@ definitions:
       memory: 2048
   caches:
     node-custom: node_modules
+    sonar: ~/.sonar
+
+clone:
+  depth: full
 
 pipelines:
   branches:
@@ -19,9 +23,16 @@ pipelines:
             - npm ci
             - npm run style-check
             - npm run lint
+      - step:
+          name: sonarqube
+          script:
+            - pipe: sonarsource/sonarqube-scan:3.0.2
+              variables:
+                SONAR_HOST_URL: ${SONAR_HOST_URL} # Get the value from the repository/workspace variable.
+                SONAR_TOKEN: ${SONAR_TOKEN}
 
   pull-requests:
-    "main":
+    "**":
       - step:
           <<: *lint-step
 
