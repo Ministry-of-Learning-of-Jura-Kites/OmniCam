@@ -33,12 +33,13 @@ import { averageVector } from "~/utils/face-helper/avg-vec";
 import { v4 as uuidv4 } from "uuid";
 import { get3dModelPathClient } from "~/composables/api/use-fetch-model-api";
 import AxisGizmo from "../axis-gizmo/axis-gizmo.vue";
+import LineMeasurement from "../line-measurement/line-measurement.vue";
 import type {
   QuadrilateralPoints,
   QuadrilateralVectors,
 } from "~/types/trapezoid";
 import CameraDirection from "../camera-direction/CameraDirection.vue";
-import { watchDebounced } from "@vueuse/core";
+// import { watchDebounced } from "@vueuse/core";
 
 const { isPanelOpen, currentPanel, currentToolMode, camPanelInfo } =
   inject(PANEL_KEY)!;
@@ -63,6 +64,9 @@ const props = withDefaults(
     workspace: null,
   },
 );
+
+// line measurement
+const lineMeasurement = ref<InstanceType<typeof LineMeasurement> | null>(null);
 
 const config = useRuntimeConfig();
 const sceneStates = inject(SCENE_STATES_KEY)!;
@@ -114,6 +118,24 @@ const selectedCam = computed(() => {
   }
   return sceneStates.value!.cameras[selectedCamId.value];
 });
+
+const lineColors = reactive<Record<string, string>>({});
+
+const MEASUREMENT_PALETTE = [
+  "#f97316", // orange
+  "#a855f7", // purple
+  "#06b6d4", // cyan
+  "#f59e0b", // amber
+  "#ec4899", // pink
+  "#84cc16", // lime
+  "#14b8a6", // teal
+  "#fb923c", // light orange
+];
+
+function getNextMeasurementColor(): string {
+  const used = Object.keys(lineColors).length;
+  return MEASUREMENT_PALETTE[used % MEASUREMENT_PALETTE.length]!;
+}
 
 usePromptUnsaved(sceneStates.value!);
 
@@ -295,28 +317,35 @@ function updateLabelStyles() {
   }
 }
 
-watchDebounced(
-  () => [
-    sceneStates.value?.measurement?.lines?.length,
-    sceneStates.value?.currentCam?.value?.position?.x,
-    sceneStates.value?.currentCam?.value?.position?.y,
-    sceneStates.value?.currentCam?.value?.position?.z,
-    sceneStates.value?.currentCam?.value?.rotation?.x,
-    sceneStates.value?.currentCam?.value?.rotation?.y,
-    sceneStates.value?.currentCam?.value?.rotation?.z,
-  ],
-  () => {
-    updateLabelStyles();
-  },
-  {
-    debounce: 50,
-    maxWait: 20,
-  },
-);
+let labelRafId: number | null = null;
 
-function createLinePoints(start: Vector3, end: Vector3) {
-  return new Float32Array([start.x, start.y, start.z, end.x, end.y, end.z]);
+function labelLoop() {
+  updateLabelStyles();
+  labelRafId = requestAnimationFrame(labelLoop);
 }
+
+// watch(
+//   () => [
+//     sceneStates.value?.currentCam?.value?.position?.x,
+//     sceneStates.value?.currentCam?.value?.position?.y,
+//     sceneStates.value?.currentCam?.value?.position?.z,
+//     sceneStates.value?.currentCam?.value?.rotation?.x,
+//     sceneStates.value?.currentCam?.value?.rotation?.y,
+//     sceneStates.value?.currentCam?.value?.rotation?.z,
+//   ],
+//   () => {},
+// );
+
+onMounted(() => {
+  labelRafId = requestAnimationFrame(labelLoop);
+});
+
+onUnmounted(() => {
+  if (labelRafId !== null) {
+    cancelAnimationFrame(labelRafId);
+    labelRafId = null;
+  }
+});
 
 function handleCoverageAreaPointer(event: PointerEvent) {
   if (sceneStates.value!.selectionMode.value !== "coverage-area") return false;
@@ -421,6 +450,14 @@ function onCanvasKeydown(event: KeyboardEvent) {
 
 function onCanvasPointer(event: PointerEvent) {
   if (!sceneStates.value!.tresContext.value || !perspectiveCamera.value) return;
+  const ele = sceneStates.value!.tresContext.value.renderer.instance.domElement;
+  const rect = ele.getBoundingClientRect();
+  mouse.x = ((event.clientX - rect.left) / rect.width!) * 2 - 1;
+  mouse.y = -((event.clientY - rect.top) / rect.height!) * 2 + 1;
+  raycaster.setFromCamera(mouse, perspectiveCamera.value!);
+
+  if (lineMeasurement.value?.onPointerEvent(event, raycaster)) return;
+
   if (sceneStates.value!.selectionMode.value === "coverage-area") {
     const handled = handleCoverageAreaPointer(event);
     if (handled) return;
@@ -429,17 +466,14 @@ function onCanvasPointer(event: PointerEvent) {
     const handled = handleMeasurementPointer(event);
     if (handled) return;
   }
-  const ele = sceneStates.value!.tresContext.value.renderer.instance.domElement;
-  const rect = ele.getBoundingClientRect();
-  mouse.x = ((event.clientX - rect.left) / rect.width!) * 2 - 1;
-  mouse.y = -((event.clientY - rect.top) / rect.height!) * 2 + 1;
-  raycaster.setFromCamera(mouse, perspectiveCamera.value!);
+
   const objectsToSearch = [...sceneStates.value!.draggableObjects];
   if (event.type === "pointerdown" || event.type === "pointerup") {
     for (const obj of sceneStates.value!.clickableObjects) {
       objectsToSearch.push(obj);
     }
   }
+
   const intersects = raycaster.intersectObjects(objectsToSearch, false);
   if (intersects.length > 0) {
     const foundObj = intersects[0];
@@ -614,6 +648,23 @@ function selectCurrentCamShortcut() {
   }
 }
 
+watch(
+  () => sceneStates.value!.measurement.lines.length,
+  () => {
+    for (const line of sceneStates.value!.measurement.lines) {
+      if (!lineColors[line.id]) {
+        lineColors[line.id] = getNextMeasurementColor();
+      }
+    }
+    // clean up removed lines
+    for (const id of Object.keys(lineColors)) {
+      if (!sceneStates.value!.measurement.lines.find((l) => l.id === id)) {
+        delete lineColors[id];
+      }
+    }
+  },
+);
+
 // function logRendererMemory(tag = "") {
 //   const renderer = sceneStates.value?.tresContext.value?.renderer
 //     .instance as any;
@@ -762,40 +813,11 @@ const isShowingCamDirection = computed(() => {
           tabindex="0"
           alpha
         >
-          <template
-            v-for="line in sceneStates!.measurement!.lines"
-            :key="line.id"
-          >
-            <TresLine>
-              <TresBufferGeometry>
-                <TresBufferAttribute
-                  attach="attributes-position"
-                  :array="createLinePoints(line.start, line.end)"
-                  :count="2"
-                  :item-size="3"
-                />
-              </TresBufferGeometry>
-
-              <TresLineBasicMaterial color="#00ff88" :linewidth="2" />
-            </TresLine>
-          </template>
-
-          <template
-            v-for="line in sceneStates!.measurement!.lines"
-            :key="`points-${line.id}`"
-          >
-            <!-- Start Dot -->
-            <TresMesh :position="line.start">
-              <TresSphereGeometry :args="[0.03, 16, 16]" />
-              <TresMeshBasicMaterial color="#00ff88" />
-            </TresMesh>
-
-            <!-- End Dot -->
-            <TresMesh :position="line.end">
-              <TresSphereGeometry :args="[0.03, 16, 16]" />
-              <TresMeshBasicMaterial color="#00ff88" />
-            </TresMesh>
-          </template>
+          <LineMeasurement
+            ref="lineMeasurement"
+            :perspective-camera="perspectiveCamera"
+            :get-surface-hit="getSurfaceHit"
+          />
 
           <TresPerspectiveCamera
             ref="perspectiveCamera"
@@ -941,24 +963,25 @@ const isShowingCamDirection = computed(() => {
             </template>
           </template>
         </TresCanvas>
+
         <div
-          v-for="line in sceneStates!.measurement!.lines"
-          :key="`label-${line.id}`"
-          class="absolute z-20 pointer-events-none"
-          :style="labelStyles[line.id]"
+          id="measurement-labels"
+          class="absolute inset-0 pointer-events-none"
         >
           <div
-            class="px-2 py-1 rounded bg-black/70 text-white text-xs whitespace-nowrap border border-white/20"
+            v-for="line in sceneStates!.measurement.lines"
+            :key="`label-${line.id}`"
+            class="absolute z-20 pointer-events-none"
+            :style="labelStyles[line.id]"
           >
-            {{ line.label }}
+            <div
+              class="px-2 py-1 rounded bg-black/70 text-white text-xs whitespace-nowrap border border-white/20"
+            >
+              {{ line.label }}
+            </div>
           </div>
         </div>
         <div :ref="sceneStates!.tresCanvasParent" class="relative">
-          <!-- <TresCanvas ...>
-            AxisGizmo gone from here -->
-          <!-- </TresCanvas> -->
-
-          <!-- ✅ HTML overlay — clicks work natively -->
           <AxisGizmo />
         </div>
       </div>

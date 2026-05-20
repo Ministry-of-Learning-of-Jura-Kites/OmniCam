@@ -392,6 +392,21 @@ export function createBaseSceneStates(
         realDistance: realDistance,
       });
     },
+    updateEndpoint(lineId: string, pointIndex: 0 | 1, newPos: Vector3) {
+      const line = this.lines.find((l) => l.id === lineId);
+      if (!line) return;
+
+      if (pointIndex === 0) line.start = newPos.clone();
+      else line.end = newPos.clone();
+
+      const virtualDistance = line.start.distanceTo(line.end);
+      const realDistance = virtualDistance * calibration.scale;
+      line.virtualDistance = virtualDistance;
+      line.realDistance = realDistance;
+
+      const prefix = line.label.split(" - ")[0];
+      line.label = `${prefix} - ${realDistance.toFixed(2)}m`;
+    },
 
     resetDraft() {
       this.draftStartPoint = null;
