@@ -39,6 +39,7 @@ import type {
   QuadrilateralVectors,
 } from "~/types/trapezoid";
 import CameraDirection from "../camera-direction/CameraDirection.vue";
+import MiniCameraScene from "../mini-camera-scene/MiniCameraScene.vue";
 // import { watchDebounced } from "@vueuse/core";
 
 const { isPanelOpen, currentPanel, camPanelInfo } = inject(PANEL_KEY)!;
@@ -797,6 +798,9 @@ const isShowingCamDirection = computed(() => {
         }"
         class="relative"
       >
+        <div class="scene-wrapper">
+          <MiniCameraScene v-if="sceneStates!.miniScene.visible" />
+        </div>
         <CameraDirection
           v-if="selectedCam"
           :target-pos="selectedCam.position"
