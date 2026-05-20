@@ -45,10 +45,11 @@ pipelines:
 
   pull-requests:
     "**":
-      - step:
-          <<: *lint-step
-      - step:
-          <<: *sonarqube
+      - parallel:
+          - step:
+              <<: *lint-step
+          - step:
+              <<: *sonarqube
 
   tags:
     "*":
