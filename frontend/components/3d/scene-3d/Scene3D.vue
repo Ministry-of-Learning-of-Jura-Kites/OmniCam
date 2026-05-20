@@ -41,8 +41,7 @@ import type {
 import CameraDirection from "../camera-direction/CameraDirection.vue";
 // import { watchDebounced } from "@vueuse/core";
 
-const { isPanelOpen, currentPanel, currentToolMode, camPanelInfo } =
-  inject(PANEL_KEY)!;
+const { isPanelOpen, currentPanel, camPanelInfo } = inject(PANEL_KEY)!;
 const { selectedCamId } = camPanelInfo;
 
 const selectedFaces = computed(() =>
@@ -462,7 +461,7 @@ function onCanvasPointer(event: PointerEvent) {
     const handled = handleCoverageAreaPointer(event);
     if (handled) return;
   }
-  if (currentToolMode.value === "measurement") {
+  if (currentPanel.value === "measurement") {
     const handled = handleMeasurementPointer(event);
     if (handled) return;
   }
