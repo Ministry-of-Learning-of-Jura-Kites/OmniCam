@@ -413,6 +413,11 @@ export function createBaseSceneStates(
     },
   });
 
+  const miniScene = reactive({
+    visible: false,
+    targetCameraId: null as string | null,
+  });
+
   const sceneStates = {
     tresContext,
     modelRef,
@@ -449,6 +454,7 @@ export function createBaseSceneStates(
     cubeCamera,
     facesManagement,
     measurement,
+    miniScene,
   } as const;
 
   // websocket.ws.value!.onclose = (_closeEvent: CloseEvent) => {
