@@ -19,13 +19,47 @@ const camera = computed(() => {
 const isOffscreen = ref(false);
 
 const style = reactive({
-  transform: "translate(-50%, -50%)",
   left: "0px",
   top: "0px",
   arrowRotation: "0deg",
 });
 
-const clonedTargetPos = new Vector3();
+const projectedPos = new Vector3();
+const cameraForward = new Vector3();
+const cameraRight = new Vector3();
+const cameraUp = new Vector3();
+const targetDirection = new Vector3();
+
+watch(
+  () => [
+    sceneStates.value!.currentCam.value.position,
+    sceneStates.value!.currentCam.value.rotation,
+    props.targetPos,
+    sceneStates.value!.screenSize,
+    props.show,
+  ],
+  () => {
+    if (!props.show) return;
+
+    const width = sceneStates.value!.screenSize.width!;
+    const height = sceneStates.value!.screenSize.height!;
+    const cam = camera.value!;
+
+    const pos = projectedPos.copy(props.targetPos).project(cam);
+    const isBehind = pos.z > 1;
+
+    const inside =
+      !isBehind && pos.x >= -1 && pos.x <= 1 && pos.y >= -1 && pos.y <= 1;
+
+    isOffscreen.value = !inside;
+
+    if (!isOffscreen.value) {
+      style.left = `${(pos.x * 0.5 + 0.5) * width}px`;
+      style.top = `${(-pos.y * 0.5 + 0.5) * height}px`;
+    }
+  },
+  { deep: true, immediate: true },
+);
 
 watchDebounced(
   () => [
@@ -33,42 +67,54 @@ watchDebounced(
     sceneStates.value!.currentCam.value.rotation,
     props.targetPos,
     sceneStates.value!.screenSize,
+    props.show,
   ],
   () => {
-    if (!props.show) {
+    if (!props.show || !isOffscreen.value) return;
+
+    const width = sceneStates.value!.screenSize.width!;
+    const height = sceneStates.value!.screenSize.height!;
+    const cam = camera.value!;
+
+    const pos = projectedPos.copy(props.targetPos).project(cam);
+    const isBehind = pos.z > 1;
+    const margin = 80;
+
+    if (!isBehind) {
+      const t = 1 / Math.max(Math.abs(pos.x), Math.abs(pos.y));
+      const edgeX = pos.x * t;
+      const edgeY = pos.y * t;
+
+      style.left = `${width / 2 + edgeX * (width / 2 - margin)}px`;
+      style.top = `${height / 2 - edgeY * (height / 2 - margin)}px`;
+
+      const angle = Math.atan2(pos.x, pos.y);
+      style.arrowRotation = `${(angle * 180) / Math.PI}deg`;
       return;
     }
-    const pos = clonedTargetPos.copy(props.targetPos).project(camera.value!);
 
-    // Determine if it is behind the camera
-    const isBehind = pos.z > 1;
+    targetDirection.copy(props.targetPos).sub(cam.position).normalize();
+    cam.getWorldDirection(cameraForward);
+    cameraRight.crossVectors(cameraForward, cam.up).normalize();
+    cameraUp.copy(cam.up).normalize();
 
-    // Check boundaries
-    const margin = 0.12; // 8% padding from edge
-    const limit = 1 - margin;
+    const horizontal = targetDirection.dot(cameraRight);
+    const vertical = targetDirection.dot(cameraUp);
+    const absH = Math.abs(horizontal);
+    const absV = Math.abs(vertical);
 
-    // If behind, we flip coordinates to point towards the target correctly
-    if (isBehind) {
-      pos.x = -pos.x;
-      pos.y = -pos.y;
-    }
+    const useVertical = absV > absH * 1.35;
 
-    // Check if actually outside the view frustum
-    isOffscreen.value =
-      Math.abs(pos.x) > limit || Math.abs(pos.y) > limit || isBehind;
-
-    // Clamping
-    const clampedX = Math.max(-limit, Math.min(limit, pos.x));
-    const clampedY = Math.max(-limit, Math.min(limit, pos.y));
-
-    // Convert to Screen Pixels
-    style.left = `${(clampedX * 0.5 + 0.5) * sceneStates.value!.screenSize.width!}px`;
-    style.top = `${(-clampedY * 0.5 + 0.5) * sceneStates.value!.screenSize.height!}px`;
-
-    // Calculate rotation for the arrow (when off-screen)
-    if (isOffscreen.value) {
-      const angle = Math.atan2(pos.y - clampedY, pos.x - clampedX);
-      style.arrowRotation = `${Math.PI / 2 - angle}rad`;
+    if (!useVertical) {
+      const isLeft = horizontal < 0;
+      style.left = `${isLeft ? margin : width - margin}px`;
+      style.top = `${height / 2}px`;
+      style.arrowRotation = isLeft ? "-90deg" : "90deg";
+    } else {
+      const isUp = vertical > 0;
+      style.left = `${width / 2}px`;
+      style.top = `${isUp ? margin : height - margin}px`;
+      style.arrowRotation = isUp ? "0deg" : "180deg";
     }
   },
   { deep: true, immediate: true, debounce: 10, maxWait: 50 },
@@ -76,39 +122,45 @@ watchDebounced(
 </script>
 
 <template>
-  <div v-if="props.show" class="beacon-container" :style="style">
-    <div :class="['beacon', { 'is-offscreen': isOffscreen }]">
-      <div
-        v-if="isOffscreen"
-        class="arrow absolute origin-center"
-        :style="{
-          transform: `rotate(${style.arrowRotation}) translateY(-18px)`,
-        }"
-      >
-        <Navigation2 />
-      </div>
-
+  <div
+    v-if="props.show"
+    class="beacon-container"
+    :style="{
+      left: style.left,
+      top: style.top,
+    }"
+  >
+    <template v-if="!isOffscreen">
       <div class="dot">
-        <span v-if="!isOffscreen" class="label">{{ label }}</span>
+        <span class="label">
+          {{ label }}
+        </span>
       </div>
-    </div>
+    </template>
+
+    <template v-else>
+      <div class="offscreen-wrapper">
+        <Navigation2
+          class="arrow"
+          :style="{
+            transform: `rotate(${style.arrowRotation})`,
+          }"
+        />
+
+        <span class="offscreen-label">
+          {{ label }}
+        </span>
+      </div>
+    </template>
   </div>
 </template>
 
 <style scoped>
 .beacon-container {
   position: absolute;
+  transform: translate(-50%, -50%);
   pointer-events: none;
   z-index: 9;
-  will-change: left, top;
-}
-
-.beacon {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  transition: transform 0.2s ease;
 }
 
 .dot {
@@ -116,8 +168,9 @@ watchDebounced(
   height: 12px;
   background: #00ffcc;
   border: 2px solid white;
-  border-radius: 50%;
+  border-radius: 999px;
   box-shadow: 0 0 15px #00ffcc;
+  position: relative;
 }
 
 .label {
@@ -126,21 +179,35 @@ watchDebounced(
   left: 50%;
   transform: translateX(-50%);
   white-space: nowrap;
-  background: rgba(0, 0, 0, 0.7);
+  background: rgba(0, 0, 0, 0.75);
   color: white;
-  padding: 2px 8px;
-  border-radius: 4px;
+  padding: 4px 8px;
+  border-radius: 6px;
   font-size: 12px;
 }
 
-.arrow {
-  height: 24px;
-  font-size: 18px;
-  color: #00ffcc;
-  margin-bottom: 5px; /* Offset so it points outward */
+.offscreen-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: rgba(0, 0, 0, 0.75);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 999px;
+  backdrop-filter: blur(6px);
 }
 
-.is-offscreen {
-  transform: scale(1.2);
+.arrow {
+  width: 18px;
+  height: 18px;
+  color: #00ffcc;
+  flex-shrink: 0;
+  transition: transform 0.15s ease;
+}
+
+.offscreen-label {
+  color: white;
+  font-size: 12px;
+  white-space: nowrap;
 }
 </style>
