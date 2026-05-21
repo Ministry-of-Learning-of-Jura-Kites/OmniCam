@@ -34,3 +34,4 @@ export const AXIS_COLOR = {
 };
 
 export const MINIMAP_LAYER = 1;
+export const CAMERA_UTILS_LAYER = 2;

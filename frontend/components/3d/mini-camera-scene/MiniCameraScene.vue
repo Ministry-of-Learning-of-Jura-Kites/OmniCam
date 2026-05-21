@@ -1,14 +1,8 @@
 <script setup lang="ts">
-import { inject, computed, ref, onMounted, onUnmounted } from "vue";
-
+import { computed, inject, onMounted, onUnmounted, ref, watch } from "vue";
 import { PerspectiveCamera, type Scene, WebGLRenderer } from "three";
-
-import { EffectComposer } from "three/addons/postprocessing/EffectComposer.js";
-import { OutputPass } from "three/addons/postprocessing/OutputPass.js";
-import { RenderPass } from "three/addons/postprocessing/RenderPass.js";
-import { ShaderPass } from "three/examples/jsm/postprocessing/ShaderPass.js";
-
 import { SCENE_STATES_KEY } from "~/constants/state-keys";
+import { createCubeDistortionRenderer } from "~/composables/use-cube-distortion";
 
 const sceneStates = inject(SCENE_STATES_KEY);
 
@@ -18,32 +12,29 @@ if (!sceneStates) {
 
 const containerRef = ref<HTMLDivElement | null>(null);
 
+const bodyRef = ref<HTMLDivElement | null>(null);
+
 const rendererContainerRef = ref<HTMLDivElement | null>(null);
 
 let renderer: WebGLRenderer | null = null;
-
-let composer: EffectComposer | null = null;
-
-let shaderPass: ShaderPass | null = null;
-
 let animationFrameId: number | null = null;
+let distortion: ReturnType<typeof createCubeDistortionRenderer> | null = null;
 
+const standardCamera = new PerspectiveCamera();
 const posX = ref(24);
-
 const posY = ref(24);
 
 const isDragging = ref(false);
 
 let dragOffsetX = 0;
-
 let dragOffsetY = 0;
+
+const BODY_WIDTH = 520;
 
 const previewCamera = computed(() => {
   const targetCameraId = sceneStates.value?.miniScene.targetCameraId;
 
-  if (!targetCameraId) return null;
-
-  return sceneStates.value?.cameras[targetCameraId];
+  return targetCameraId ? sceneStates.value?.cameras[targetCameraId] : null;
 });
 
 const previewAspectRatio = computed(() => {
@@ -53,120 +44,114 @@ const previewAspectRatio = computed(() => {
     return 16 / 9;
   }
 
-  const cam = sceneStates!.value!.cameras[targetCameraId];
+  const cam = sceneStates.value!.cameras[targetCameraId];
 
-  if (!cam?.widthRes || !cam?.heightRes) {
-    return 16 / 9;
-  }
-
-  return cam.widthRes / cam.heightRes;
+  return cam?.widthRes && cam?.heightRes
+    ? cam.widthRes / cam.heightRes
+    : 16 / 9;
 });
 
-const FisheyeShader = {
-  uniforms: {
-    tDiffuse: { value: null },
-    uIsFisheye: { value: false },
-    uFov: { value: 60 },
-    uAspectRatio: { value: 1.0 },
-  },
-  vertexShader: `
-    varying vec2 vUv;
+const bodyHeight = computed(() => {
+  return BODY_WIDTH / previewAspectRatio.value;
+});
 
-    void main() {
-      vUv = uv;
+function onMouseDown(e: MouseEvent) {
+  if (!containerRef.value) {
+    return;
+  }
 
-      gl_Position =
-        projectionMatrix *
-        modelViewMatrix *
-        vec4(position, 1.0);
-    }
-  `,
-  fragmentShader: `
-    uniform sampler2D tDiffuse;
-    varying vec2 vUv;
-    uniform bool uIsFisheye;
-    uniform float uFov;
-    uniform float uAspectRatio;
-    const float PI = 3.14159265359;
-    void main() {
-      vec2 uv = vUv;
-      if (!uIsFisheye) {
-        gl_FragColor = texture2D(
-          tDiffuse,
-          uv
-        );
+  isDragging.value = true;
 
-        return;
-      }
-
-      vec2 p = uv * 2.0 - 1.0;
-      p.x *= uAspectRatio;
-      float r = length(p);
-      
-      if (r > 1.0) {
-        discard;
-      }
-
-      float maxTheta =
-        radians(uFov * 0.5);
-
-      float theta =
-        r * maxTheta;
-
-      float phi =
-        atan(p.y, p.x);
-
-      vec3 dir = vec3(
-        sin(theta) * cos(phi),
-        sin(theta) * sin(phi),
-        -cos(theta)
-      );
-
-      vec2 sampleUv =
-        dir.xy * 0.5 + 0.5;
-
-      gl_FragColor = texture2D(
-        tDiffuse,
-        sampleUv
-      );
-    }
-  `,
-};
-
-function createPreviewCamera() {
-  const cam = previewCamera.value;
-
-  if (!cam) return null;
-
-  const width = rendererContainerRef.value?.clientWidth ?? 1;
-
-  const height = rendererContainerRef.value?.clientHeight ?? 1;
-
-  const preview = new PerspectiveCamera(cam.fov, width / height, 0.1, 1000);
-
-  preview.position.copy(cam.position);
-
-  preview.rotation.copy(cam.rotation);
-
-  preview.updateProjectionMatrix();
-
-  return preview;
+  dragOffsetX = e.clientX - posX.value;
+  dragOffsetY = e.clientY - posY.value;
 }
 
-function setupComposer(scene: Scene, camera: PerspectiveCamera) {
-  if (!renderer) return;
+function onMouseMove(e: MouseEvent) {
+  if (!isDragging.value) {
+    return;
+  }
 
-  composer = new EffectComposer(renderer);
+  posX.value = e.clientX - dragOffsetX;
+  posY.value = e.clientY - dragOffsetY;
+}
 
-  const renderPass = new RenderPass(scene, camera);
+function onMouseUp() {
+  isDragging.value = false;
+}
 
-  composer.addPass(renderPass);
+watch(
+  () => [
+    previewCamera.value?.distortion?.enabled,
+    previewCamera.value?.distortion?.isFisheye,
+  ],
 
-  shaderPass = new ShaderPass(FisheyeShader, "tDiffuse");
+  () => {
+    distortion?.dispose();
+    distortion = null;
+  },
+);
 
-  composer.addPass(shaderPass);
+function updateStandardCamera(aspectRatio: number) {
+  if (!previewCamera.value) {
+    return;
+  }
 
-  composer.addPass(new OutputPass());
+  standardCamera.fov = previewCamera.value.fov;
+  standardCamera.aspect = aspectRatio;
+  standardCamera.near = 0.1;
+  standardCamera.far = 1000;
+
+  standardCamera.position.copy(previewCamera.value.position);
+  standardCamera.rotation.copy(previewCamera.value.rotation);
+
+  standardCamera.updateProjectionMatrix();
+  standardCamera.updateMatrixWorld();
+}
+
+function renderStandardView(
+  scene: Scene,
+  aspectRatio: number,
+  renderWidth: number,
+  renderHeight: number,
+) {
+  if (!renderer) {
+    return;
+  }
+
+  updateStandardCamera(aspectRatio);
+  renderer.setSize(renderWidth, renderHeight, false);
+  renderer.render(scene, standardCamera);
+}
+
+function renderDistortionView(
+  scene: Scene,
+  aspectRatio: number,
+  renderWidth: number,
+  renderHeight: number,
+  isFisheye: boolean,
+) {
+  if (!renderer) {
+    return;
+  }
+
+  updateStandardCamera(aspectRatio);
+
+  if (!distortion) {
+    distortion = createCubeDistortionRenderer(renderer, scene);
+  }
+
+  distortion.render({
+    position: standardCamera.position,
+    rotation: standardCamera.rotation,
+    fov: standardCamera.fov,
+    aspectRatio,
+    width: renderWidth,
+    height: renderHeight,
+    isFisheye,
+    activeCamera: standardCamera,
+  });
+
+  renderer.resetState();
 }
 
 function renderLoop() {
@@ -174,8 +159,8 @@ function renderLoop() {
 
   if (
     !renderer ||
-    !tresContext ||
     !rendererContainerRef.value ||
+    !tresContext ||
     !previewCamera.value
   ) {
     animationFrameId = requestAnimationFrame(renderLoop);
@@ -184,109 +169,38 @@ function renderLoop() {
   }
 
   const scene = tresContext.scene as Scene;
-
-  const preview = createPreviewCamera();
-
-  if (!preview) {
-    animationFrameId = requestAnimationFrame(renderLoop);
-
-    return;
-  }
-
-  const selectedCamId = sceneStates!.value?.miniScene.targetCameraId;
-
-  const camSettings =
-    selectedCamId != null ? sceneStates!.value!.cameras[selectedCamId] : null;
-
   const renderWidth = rendererContainerRef.value.clientWidth;
   const renderHeight = rendererContainerRef.value.clientHeight;
+  const aspectRatio = renderWidth / renderHeight;
 
-  const aspect =
-    camSettings?.widthRes && camSettings?.heightRes
-      ? camSettings.widthRes / camSettings.heightRes
-      : renderWidth / renderHeight;
+  const isDistortionEnabled = previewCamera.value.distortion?.enabled ?? false;
+  const isFisheye = previewCamera.value.distortion?.isFisheye ?? false;
 
-  preview.aspect = aspect;
-  preview.updateProjectionMatrix();
-
-  renderer.setSize(renderWidth, renderHeight, false);
-
-  if (!composer) {
-    setupComposer(scene, preview);
-  }
-
-  composer?.setSize(renderWidth, renderHeight);
-
-  const distortion = previewCamera.value.distortion;
-
-  const actualFov =
-    selectedCamId != null
-      ? sceneStates!.value!.cameras[selectedCamId]!.fov
-      : preview.fov;
-
-  if (shaderPass && distortion?.enabled) {
-    shaderPass.uniforms.uFov!.value = actualFov;
-
-    shaderPass.uniforms.uIsFisheye!.value = distortion.isFisheye;
-
-    shaderPass.uniforms.uAspectRatio!.value = aspect;
-
-    const renderPass = composer!.passes[0] as RenderPass;
-
-    renderPass.camera = preview;
-
-    composer!.render();
+  if (isDistortionEnabled) {
+    renderDistortionView(
+      scene,
+      aspectRatio,
+      renderWidth,
+      renderHeight,
+      isFisheye,
+    );
   } else {
-    renderer.render(scene, preview);
+    renderStandardView(scene, aspectRatio, renderWidth, renderHeight);
   }
 
   animationFrameId = requestAnimationFrame(renderLoop);
 }
 
-function onMouseDown(e: MouseEvent) {
-  if (!containerRef.value) return;
-
-  isDragging.value = true;
-
-  const rect = containerRef.value.getBoundingClientRect();
-
-  dragOffsetX = e.clientX - rect.left;
-
-  dragOffsetY = e.clientY - rect.top;
-}
-
-function onMouseMove(e: MouseEvent) {
-  if (!isDragging.value) return;
-
-  posX.value = e.clientX - dragOffsetX;
-
-  posY.value = e.clientY - dragOffsetY;
-}
-
-function onMouseUp() {
-  isDragging.value = false;
-}
-
 onMounted(() => {
-  if (!rendererContainerRef.value) return;
-
   renderer = new WebGLRenderer({
     antialias: true,
     alpha: true,
   });
-
-  renderer.setPixelRatio(window.devicePixelRatio);
-
-  renderer.setClearColor(0x000000, 1);
-
   renderer.domElement.style.width = "100%";
-
   renderer.domElement.style.height = "100%";
-
-  rendererContainerRef.value.appendChild(renderer.domElement);
-
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  rendererContainerRef.value?.appendChild(renderer.domElement);
   window.addEventListener("mousemove", onMouseMove);
-
   window.addEventListener("mouseup", onMouseUp);
 
   renderLoop();
@@ -295,19 +209,14 @@ onMounted(() => {
 onUnmounted(() => {
   if (animationFrameId !== null) {
     cancelAnimationFrame(animationFrameId);
+
+    animationFrameId = null;
   }
 
   window.removeEventListener("mousemove", onMouseMove);
-
   window.removeEventListener("mouseup", onMouseUp);
-
-  composer?.dispose();
-
+  distortion?.dispose();
   renderer?.dispose();
-
-  renderer?.forceContextLoss();
-
-  renderer?.domElement.remove();
 });
 </script>
 
@@ -318,7 +227,6 @@ onUnmounted(() => {
     :style="{
       left: `${posX}px`,
       top: `${posY}px`,
-      aspectRatio: `${previewAspectRatio}`,
     }"
     @mousedown="onMouseDown"
   >
@@ -334,8 +242,14 @@ onUnmounted(() => {
       </div>
     </div>
 
-    <div class="mini-camera-body">
-      <div ref="rendererContainerRef" class="renderer-container"></div>
+    <div
+      ref="bodyRef"
+      class="mini-camera-body"
+      :style="{
+        height: `${bodyHeight}px`,
+      }"
+    >
+      <div ref="rendererContainerRef" class="renderer-container" />
     </div>
   </div>
 </template>
@@ -410,9 +324,11 @@ onUnmounted(() => {
 }
 
 .mini-camera-body {
-  flex: 1;
+  height: 100%;
+  width: 100%;
   padding: 12px;
   overflow: hidden;
+  flex-shrink: 0;
 }
 
 .renderer-container {
