@@ -2,7 +2,7 @@
 import { TresCanvas } from "@tresjs/core";
 import { Grid, Environment } from "@tresjs/cientos";
 import AdjustableInput from "../../adjustable-input/AdjustableInput.vue";
-import { SPECTATOR_ADJ_INPUT_SENTIVITY } from "~/constants";
+import { CAMERA_UTILS_LAYER, SPECTATOR_ADJ_INPUT_SENTIVITY } from "~/constants";
 import CameraObject from "../camera-object/CameraObject.vue";
 import {
   type PerspectiveCamera,
@@ -10,9 +10,9 @@ import {
   Vector2,
   DoubleSide,
   Vector3,
-  WebGLCubeRenderTarget,
-  LinearFilter,
-  type CubeCamera,
+  // WebGLCubeRenderTarget,
+  // LinearFilter,
+  // type CubeCamera,
   Matrix3,
 } from "three";
 import { MAP_KEY, PANEL_KEY, SCENE_STATES_KEY } from "@/constants/state-keys";
@@ -39,6 +39,7 @@ import type {
   QuadrilateralVectors,
 } from "~/types/trapezoid";
 import CameraDirection from "../camera-direction/CameraDirection.vue";
+import MiniCameraScene from "../mini-camera-scene/MiniCameraScene.vue";
 // import { watchDebounced } from "@vueuse/core";
 
 const { isPanelOpen, currentPanel, camPanelInfo } = inject(PANEL_KEY)!;
@@ -81,7 +82,7 @@ const modelPath = get3dModelPathClient(
 
 const perspectiveCamera = ref<PerspectiveCamera | null>(null);
 const canvas: Ref<InstanceType<typeof TresCanvas> | null> = ref(null);
-const cubeCamera: Ref<CubeCamera | null> = ref(null);
+// const cubeCamera: Ref<CubeCamera | null> = ref(null);
 // const camera = ref<PerspectiveCamera | null>(null);
 
 const { isMapOpen } = inject(MAP_KEY)!;
@@ -142,6 +143,8 @@ useCameraUpdate(sceneStates.value!);
 
 // ── Raycasting & Input Events (Omitted same logic for brevity) ───────
 const raycaster = new Raycaster();
+raycaster.layers.enable(CAMERA_UTILS_LAYER);
+
 const mouse = new Vector2();
 
 function clearDraftCoverageSelection() {
@@ -488,16 +491,17 @@ function onCanvasPointer(event: PointerEvent) {
 
 let stats: Stats | null = null;
 
-const cubeCameraTarget = new WebGLCubeRenderTarget(1024, {
-  generateMipmaps: true,
-  minFilter: LinearFilter,
-});
+// const cubeCameraTarget = new WebGLCubeRenderTarget(1024, {
+//   generateMipmaps: true,
+//   minFilter: LinearFilter,
+// });
 
 onMounted(() => {
   const stopPersWatch = watch(
     perspectiveCamera,
     (camera) => {
       if (camera != undefined) {
+        camera.layers.enable(CAMERA_UTILS_LAYER);
         sceneStates.value!.perspectiveCamera.value = camera;
         stopPersWatch();
       }
@@ -505,53 +509,53 @@ onMounted(() => {
     { immediate: true },
   );
 
-  watch(
-    cubeCamera,
-    (camera) => {
-      if (camera != null) {
-        camera.renderTarget = cubeCameraTarget;
-        sceneStates.value!.cubeCamera.value = camera;
-        camera.rotation.order = "YXZ";
-        watch(
-          () => sceneStates.value!.currentCam.value.position.x,
-          (x) => {
-            camera.position.x = x;
-          },
-        );
-        watch(
-          () => sceneStates.value!.currentCam.value.position.y,
-          (y) => {
-            camera.position.y = y;
-          },
-        );
-        watch(
-          () => sceneStates.value!.currentCam.value.position.z,
-          (z) => {
-            camera.position.z = z;
-          },
-        );
-        watch(
-          () => sceneStates.value!.currentCam.value.rotation.x,
-          (x) => {
-            camera.rotation.x = x;
-          },
-        );
-        watch(
-          () => sceneStates.value!.currentCam.value.rotation.y,
-          (y) => {
-            camera.rotation.y = y;
-          },
-        );
-        watch(
-          () => sceneStates.value!.currentCam.value.rotation.z,
-          (z) => {
-            camera.rotation.z = z;
-          },
-        );
-      }
-    },
-    { immediate: true },
-  );
+  // watch(
+  //   cubeCamera,
+  //   (camera) => {
+  //     if (camera != null) {
+  //       camera.renderTarget = cubeCameraTarget;
+  //       sceneStates.value!.cubeCamera.value = camera;
+  //       camera.rotation.order = "YXZ";
+  //       watch(
+  //         () => sceneStates.value!.currentCam.value.position.x,
+  //         (x) => {
+  //           camera.position.x = x;
+  //         },
+  //       );
+  //       watch(
+  //         () => sceneStates.value!.currentCam.value.position.y,
+  //         (y) => {
+  //           camera.position.y = y;
+  //         },
+  //       );
+  //       watch(
+  //         () => sceneStates.value!.currentCam.value.position.z,
+  //         (z) => {
+  //           camera.position.z = z;
+  //         },
+  //       );
+  //       watch(
+  //         () => sceneStates.value!.currentCam.value.rotation.x,
+  //         (x) => {
+  //           camera.rotation.x = x;
+  //         },
+  //       );
+  //       watch(
+  //         () => sceneStates.value!.currentCam.value.rotation.y,
+  //         (y) => {
+  //           camera.rotation.y = y;
+  //         },
+  //       );
+  //       watch(
+  //         () => sceneStates.value!.currentCam.value.rotation.z,
+  //         (z) => {
+  //           camera.rotation.z = z;
+  //         },
+  //       );
+  //     }
+  //   },
+  //   { immediate: true },
+  // );
 
   watch(
     () => canvas.value?.context,
@@ -797,6 +801,9 @@ const isShowingCamDirection = computed(() => {
         }"
         class="relative"
       >
+        <div class="scene-wrapper">
+          <MiniCameraScene v-if="sceneStates!.miniScene.visible" />
+        </div>
         <CameraDirection
           v-if="selectedCam"
           :target-pos="selectedCam.position"
@@ -835,7 +842,7 @@ const isShowingCamDirection = computed(() => {
             :aspect="aspect"
           />
 
-          <TresCubeCamera ref="cubeCamera" />
+          <!-- <TresCubeCamera ref="cubeCamera" /> -->
 
           <!-- <Distortion /> -->
           <CubeDistortion />
