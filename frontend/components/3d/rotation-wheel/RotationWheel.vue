@@ -7,6 +7,7 @@ import { useTresContext } from "@tresjs/core";
 import type { Obj3DWithUserData } from "~/types/obj-3d-user-data";
 import type { MovableObject } from "~/types/movable";
 import { useWheelObjGeoCache } from "./use-wheel-obj-geo-cache";
+import { CAMERA_UTILS_LAYER } from "~/constants";
 
 const object = defineModel<MovableObject>({ required: true });
 
@@ -43,6 +44,8 @@ const { get } = useWheelObjGeoCache();
 const geometry = get("wheel");
 const material = new MeshBasicMaterial({ color: props.color });
 const wheelBase = new Mesh(geometry, material);
+
+wheelBase.layers.set(CAMERA_UTILS_LAYER);
 
 wheelBase.userData = new RotatingUserData(
   props.direction,

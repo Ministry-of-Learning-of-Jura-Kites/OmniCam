@@ -75,10 +75,12 @@ const {
   toggleAlgoPanel,
   togglePanel,
   calibrationPanelInfo,
+  toggleMeasurement,
   isPanelOpen,
 } = inject(PANEL_KEY)!;
 
 const { toggleCalibration } = calibrationPanelInfo;
+
 // Scenestates can be null to allow skeleton UI
 const sceneStates = inject(SCENE_STATES_KEY);
 
@@ -479,6 +481,25 @@ function toggleFullscreen() {
             class="button-parent"
             size="sm"
             variant="outline"
+            :class="{ 'btn-measurement': currentPanel == 'measurement' }"
+            @click="() => toggleMeasurement()"
+          >
+            <RulerDimensionLine class="button-icon" />
+
+            <span
+              v-if="currentPanel != 'measurement'"
+              class="ml-2 button-span-text"
+            >
+              Measure
+            </span>
+
+            <span v-else class="ml-2 button-span-text"> Measuring... </span>
+          </Button>
+
+          <Button
+            class="button-parent"
+            size="sm"
+            variant="outline"
             :class="{ 'btn-algo': currentPanel == 'algo' }"
             @click="() => toggleAlgoPanel()"
           >
@@ -728,6 +749,16 @@ Button {
 }
 .btn-algo:hover {
   background-color: #2563eb !important;
+  opacity: 0.9;
+}
+.btn-measurement {
+  background-color: #f59e0b !important;
+  color: white !important;
+  border-color: #d97706 !important;
+}
+
+.btn-measurement:hover {
+  background-color: #d97706 !important;
   opacity: 0.9;
 }
 </style>

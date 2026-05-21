@@ -6,24 +6,46 @@ definitions:
       memory: 2048
   caches:
     node-custom: node_modules
+    sonar: ~/.sonar
+
+clone:
+  depth: full
 
 pipelines:
   branches:
     main:
-      - step: &lint-step
-          name: Lint and Style Check
-          image: node:22.18.0
-          caches:
-            - node-custom
-          script:
-            - npm ci
-            - npm run style-check
-            - npm run lint
+      - parallel:
+          - step: &lint-step
+              name: Lint and Style Check
+              image: node:22.18.0
+              caches:
+                - node-custom
+              script:
+                - npm ci
+                - npm run style-check
+                - npm run lint
+          - step: &sonarqube
+              name: sonarqube
+              image: sonarsource/sonar-scanner-cli:12
+              runs-on:
+                - self.hosted
+                - linux
+                - operation.internal
+              caches:
+                - sonar
+              script:
+                - sonar-scanner
+                  -Dsonar.host.url=${SONAR_HOST_URL}
+                  -Dsonar.token=${SONAR_TOKEN}
+                  -Dsonar.projectKey=OmniCam
 
   pull-requests:
-    "main":
-      - step:
-          <<: *lint-step
+    "**":
+      - parallel:
+          - step:
+              <<: *lint-step
+          - step:
+              <<: *sonarqube
 
   tags:
     "*":

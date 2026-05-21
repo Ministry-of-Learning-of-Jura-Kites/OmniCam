@@ -25,6 +25,7 @@ import { useAutosave } from "~/components/3d/scene-3d/use-autosave";
 import type { WorkspaceEventResponse } from "~/messages/protobufs/workspace_event";
 import { useLivestream } from "../scene-3d/use-livestream";
 import { arrayPointsToNormal } from "~/utils/face-helper/get-avg-normal";
+import { v4 as uuidv4 } from "uuid";
 
 export interface ProcessedCoverageFace {
   name: string;
@@ -252,13 +253,13 @@ export function createBaseSceneStates(
   const perspectiveCamera = ref<PerspectiveCamera | null>(null);
   const cubeCamera = ref<CubeCamera | null>(null);
 
-  const selectionMode = ref<"none" | "coverage-area">("none");
+  const selectionMode = ref<"none" | "coverage-area" | "measurement">("none");
   const initialCoverageFaces = transformFacesData(modelWithCamsResp);
   const coverageFaces =
     reactive<Record<string, ProcessedCoverageFace>>(initialCoverageFaces);
   const coverageAllHidden = ref(false);
 
-  const setCoverageMode = (mode: "none" | "coverage-area") => {
+  const setCoverageMode = (mode: "none" | "coverage-area" | "measurement") => {
     selectionMode.value = mode;
   };
 
@@ -364,6 +365,59 @@ export function createBaseSceneStates(
 
   const modelRef = ref<GLTF | null>(null);
 
+  const measurement = reactive({
+    draftStartPoint: null as Vector3 | null,
+
+    lines: [] as {
+      id: string;
+      label: string;
+      start: Vector3;
+      end: Vector3;
+      virtualDistance: number;
+      realDistance: number;
+    }[],
+
+    addLine(start: Vector3, end: Vector3) {
+      const virtualdistance = start.distanceTo(end);
+      const realDistance = virtualdistance * calibration.scale;
+
+      const index = this.lines.length + 1;
+
+      this.lines.push({
+        id: uuidv4(),
+        label: `Measurement ${index} - ${realDistance.toFixed(2)}m`,
+        start: start.clone(),
+        end: end.clone(),
+        virtualDistance: virtualdistance,
+        realDistance: realDistance,
+      });
+    },
+    updateEndpoint(lineId: string, pointIndex: 0 | 1, newPos: Vector3) {
+      const line = this.lines.find((l) => l.id === lineId);
+      if (!line) return;
+
+      if (pointIndex === 0) line.start = newPos.clone();
+      else line.end = newPos.clone();
+
+      const virtualDistance = line.start.distanceTo(line.end);
+      const realDistance = virtualDistance * calibration.scale;
+      line.virtualDistance = virtualDistance;
+      line.realDistance = realDistance;
+
+      const prefix = line.label.split(" - ")[0];
+      line.label = `${prefix} - ${realDistance.toFixed(2)}m`;
+    },
+
+    resetDraft() {
+      this.draftStartPoint = null;
+    },
+  });
+
+  const miniScene = reactive({
+    visible: false,
+    targetCameraId: null as string | null,
+  });
+
   const sceneStates = {
     tresContext,
     modelRef,
@@ -399,6 +453,8 @@ export function createBaseSceneStates(
     perspectiveCamera,
     cubeCamera,
     facesManagement,
+    measurement,
+    miniScene,
   } as const;
 
   // websocket.ws.value!.onclose = (_closeEvent: CloseEvent) => {

@@ -41,6 +41,7 @@ const isPanelOpen = ref(true);
 const slotWidth = ref("100%");
 const currentPanel: PanelInfo["currentPanel"] = ref("camera");
 const camPanelSelectedCamId: CamPanelInfo["selectedCamId"] = ref(null);
+// const currentToolMode = ref<"orbit" | "measurement" | "calibration">("orbit");
 
 onMounted(() => {
   slotWidth.value = isPanelOpen.value ? "calc(100% - 20rem)" : "100%";
@@ -86,6 +87,15 @@ function toggleCalibration() {
     openPanel();
   }
 }
+
+function toggleMeasurement() {
+  if (currentPanel.value === "measurement" && isPanelOpen.value) {
+    currentPanel.value = "camera";
+  } else {
+    currentPanel.value = "measurement";
+    openPanel();
+  }
+}
 const calibrationGridScale = ref(1);
 
 provide(PANEL_KEY, {
@@ -99,6 +109,7 @@ provide(PANEL_KEY, {
     toggleCalibration,
     calibrationGridScale,
   },
+  toggleMeasurement,
 });
 
 const workspace = computed(() => route.params.workspaceId as string);
@@ -171,6 +182,7 @@ const showPanelWarning = computed(() => {
             :workspace="workspace"
           />
           <LazyAlgoPanel v-else-if="currentPanel === 'algo'" />
+          <LazyMeasurementPanel v-else-if="currentPanel === 'measurement'" />
         </div>
       </div>
 

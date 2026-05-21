@@ -8,6 +8,7 @@ import { SCENE_STATES_KEY } from "@/constants/state-keys";
 
 import type { MovableObject } from "~/types/movable";
 import { useArrowObjGeoCache } from "./use-arrows-obj-geo-cache";
+import { CAMERA_UTILS_LAYER } from "~/constants";
 
 const object = defineModel<MovableObject>({ required: true });
 
@@ -54,6 +55,8 @@ const material = new MeshBasicMaterial({ color: props.color });
 const { get } = useArrowObjGeoCache();
 const geo = get("arrow");
 const arrowMesh = new Mesh(geo, material);
+
+arrowMesh.layers.set(CAMERA_UTILS_LAYER);
 
 arrow.add(arrowMesh);
 
