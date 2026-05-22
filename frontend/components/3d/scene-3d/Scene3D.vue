@@ -10,9 +10,6 @@ import {
   Vector2,
   DoubleSide,
   Vector3,
-  // WebGLCubeRenderTarget,
-  // LinearFilter,
-  // type CubeCamera,
   Matrix3,
 } from "three";
 import { MAP_KEY, PANEL_KEY, SCENE_STATES_KEY } from "@/constants/state-keys";
@@ -24,8 +21,6 @@ import ModelLoader from "../model-loader/ModelLoader.vue";
 import CalibrationGrid from "../calibration/CalibrationGrid.vue";
 import { usePromptUnsaved } from "./use-prompt-unsaved";
 import FrustumOverlay from "@/components/3d/camera-frustum/FrustumOverlay.vue";
-// import Distortion from "@/components/3d/distortion/Distortion.vue";
-import CubeDistortion from "@/components/3d/distortion/CubeDistortion.vue";
 import CoverageAreaMesh from "../coverage-area-mesh/CoverageAreaMesh.vue";
 import type { ProcessedCoverageFace } from "../scene-states-provider/create-scene-states";
 import CoverageCornerGizmo from "../coverage-area-mesh/CoverageCornerGizmo.vue";
@@ -82,8 +77,6 @@ const modelPath = get3dModelPathClient(
 
 const perspectiveCamera = ref<PerspectiveCamera | null>(null);
 const canvas: Ref<InstanceType<typeof TresCanvas> | null> = ref(null);
-// const cubeCamera: Ref<CubeCamera | null> = ref(null);
-// const camera = ref<PerspectiveCamera | null>(null);
 
 const { isMapOpen } = inject(MAP_KEY)!;
 
@@ -104,7 +97,7 @@ const previewPoints = computed<Point3[]>(() => {
   return buildDraftCoveragePreview(draftCoveragePoints.value);
 });
 
-const isPreviewing = computed(() => previewPoints.value.length > 2);
+const isPreviewing = computed(() => previewPoints.value.length === 4);
 
 const draftPointMarkers = computed<Point3[]>(() => {
   if (sceneStates.value!.selectionMode.value !== "coverage-area") return [];
@@ -156,32 +149,31 @@ function buildDraftCoveragePreview(points: Vector3[]): Point3[] {
   const count = points.length;
   if (count < 1) return [];
 
-  // 1 & 2 points: Just the raw points (renders as a point or a single line)
   if (count < 3) {
     return points.map((p) => [p.x, p.y, p.z] as Point3);
   }
 
-  const p0 = points[0]!;
-  const p1 = points[1]!;
-  const p2 = points[2]!;
-
+  const sorted = sortPointsConvex(points);
+  const p0 = sorted[0]!;
+  const p1 = sorted[1]!;
+  const p2 = sorted[2]!;
   // 3 points EXACTLY: Return a triangle (P0 -> P1 -> P2)
   if (count === 3) {
     return points.map((p) => [p.x, p.y, p.z] as Point3);
   }
 
-  // 4 points: Snap the 4th point to the parallel rail
-  const p3Raw = points[3]!;
+  if (count === 4) {
+    const p3Raw = sorted[3]!;
 
-  // Direction comes from the edge p1 -> p2
-  const dir = new Vector3().subVectors(p2, p1).normalize();
+    const dir = new Vector3().subVectors(p2, p1).normalize();
+    const v = new Vector3().subVectors(p3Raw, p0);
+    const dot = v.dot(dir);
+    const p3 = p0.clone().add(dir.multiplyScalar(dot));
 
-  // Project the mouse position (p3Raw) onto the rail starting at p0
-  const v = new Vector3().subVectors(p3Raw, p0);
-  const dot = v.dot(dir);
-  const p3 = p0.clone().add(dir.multiplyScalar(dot));
+    return [p0, p1, p2, p3].map((p) => [p.x, p.y, p.z] as Point3);
+  }
 
-  return [p0, p1, p2, p3].map((p) => [p.x, p.y, p.z] as Point3);
+  return sorted.map((p) => [p.x, p.y, p.z] as Point3);
 }
 
 const defaultCoverageFace: ProcessedCoverageFace = {
@@ -197,15 +189,35 @@ const defaultCoverageFace: ProcessedCoverageFace = {
   hidden: false,
 };
 
+function sortPointsConvex(points: Vector3[]): Vector3[] {
+  const center = new Vector3();
+  points.forEach((p) => center.add(p));
+  center.divideScalar(points.length);
+
+  const e1 = new Vector3().subVectors(points[1]!, points[0]!).normalize();
+  const e2 = new Vector3(0, 1, 0);
+  const normal = new Vector3().crossVectors(e1, e2).normalize();
+  const yAxis = new Vector3().crossVectors(normal, e1).normalize();
+
+  return [...points].sort((a, b) => {
+    const da = new Vector3().subVectors(a, center);
+    const db = new Vector3().subVectors(b, center);
+    const angleA = Math.atan2(da.dot(yAxis), da.dot(e1));
+    const angleB = Math.atan2(db.dot(yAxis), db.dot(e1));
+    return angleA - angleB;
+  });
+}
+
 function buildCoverageFaceFromPickedPoints(
   points: QuadrilateralVectors,
 ): ProcessedCoverageFace | null {
   if (points.length !== 4) return null;
+  const sorted = sortPointsConvex(points);
 
-  const p0 = points[0]!;
-  const p1 = points[1]!;
-  const p2 = points[2]!;
-  const p3Raw = points[3]!;
+  const p0 = sorted[0]!;
+  const p1 = sorted[1]!;
+  const p2 = sorted[2]!;
+  const p3Raw = sorted[3]!;
 
   // 1. Force Trapezoid/Parallelism
   const dir = new Vector3().subVectors(p2, p1).normalize();
@@ -266,10 +278,6 @@ function handleMeasurementPointer(event: PointerEvent) {
   return true;
 }
 
-// function getLineMidpoint(start: Vector3, end: Vector3) {
-//   return new Vector3().addVectors(start, end).multiplyScalar(0.5);
-// }
-
 function worldToScreen(position: Vector3) {
   const camera = perspectiveCamera.value;
   if (
@@ -326,18 +334,6 @@ function labelLoop() {
   labelRafId = requestAnimationFrame(labelLoop);
 }
 
-// watch(
-//   () => [
-//     sceneStates.value?.currentCam?.value?.position?.x,
-//     sceneStates.value?.currentCam?.value?.position?.y,
-//     sceneStates.value?.currentCam?.value?.position?.z,
-//     sceneStates.value?.currentCam?.value?.rotation?.x,
-//     sceneStates.value?.currentCam?.value?.rotation?.y,
-//     sceneStates.value?.currentCam?.value?.rotation?.z,
-//   ],
-//   () => {},
-// );
-
 onMounted(() => {
   labelRafId = requestAnimationFrame(labelLoop);
 });
@@ -384,11 +380,9 @@ function handleCoverageAreaPointer(event: PointerEvent) {
       clearDraftCoverageSelection();
     });
 
-    // sceneStates.value!.tresContext.value?.invalidate?.();
     return true;
   }
 
-  // sceneStates.value!.tresContext.value?.invalidate?.();
   return true;
 }
 function getSurfaceHit(
@@ -491,11 +485,6 @@ function onCanvasPointer(event: PointerEvent) {
 
 let stats: Stats | null = null;
 
-// const cubeCameraTarget = new WebGLCubeRenderTarget(1024, {
-//   generateMipmaps: true,
-//   minFilter: LinearFilter,
-// });
-
 onMounted(() => {
   const stopPersWatch = watch(
     perspectiveCamera,
@@ -508,54 +497,6 @@ onMounted(() => {
     },
     { immediate: true },
   );
-
-  // watch(
-  //   cubeCamera,
-  //   (camera) => {
-  //     if (camera != null) {
-  //       camera.renderTarget = cubeCameraTarget;
-  //       sceneStates.value!.cubeCamera.value = camera;
-  //       camera.rotation.order = "YXZ";
-  //       watch(
-  //         () => sceneStates.value!.currentCam.value.position.x,
-  //         (x) => {
-  //           camera.position.x = x;
-  //         },
-  //       );
-  //       watch(
-  //         () => sceneStates.value!.currentCam.value.position.y,
-  //         (y) => {
-  //           camera.position.y = y;
-  //         },
-  //       );
-  //       watch(
-  //         () => sceneStates.value!.currentCam.value.position.z,
-  //         (z) => {
-  //           camera.position.z = z;
-  //         },
-  //       );
-  //       watch(
-  //         () => sceneStates.value!.currentCam.value.rotation.x,
-  //         (x) => {
-  //           camera.rotation.x = x;
-  //         },
-  //       );
-  //       watch(
-  //         () => sceneStates.value!.currentCam.value.rotation.y,
-  //         (y) => {
-  //           camera.rotation.y = y;
-  //         },
-  //       );
-  //       watch(
-  //         () => sceneStates.value!.currentCam.value.rotation.z,
-  //         (z) => {
-  //           camera.rotation.z = z;
-  //         },
-  //       );
-  //     }
-  //   },
-  //   { immediate: true },
-  // );
 
   watch(
     () => canvas.value?.context,
@@ -616,8 +557,6 @@ if (config.public.devMode) {
   onMounted(() => {
     stats = new Stats();
     stats.showPanel(0);
-    // stats.showPanel(1);
-    // stats.showPanel(2); // 0: fps, 1: ms, 2: mb, 3+: custom
     if (document) {
       document.body.appendChild(stats.dom);
     }
@@ -842,18 +781,6 @@ const isShowingCamDirection = computed(() => {
             :aspect="aspect"
           />
 
-          <!-- <TresCubeCamera ref="cubeCamera" /> -->
-
-          <!-- <Distortion /> -->
-          <CubeDistortion />
-
-          <!-- <TresMesh>
-            <TresBoxGeometry :args="[2, 2, 2, 32, 32, 32]" />
-            <TresMeshStandardMaterial
-              :wireframe="true"
-              @before-compile="injectFisheye"
-            />
-          </TresMesh> -->
           <CoverageAreaMesh
             v-if="isPreviewing"
             face-id="__preview__"
