@@ -736,7 +736,6 @@ function openMiniScene() {
                   }"
                 >
                   <input
-                    id="optical-distortion"
                     v-model="
                       sceneStates.cameras[selectedCamId]!.distortion.isFisheye
                     "
@@ -844,7 +843,6 @@ function openMiniScene() {
                 </div>
                 <div class="relative">
                   <Input
-                    id="frustum"
                     v-model.number="
                       sceneStates.cameras[selectedCamId]!.frustumColor.g
                     "
@@ -861,7 +859,6 @@ function openMiniScene() {
                 </div>
                 <div class="relative">
                   <Input
-                    id="frustum"
                     v-model.number="
                       sceneStates.cameras[selectedCamId]!.frustumColor.b
                     "
