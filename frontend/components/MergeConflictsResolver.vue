@@ -28,6 +28,9 @@ const conflictKeys = computed(() =>
     }),
   ),
 );
+//
+const isFailDialogOpen = ref<boolean>(false);
+const failDialogMessage = ref<string>("");
 
 // local selection state: 'main' | 'workspace' | 'manual'
 const selected = reactive<Record<string, "main" | "workspace" | "manual">>({});
@@ -49,6 +52,10 @@ watch(
   () => props.conflicts,
   (newVal) => {
     for (const key of Object.keys(newVal || {})) {
+      console.log("current conflict keys: ", props.conflicts);
+      console.log("Initializing conflict key: ", key);
+      console.log("Conflict item: ", newVal[key]);
+      console.log("selected before init: ", selected[key]);
       // default pick: if Main equals Workspace -> pick it; else prefer Workspace
       const item = newVal[key];
       if (deepEqual(item?.Main, item?.Workspace)) {
@@ -110,11 +117,18 @@ async function applyAll() {
   // const results: { path: string; value: any }[] = [];
   const results: Record<string, Record<string, any>> = {};
   let hasError = false;
-
+  console.log("Current Conflictes: ", conflictKeys.value);
   for (const camId in conflictKeys.value) {
+    console.log("Resolving conflicts for camId: ", camId);
+    console.log("Conflict keys for this camId: ", conflictKeys.value[camId]);
     for (const key of conflictKeys.value[camId]!) {
       const choice = selected[key];
+      console.log(`Resolving ${camId} - ${key} with choice: ${choice}`);
       const item = props.conflicts?.[camId]?.[key];
+
+      console.log("item raw:", item);
+      console.log("item.main:", item?.main, "item.Main:", (item as any)?.Main);
+      console.log(`Resolving ${camId} - ${key} with choice: ${choice}`);
 
       if (results[camId] == undefined) {
         results[camId] = {};
@@ -139,7 +153,12 @@ async function applyAll() {
     }
   }
 
+  console.log("Final resolved results: ", results);
+
   if (hasError) {
+    console.log("Manual edit errors: ", hasError, manualErrors);
+    isFailDialogOpen.value = true;
+    failDialogMessage.value = "Please fix manual edit errors before applying.";
     // keep dialog open and show errors
     // TODO! Handle errors
     return;

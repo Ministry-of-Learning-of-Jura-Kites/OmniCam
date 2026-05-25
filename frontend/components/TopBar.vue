@@ -45,6 +45,7 @@ import { uuidToBase64Url } from "~/lib/uuid";
 import { useWorkspaceApi } from "~/composables/api/use-workspace-api";
 import { useAuth } from "~/composables/api/use-auth";
 import { useClipboard } from "@vueuse/core";
+// import FailDialog from "./dialog/FailDialog.vue";
 
 const props = defineProps({
   workspace: {
@@ -99,6 +100,9 @@ const { copy, copied } = useClipboard({ legacy: true });
 const dialogTitle = ref("");
 const dialogContent = ref("");
 
+// const failDialog = ref("false");
+// const failDialogMessage = ref("");
+
 const lightDarkTheme = useLightDarkTheme();
 
 const openResolver = ref(false);
@@ -126,28 +130,34 @@ onMounted(() => {
 
 async function saveModelToPublic() {
   const { resp } = await postMerge();
+  console.log("response : ", resp);
   if (!resp.ok) {
     console.error(resp);
     return;
   }
-
-  const respJson: {
-    noChanges?: boolean;
-    conflicts: Record<string, Record<string, unknown>>;
-  } = await resp.json();
-
-  if (respJson.noChanges) {
-    dialogTitle.value = "No changes";
-    dialogContent.value = "There is no changes to be published";
-    openDialog.value = true;
-    return;
-  }
-  if (respJson.conflicts) {
-    conflicts.value = respJson.conflicts;
-    openResolver.value = true;
-  } else {
-    dialogTitle.value = "Progress Saved!";
-    dialogContent.value = "";
+  try {
+    const respJson: {
+      noChanges?: boolean;
+      conflicts: Record<string, Record<string, unknown>>;
+    } = await resp.json();
+    if (respJson.noChanges) {
+      dialogTitle.value = "No changes";
+      dialogContent.value = "There is no changes to be published";
+      openDialog.value = true;
+      return;
+    }
+    if (respJson.conflicts) {
+      conflicts.value = respJson.conflicts;
+      openResolver.value = true;
+    } else {
+      dialogTitle.value = "Progress Saved!";
+      dialogContent.value = "";
+      openDialog.value = true;
+    }
+  } catch (err) {
+    console.error("Failed to parse merge response:", err);
+    dialogTitle.value = "Error";
+    dialogContent.value = "An error occurred while saving. Please try again.";
     openDialog.value = true;
   }
 }
@@ -265,6 +275,7 @@ function toggleFullscreen() {
     @resolved="goToModel()"
     @close="openResolver = false"
   />
+  <!-- <FailDialog /> -->
 
   <Dialog
     :open="isShortcutsDialogOpen"

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, reactive, watch, computed, onMounted } from "vue";
 import SuccessDialog from "~/components/dialog/SuccessDialog.vue";
+import FailDialog from "~/components/dialog/FailDialog.vue";
 import {
   Dialog,
   DialogContent,
@@ -49,6 +50,9 @@ type SelectedEntry = {
 };
 const isSuccessDialogOpen = ref(false);
 const successMessage = ref("");
+const isFailedDialogOpen = ref(false);
+const failedMessage = ref("");
+
 const page = ref(1);
 const pageSize = ref(3);
 const total = ref(0);
@@ -100,10 +104,6 @@ async function fetchUsers() {
       return u;
     });
 
-    // const missingSelected = selectedIds
-    //   .filter((id) => !merged.some((u) => u?.id === id))
-    //   .map((id) => selected[id]?.user);
-
     users.value = [
       // ...missingSelected.filter((u): u is UserItem => u !== undefined),
       ...merged,
@@ -126,13 +126,21 @@ async function addMembers(out: { userId: string; role: string }[]) {
     isSuccessDialogOpen.value = true;
     emit("members-added");
     emit("update:open", false);
-  } catch (err: unknown) {
-    console.error("Error adding members:", err);
 
-    const errorMessage =
-      (err as { data?: { error?: string } })?.data?.error ||
-      "Add members failed";
-    throw new Error(errorMessage);
+    return true;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  } catch (err: any) {
+    console.error("Error adding members:", err);
+    if (err.message.includes("Failed to fetch")) {
+      failedMessage.value =
+        "Network error: Unable to connect to the server. Please check your internet connection and try again.";
+    } else {
+      failedMessage.value =
+        (err as { data?: { error?: string } })?.data?.error ||
+        "Add members failed";
+    }
+    isFailedDialogOpen.value = true;
+    return false;
   }
 }
 
@@ -209,13 +217,13 @@ function goPage(p: number) {
   page.value = p;
 }
 
-function handleConfirm() {
+async function handleConfirm() {
   const out = Object.values(selected).map((s) => ({
     userId: s.user.id,
     role: s.role,
   }));
 
-  addMembers(out);
+  await addMembers(out);
 }
 
 function handleCancel() {
@@ -403,5 +411,10 @@ onMounted(fetchUsers);
     v-model:open="isSuccessDialogOpen"
     :message="successMessage"
     icon="fa fa-check-circle"
+  />
+  <FailDialog
+    v-model:open="isFailedDialogOpen"
+    :message="failedMessage"
+    icon="fa fa-xmark-circle"
   />
 </template>
