@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import FormDialog from "~/components/dialog/FormDialog.vue";
 import ConfirmDialog from "~/components/dialog/ConfirmDialog.vue";
 import SuccessDialog from "~/components/dialog/SuccessDialog.vue";
+import FailDialog from "~/components/dialog/FailDialog.vue";
 import ContentCard from "~/components/card/ContentCard.vue";
 import CustomPagination from "~/components/pagination/CustomPagination.vue";
 import { uuidToBase64Url } from "~/lib/uuid";
@@ -33,24 +34,26 @@ const formTitles = {
 };
 
 const projects = ref<Record<string, ProjectWithoutId>>({});
-const totalItem = ref(0);
-const page = ref(1);
-const pageSize = ref(4);
+const totalItem = ref<number>(0);
+const page = ref<number>(1);
+const pageSize = ref<number>(4);
 
-const loading = ref(false);
+const loading = ref<boolean>(false);
 const error = ref<string | null>(null);
 
 // dialogs & forms
-const isFormDialogOpen = ref(false);
-const isCreateMode = ref(true);
+const isFormDialogOpen = ref<boolean>(false);
+const isCreateMode = ref<boolean>(true);
 const currentEditHexId = ref<string | null>(null);
 
-const isConfirmDialogOpen = ref(false);
+const isConfirmDialogOpen = ref<boolean>(false);
 const confirmAction = ref<"update" | "delete" | null>(null);
-const confirmMessage = ref("");
+const confirmMessage = ref<string>("");
 
-const isSuccessDialogOpen = ref(false);
-const successMessage = ref("");
+const isSuccessDialogOpen = ref<boolean>(false);
+const successMessage = ref<string>("");
+const isFailedDialogOpen = ref<boolean>(false);
+const failedMessage = ref<string>("");
 
 const projectForm = reactive<ProjectForm>({
   name: "",
@@ -128,8 +131,16 @@ async function submitCreateProject() {
     successMessage.value = `Project "${data.name}" created successfully.`;
     isSuccessDialogOpen.value = true;
     await refresh();
-  } catch (err) {
+
+    return true;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  } catch (err: any) {
+    console.log(err.response["_data"].error);
+    failedMessage.value =
+      err.response["_data"].error || "Failed to create project.";
+    isFailedDialogOpen.value = true;
     console.error("Error creating project:", err);
+    return false;
   }
 }
 
@@ -153,8 +164,14 @@ async function submitUpdateProject(hexId: string) {
     isSuccessDialogOpen.value = true;
 
     await refresh();
-  } catch (err) {
+    return true;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  } catch (err: any) {
+    failedMessage.value =
+      err.response["_data"].error || "Failed to update project.";
+    isFailedDialogOpen.value = true;
     console.error("Error updating project:", err);
+    return false;
   }
 }
 
@@ -182,7 +199,11 @@ async function updateProjectImage(id: string, file: File) {
 
     successMessage.value = `Image for project updated successfully.`;
     isSuccessDialogOpen.value = true;
-  } catch (err) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  } catch (err: any) {
+    failedMessage.value =
+      err.response["_data"].error || "Failed to update project image.";
+    isFailedDialogOpen.value = true;
     console.error("Error updating project image:", err);
   }
 }
@@ -195,8 +216,14 @@ async function deleteProject(hexId: string) {
     successMessage.value = `Project deleted successfully.`;
     isSuccessDialogOpen.value = true;
     await refresh();
-  } catch (err) {
+    return true;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  } catch (err: any) {
+    failedMessage.value =
+      err.response["_data"].error || "Failed to delete project.";
+    isFailedDialogOpen.value = true;
     console.error("Error deleting project:", err);
+    return false;
   }
 }
 
@@ -224,8 +251,10 @@ function handleEditRow(projectHexId: string) {
 
 async function handleFormSubmit() {
   if (isCreateMode.value) {
-    await submitCreateProject();
-    isFormDialogOpen.value = false;
+    const success = await submitCreateProject();
+    if (success) {
+      isFormDialogOpen.value = false;
+    }
   } else if (currentEditHexId.value) {
     confirmAction.value = "update";
     confirmMessage.value = `Update project "${projectForm.name}"?`;
@@ -243,13 +272,46 @@ function handleDeleteProject(hexId: string, name: string) {
 
 async function handleConfirmAction() {
   if (confirmAction.value === "update" && currentEditHexId.value) {
-    await submitUpdateProject(currentEditHexId.value);
+    console.log("in");
+    const success = await submitUpdateProject(currentEditHexId.value);
+    if (!success) {
+      console.log(
+        "test all state",
+        "form dialog : " + isFormDialogOpen.value,
+        "confirm dialog : " + isConfirmDialogOpen.value,
+        "confirm action" + confirmAction.value,
+        // currentEditHexId.value,
+        "form dialog" + isFormDialogOpen.value,
+      );
+      isConfirmDialogOpen.value = false;
+      isFailedDialogOpen.value = true;
+      return;
+    }
   } else if (confirmAction.value === "delete" && currentEditHexId.value) {
-    await deleteProject(currentEditHexId.value);
+    const success = await deleteProject(currentEditHexId.value);
+    if (!success) {
+      isConfirmDialogOpen.value = false;
+      isFailedDialogOpen.value = true;
+      return;
+    }
   }
   isConfirmDialogOpen.value = false;
   confirmAction.value = null;
   currentEditHexId.value = null;
+}
+
+function handleFailReturnToForm() {
+  isFailedDialogOpen.value = false;
+
+  if (confirmAction.value === "update") {
+    isFormDialogOpen.value = true;
+  }
+}
+
+function handleFailCloseAll() {
+  isFailedDialogOpen.value = false;
+  isFormDialogOpen.value = false;
+  isConfirmDialogOpen.value = false;
 }
 </script>
 
@@ -318,6 +380,14 @@ async function handleConfirmAction() {
       v-model:open="isSuccessDialogOpen"
       :message="successMessage"
       icon="fa fa-check-circle"
+    />
+
+    <FailDialog
+      v-model:open="isFailedDialogOpen"
+      :message="failedMessage"
+      icon="fa fa-times-circle"
+      @close-all="handleFailCloseAll"
+      @return-to-form="handleFailReturnToForm"
     />
   </div>
 </template>

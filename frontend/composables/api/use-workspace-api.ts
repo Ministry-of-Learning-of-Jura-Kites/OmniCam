@@ -7,7 +7,7 @@ function getWorkspaceMeUrl(
   modelId: string,
   config: RuntimeConfig,
 ) {
-  const base = getApiBaseUrlWithProtocol("http", config, true);
+  const base = getApiBaseUrlWithProtocol("http", config);
 
   return concatUrl(
     `projects/${projectId}/models/${modelId}/workspaces/me`,
@@ -51,14 +51,16 @@ export function useWorkspaceApi(
   async function postResolve(results: Record<string, Record<string, unknown>>) {
     const error = ref<Error | undefined>();
     const baseUrl = getWorkspaceMeUrl(projectId, modelId, runtimeConfig);
-    await $fetch<{ error?: string }>(concatUrl("resolve", baseUrl).href, {
-      method: "POST",
-      credentials: "include",
-      body: { merged: results },
-      onResponseError: (ctx) => {
-        error.value = ctx.error;
-      },
-    });
+    try {
+      await $fetch<{ error?: string }>(concatUrl("resolve", baseUrl).href, {
+        method: "POST",
+        credentials: "include",
+        body: { merged: results },
+      });
+    } catch (err) {
+      error.value = err as Error;
+      console.error("postResolve failed:", err);
+    }
     return { error };
   }
 

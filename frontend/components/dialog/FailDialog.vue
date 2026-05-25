@@ -3,11 +3,23 @@ const props = defineProps<{
   open: boolean;
   icon?: string;
   message: string;
+  haveReturnButton?: boolean;
 }>();
 
 const emit = defineEmits<{
   (e: "update:open", value: boolean): void;
+  (e: "close-all"): void;
+  // eslint-disable-next-line @typescript-eslint/unified-signatures
+  (e: "return-to-form"): void;
 }>();
+
+function close() {
+  emit("close-all");
+}
+
+function returnToForm() {
+  emit("return-to-form");
+}
 </script>
 
 <template>
@@ -17,15 +29,28 @@ const emit = defineEmits<{
     >
       <i
         :class="props.icon || 'i-mdi-alert-circle'"
-        class="text-red-500 text-8xl"
+        class="text-red-400 text-8xl"
       ></i>
-      <h2 class="text-xl font-semibold text-center text-red-600">
+      <h2 class="text-xl font-semibold text-center text-red-300">
         {{ props.message }}
       </h2>
 
-      <DialogFooter class="w-full flex !justify-center items-center">
+      <DialogFooter class="w-full flex justify-center! items-center">
         <DialogClose as-child>
-          <Button type="button" variant="destructive"> Close </Button>
+          <Button
+            v-if="props.haveReturnButton"
+            type="button"
+            variant="destructive"
+            @click="returnToForm"
+          >
+            Back to Form
+          </Button>
+        </DialogClose>
+
+        <DialogClose as-child>
+          <Button type="button" variant="outline" @click="close">
+            Close
+          </Button>
         </DialogClose>
       </DialogFooter>
     </DialogContent>

@@ -1,9 +1,8 @@
 <script setup lang="ts">
-// import { keyof } from "zod";
-// import { generateColumnsFromKeys } from "~/components/dataTable/column";
 import ConfirmDialog from "~/components/dialog/ConfirmDialog.vue";
 import SuccessDialog from "~/components/dialog/SuccessDialog.vue";
 import FormDialog from "~/components/dialog/FormDialog.vue";
+import FailDialog from "~/components/dialog/FailDialog.vue";
 import AddUserDialog from "~/components/dialog/AddUserDialog.vue";
 import EditRoleDialog from "~/components/dialog/EditRoleDialog.vue";
 import { useAuth } from "~/composables/api/use-auth";
@@ -67,6 +66,8 @@ const confirmDialog = ref<boolean>(false);
 const confirmMessage = ref<string>("");
 const successDialog = ref<boolean>(false);
 const successMessage = ref<string>("");
+const isFailedDialogOpen = ref<boolean>(false);
+const failedMessage = ref<string>("");
 
 const userProjectRole = computed<
   "owner" | "project_manager" | "collaborator" | null
@@ -76,10 +77,6 @@ const userProjectRole = computed<
   return me?.role as "owner" | "project_manager" | "collaborator" | null;
 });
 
-// const isLoading = ref(false);
-
-// dialog form config
-// type is input type (text , number , textarea , file etc)
 const editfields = {
   name: { type: "text" as const, required: true },
   description: { type: "textarea" as const, required: false },
@@ -115,41 +112,6 @@ watch(project, (newVal) => {
   projectDetail.value = newVal;
 });
 
-// const { data: modelsRaw, refresh } = await useAsyncData(
-//   `models-list-${projectId}`,
-//   () => modelApi.listModels(page.value, pageSize.value),
-//   {
-//     watch: [page, pageSize],
-
-//     transform: (respData) => {
-//       if (!respData?.data) return { record: {}, count: 0 };
-//       const record = respData.data.reduce<Record<string, ModelWithoutId>>(
-//         (acc, model) => {
-//           const { modelId, imagePath, imageExtension, ...rest } = model;
-
-//           let urlHref: string | undefined = undefined;
-//           if (imageExtension != null && imagePath) {
-//             urlHref = getUrlForModelImage(
-//               projectId,
-//               modelId,
-//               imageExtension,
-//             ).href;
-//           }
-
-//           acc[modelId] = {
-//             ...rest,
-//             imagePath: urlHref,
-//           };
-//           console.log("record", record);
-//           return acc;
-//         },
-//         {},
-//       );
-//       return { record, count: respData.count };
-//     },
-//   },
-// );
-
 const asyncKey = computed(
   () => `models-list-${projectId}-page-${page.value}-size-${pageSize.value}`,
 );
@@ -161,7 +123,6 @@ const { data: modelsRaw, refresh } = await useAsyncData(
     return resp;
   },
   {
-    // server: false, // Disable server-side fetching to ensure it only runs on the client,
     watch: [page, pageSize],
     default: () => ({ data: [], count: 0 }),
   },
@@ -248,17 +209,25 @@ watch(totalData, () => {
 });
 
 async function createModel() {
-  const formData = new FormData();
-  formData.append("name", modelForm.name);
-  formData.append("description", modelForm.description);
-  if (modelForm.file) formData.append("file", modelForm.file);
-  if (modelForm.image) formData.append("image", modelForm.image);
-
-  const response = await modelApi.postCreateModel(formData);
-  await refresh();
-
-  successDialog.value = true;
-  successMessage.value = `You have successfully created ${response.data.name}`;
+  try {
+    const formData = new FormData();
+    formData.append("name", modelForm.name);
+    formData.append("description", modelForm.description);
+    if (modelForm.file) formData.append("file", modelForm.file);
+    if (modelForm.image) formData.append("image", modelForm.image);
+    await modelApi.postCreateModel(formData);
+    await refresh();
+    return true;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  } catch (err: any) {
+    isFailedDialogOpen.value = true;
+    if (err.message.includes("Failed to fetch")) {
+      failedMessage.value =
+        "Network error: Unable to connect to the server. Please check your internet connection and try again.";
+      return false;
+    }
+    return false;
+  }
 }
 
 async function updateModel(hexId: string) {
@@ -271,8 +240,10 @@ async function updateModel(hexId: string) {
     await refresh();
     successDialog.value = true;
     successMessage.value = `You have successfully update ${response.data.name}`;
+    return true;
   } catch (err) {
     console.error("Update failed", err);
+    return false;
   }
 }
 
@@ -382,9 +353,15 @@ function handleConfirmSubmit() {
   confirmDialog.value = false;
 }
 
-function handleCreateFormSubmit() {
+async function handleCreateFormSubmit() {
   isCreateFormDialogOpen.value = false;
-  createModel();
+  const response = await createModel();
+  if (!response) {
+    isFailedDialogOpen.value = true;
+  } else {
+    successDialog.value = true;
+    successMessage.value = `You have successfully created ${modelForm.name}`;
+  }
 }
 
 async function handleUpdateImage(file: File | undefined, modelId: string) {
@@ -395,9 +372,14 @@ async function handleUpdateImage(file: File | undefined, modelId: string) {
 
   try {
     const encodedModelId = uuidToBase64Url(modelId);
-    await modelApi.updateModelImage(encodedModelId, formData);
+    const response = await modelApi.updateModelImage(encodedModelId, formData);
 
     await refresh();
+    if (!response) {
+      isFailedDialogOpen.value = true;
+      failedMessage.value = "Failed to refresh data after image update.";
+      return;
+    }
 
     successDialog.value = true;
     successMessage.value = `Image updated successfully for model ${modelId}`;
@@ -410,6 +392,18 @@ function goToProjects() {
   navigateTo(`/projects`, { external: false });
 }
 
+function handleFailCloseAll() {
+  isFailedDialogOpen.value = false;
+}
+
+function handleFailReturnToForm() {
+  isFailedDialogOpen.value = false;
+  if (confirmMessage.value.includes("update")) {
+    isEditFormDialogOpen.value = true;
+  } else if (confirmMessage.value.includes("create")) {
+    isCreateFormDialogOpen.value = true;
+  }
+}
 fetchMembers();
 </script>
 
@@ -657,6 +651,14 @@ fetchMembers();
       v-model:open="successDialog"
       :message="successMessage"
       icon="fa fa-check-circle"
+    />
+
+    <FailDialog
+      v-model:open="isFailedDialogOpen"
+      :message="failedMessage"
+      icon="fa fa-times-circle"
+      @close-all="handleFailCloseAll"
+      @return-to-form="handleFailReturnToForm"
     />
   </div>
 </template>
