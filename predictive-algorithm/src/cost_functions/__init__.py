@@ -23,7 +23,7 @@ def prune_faces_by_distance(
 
     # 1. Standard mask
     mask = (dists < max_dist) & (dots > -0.2)
-    indices = np.where(mask)[0]
+    indices = np.nonzero(mask)[0]
 
     # 2. Safety Net: If the camera sees 'nothing', find the K closest faces anyway
     if len(indices) < k_min:

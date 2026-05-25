@@ -417,8 +417,11 @@ function openMiniScene() {
           <!-- Position -->
           <div class="space-y-2">
             <div class="flex items-center justify-between">
-              <Label class="text-sm font-semibold">Position</Label>
+              <Label for="camera-position" class="text-sm font-semibold"
+                >Position</Label
+              >
               <label
+                for="lock-position"
                 class="flex items-center gap-1.5 text-xs text-muted-foreground cursor-pointer select-none"
               >
                 <input

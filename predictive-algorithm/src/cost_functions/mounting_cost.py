@@ -38,5 +38,5 @@ def cost_single_cam(state: State, cam_state: CameraState, _face: Array4x3):
 
 def cost(state: State):
     for cam_state in state.cameras:
-        cost_single_cam(state, cam_state)
+        cost_single_cam(state, cam_state, cam_state.face)
     return cost
