@@ -268,7 +268,8 @@ async function applyAll() {
 
               <div v-if="selected[key] === 'manual'" class="mt-3">
                 <label
-                  class="block text-xs font-medium text-gray-600 dark:text-gray-200"
+                  for="manual-edit-json"
+                  class="text-xs font-medium text-gray-600 dark:text-gray-200"
                   >Manual value (JSON)</label
                 >
                 <textarea

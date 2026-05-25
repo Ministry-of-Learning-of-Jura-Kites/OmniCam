@@ -252,10 +252,13 @@ watch(
               class="form-container"
             >
               <div class="form-group">
-                <label>First Name <span class="required">*</span></label>
+                <label for="firstName"
+                  >First Name <span class="required">*</span></label
+                >
                 <input
                   ref="registerFirstNameInput"
                   v-model="registerForm.firstName"
+                  for="firstName"
                   type="text"
                   placeholder="First Name"
                   @blur="markTouched('firstName')"
@@ -267,10 +270,13 @@ watch(
               </div>
 
               <div class="form-group">
-                <label>Last Name <span class="required">*</span></label>
+                <label for="lastName"
+                  >Last Name <span class="required">*</span></label
+                >
                 <input
                   ref="registerLastNameInput"
                   v-model="registerForm.lastName"
+                  for="lastName"
                   type="text"
                   placeholder="Last Name"
                   @blur="markTouched('lastName')"
@@ -282,10 +288,13 @@ watch(
               </div>
 
               <div class="form-group">
-                <label>Username <span class="required">*</span></label>
+                <label for="username"
+                  >Username <span class="required">*</span></label
+                >
                 <input
                   ref="registerUsernameInput"
                   v-model="registerForm.username"
+                  for="username"
                   type="text"
                   placeholder="Username"
                   @blur="markTouched('username')"
@@ -297,10 +306,11 @@ watch(
               </div>
 
               <div class="form-group">
-                <label>Email <span class="required">*</span></label>
+                <label for="email">Email <span class="required">*</span></label>
                 <input
                   ref="registerEmailInput"
                   v-model="registerForm.email"
+                  for="email"
                   type="email"
                   placeholder="Email"
                   @blur="markTouched('email')"
@@ -312,12 +322,15 @@ watch(
               </div>
 
               <div class="form-group">
-                <label>Password <span class="required">*</span></label>
+                <label for="password"
+                  >Password <span class="required">*</span></label
+                >
                 <div class="password-wrapper">
                   <input
                     ref="registerPasswordInput"
                     v-model="registerForm.password"
                     :type="showRegisterPassword ? 'text' : 'password'"
+                    for="password"
                     placeholder="Password"
                     @blur="markTouched('password')"
                     @keydown.enter.prevent="handleRegisterEnter('submit')"
@@ -347,10 +360,13 @@ watch(
             <!-- Sign-In Form (unchanged) -->
             <div v-else key="signin" class="form-container">
               <div class="form-group">
-                <label>Identifier <span class="required">*</span></label>
+                <label for="identifier"
+                  >Identifier <span class="required">*</span></label
+                >
                 <input
                   ref="loginIdentifierInput"
                   v-model="loginForm.identifier"
+                  for="identifier"
                   type="text"
                   placeholder="Email or Username"
                   required
@@ -363,11 +379,14 @@ watch(
               </div>
 
               <div class="form-group">
-                <label>Password <span class="required">*</span></label>
+                <label for="password"
+                  >Password <span class="required">*</span></label
+                >
                 <div class="password-wrapper">
                   <input
                     ref="loginPasswordInput"
                     v-model="loginForm.password"
+                    for="password"
                     :type="showLoginPassword ? 'text' : 'password'"
                     placeholder="Password"
                     required

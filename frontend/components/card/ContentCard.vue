@@ -44,7 +44,7 @@ function handleFileChange(event: Event) {
         <template v-if="props.imagePath">
           <img
             :src="props.imagePath"
-            alt="Project/Model Image"
+            alt="Project/Model"
             class="w-full min-h-[250px] max-h-[250px] object-cover rounded-t-lg"
           />
         </template>
