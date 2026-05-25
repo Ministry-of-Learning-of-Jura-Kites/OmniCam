@@ -35,10 +35,13 @@ import type {
 } from "~/types/trapezoid";
 import CameraDirection from "../camera-direction/CameraDirection.vue";
 import MiniCameraScene from "../mini-camera-scene/MiniCameraScene.vue";
+import FailDialog from "~/components/dialog/FailDialog.vue";
 // import { watchDebounced } from "@vueuse/core";
 
 const { isPanelOpen, currentPanel, camPanelInfo } = inject(PANEL_KEY)!;
 const { selectedCamId } = camPanelInfo;
+
+const router = useRouter();
 
 const selectedFaces = computed(() =>
   Object.entries(
@@ -60,6 +63,8 @@ const props = withDefaults(
   },
 );
 
+const isFailedDialogOpen = ref<boolean>(false);
+const failedMessage = ref<string>("");
 // line measurement
 const lineMeasurement = ref<InstanceType<typeof LineMeasurement> | null>(null);
 
@@ -607,6 +612,23 @@ watch(
   },
 );
 
+function handleModelError(msg: string) {
+  failedMessage.value = msg;
+  isFailedDialogOpen.value = true;
+}
+
+function handleFailCloseAll() {
+  isFailedDialogOpen.value = false;
+}
+
+watch(isFailedDialogOpen, () => {
+  console.log("it in");
+});
+
+function handleGoBack() {
+  router.back();
+}
+
 // function logRendererMemory(tag = "") {
 //   const renderer = sceneStates.value?.tresContext.value?.renderer
 //     .instance as any;
@@ -650,6 +672,13 @@ const isShowingCamDirection = computed(() => {
 </script>
 
 <template>
+  <FailDialog
+    v-model:open="isFailedDialogOpen"
+    :message="failedMessage"
+    icon="fa fa-times-circle"
+    @close-all="handleFailCloseAll"
+    @go-back="handleGoBack"
+  />
   <ClientOnly>
     <div
       class="h-full relative flex flex-col justify-center items-center overflow-hidden"
@@ -853,6 +882,7 @@ const isShowingCamDirection = computed(() => {
             <ModelLoader
               v-if="modelPath != undefined"
               :path="modelPath!.href"
+              @err="handleModelError"
             />
           </Suspense>
 
