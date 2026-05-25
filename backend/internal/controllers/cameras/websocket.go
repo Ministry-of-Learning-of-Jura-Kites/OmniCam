@@ -20,6 +20,7 @@ import (
 	db_client "omnicam.com/backend/pkg/db"
 	db_sqlc_gen "omnicam.com/backend/pkg/db/sqlc-gen"
 	messages_cameras "omnicam.com/backend/pkg/messages/cameras"
+	messages_errors "omnicam.com/backend/pkg/messages/errors"
 	"omnicam.com/backend/pkg/messages/protobufs"
 	messsages_trapezoids "omnicam.com/backend/pkg/messages/trapezoids"
 )
@@ -358,8 +359,8 @@ func (t *UpdateEventRoute) getLivestream(c *gin.Context) {
 	strModelId := c.Param("modelId")
 	modelId, err := utils.ParseUuidBase64(strModelId)
 	if err != nil {
-		t.Logger.Error("error while converting str id to uuid", zap.Error(err))
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid model ID"})
+		t.Logger.Error(messages_errors.ErrorWhileConvertToUUID, zap.Error(err))
+		c.JSON(http.StatusBadRequest, gin.H{"error": messages_errors.InvalidModelID})
 		return
 	}
 
@@ -367,8 +368,8 @@ func (t *UpdateEventRoute) getLivestream(c *gin.Context) {
 	strWorkspaceOwnerId := c.Param("workspaceOwnerId")
 	workspaceOwnerId, err := utils.ParseUuidBase64(strWorkspaceOwnerId)
 	if err != nil {
-		t.Logger.Error("error while converting str id to uuid", zap.Error(err))
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid model ID"})
+		t.Logger.Error(messages_errors.ErrorWhileConvertToUUID, zap.Error(err))
+		c.JSON(http.StatusBadRequest, gin.H{"error": messages_errors.InvalidModelID})
 		return
 	}
 
@@ -427,16 +428,16 @@ func (t *UpdateEventRoute) getAutosave(c *gin.Context) {
 	strProjectId := c.Param("projectId")
 	projectId, err := utils.ParseUuidBase64(strProjectId)
 	if err != nil {
-		t.Logger.Error("error while converting str id to uuid", zap.Error(err))
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid model ID"})
+		t.Logger.Error(messages_errors.ErrorWhileConvertToUUID, zap.Error(err))
+		c.JSON(http.StatusBadRequest, gin.H{"error": messages_errors.InvalidModelID})
 		return
 	}
 
 	strModelId := c.Param("modelId")
 	modelId, err := utils.ParseUuidBase64(strModelId)
 	if err != nil {
-		t.Logger.Error("error while converting str id to uuid", zap.Error(err))
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid model ID"})
+		t.Logger.Error(messages_errors.ErrorWhileConvertToUUID, zap.Error(err))
+		c.JSON(http.StatusBadRequest, gin.H{"error": messages_errors.InvalidModelID})
 		return
 	}
 

@@ -2,7 +2,7 @@ export const BASE64_UUID_SIZE = 22;
 
 export function uuidToBase64Url(uuidString: string) {
   // Remove hyphens and convert to a continuous hex string
-  const hex = uuidString.replaceAll(/=/g, "");
+  const hex = uuidString.replaceAll(/-/g, "");
 
   // Convert hex string to a Uint8Array
   const bytes = new Uint8Array(16);
@@ -15,7 +15,7 @@ export function uuidToBase64Url(uuidString: string) {
 
   // Base64 encode the binary string
   return base64Standard
-    .replaceAll(/\+/g, "-")
-    .replaceAll(/\//g, "_")
-    .replaceAll(/=/g, "");
+    .replaceAll("+", "-")
+    .replaceAll("/", "_")
+    .replaceAll("=", "");
 }

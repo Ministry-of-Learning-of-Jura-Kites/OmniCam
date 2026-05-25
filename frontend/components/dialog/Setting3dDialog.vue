@@ -116,7 +116,10 @@ function handleSubmit() {
 
                 <!-- Mouse Sensitivity -->
                 <div class="w-full space-y-2">
-                  <label class="text-sm font-medium text-center block">
+                  <label
+                    for="local-mouse"
+                    class="text-sm font-medium text-center block"
+                  >
                     Mouse Sensitivity: {{ localMouse }}
                   </label>
                   <input
@@ -130,7 +133,10 @@ function handleSubmit() {
 
                 <!-- Movement Sensitivity -->
                 <div class="w-full space-y-2">
-                  <label class="text-sm font-medium text-center block">
+                  <label
+                    for="local-movement"
+                    class="text-sm font-medium text-center block"
+                  >
                     Movement Sensitivity: {{ localMovement }}
                   </label>
                   <input
