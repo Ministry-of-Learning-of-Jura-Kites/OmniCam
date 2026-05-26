@@ -130,7 +130,6 @@ onMounted(() => {
 
 async function saveModelToPublic() {
   const { resp } = await postMerge();
-  console.log("response : ", resp);
   if (!resp.ok) {
     console.error(resp);
     return;

@@ -78,8 +78,6 @@ async function register() {
     await navigateTo("/");
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
   } catch (err: any) {
-    console.log("something");
-    console.log(err.response);
     isFailDialogOpen.value = true;
     errorMessage.value =
       err.response["_data"].error || "Registration failed. Please try again.";
@@ -89,7 +87,6 @@ async function register() {
 }
 
 async function login() {
-  // console.log(loginForm);
   loginTouched.identifier = true;
   loginTouched.password = true;
 
@@ -102,11 +99,7 @@ async function login() {
     await navigateTo("/");
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
   } catch (err: any) {
-    console.log("error : ", err.message);
-    console.log("error response : ", err.cause);
-    // backend unreachable / server down / network issue
     if (err.message.includes("Failed to fetch")) {
-      console.log("is in here");
       errorMessage.value =
         "Unable to connect to the server. Please try again later.";
 

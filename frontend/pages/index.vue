@@ -139,7 +139,6 @@ async function submitCreateProject() {
     failedMessage.value =
       err.response["_data"].error || "Failed to create project.";
     isFailedDialogOpen.value = true;
-    console.error("Error creating project:", err);
     return false;
   }
 }
@@ -170,7 +169,6 @@ async function submitUpdateProject(hexId: string) {
     failedMessage.value =
       err.response["_data"].error || "Failed to update project.";
     isFailedDialogOpen.value = true;
-    console.error("Error updating project:", err);
     return false;
   }
 }
@@ -204,7 +202,6 @@ async function updateProjectImage(id: string, file: File) {
     failedMessage.value =
       err.response["_data"].error || "Failed to update project image.";
     isFailedDialogOpen.value = true;
-    console.error("Error updating project image:", err);
   }
 }
 
@@ -222,7 +219,6 @@ async function deleteProject(hexId: string) {
     failedMessage.value =
       err.response["_data"].error || "Failed to delete project.";
     isFailedDialogOpen.value = true;
-    console.error("Error deleting project:", err);
     return false;
   }
 }
