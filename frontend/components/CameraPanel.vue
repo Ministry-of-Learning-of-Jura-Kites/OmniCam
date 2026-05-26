@@ -417,8 +417,11 @@ function openMiniScene() {
           <!-- Position -->
           <div class="space-y-2">
             <div class="flex items-center justify-between">
-              <Label class="text-sm font-semibold">Position</Label>
-              <label
+              <Label for="lock-position" class="text-sm font-semibold"
+                >Position</Label
+              >
+              <div
+                for="lock-position"
                 class="flex items-center gap-1.5 text-xs text-muted-foreground cursor-pointer select-none"
               >
                 <input
@@ -430,7 +433,7 @@ function openMiniScene() {
                 <LockKeyhole v-if="isLockingPosition" class="h-3.5 w-3.5" />
                 <LockKeyholeOpen v-else class="h-3.5 w-3.5" />
                 {{ isLockingPosition ? "Locked" : "Unlocked" }}
-              </label>
+              </div>
             </div>
             <div class="grid grid-cols-3 gap-2">
               <div>
@@ -477,8 +480,10 @@ function openMiniScene() {
           <!-- Rotation -->
           <div class="space-y-2">
             <div class="flex items-center justify-between">
-              <Label class="text-sm font-semibold">Rotation</Label>
-              <label
+              <Label for="lock-rotation" class="text-sm font-semibold"
+                >Rotation</Label
+              >
+              <div
                 class="flex items-center gap-1.5 text-xs text-muted-foreground cursor-pointer select-none"
               >
                 <input
@@ -490,7 +495,7 @@ function openMiniScene() {
                 <LockKeyhole v-if="isLockingRotation" class="h-3.5 w-3.5" />
                 <LockKeyholeOpen v-else class="h-3.5 w-3.5" />
                 {{ isLockingRotation ? "Locked" : "Unlocked" }}
-              </label>
+              </div>
             </div>
             <div class="grid grid-cols-3 gap-2">
               <div>
@@ -531,7 +536,9 @@ function openMiniScene() {
 
           <!-- Angles Vector -->
           <div v-if="selectedCam" class="space-y-2">
-            <Label class="text-xs text-muted-foreground uppercase tracking-wide"
+            <Label
+              for="angles-vector"
+              class="text-xs text-muted-foreground uppercase tracking-wide"
               >Angles Vector</Label
             >
             <div
@@ -616,6 +623,7 @@ function openMiniScene() {
           >
             <div class="flex items-center gap-2 mb-2">
               <Label
+                for="len-configuration"
                 class="text-sm font-bold uppercase tracking-wider text-muted-foreground"
                 >Lens Configuration</Label
               >
@@ -623,12 +631,15 @@ function openMiniScene() {
 
             <!-- Resolution / Aspect Ratio -->
             <div class="space-y-2">
-              <Label class="text-[11px] text-muted-foreground uppercase"
+              <Label
+                for="resolution-width-height"
+                class="text-[11px] text-muted-foreground uppercase"
                 >Resolution (W : H)</Label
               >
               <div class="flex items-center gap-2">
                 <div class="relative flex-1">
                   <Input
+                    id="resolution-width-height"
                     v-model.number="
                       sceneStates.cameras[selectedCamId]!.widthRes
                     "
@@ -649,6 +660,7 @@ function openMiniScene() {
                     v-model.number="
                       sceneStates.cameras[selectedCamId]!.heightRes
                     "
+                    for="resolution-width-height"
                     :disabled="props.workspace != 'me'"
                     type="number"
                     class="pl-8"
@@ -691,18 +703,20 @@ function openMiniScene() {
             <!-- Distortion Controls -->
             <div class="space-y-3">
               <Label
+                for="optical-distortion"
                 class="text-[11px] text-muted-foreground uppercase block mb-1"
                 >Optical Distortion</Label
               >
 
               <div class="grid grid-cols-2 gap-4">
-                <label
+                <div
                   class="flex items-center gap-2.5 p-2 rounded-lg border border-border/50 bg-background/50 cursor-pointer hover:bg-accent transition-colors select-none"
                   :class="{
                     'opacity-50 cursor-not-allowed': props.workspace != 'me',
                   }"
                 >
                   <input
+                    id="optical-distortion"
                     v-model="
                       sceneStates.cameras[selectedCamId]!.distortion.enabled
                     "
@@ -711,9 +725,9 @@ function openMiniScene() {
                     class="accent-primary h-4 w-4"
                   />
                   <span class="text-xs font-medium">Enable</span>
-                </label>
+                </div>
 
-                <label
+                <div
                   class="flex items-center gap-2.5 p-2 rounded-lg border border-border/50 bg-background/50 cursor-pointer hover:bg-accent transition-colors select-none"
                   :class="{
                     'opacity-50 cursor-not-allowed':
@@ -733,7 +747,7 @@ function openMiniScene() {
                     class="accent-primary h-4 w-4"
                   />
                   <span class="text-xs font-medium">Fisheye</span>
-                </label>
+                </div>
               </div>
             </div>
           </section>
@@ -747,6 +761,7 @@ function openMiniScene() {
           >
             <div class="flex items-center justify-between">
               <Label
+                for="frustum"
                 class="text-sm font-bold uppercase tracking-wider text-muted-foreground"
                 >Frustum Style</Label
               >
@@ -811,6 +826,7 @@ function openMiniScene() {
               <div class="grid grid-cols-3 gap-3">
                 <div class="relative">
                   <Input
+                    id="frustum"
                     v-model.number="
                       sceneStates.cameras[selectedCamId]!.frustumColor.r
                     "
@@ -863,10 +879,13 @@ function openMiniScene() {
             <!-- Display Settings -->
             <div class="grid grid-cols-2 gap-4 pt-2">
               <div class="space-y-2">
-                <Label class="text-[11px] text-muted-foreground uppercase"
+                <Label
+                  for="opacity"
+                  class="text-[11px] text-muted-foreground uppercase"
                   >Opacity</Label
                 >
                 <Input
+                  id="opacity"
                   v-model.number="
                     sceneStates.cameras[selectedCamId]!.frustumColor.a
                   "
@@ -877,10 +896,13 @@ function openMiniScene() {
                 />
               </div>
               <div class="space-y-2">
-                <Label class="text-[11px] text-muted-foreground uppercase"
+                <Label
+                  for="length"
+                  class="text-[11px] text-muted-foreground uppercase"
                   >Length</Label
                 >
                 <Input
+                  id="length"
                   v-model.number="
                     sceneStates.cameras[selectedCamId]!.frustumLength
                   "
@@ -896,6 +918,7 @@ function openMiniScene() {
             class="space-y-4 p-4 rounded-xl bg-muted/30 border border-border/50"
           >
             <Label
+              for="camera-body"
               class="text-sm font-bold uppercase tracking-wider text-muted-foreground"
               >Camera Body</Label
             >

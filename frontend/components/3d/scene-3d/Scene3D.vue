@@ -42,6 +42,7 @@ const { isPanelOpen, currentPanel, camPanelInfo } = inject(PANEL_KEY)!;
 const { selectedCamId } = camPanelInfo;
 
 const router = useRouter();
+const route = useRoute();
 
 const selectedFaces = computed(() =>
   Object.entries(
@@ -594,6 +595,15 @@ function selectCurrentCamShortcut() {
     currentPanel.value = "camera";
   }
 }
+watch(
+  () => sceneStates.value?.errorLivestreamMessage.value,
+  (errorMessage) => {
+    if (!errorMessage) return;
+
+    isFailedDialogOpen.value = true;
+    failedMessage.value = errorMessage;
+  },
+);
 
 watch(
   () => sceneStates.value!.measurement.lines.length,
@@ -622,7 +632,9 @@ function handleFailCloseAll() {
 }
 
 function handleGoBack() {
-  router.back();
+  const projectId = route.params.projectId;
+
+  router.push(`/projects/${projectId}`);
 }
 
 // function logRendererMemory(tag = "") {

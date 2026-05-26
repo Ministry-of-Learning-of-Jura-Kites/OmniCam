@@ -158,15 +158,14 @@ const displayAspectRatio = computed(() => {
     return `(${match[0]})`;
   }
 
-  const w = parseInt(preset.res_w);
-  const h = parseInt(preset.res_h);
+  const w = Number.parseInt(preset.res_w);
+  const h = Number.parseInt(preset.res_h);
 
   if (!w || !h) return "";
 
   const divisor = gcd(w, h);
   return `(${w / divisor}:${h / divisor})`;
 });
-
 function handleSelect(preset: Camerapreset) {
   selectedPreset.value = preset;
   openCombobox.value = false;
@@ -195,6 +194,7 @@ function close() {
       <div class="space-y-4">
         <div class="flex flex-col gap-2">
           <label
+            for="camera-model"
             class="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
           >
             Camera Model
@@ -206,6 +206,7 @@ function close() {
                 variant="outline"
                 role="combobox"
                 :aria-expanded="openCombobox"
+                :aria-controls="'camera-combobox'"
                 class="w-full justify-between font-normal"
                 :disabled="isLoading"
               >
@@ -223,6 +224,7 @@ function close() {
             </PopoverTrigger>
 
             <PopoverContent
+              :id="'camera-combobox'"
               class="p-0"
               :style="{ width: 'var(--radix-popover-trigger-width)' }"
               align="start"

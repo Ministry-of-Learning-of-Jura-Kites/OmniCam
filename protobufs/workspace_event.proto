@@ -14,9 +14,17 @@ message WorkspaceEventRequest{
   }
 }
 
-message WorkspaceEventResponse{
-  oneof resp{
+message LivestreamBroadcast{
+  oneof event{
+    EventError error = 1;
+    AutosaveEventRequest autosave = 2;
+  }
+}
+
+message WorkspaceEventResponse {
+  oneof resp {
     AutosaveEventResponse autosave = 1;
     OptimizationEventResp optimize = 2;
+    EventError error = 3;
   }
 }

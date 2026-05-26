@@ -102,5 +102,5 @@ def cost_single_cam(
 def cost(state: State):
     cost = 0
     for cam_state in state.cameras:
-        cost += cost_single_cam(cam_state, cam_state.face)
+        cost += cost_single_cam(state, cam_state, cam_state.face)
     return cost

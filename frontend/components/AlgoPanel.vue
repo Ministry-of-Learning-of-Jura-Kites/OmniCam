@@ -392,7 +392,9 @@ function submit() {
           </div>
 
           <div class="mt-3 flex items-center gap-3">
-            <label class="text-sm opacity-80">Area Color</label>
+            <label :for="`area-color-${id}`" class="text-sm opacity-80"
+              >Area Color</label
+            >
             <input
               type="color"
               :value="getAreaColor(face.color)"

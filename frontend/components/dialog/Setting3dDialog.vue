@@ -20,12 +20,9 @@ const emit = defineEmits<{
 }>();
 
 const { sensitivity, setMouse, setMovement } = useSensitivity();
-
-// Local copies for dialog
 const localMouse = ref(sensitivity.value.mouse);
 const localMovement = ref(sensitivity.value.movement);
 
-// Reset local values when dialog opens
 watch(
   () => props.open,
   (val) => {
@@ -53,11 +50,16 @@ function handleSubmit() {
   <Dialog :open="props.open" @update:open="emit('update:open', $event)">
     <DialogContent class="w-fit min-w-[300px]">
       <DialogHeader class="flex flex-col items-center space-y-4">
-        <h2 class="p-3 text-center flex justify-center">{{ message }}</h2>
+        <h2 class="p-3 text-center flex justify-center">
+          {{ message }}
+        </h2>
 
         <!-- Mouse Sensitivity -->
         <div class="w-full space-y-2">
-          <label class="text-sm font-medium text-center block">
+          <label
+            for="local-mouse"
+            class="text-sm font-medium text-center block"
+          >
             Mouse Sensitivity: {{ localMouse }}
           </label>
           <input
@@ -71,7 +73,10 @@ function handleSubmit() {
 
         <!-- Movement Sensitivity -->
         <div class="w-full space-y-2">
-          <label class="text-sm font-medium text-center block">
+          <label
+            for="local-movement"
+            class="text-sm font-medium text-center block"
+          >
             Movement Sensitivity: {{ localMovement }}
           </label>
           <input

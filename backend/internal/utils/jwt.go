@@ -14,12 +14,12 @@ type UserClaims struct {
 	jwt.RegisteredClaims
 }
 
-func GenerateJWT(first_name string, last_name string, userID string, username string, jwtSecret string, duration time.Duration) (string, error) {
+func GenerateJWT(firstName string, lastName string, userID string, username string, jwtSecret string, duration time.Duration) (string, error) {
 	expirationTime := time.Now().Add(duration)
 	claims := UserClaims{
 		UserID:    userID,
-		FirstName: first_name,
-		LastName:  last_name,
+		FirstName: firstName,
+		LastName:  lastName,
 		Username:  username,
 		RegisteredClaims: jwt.RegisteredClaims{
 			ExpiresAt: jwt.NewNumericDate(expirationTime),

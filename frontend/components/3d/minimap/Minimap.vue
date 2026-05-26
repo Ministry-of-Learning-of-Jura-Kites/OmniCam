@@ -254,10 +254,14 @@ onUnmounted(() => {
     @wheel.prevent="handleMinimapZoom"
   >
     <div class="flex flex-col gap-1 mb-2">
-      <label class="text-[15px] text-white uppercase stroked">
+      <label
+        for="minimap-height-slider"
+        class="text-[15px] text-white uppercase stroked"
+      >
         Height: {{ minimapHeight.toFixed(2) }}m
       </label>
       <input
+        id="minimap-height-slider"
         v-model.number="minimapHeight"
         type="range"
         min="0"
