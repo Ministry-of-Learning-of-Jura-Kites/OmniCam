@@ -415,9 +415,7 @@ func (t *UpdateEventRoute) getLivestream(c *gin.Context) {
 		sub, err := t.Nc.Subscribe(subject, func(msg *nats.Msg) {
 			sendData(msg.Data)
 		})
-		err = fmt.Errorf("forced error for testing")
 		if err != nil {
-			// time.Sleep(3 * time.Second)
 			t.Logger.Error("fail to send message", zap.Error(err), zap.String("subject", subject))
 
 			resp := &protobufs.LivestreamBroadcast{
