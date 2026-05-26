@@ -11,7 +11,7 @@ import {
 import { MINIMAP_LAYER } from "~/constants";
 
 const sceneStates = inject(SCENE_STATES_KEY)!;
-const mesh = ref<Mesh>();
+// const mesh = ref<Mesh>();
 
 const props = withDefaults(
   defineProps<{
@@ -24,6 +24,9 @@ const props = withDefaults(
     position: () => [0, 0, 0],
   },
 );
+const emit = defineEmits<{
+  (e: "err", message: string): void;
+}>();
 
 function isMesh(object: Object3D): object is Mesh {
   return (object as Mesh).isMesh === true;
@@ -52,6 +55,16 @@ const { data, error, status } = await useFetch<ArrayBuffer>(props.path ?? "", {
   responseType: "arrayBuffer",
   cache: "no-cache",
 });
+
+watch(
+  error,
+  (err) => {
+    if (err) {
+      emit("err", `Failed to load 3D model (HTTP ${status.value}).`);
+    }
+  },
+  { immediate: true },
+);
 
 onMounted(() => {
   if (!BufferGeometry.prototype.computeBoundsTree) {
@@ -98,12 +111,6 @@ onMounted(() => {
     },
     { immediate: true },
   );
-
-  watch(error, () => {
-    if (error.value != undefined) {
-      throw new Error(`HTTP ${status.value} ${error.value}`);
-    }
-  });
 });
 
 onUnmounted(() => {
@@ -131,6 +138,7 @@ onUnmounted(() => {
 </script>
 
 <template>
+  <!-- <primitive v-if="state?.scene" ref="mesh" :object="state.scene" /> -->
   <primitive v-if="state?.scene" ref="mesh" :object="state.scene" />
 
   <!-- Block Placeholder  -->
