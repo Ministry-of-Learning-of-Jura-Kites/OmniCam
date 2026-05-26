@@ -59,8 +59,6 @@ const { data, error, status } = await useFetch<ArrayBuffer>(props.path ?? "", {
 watch(
   error,
   (err) => {
-    console.log("watch triggered", err);
-
     if (err) {
       emit("err", `Failed to load 3D model (HTTP ${status.value}).`);
     }

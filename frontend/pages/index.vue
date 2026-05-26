@@ -268,17 +268,8 @@ function handleDeleteProject(hexId: string, name: string) {
 
 async function handleConfirmAction() {
   if (confirmAction.value === "update" && currentEditHexId.value) {
-    console.log("in");
     const success = await submitUpdateProject(currentEditHexId.value);
     if (!success) {
-      console.log(
-        "test all state",
-        "form dialog : " + isFormDialogOpen.value,
-        "confirm dialog : " + isConfirmDialogOpen.value,
-        "confirm action" + confirmAction.value,
-        // currentEditHexId.value,
-        "form dialog" + isFormDialogOpen.value,
-      );
       isConfirmDialogOpen.value = false;
       isFailedDialogOpen.value = true;
       return;
