@@ -51,10 +51,7 @@ export function useLivestream(
       const buf = await (messageBlob as Blob).arrayBuffer();
       const resp = LivestreamBroadcast.decode(new Uint8Array(buf));
       if (resp.error) {
-        console.log("in 1");
-        console.log(sceneState?.value);
         if (sceneState?.value) {
-          console.log("in 2");
           sceneState.value.errorLivestreamMessage.value =
             "A livestream connection error occurred. Please try again.";
         }
