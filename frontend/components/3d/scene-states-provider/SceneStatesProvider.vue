@@ -41,7 +41,7 @@ const { autosaveWs } = useAutosaveWs(
   props.workspace,
 );
 
-const { livestreamWs } = useLivestreamWs(
+const { livestreamWs, livestreamError } = useLivestreamWs(
   props.modelId,
   props.workspace,
   runtimeConfig,
@@ -86,6 +86,12 @@ if (baseSceneStates.error != null) {
 if (error.value != null) {
   showError(error.value);
 }
+
+watch(livestreamError, (err) => {
+  if (err) {
+    console.error("Livestream error:", err);
+  }
+});
 </script>
 
 <template>
