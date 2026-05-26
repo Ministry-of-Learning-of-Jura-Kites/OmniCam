@@ -206,6 +206,7 @@ function close() {
                 variant="outline"
                 role="combobox"
                 :aria-expanded="openCombobox"
+                :aria-controls="'camera-combobox'"
                 class="w-full justify-between font-normal"
                 :disabled="isLoading"
               >
@@ -223,6 +224,7 @@ function close() {
             </PopoverTrigger>
 
             <PopoverContent
+              :id="'camera-combobox'"
               class="p-0"
               :style="{ width: 'var(--radix-popover-trigger-width)' }"
               align="start"
