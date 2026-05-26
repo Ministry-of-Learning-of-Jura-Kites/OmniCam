@@ -5,6 +5,8 @@ import {
   type LoginRequest,
   type RegisterRequest,
 } from "~/composables/api/use-auth";
+import { isEmail } from "validator";
+import FailDialog from "~/components/dialog/FailDialog.vue";
 
 definePageMeta({
   layout: false,
@@ -16,6 +18,9 @@ const activeTab = ref<"signup" | "signin">("signin");
 const showRegisterPassword = ref(false);
 const showLoginPassword = ref(false);
 const loginErrorMessage = ref("");
+
+const isFailDialogOpen = ref(false);
+const errorMessage = ref("");
 
 const registerFirstNameInput = ref<HTMLInputElement | null>(null);
 const registerLastNameInput = ref<HTMLInputElement | null>(null);
@@ -67,20 +72,21 @@ async function register() {
   ) {
     return;
   }
-
   try {
     await postRegister(registerForm);
     await clearNuxtData("projects-list");
     await navigateTo("/");
-  } catch (err) {
-    console.log(err);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  } catch (err: any) {
+    isFailDialogOpen.value = true;
+    errorMessage.value =
+      err.response["_data"].error || "Registration failed. Please try again.";
   }
 
   return;
 }
 
 async function login() {
-  // console.log(loginForm);
   loginTouched.identifier = true;
   loginTouched.password = true;
 
@@ -91,9 +97,20 @@ async function login() {
     await postLogin(loginForm);
     await clearNuxtData("projects-list");
     await navigateTo("/");
-  } catch (err) {
-    console.log(err);
-    loginErrorMessage.value = "Username or password is incorrect.";
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  } catch (err: any) {
+    if (err.message.includes("Failed to fetch")) {
+      errorMessage.value =
+        "Unable to connect to the server. Please try again later.";
+
+      isFailDialogOpen.value = true;
+      return;
+    }
+
+    if (err.message.includes("Bad Request")) {
+      loginErrorMessage.value =
+        "Invalid credentials. Please check your username/email and password and try again.";
+    }
   }
 
   return;
@@ -120,11 +137,9 @@ function checkPasswordFormat(password: string): boolean {
 
   return hasNumber && hasSymbol;
 }
-
 function checkEmailFormat(email: string): boolean {
-  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+  return isEmail(email);
 }
-
 const errors = computed(() => {
   return {
     firstName:
@@ -208,180 +223,196 @@ watch(
 </script>
 
 <template>
-  <div class="page-wrapper">
-    <div class="container">
-      <div class="container-header">
-        <div
-          class="tab"
-          :class="{ active: activeTab === 'signup' }"
-          @click="activeTab = 'signup'"
-        >
-          Sign-Up
-        </div>
-        <div
-          class="tab"
-          :class="{ active: activeTab === 'signin' }"
-          @click="activeTab = 'signin'"
-        >
-          Sign-In
-        </div>
-      </div>
-
-      <div class="container-body">
-        <transition name="fade" mode="out-in">
-          <!-- Sign-Up Form -->
+  <div>
+    <div class="page-wrapper">
+      <div class="container">
+        <div class="container-header">
           <div
-            v-if="activeTab === 'signup'"
-            key="signup"
-            class="form-container"
+            class="tab"
+            :class="{ active: activeTab === 'signup' }"
+            @click="activeTab = 'signup'"
           >
-            <div class="form-group">
-              <label>First Name <span class="required">*</span></label>
-              <input
-                ref="registerFirstNameInput"
-                v-model="registerForm.firstName"
-                type="text"
-                placeholder="First Name"
-                @blur="markTouched('firstName')"
-                @keydown.enter.prevent="handleRegisterEnter('lastName')"
-              />
-              <p v-if="errors.firstName" class="text-red-600">
-                {{ errors.firstName }}
-              </p>
-            </div>
-
-            <div class="form-group">
-              <label>Last Name <span class="required">*</span></label>
-              <input
-                ref="registerLastNameInput"
-                v-model="registerForm.lastName"
-                type="text"
-                placeholder="Last Name"
-                @blur="markTouched('lastName')"
-                @keydown.enter.prevent="handleRegisterEnter('username')"
-              />
-              <p v-if="errors.lastName" class="text-red-600">
-                {{ errors.lastName }}
-              </p>
-            </div>
-
-            <div class="form-group">
-              <label>Username <span class="required">*</span></label>
-              <input
-                ref="registerUsernameInput"
-                v-model="registerForm.username"
-                type="text"
-                placeholder="Username"
-                @blur="markTouched('username')"
-                @keydown.enter.prevent="handleRegisterEnter('email')"
-              />
-              <p v-if="errors.username" class="text-red-600">
-                {{ errors.username }}
-              </p>
-            </div>
-
-            <div class="form-group">
-              <label>Email <span class="required">*</span></label>
-              <input
-                ref="registerEmailInput"
-                v-model="registerForm.email"
-                type="email"
-                placeholder="Email"
-                @blur="markTouched('email')"
-                @keydown.enter.prevent="handleRegisterEnter('password')"
-              />
-              <p v-if="errors.email" class="text-red-600">{{ errors.email }}</p>
-            </div>
-
-            <div class="form-group">
-              <label>Password <span class="required">*</span></label>
-              <div class="password-wrapper">
-                <input
-                  ref="registerPasswordInput"
-                  v-model="registerForm.password"
-                  :type="showRegisterPassword ? 'text' : 'password'"
-                  placeholder="Password"
-                  @blur="markTouched('password')"
-                  @keydown.enter.prevent="handleRegisterEnter('submit')"
-                />
-                <button
-                  type="button"
-                  class="password-toggle"
-                  :aria-label="
-                    showRegisterPassword ? 'Hide password' : 'Show password'
-                  "
-                  @click="showRegisterPassword = !showRegisterPassword"
-                >
-                  <EyeOff v-if="showRegisterPassword" class="password-icon" />
-                  <Eye v-else class="password-icon" />
-                </button>
-              </div>
-              <p v-if="errors.password" class="text-red-600">
-                {{ errors.password }}
-              </p>
-            </div>
-
-            <button :disabled="!isDirty" @click.prevent="register">
-              Sign Up
-            </button>
+            Sign-Up
           </div>
+          <div
+            class="tab"
+            :class="{ active: activeTab === 'signin' }"
+            @click="activeTab = 'signin'"
+          >
+            Sign-In
+          </div>
+        </div>
 
-          <!-- Sign-In Form (unchanged) -->
-          <div v-else key="signin" class="form-container">
-            <div class="form-group">
-              <label>Identifier <span class="required">*</span></label>
-              <input
-                ref="loginIdentifierInput"
-                v-model="loginForm.identifier"
-                type="text"
-                placeholder="Email or Username"
-                required
-                @blur="markLoginTouched('identifier')"
-                @keydown.enter.prevent="handleLoginEnter('password')"
-              />
-              <p v-if="loginErrors.identifier" class="text-red-600">
-                {{ loginErrors.identifier }}
-              </p>
+        <div class="container-body">
+          <transition name="fade" mode="out-in">
+            <!-- Sign-Up Form -->
+            <div
+              v-if="activeTab === 'signup'"
+              key="signup"
+              class="form-container"
+            >
+              <div class="form-group">
+                <label>First Name <span class="required">*</span></label>
+                <input
+                  ref="registerFirstNameInput"
+                  v-model="registerForm.firstName"
+                  type="text"
+                  placeholder="First Name"
+                  @blur="markTouched('firstName')"
+                  @keydown.enter.prevent="handleRegisterEnter('lastName')"
+                />
+                <p v-if="errors.firstName" class="text-red-600">
+                  {{ errors.firstName }}
+                </p>
+              </div>
+
+              <div class="form-group">
+                <label>Last Name <span class="required">*</span></label>
+                <input
+                  ref="registerLastNameInput"
+                  v-model="registerForm.lastName"
+                  type="text"
+                  placeholder="Last Name"
+                  @blur="markTouched('lastName')"
+                  @keydown.enter.prevent="handleRegisterEnter('username')"
+                />
+                <p v-if="errors.lastName" class="text-red-600">
+                  {{ errors.lastName }}
+                </p>
+              </div>
+
+              <div class="form-group">
+                <label>Username <span class="required">*</span></label>
+                <input
+                  ref="registerUsernameInput"
+                  v-model="registerForm.username"
+                  type="text"
+                  placeholder="Username"
+                  @blur="markTouched('username')"
+                  @keydown.enter.prevent="handleRegisterEnter('email')"
+                />
+                <p v-if="errors.username" class="text-red-600">
+                  {{ errors.username }}
+                </p>
+              </div>
+
+              <div class="form-group">
+                <label>Email <span class="required">*</span></label>
+                <input
+                  ref="registerEmailInput"
+                  v-model="registerForm.email"
+                  type="email"
+                  placeholder="Email"
+                  @blur="markTouched('email')"
+                  @keydown.enter.prevent="handleRegisterEnter('password')"
+                />
+                <p v-if="errors.email" class="text-red-600">
+                  {{ errors.email }}
+                </p>
+              </div>
+
+              <div class="form-group">
+                <label>Password <span class="required">*</span></label>
+                <div class="password-wrapper">
+                  <input
+                    ref="registerPasswordInput"
+                    v-model="registerForm.password"
+                    :type="showRegisterPassword ? 'text' : 'password'"
+                    placeholder="Password"
+                    @blur="markTouched('password')"
+                    @keydown.enter.prevent="handleRegisterEnter('submit')"
+                  />
+                  <button
+                    type="button"
+                    class="password-toggle"
+                    :aria-label="
+                      showRegisterPassword ? 'Hide password' : 'Show password'
+                    "
+                    @click="showRegisterPassword = !showRegisterPassword"
+                  >
+                    <EyeOff v-if="showRegisterPassword" class="password-icon" />
+                    <Eye v-else class="password-icon" />
+                  </button>
+                </div>
+                <p v-if="errors.password" class="text-red-600">
+                  {{ errors.password }}
+                </p>
+              </div>
+
+              <button :disabled="!isDirty" @click.prevent="register">
+                Sign Up
+              </button>
             </div>
 
-            <div class="form-group">
-              <label>Password <span class="required">*</span></label>
-              <div class="password-wrapper">
+            <!-- Sign-In Form (unchanged) -->
+            <div v-else key="signin" class="form-container">
+              <div class="form-group">
+                <label>Identifier <span class="required">*</span></label>
                 <input
-                  ref="loginPasswordInput"
-                  v-model="loginForm.password"
-                  :type="showLoginPassword ? 'text' : 'password'"
-                  placeholder="Password"
+                  ref="loginIdentifierInput"
+                  v-model="loginForm.identifier"
+                  type="text"
+                  placeholder="Email or Username"
                   required
-                  @blur="markLoginTouched('password')"
-                  @keydown.enter.prevent="handleLoginEnter('submit')"
+                  @blur="markLoginTouched('identifier')"
+                  @keydown.enter.prevent="handleLoginEnter('password')"
                 />
-                <button
-                  type="button"
-                  class="password-toggle"
-                  :aria-label="
-                    showLoginPassword ? 'Hide password' : 'Show password'
-                  "
-                  @click="showLoginPassword = !showLoginPassword"
-                >
-                  <EyeOff v-if="showLoginPassword" class="password-icon" />
-                  <Eye v-else class="password-icon" />
-                </button>
+                <p v-if="loginErrors.identifier" class="text-red-600">
+                  {{ loginErrors.identifier }}
+                </p>
               </div>
-              <p v-if="loginErrors.password" class="text-red-600">
-                {{ loginErrors.password }}
+
+              <div class="form-group">
+                <label>Password <span class="required">*</span></label>
+                <div class="password-wrapper">
+                  <input
+                    ref="loginPasswordInput"
+                    v-model="loginForm.password"
+                    :type="showLoginPassword ? 'text' : 'password'"
+                    placeholder="Password"
+                    required
+                    @blur="markLoginTouched('password')"
+                    @keydown.enter.prevent="handleLoginEnter('submit')"
+                  />
+                  <button
+                    type="button"
+                    class="password-toggle"
+                    :aria-label="
+                      showLoginPassword ? 'Hide password' : 'Show password'
+                    "
+                    @click="showLoginPassword = !showLoginPassword"
+                  >
+                    <EyeOff v-if="showLoginPassword" class="password-icon" />
+                    <Eye v-else class="password-icon" />
+                  </button>
+                </div>
+                <p v-if="loginErrors.password" class="text-red-600">
+                  {{ loginErrors.password }}
+                </p>
+              </div>
+
+              <p v-if="loginErrorMessage" class="text-red-600 text-sm mb-3">
+                {{ loginErrorMessage }}
               </p>
+
+              <button @click.prevent="login">Sign In</button>
             </div>
-
-            <p v-if="loginErrorMessage" class="text-red-600 text-sm mb-3">
-              {{ loginErrorMessage }}
-            </p>
-
-            <button @click.prevent="login">Sign In</button>
-          </div>
-        </transition>
+          </transition>
+        </div>
       </div>
     </div>
+    <FailDialog
+      :open="isFailDialogOpen"
+      icon="fa fa-times-circle"
+      :message="
+        errorMessage === 'failed to create user'
+          ? 'Unable to create account. The username or email may already be in use, or the server may be temporarily unavailable. Please try again.'
+          : errorMessage
+      "
+      :have-return-button="false"
+      @close-all="isFailDialogOpen = false"
+      @return-to-form="isFailDialogOpen = false"
+    />
   </div>
 </template>
 

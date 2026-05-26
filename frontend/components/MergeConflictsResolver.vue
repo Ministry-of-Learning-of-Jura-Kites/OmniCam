@@ -28,6 +28,9 @@ const conflictKeys = computed(() =>
     }),
   ),
 );
+//
+const isFailDialogOpen = ref<boolean>(false);
+const failDialogMessage = ref<string>("");
 
 // local selection state: 'main' | 'workspace' | 'manual'
 const selected = reactive<Record<string, "main" | "workspace" | "manual">>({});
@@ -49,7 +52,6 @@ watch(
   () => props.conflicts,
   (newVal) => {
     for (const key of Object.keys(newVal || {})) {
-      // default pick: if Main equals Workspace -> pick it; else prefer Workspace
       const item = newVal[key];
       if (deepEqual(item?.Main, item?.Workspace)) {
         selected[key] = "main";
@@ -110,7 +112,6 @@ async function applyAll() {
   // const results: { path: string; value: any }[] = [];
   const results: Record<string, Record<string, any>> = {};
   let hasError = false;
-
   for (const camId in conflictKeys.value) {
     for (const key of conflictKeys.value[camId]!) {
       const choice = selected[key];
@@ -140,8 +141,9 @@ async function applyAll() {
   }
 
   if (hasError) {
-    // keep dialog open and show errors
-    // TODO! Handle errors
+    console.error("Manual edit errors: ", manualErrors);
+    isFailDialogOpen.value = true;
+    failDialogMessage.value = "Please fix manual edit errors before applying.";
     return;
   }
 

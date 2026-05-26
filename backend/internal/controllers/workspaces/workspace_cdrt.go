@@ -178,13 +178,12 @@ func validateCamera(actualConflicts, merged map[CamProperty]any, depth uint8) er
 	if depth >= MaxMergeDepth {
 		return fmt.Errorf("Invalid depth")
 	}
-	for key, conflict := range actualConflicts {
-		requestConflict, ok := merged[key]
+	for key, requestConflict := range merged {
+		conflict, ok := actualConflicts[key]
 		if !ok {
-			return fmt.Errorf("Missing field %s", key)
+			return fmt.Errorf("Field %s is not a conflict", key)
 		}
 		castedRequest, ok := requestConflict.(map[CamProperty]any)
-		// If is leaf
 		if !ok {
 			if _, ok := conflict.(FieldConflict); !ok {
 				return fmt.Errorf("Not expecting leaf on %s", key)
@@ -294,7 +293,19 @@ func (t *WorkspaceRoute) postResolveWorkspaceMe(c *gin.Context) {
 
 	merged, conflicts := mergeAllCameras(baseCameras, modelCameras, workspaceCameras)
 
-	if err := validateResolve(conflicts, resolveRequest.Merged); err != nil {
+	// if err := validateResolve(conflicts, resolveRequest.Merged); err != nil {
+	// 	c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+	// 	return
+	// }
+
+	filteredConflicts := make(map[messages_cameras.CamId]map[CamProperty]any)
+	for camId := range resolveRequest.Merged {
+		if conflict, ok := conflicts[camId]; ok {
+			filteredConflicts[camId] = conflict
+		}
+	}
+
+	if err := validateResolve(filteredConflicts, resolveRequest.Merged); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
