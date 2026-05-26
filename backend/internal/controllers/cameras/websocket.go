@@ -277,8 +277,10 @@ func (t *UpdateEventRoute) sendOptimizeInternalError(conn *websocket.Conn, jobId
 	resp := &protobufs.OptimizationEventResp{
 		JobId: jobId,
 		Payload: &protobufs.OptimizationEventResp_ErrorResp{
-			ErrorResp: &protobufs.ErrorOptimizationEventResp{
-				Error: "INTERNAL_ERROR",
+			ErrorResp: &protobufs.EventError{
+				Error: &protobufs.EventError_InternalError{
+					InternalError: &protobufs.SimpleError{},
+				},
 			},
 		},
 	}
@@ -413,13 +415,39 @@ func (t *UpdateEventRoute) getLivestream(c *gin.Context) {
 		sub, err := t.Nc.Subscribe(subject, func(msg *nats.Msg) {
 			sendData(msg.Data)
 		})
+		err = fmt.Errorf("forced error for testing")
 		if err != nil {
-			// TODO: Error
+			// time.Sleep(3 * time.Second)
+			t.Logger.Error("fail to send message", zap.Error(err), zap.String("subject", subject))
+
+			resp := &protobufs.LivestreamBroadcast{
+				Event: &protobufs.LivestreamBroadcast_Error{
+					Error: &protobufs.EventError{
+						Error: &protobufs.EventError_InternalError{
+							InternalError: &protobufs.SimpleError{},
+						},
+					},
+				},
+			}
+
+			dataBytes, err := proto.Marshal(resp)
+
+			if err != nil {
+				t.Logger.Error("error while marshalling response", zap.Error(err))
+				return
+			}
+			conn.WriteMessage(websocket.BinaryMessage, dataBytes)
+			return
 		}
 
 		<-c.Done()
 
-		sub.Drain()
+		if err := sub.Drain(); err != nil {
+			t.Logger.Error("error draining NATS subscription",
+				zap.Error(err),
+				zap.String("subject", subject),
+			)
+		}
 	}()
 }
 
@@ -505,7 +533,13 @@ func (t *UpdateEventRoute) getAutosave(c *gin.Context) {
 			switch casted := msg.Event.(type) {
 			case *protobufs.WorkspaceEventRequest_Autosave:
 				t.handleAutosaveEvent(e, &currentVersion, casted.Autosave)
-				t.Nc.Publish(e.Subject, rawMsg)
+
+				broadcast, _ := proto.Marshal(&protobufs.LivestreamBroadcast{
+					Event: &protobufs.LivestreamBroadcast_Autosave{
+						Autosave: casted.Autosave,
+					},
+				})
+				t.Nc.Publish(e.Subject, broadcast)
 			case *protobufs.WorkspaceEventRequest_Optimize:
 				go func() {
 					t.handleOptimizeEvent(projectId, modelId, conn, casted.Optimize)
