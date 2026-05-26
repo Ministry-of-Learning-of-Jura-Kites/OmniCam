@@ -159,8 +159,6 @@ async function applyAll() {
     console.log("Manual edit errors: ", hasError, manualErrors);
     isFailDialogOpen.value = true;
     failDialogMessage.value = "Please fix manual edit errors before applying.";
-    // keep dialog open and show errors
-    // TODO! Handle errors
     return;
   }
 

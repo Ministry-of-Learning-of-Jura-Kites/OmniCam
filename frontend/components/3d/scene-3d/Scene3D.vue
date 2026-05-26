@@ -621,10 +621,6 @@ function handleFailCloseAll() {
   isFailedDialogOpen.value = false;
 }
 
-watch(isFailedDialogOpen, () => {
-  console.log("it in");
-});
-
 function handleGoBack() {
   router.back();
 }
