@@ -27,7 +27,7 @@ func main() {
 		logger.Fatal("Error while connecting to nats", zap.Error(err))
 	}
 
-	client_db := db_client.InitDatabase(env, logger)
+	clientDB := db_client.InitDatabase(env, logger)
 
 	router := gin.Default()
 
@@ -52,7 +52,7 @@ func main() {
 		Logger: logger,
 		Env:    env,
 		Nc:     nc,
-		DB:     client_db,
+		DB:     clientDB,
 	}, apiV1)
 
 	router.Run()

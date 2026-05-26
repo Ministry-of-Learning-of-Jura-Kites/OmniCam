@@ -35,14 +35,27 @@ message SuccessOptimizationEventResp {
   repeated Camera cameras = 1;
 }
 
-message ErrorOptimizationEventResp {
-  string error = 1;
+message SimpleError {}
+
+message DetailedError {
+  string message = 1;
+}
+
+message EventError {
+  oneof error {
+    SimpleError unknown = 1;
+    SimpleError connection_lost = 2;
+    SimpleError timeout = 3;
+    SimpleError internal_error = 4;
+    SimpleError service_unavailable = 5;
+    DetailedError invalid_request = 6;
+  }
 }
 
 message OptimizationEventResp {
   string job_id = 1;
   oneof payload {
     SuccessOptimizationEventResp success_resp = 2;
-    ErrorOptimizationEventResp   error_resp   = 3;
+    EventError error_resp = 3;
   }
 }

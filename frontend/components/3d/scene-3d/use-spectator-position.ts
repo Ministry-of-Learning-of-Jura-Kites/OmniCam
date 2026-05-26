@@ -115,7 +115,6 @@ export function useSpectatorPosition(
         case "KeyX":
           deltaVec.y = -multiplier;
           break;
-          break;
         default:
           break;
       }

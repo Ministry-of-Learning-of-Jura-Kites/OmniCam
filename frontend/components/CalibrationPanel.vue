@@ -95,9 +95,10 @@ const resetCalibration = () => {
           </CardHeader>
           <CardContent class="space-y-1">
             <div class="space-y-2">
-              <Label>Grid Size in Real World (cm)</Label>
+              <Label for="real-world-size">Grid Size in Real World (cm)</Label>
               <div class="flex items-center gap-2">
                 <Input
+                  id="real-world-size"
                   v-model.number="realWorldSizeCm"
                   type="number"
                   placeholder="e.g., 100"

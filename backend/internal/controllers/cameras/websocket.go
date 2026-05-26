@@ -20,6 +20,7 @@ import (
 	db_client "omnicam.com/backend/pkg/db"
 	db_sqlc_gen "omnicam.com/backend/pkg/db/sqlc-gen"
 	messages_cameras "omnicam.com/backend/pkg/messages/cameras"
+	messages_errors "omnicam.com/backend/pkg/messages/errors"
 	"omnicam.com/backend/pkg/messages/protobufs"
 	messsages_trapezoids "omnicam.com/backend/pkg/messages/trapezoids"
 )
@@ -276,8 +277,10 @@ func (t *UpdateEventRoute) sendOptimizeInternalError(conn *websocket.Conn, jobId
 	resp := &protobufs.OptimizationEventResp{
 		JobId: jobId,
 		Payload: &protobufs.OptimizationEventResp_ErrorResp{
-			ErrorResp: &protobufs.ErrorOptimizationEventResp{
-				Error: "INTERNAL_ERROR",
+			ErrorResp: &protobufs.EventError{
+				Error: &protobufs.EventError_InternalError{
+					InternalError: &protobufs.SimpleError{},
+				},
 			},
 		},
 	}
@@ -358,8 +361,8 @@ func (t *UpdateEventRoute) getLivestream(c *gin.Context) {
 	strModelId := c.Param("modelId")
 	modelId, err := utils.ParseUuidBase64(strModelId)
 	if err != nil {
-		t.Logger.Error("error while converting str id to uuid", zap.Error(err))
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid model ID"})
+		t.Logger.Error(messages_errors.ErrorWhileConvertToUUID, zap.Error(err))
+		c.JSON(http.StatusBadRequest, gin.H{"error": messages_errors.InvalidModelID})
 		return
 	}
 
@@ -367,8 +370,8 @@ func (t *UpdateEventRoute) getLivestream(c *gin.Context) {
 	strWorkspaceOwnerId := c.Param("workspaceOwnerId")
 	workspaceOwnerId, err := utils.ParseUuidBase64(strWorkspaceOwnerId)
 	if err != nil {
-		t.Logger.Error("error while converting str id to uuid", zap.Error(err))
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid model ID"})
+		t.Logger.Error(messages_errors.ErrorWhileConvertToUUID, zap.Error(err))
+		c.JSON(http.StatusBadRequest, gin.H{"error": messages_errors.InvalidModelID})
 		return
 	}
 
@@ -413,12 +416,36 @@ func (t *UpdateEventRoute) getLivestream(c *gin.Context) {
 			sendData(msg.Data)
 		})
 		if err != nil {
-			// TODO: Error
+			t.Logger.Error("fail to send message", zap.Error(err), zap.String("subject", subject))
+
+			resp := &protobufs.LivestreamBroadcast{
+				Event: &protobufs.LivestreamBroadcast_Error{
+					Error: &protobufs.EventError{
+						Error: &protobufs.EventError_InternalError{
+							InternalError: &protobufs.SimpleError{},
+						},
+					},
+				},
+			}
+
+			dataBytes, err := proto.Marshal(resp)
+
+			if err != nil {
+				t.Logger.Error("error while marshalling response", zap.Error(err))
+				return
+			}
+			conn.WriteMessage(websocket.BinaryMessage, dataBytes)
+			return
 		}
 
 		<-c.Done()
 
-		sub.Drain()
+		if err := sub.Drain(); err != nil {
+			t.Logger.Error("error draining NATS subscription",
+				zap.Error(err),
+				zap.String("subject", subject),
+			)
+		}
 	}()
 }
 
@@ -427,16 +454,16 @@ func (t *UpdateEventRoute) getAutosave(c *gin.Context) {
 	strProjectId := c.Param("projectId")
 	projectId, err := utils.ParseUuidBase64(strProjectId)
 	if err != nil {
-		t.Logger.Error("error while converting str id to uuid", zap.Error(err))
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid model ID"})
+		t.Logger.Error(messages_errors.ErrorWhileConvertToUUID, zap.Error(err))
+		c.JSON(http.StatusBadRequest, gin.H{"error": messages_errors.InvalidModelID})
 		return
 	}
 
 	strModelId := c.Param("modelId")
 	modelId, err := utils.ParseUuidBase64(strModelId)
 	if err != nil {
-		t.Logger.Error("error while converting str id to uuid", zap.Error(err))
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid model ID"})
+		t.Logger.Error(messages_errors.ErrorWhileConvertToUUID, zap.Error(err))
+		c.JSON(http.StatusBadRequest, gin.H{"error": messages_errors.InvalidModelID})
 		return
 	}
 
@@ -504,7 +531,13 @@ func (t *UpdateEventRoute) getAutosave(c *gin.Context) {
 			switch casted := msg.Event.(type) {
 			case *protobufs.WorkspaceEventRequest_Autosave:
 				t.handleAutosaveEvent(e, &currentVersion, casted.Autosave)
-				t.Nc.Publish(e.Subject, rawMsg)
+
+				broadcast, _ := proto.Marshal(&protobufs.LivestreamBroadcast{
+					Event: &protobufs.LivestreamBroadcast_Autosave{
+						Autosave: casted.Autosave,
+					},
+				})
+				t.Nc.Publish(e.Subject, broadcast)
 			case *protobufs.WorkspaceEventRequest_Optimize:
 				go func() {
 					t.handleOptimizeEvent(projectId, modelId, conn, casted.Optimize)

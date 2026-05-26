@@ -165,6 +165,8 @@ export function createBaseSceneStates(
     | undefined
   > = ref(undefined);
 
+  const errorLivestreamMessage: Ref<string | null> = ref<string | null>(null);
+
   const currentCamId: Ref<string | null> = ref(null);
 
   const spectatorCameraPosition: Reactive<Vector3> = reactive(
@@ -435,6 +437,7 @@ export function createBaseSceneStates(
     tresCanvasParent,
     websocket: autosaveWebsocket,
     livestreamWebsocket,
+    errorLivestreamMessage,
     cameras,
     error: null,
     markedForCheck,

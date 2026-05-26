@@ -7,6 +7,7 @@ import (
 	"go.uber.org/zap"
 	"omnicam.com/backend/internal/utils"
 	db_sqlc_gen "omnicam.com/backend/pkg/db/sqlc-gen"
+	messages_errors "omnicam.com/backend/pkg/messages/errors"
 )
 
 type RegisterRequest struct {
@@ -37,7 +38,7 @@ func (t *AuthRoute) register(c *gin.Context) {
 	hashedPassword, err := utils.HashPassword(req.Password)
 	if err != nil {
 		t.Logger.Error("failed to hash password", zap.Error(err))
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to create user"})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": messages_errors.FailedToCreateUser})
 		return
 	}
 
@@ -49,8 +50,8 @@ func (t *AuthRoute) register(c *gin.Context) {
 		Password:  []byte(hashedPassword),
 	})
 	if err != nil {
-		t.Logger.Error("failed to create user", zap.Error(err))
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to create user"})
+		t.Logger.Error(messages_errors.FailedToCreateUser, zap.Error(err))
+		c.JSON(http.StatusInternalServerError, gin.H{"error": messages_errors.FailedToCreateUser})
 		return
 	}
 

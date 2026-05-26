@@ -85,5 +85,5 @@ def cost(state: State):
     total_occlusion_cost = 0
 
     for cam_state in state.cameras:
-        total_occlusion_cost += cost_single_cam(state, cam_state)
+        total_occlusion_cost += cost_single_cam(state, cam_state, cam_state.face)
     return total_occlusion_cost
