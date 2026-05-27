@@ -35,6 +35,11 @@ type AppEnv struct {
 	OptiReqTopicPattern string `env:"OPTI_REQ_TOPIC_PATTERN"`
 
 	LivestreamTopicPattern string `env:"LIVESTREAM_TOPIC_PATTERN"`
+	// telemetry (OTEL)
+	OtelServiceName    string `env:"OTEL_SERVICE_NAME"`
+	OtelEnvironment    string `env:"OTEL_ENVIRONMENT"`
+	OtelExportEndpoint string `env:"OTEL_EXPORTER_OTLP_ENDPOINT"`
+	OtelVersion        string `env:"OTEL_SERVICE_VERSION"`
 }
 
 func transformAppEnv(logger *zap.Logger, cfg *AppEnv, isTest bool) {

@@ -20,6 +20,8 @@ import (
 	controller_projects "omnicam.com/backend/internal/controllers/projects"
 	controller_workspaces "omnicam.com/backend/internal/controllers/workspaces"
 	db_client "omnicam.com/backend/pkg/db"
+
+	"go.opentelemetry.io/otel/trace"
 )
 
 type Dependencies struct {
@@ -27,6 +29,7 @@ type Dependencies struct {
 	Env    *config_env.AppEnv
 	DB     *db_client.DB
 	Nc     *nats.Conn
+	Tracer trace.Tracer
 }
 
 func InitRoutes(deps Dependencies, router gin.IRouter) {
@@ -204,6 +207,7 @@ func InitRoutes(deps Dependencies, router gin.IRouter) {
 		Logger: deps.Logger,
 		Env:    deps.Env,
 		DB:     deps.DB,
+		Tracer: deps.Tracer,
 	}
 	fileRoute.InitFileRouter(protectedRoute)
 }
