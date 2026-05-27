@@ -60,6 +60,16 @@ services:
       start_period: 10s
     networks:
       - private_net
+  jaeger:
+    image: jaegertracing/all-in-one:latest
+    container_name: omnicam_jaeger
+    ports:
+      - "16686:16686"
+      - "4317:4317"
+      - "4318:4318"
+    restart: always
+    networks:
+      - private_net
 
   backend:
     build:
