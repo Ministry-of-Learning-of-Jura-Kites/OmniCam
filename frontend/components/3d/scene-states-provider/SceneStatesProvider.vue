@@ -11,6 +11,8 @@ import {
 import { useFetchModel } from "~/composables/api/use-fetch-model-api";
 import { useAutosaveWs } from "~/composables/api/use-autosave-ws";
 import { useLivestreamWs } from "~/composables/api/use-livestream-ws";
+import { AlertCircleIcon } from "lucide-vue-next";
+import DefaultAlert from "~/components/alert/DefaultAlert.vue";
 
 const props = defineProps({
   projectId: {
@@ -35,13 +37,13 @@ const {
   fetch: fetchModel,
 } = useFetchModel(props.projectId, props.modelId, props.workspace);
 
-const { autosaveWs } = useAutosaveWs(
+const { autosaveWs, autosaveAlert } = useAutosaveWs(
   props.projectId,
   props.modelId,
   props.workspace,
 );
 
-const { livestreamWs, livestreamError } = useLivestreamWs(
+const { livestreamWs, livestreamAlert } = useLivestreamWs(
   props.modelId,
   props.workspace,
   runtimeConfig,
@@ -86,14 +88,25 @@ if (baseSceneStates.error != null) {
 if (error.value != null) {
   showError(error.value);
 }
-
-watch(livestreamError, (err) => {
-  if (err) {
-    console.error("Livestream error:", err);
-  }
-});
 </script>
 
 <template>
   <slot v-if="error == undefined" />
+  <DefaultAlert
+    v-if="autosaveAlert"
+    :description-message="autosaveAlert.message"
+    :icon="AlertCircleIcon"
+    :type="autosaveAlert.type"
+    :title="autosaveAlert.title"
+    @close="autosaveAlert = null"
+  />
+
+  <DefaultAlert
+    v-if="livestreamAlert"
+    :description-message="livestreamAlert.message"
+    :icon="AlertCircleIcon"
+    :type="livestreamAlert.type"
+    :title="livestreamAlert.title"
+    @close="livestreamAlert = null"
+  />
 </template>
