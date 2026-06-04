@@ -30,5 +30,6 @@ func (t *WorkspaceRoute) InitRoute(router gin.IRouter) gin.IRouter {
 
 	router.POST("/projects/:projectId/models/:modelId/workspaces/me/resolve", t.postResolveWorkspaceMe)
 	router.POST("/projects/:projectId/models/:modelId/workspaces/me/merge", t.postMergeWorkspace)
+	router.PUT("/projects/:projectId/models/:modelId/workspaces/me/simulation", t.putWorkspaceSimulation)
 	return router
 }

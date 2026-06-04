@@ -46,6 +46,7 @@
     "validator": "^13.15.35",
     "vue": "^3.5.18",
     "vue-router": "^4.5.1",
+    "yuka": "^0.7.8",
     "zod": "^4.0.17"
   },
   "devDependencies": {
@@ -53,6 +54,7 @@
     "@types/node": "^24.6.2",
     "@types/papaparse": "^5.5.2",
     "@types/validator": "^13.15.10",
+    "@types/yuka": "^0.7.4",
     "eslint": "^9.33.0",
     "prettier": "^3.6.2",
     "prettier-plugin-embed": "^0.5.0",

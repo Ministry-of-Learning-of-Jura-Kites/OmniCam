@@ -59,10 +59,12 @@ const runtimeConfig = useRuntimeConfig();
 
 const projectId = route.params.projectId as string;
 const modelId = route.params.modelId as string;
+const workspaceId = route.params.workspaceId as string;
 
 const { postCreateMe, postMerge, deleteWorkspaceMe } = useWorkspaceApi(
   projectId,
   modelId,
+  workspaceId,
   runtimeConfig,
 );
 
@@ -76,11 +78,14 @@ const {
   toggleAlgoPanel,
   togglePanel,
   calibrationPanelInfo,
+  simulationPanelInfo,
   toggleMeasurement,
   isPanelOpen,
 } = inject(PANEL_KEY)!;
 
 const { toggleCalibration } = calibrationPanelInfo;
+
+const { toggleSimulation } = simulationPanelInfo;
 
 // Scenestates can be null to allow skeleton UI
 const sceneStates = inject(SCENE_STATES_KEY);
@@ -519,6 +524,21 @@ function toggleFullscreen() {
             >
             <span v-else class="ml-2 button-span-text">Algo Running...</span>
           </Button>
+
+          <Button
+            class="button-parent"
+            size="sm"
+            variant="outline"
+            :class="{ 'btn-simulation': currentPanel == 'simulation' }"
+            @click="() => toggleSimulation()"
+            ><Cpu class="tb-icon" /><span
+              v-if="currentPanel != 'simulation'"
+              class="ml-2 button-span-text"
+              >Simulation</span
+            ><span v-else class="ml-2 button-span-text"
+              >Simulation Running...</span
+            ></Button
+          >
         </template>
 
         <!-- Optimization Group: candidate cameras pending review -->
@@ -769,6 +789,15 @@ Button {
 
 .btn-measurement:hover {
   background-color: #d97706 !important;
+  opacity: 0.9;
+}
+.btn-simulation {
+  background-color: #8b5cf6 !important; /* purple-500 */
+  color: white !important;
+  border-color: #7c3aed !important;
+}
+.btn-simulation:hover {
+  background-color: #7c3aed !important;
   opacity: 0.9;
 }
 </style>
