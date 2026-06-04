@@ -25,7 +25,9 @@ const cameraConfigs = reactive<CameraConfig[]>([]);
 const errorMsg = ref<string | null>(null);
 
 const faceEntries = computed(() =>
-  Object.entries(sceneStates?.value?.facesManagement.faces ?? {}),
+  Object.entries(sceneStates?.value?.facesManagement.faces ?? {}).filter(
+    ([, face]) => face.type === "coverage",
+  ),
 );
 
 const isAllSelected = computed(() => {
@@ -284,7 +286,7 @@ function submit() {
           <div class="flex items-center gap-2">
             <Checkbox
               :model-value="isAllSelected"
-              @update:model-value="(v) => toggleSelectAll(v === true)"
+              @update:model-value="(v: any) => toggleSelectAll(v === true)"
             />
             <p class="text-sm text-gray-400">
               Selected Target Areas ({{ selectedSize }} / {{ facesCount }})
@@ -330,9 +332,7 @@ function submit() {
         </div>
 
         <div
-          v-for="[id, face] of Object.entries(
-            sceneStates?.facesManagement.faces ?? {},
-          )"
+          v-for="[id, face] in faceEntries"
           :key="id"
           class="mb-3 rounded-lg border border-border bg-muted/20 p-3"
         >

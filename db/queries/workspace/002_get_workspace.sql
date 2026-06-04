@@ -13,6 +13,10 @@ SELECT
     WHEN 'target_area_trapezoids' = ANY (COALESCE(SQLC.NARG(fields)::TEXT[], '{}'::TEXT[])) THEN umw.target_area_trapezoids::JSONB
     ELSE NULL::JSONB
   END AS target_area_trapezoids,
+  CASE
+    WHEN 'simulation' = ANY (COALESCE(SQLC.NARG(fields)::TEXT[], '{}'::TEXT[])) THEN umw.simulation::JSONB
+    ELSE NULL::JSONB
+  END AS simulation,
   umw.scale_factor,
   umw.model_height,
   umw.version,

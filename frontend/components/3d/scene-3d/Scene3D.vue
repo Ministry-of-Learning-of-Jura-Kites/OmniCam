@@ -36,7 +36,6 @@ import type {
 import CameraDirection from "../camera-direction/CameraDirection.vue";
 import MiniCameraScene from "../mini-camera-scene/MiniCameraScene.vue";
 import FailDialog from "~/components/dialog/FailDialog.vue";
-// import { watchDebounced } from "@vueuse/core";
 
 const { isPanelOpen, currentPanel, camPanelInfo } = inject(PANEL_KEY)!;
 const { selectedCamId } = camPanelInfo;
@@ -44,15 +43,22 @@ const { selectedCamId } = camPanelInfo;
 const router = useRouter();
 const route = useRoute();
 
+// check refresh web
+const isHydrated = ref(false);
+
 const selectedFaces = computed(() =>
   Object.entries(
     sceneStates.value!.facesManagement.faces ?? ({} as ProcessedCoverageFace),
   ).filter(
     ([_id, face]) =>
-      !sceneStates.value!.facesManagement.isAllHidden.value && !face.hidden,
+      !sceneStates.value!.facesManagement.isAllHidden.value &&
+      !face.hidden &&
+      face.type !== undefined,
   ),
 );
+
 type Point3 = [number, number, number];
+
 const props = withDefaults(
   defineProps<{
     projectId: string;
@@ -66,8 +72,12 @@ const props = withDefaults(
 
 const isFailedDialogOpen = ref<boolean>(false);
 const failedMessage = ref<string>("");
+
 // line measurement
 const lineMeasurement = ref<InstanceType<typeof LineMeasurement> | null>(null);
+
+// Draft points for coverage area selection (ONE mode only)
+const draftCoveragePoints = ref<Vector3[]>([]);
 
 const config = useRuntimeConfig();
 const sceneStates = inject(SCENE_STATES_KEY)!;
@@ -88,8 +98,6 @@ const { isMapOpen } = inject(MAP_KEY)!;
 
 const COVERAGE_Y_OFFSET = 0.01;
 
-const draftCoveragePoints = ref<Vector3[]>([]);
-
 const aspect = computed(() => {
   const width = sceneStates.value!.currentCam.value.widthRes;
   if (width == 0) return undefined;
@@ -99,7 +107,6 @@ const aspect = computed(() => {
 
 const previewPoints = computed<Point3[]>(() => {
   if (sceneStates.value!.selectionMode.value !== "coverage-area") return [];
-
   return buildDraftCoveragePreview(draftCoveragePoints.value);
 });
 
@@ -107,7 +114,6 @@ const isPreviewing = computed(() => previewPoints.value.length === 4);
 
 const draftPointMarkers = computed<Point3[]>(() => {
   if (sceneStates.value!.selectionMode.value !== "coverage-area") return [];
-
   return draftCoveragePoints.value.map((p) => [p.x, p.y, p.z] as Point3);
 });
 
@@ -136,19 +142,8 @@ function getNextMeasurementColor(): string {
   return MEASUREMENT_PALETTE[used % MEASUREMENT_PALETTE.length]!;
 }
 
-usePromptUnsaved(sceneStates.value!);
-
-useCameraUpdate(sceneStates.value!);
-
-// ── Raycasting & Input Events (Omitted same logic for brevity) ───────
-const raycaster = new Raycaster();
-raycaster.layers.enable(CAMERA_UTILS_LAYER);
-
-const mouse = new Vector2();
-
 function clearDraftCoverageSelection() {
-  draftCoveragePoints.value = [];
-  // sceneStates.value!.tresContext.value?.invalidate?.();
+  draftCoveragePoints.value.length = 0;
 }
 
 function buildDraftCoveragePreview(points: Vector3[]): Point3[] {
@@ -163,19 +158,17 @@ function buildDraftCoveragePreview(points: Vector3[]): Point3[] {
   const p0 = sorted[0]!;
   const p1 = sorted[1]!;
   const p2 = sorted[2]!;
-  // 3 points EXACTLY: Return a triangle (P0 -> P1 -> P2)
+
   if (count === 3) {
     return points.map((p) => [p.x, p.y, p.z] as Point3);
   }
 
   if (count === 4) {
     const p3Raw = sorted[3]!;
-
     const dir = new Vector3().subVectors(p2, p1).normalize();
     const v = new Vector3().subVectors(p3Raw, p0);
     const dot = v.dot(dir);
     const p3 = p0.clone().add(dir.multiplyScalar(dot));
-
     return [p0, p1, p2, p3].map((p) => [p.x, p.y, p.z] as Point3);
   }
 
@@ -216,6 +209,8 @@ function sortPointsConvex(points: Vector3[]): Vector3[] {
 
 function buildCoverageFaceFromPickedPoints(
   points: QuadrilateralVectors,
+  type: "coverage" | "simulation" = "coverage",
+  kind: "start" | "end" = "start",
 ): ProcessedCoverageFace | null {
   if (points.length !== 4) return null;
   const sorted = sortPointsConvex(points);
@@ -225,7 +220,16 @@ function buildCoverageFaceFromPickedPoints(
   const p2 = sorted[2]!;
   const p3Raw = sorted[3]!;
 
-  // 1. Force Trapezoid/Parallelism
+  console.log(
+    "Picked 4 points (sorted):",
+    sorted.map((p, i) => ({
+      i,
+      x: p.x,
+      y: p.y,
+      z: p.z,
+    })),
+  );
+
   const dir = new Vector3().subVectors(p2, p1).normalize();
   const v = new Vector3().subVectors(p3Raw, p0);
   const p3 = p0.clone().add(dir.multiplyScalar(v.dot(dir)));
@@ -233,14 +237,13 @@ function buildCoverageFaceFromPickedPoints(
   const finalPoints = [p0, p1, p2, p3];
   const centerV = averageVector(finalPoints);
 
-  // 2. Initial Normal Calculation (Vector3)
   const e1 = new Vector3().subVectors(p1, p0);
   const e2 = new Vector3().subVectors(p2, p0);
   const finalNormal = new Vector3().crossVectors(e1, e2).normalize();
 
-  // 4. Final Validation
   const width = p0.distanceTo(p1);
   const height = p1.distanceTo(p2);
+
   if (width < 0.05 || height < 0.05) {
     console.error("Face too small, rejecting.");
     return null;
@@ -249,12 +252,126 @@ function buildCoverageFaceFromPickedPoints(
   return {
     ...defaultCoverageFace,
     points: finalPoints.map(threeVector3ToNumbers) as QuadrilateralPoints,
-    normal: finalNormal, // Maintained as Vector3
+    type,
+    kind,
+    normal: finalNormal,
     center: [centerV.x, centerV.y, centerV.z],
   };
 }
 
-function handleMeasurementPointer(event: PointerEvent) {
+usePromptUnsaved(sceneStates.value!);
+useCameraUpdate(sceneStates.value!);
+
+const raycaster = new Raycaster();
+raycaster.layers.enable(CAMERA_UTILS_LAYER);
+
+const mouse = new Vector2();
+
+/**
+ * ✅ UNIFIED POINTER HANDLER - One function, one source of truth
+ * Prevents mode collisions by checking selectionMode FIRST
+ */
+function handleCoverageAreaPointer(event: PointerEvent): boolean {
+  if (sceneStates.value!.selectionMode.value !== "coverage-area") return false;
+
+  const isModifierPressed = event.ctrlKey || event.metaKey;
+  if (!isModifierPressed) return false;
+
+  if (event.type !== "pointerdown" || event.button !== 0) return false;
+
+  const hit = getSurfaceHit(event);
+  if (!hit) return false;
+
+  if (draftCoveragePoints.value.length >= 4) {
+    clearDraftCoverageSelection();
+  }
+
+  draftCoveragePoints.value.push(hit.point.clone());
+
+  if (draftCoveragePoints.value.length === 4) {
+    const face = buildCoverageFaceFromPickedPoints(
+      draftCoveragePoints.value as QuadrilateralVectors,
+    );
+
+    if (face) {
+      face.type = "coverage";
+      sceneStates.value!.facesManagement.add(uuidv4(), face);
+    }
+
+    requestAnimationFrame(clearDraftCoverageSelection);
+    return true;
+  }
+
+  return true;
+}
+
+function handleSimulationAreaPointer(event: PointerEvent): boolean {
+  if (sceneStates.value!.selectionMode.value !== "simulation") return false;
+
+  const isModifierPressed = event.ctrlKey || event.altKey;
+  if (!isModifierPressed) return false;
+
+  if (event.type !== "pointerdown" || event.button !== 0) return false;
+
+  const hit = getSurfaceHit(event);
+  if (!hit) return false;
+
+  // const snapped =
+  //   sceneStates.value!.navmesh.snapToNavmesh(hit.point) ?? hit.point;
+  // console.log("Clicked point:", {
+  //   x: snapped.x,
+  //   y: snapped.y,
+  //   z: snapped.z,
+  // });
+
+  draftCoveragePoints.value.push(hit.point.clone());
+
+  if (draftCoveragePoints.value.length === 4) {
+    const face = buildCoverageFaceFromPickedPoints(
+      draftCoveragePoints.value as QuadrilateralVectors,
+      "simulation",
+      sceneStates.value!.simulationKind.value === "start" ? "start" : "end",
+    );
+
+    if (face) {
+      const kind = face.kind === "start" ? "start" : "end";
+
+      const count =
+        sceneStates.value!.simulation.areas.filter((a) => a.kind === kind)
+          .length + 1;
+
+      face.name = `${kind}-${count}`;
+
+      const id = uuidv4();
+      face.type = "simulation";
+
+      sceneStates.value!.facesManagement.add(id, face);
+      // console.log("before add", face);
+      // sceneStates.value!.simulation.areas.push({
+      //   id,
+      //   name: face.name,
+      //   color: face.color ?? "",
+      //   kind,
+      //   points: face.points,
+      // });
+    }
+
+    console.log("=== AFTER ADD ===");
+
+    Object.entries(sceneStates.value!.facesManagement.faces).forEach(
+      ([id, face]) => {
+        console.log(id, face.type, face.kind);
+      },
+    );
+    requestAnimationFrame(() => {
+      draftCoveragePoints.value = [];
+    });
+  }
+
+  return true;
+}
+
+function handleMeasurementPointer(event: PointerEvent): boolean {
   const measurement = sceneStates.value!.measurement!;
 
   const isModifierPressed = event.ctrlKey || event.altKey;
@@ -271,14 +388,12 @@ function handleMeasurementPointer(event: PointerEvent) {
 
   const point = hit.point.clone();
 
-  // first click
   if (!measurement.draftStartPoint) {
     measurement.draftStartPoint = point;
     return true;
   }
 
   measurement.addLine(measurement.draftStartPoint, point);
-
   measurement.resetDraft();
 
   return true;
@@ -296,7 +411,6 @@ function worldToScreen(position: Vector3) {
 
   const projected = position.clone().project(camera);
 
-  // Point is behind the camera
   if (projected.z > 1) return null;
 
   return {
@@ -342,6 +456,7 @@ function labelLoop() {
 
 onMounted(() => {
   labelRafId = requestAnimationFrame(labelLoop);
+  isHydrated.value = true;
 });
 
 onUnmounted(() => {
@@ -351,46 +466,6 @@ onUnmounted(() => {
   }
 });
 
-function handleCoverageAreaPointer(event: PointerEvent) {
-  if (sceneStates.value!.selectionMode.value !== "coverage-area") return false;
-
-  const isModifierPressed = event.ctrlKey || event.metaKey;
-
-  if (event.type !== "pointerdown" || !isModifierPressed) {
-    return false;
-  }
-
-  if (draftCoveragePoints.value.length >= 4) {
-    clearDraftCoverageSelection();
-  }
-
-  const hit = getSurfaceHit(event);
-
-  if (!hit) return false;
-
-  const forward = new Vector3(0, 0, 1);
-  forward.applyEuler(sceneStates.value!.spectatorCameraRotation!);
-
-  draftCoveragePoints.value = [...draftCoveragePoints.value, hit.point.clone()];
-
-  if (draftCoveragePoints.value.length === 4) {
-    const face = buildCoverageFaceFromPickedPoints(
-      draftCoveragePoints.value as QuadrilateralVectors,
-    );
-
-    if (face) {
-      sceneStates.value!.facesManagement.add(uuidv4(), face);
-    }
-
-    requestAnimationFrame(() => {
-      clearDraftCoverageSelection();
-    });
-
-    return true;
-  }
-
-  return true;
-}
 function getSurfaceHit(
   event: PointerEvent,
 ): { point: Vector3; normal: Vector3 } | null {
@@ -426,6 +501,7 @@ function getSurfaceHit(
       normal: normal,
     };
   }
+
   const worldNormal = hit.face.normal
     .clone()
     .applyMatrix3(new Matrix3().getNormalMatrix(hit.object.matrixWorld))
@@ -452,24 +528,36 @@ function onCanvasKeydown(event: KeyboardEvent) {
 
 function onCanvasPointer(event: PointerEvent) {
   if (!sceneStates.value!.tresContext.value || !perspectiveCamera.value) return;
+
   const ele = sceneStates.value!.tresContext.value.renderer.instance.domElement;
   const rect = ele.getBoundingClientRect();
-  mouse.x = ((event.clientX - rect.left) / rect.width!) * 2 - 1;
-  mouse.y = -((event.clientY - rect.top) / rect.height!) * 2 + 1;
+
+  mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+  mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+
   raycaster.setFromCamera(mouse, perspectiveCamera.value!);
 
+  // Priority 1: Line measurement
   if (lineMeasurement.value?.onPointerEvent(event, raycaster)) return;
 
-  if (sceneStates.value!.selectionMode.value === "coverage-area") {
-    const handled = handleCoverageAreaPointer(event);
-    if (handled) return;
-  }
-  if (currentPanel.value === "measurement") {
-    const handled = handleMeasurementPointer(event);
-    if (handled) return;
+  const mode = sceneStates.value!.selectionMode.value;
+
+  if (mode === "coverage-area") {
+    if (handleCoverageAreaPointer(event)) return;
   }
 
+  if (mode === "simulation") {
+    if (handleSimulationAreaPointer(event)) return;
+  }
+
+  // Priority 4: Measurement panel (ctrl/alt + click)
+  if (currentPanel.value === "measurement") {
+    if (handleMeasurementPointer(event)) return;
+  }
+
+  // Priority 5: Object interaction (cameras, gizmos, etc.)
   const objectsToSearch = [...sceneStates.value!.draggableObjects];
+
   if (event.type === "pointerdown" || event.type === "pointerup") {
     for (const obj of sceneStates.value!.clickableObjects) {
       objectsToSearch.push(obj);
@@ -477,6 +565,7 @@ function onCanvasPointer(event: PointerEvent) {
   }
 
   const intersects = raycaster.intersectObjects(objectsToSearch, false);
+
   if (intersects.length > 0) {
     const foundObj = intersects[0];
     const userData = foundObj?.object.userData as IUserData;
@@ -545,7 +634,6 @@ onMounted(() => {
         "contextmenu",
         (event: Event) => {
           event.preventDefault();
-
           sceneStates.value!.spectatorRotation.onBlur(
             event as unknown as FocusEvent,
           );
@@ -568,10 +656,11 @@ if (config.public.devMode) {
     }
   });
 }
+
 watch(
   () => sceneStates.value!.selectionMode.value,
-  (mode) => {
-    if (mode !== "coverage-area") {
+  (newMode, oldMode) => {
+    if (newMode !== oldMode) {
       clearDraftCoverageSelection();
     }
   },
@@ -595,11 +684,11 @@ function selectCurrentCamShortcut() {
     currentPanel.value = "camera";
   }
 }
+
 watch(
   () => sceneStates.value?.errorLivestreamMessage.value,
   (errorMessage) => {
     if (!errorMessage) return;
-
     isFailedDialogOpen.value = true;
     failedMessage.value = errorMessage;
   },
@@ -613,13 +702,23 @@ watch(
         lineColors[line.id] = getNextMeasurementColor();
       }
     }
-    // clean up removed lines
     for (const id of Object.keys(lineColors)) {
       if (!sceneStates.value!.measurement.lines.find((l) => l.id === id)) {
         delete lineColors[id];
       }
     }
   },
+);
+
+watch(
+  () => sceneStates.value!.modelRef.value,
+  (gltf) => {
+    if (!gltf) return;
+    nextTick(() => {
+      sceneStates.value!.navmesh.buildFromGLTF(gltf);
+    });
+  },
+  { immediate: true },
 );
 
 function handleModelError(msg: string) {
@@ -633,43 +732,8 @@ function handleFailCloseAll() {
 
 function handleGoBack() {
   const projectId = route.params.projectId;
-
   router.push(`/projects/${projectId}`);
 }
-
-// function logRendererMemory(tag = "") {
-//   const renderer = sceneStates.value?.tresContext.value?.renderer
-//     .instance as any;
-
-//   if (!renderer) {
-//     console.warn("Renderer not ready");
-//     return;
-//   }
-
-//   // flush internal render list caches
-//   renderer.renderLists?.dispose?.();
-
-//   const info = renderer.info;
-
-//   console.group(`THREE MEMORY ${tag}`);
-
-//   console.log("Geometries:", info.memory.geometries);
-//   console.log("Textures:", info.memory.textures);
-
-//   // shader programs
-//   console.log("Programs:", info.programs?.length ?? "unknown");
-
-//   console.log("Render Calls:", info.render.calls);
-//   console.log("Triangles:", info.render.triangles);
-//   console.log("Lines:", info.render.lines);
-//   console.log("Points:", info.render.points);
-
-//   console.groupEnd();
-// }
-
-// onMounted(() => {
-//   (window as any).memcheck = logRendererMemory;
-// });
 
 const isShowingCamDirection = computed(() => {
   return (
@@ -870,8 +934,6 @@ const isShowingCamDirection = computed(() => {
 
           <FrustumOverlay />
 
-          <!-- <AxisGizmo /> -->
-
           <Suspense><Environment preset="city" /></Suspense>
           <TresAmbientLight :intensity="0.4" />
           <TresDirectionalLight :position="[10, 10, 5]" :intensity="1" />
@@ -894,7 +956,6 @@ const isShowingCamDirection = computed(() => {
             />
           </Suspense>
 
-          <!-- Grid  1 unit = 1 m -->
           <Grid
             :position="[0, -sceneStates!.calibration.heightOffset, 0]"
             :args="[1, 1]"
@@ -984,7 +1045,6 @@ const isShowingCamDirection = computed(() => {
   background: rgba(0, 0, 0, 0.5);
 }
 
-/* CUSTOM SLIDER STYLING */
 .slider {
   appearance: none;
   width: 100%;
