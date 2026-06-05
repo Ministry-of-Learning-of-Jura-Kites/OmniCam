@@ -44,35 +44,30 @@ const workspaceApi = useWorkspaceApi(
   workspaceId,
   runtimeConfig,
 );
+const populationGroups = computed(
+  () => sceneStates.value?.simulation.populationGroups ?? [],
+);
 
-const populationGroups = computed({
-  get: () => simulation.value.populationGroups,
-  set: (v) => (simulation.value.populationGroups = v),
-});
+const isSimulationRunning = computed(
+  () => sceneStates.value?.isSimulationRunning.isRunning ?? false,
+);
 
 const simulation = computed(() => {
-  const base = sceneStates.value?.simulation;
+  if (!sceneStates.value) return { areas: [], populationGroups: [] };
 
-  if (!base) {
-    return {
-      areas: [],
-      populationGroups: [],
-    };
-  }
-
-  const areas = Object.entries(sceneStates.value!.facesManagement.faces)
+  const areas = Object.entries(sceneStates.value.facesManagement.faces)
     .filter(([, face]) => face.type === "simulation")
     .map(([id, face]) => ({
       id,
       name: face.name,
       color: face.color,
-      kind: face.kind,
+      kind: face.kind, // IMPORTANT
       points: face.points,
     }));
 
   return {
-    ...base,
     areas,
+    populationGroups: sceneStates.value.simulation?.populationGroups ?? [],
   };
 });
 
@@ -89,13 +84,6 @@ const startAreas = computed(() =>
 const endAreas = computed(() =>
   simulation.value.areas.filter((a) => a.kind === "end"),
 );
-watch(startAreas, (newStartAreas) => {
-  console.log("Start areas updated:", newStartAreas);
-});
-
-watch(endAreas, (newEndAreas) => {
-  console.log("End areas updated:", newEndAreas);
-});
 
 type SimulationSelectMode = "none" | "start" | "end";
 
@@ -103,16 +91,26 @@ const simulationSelectMode = ref<SimulationSelectMode>("none");
 
 async function loadSimulation() {
   const workspace = await workspaceApi.getWorkspace(["simulation"]);
+  const sim = workspace.simulation;
+  if (!sim) return;
 
-  sceneStates.value!.simulation.populationGroups =
-    workspace.simulation?.populationGroups ?? [];
+  // Mutate in place — don't replace the reactive object
+  sceneStates.value!.simulation.areas.splice(
+    0,
+    sceneStates.value!.simulation.areas.length,
+    ...(sim.areas ?? []),
+  );
+  sceneStates.value!.simulation.populationGroups.splice(
+    0,
+    sceneStates.value!.simulation.populationGroups.length,
+    ...(sim.populationGroups ?? []),
+  );
 
-  const areas = workspace.simulation?.areas ?? [];
-
-  for (const area of areas) {
-    sceneStates.value!.facesManagement.add(area.id, {
+  const faces = sceneStates.value!.facesManagement;
+  for (const area of sim.areas ?? []) {
+    faces.add(area.id, {
       name: area.name,
-      color: area.color ?? "#22ff88",
+      color: area.color,
       kind: area.kind,
       type: "simulation",
       hidden: false,
@@ -120,9 +118,6 @@ async function loadSimulation() {
       normal: new Vector3(0, 1, 0),
     });
   }
-
-  savedSimulation.value = JSON.stringify(workspace.simulation ?? {});
-  isDirty.value = false;
 }
 function setMode(mode: SimulationSelectMode) {
   simulationSelectMode.value = mode;
@@ -133,12 +128,8 @@ function toggleMode(mode: "start" | "end") {
     simulationSelectMode.value === mode ? "none" : mode;
 }
 
-watch(simulationSelectMode, (newMode) => {
-  console.log("Simulation select mode changed to:", newMode);
-});
-
 function addPopulationGroup() {
-  populationGroups.value.push({
+  sceneStates.value!.simulation.populationGroups.push({
     id: uuidv4(),
     startAreaId: "",
     endAreaId: "",
@@ -149,19 +140,36 @@ function addPopulationGroup() {
 }
 
 function removePopulationGroup(group: PopulationGroup) {
-  const index = populationGroups.value.indexOf(group);
-  if (index !== -1) populationGroups.value.splice(index, 1);
+  const index = sceneStates.value!.simulation.populationGroups.indexOf(group);
+  if (index !== -1)
+    sceneStates.value!.simulation.populationGroups.splice(index, 1);
 }
-
 function deleteArea(id: string) {
   sceneStates.value?.facesManagement.remove(id);
-
-  // sceneStates.value!.simulation.areas =
-  //   sceneStates.value!.simulation.areas.filter((area) => area.id !== id);
 }
 async function saveSimulation() {
-  await workspaceApi.putSimulation(sceneStates.value!.simulation);
+  await workspaceApi.putSimulation({
+    areas: simulation.value.areas.map((a) => ({
+      id: a.id,
+      name: a.name ?? "Unnamed",
+      color: a.color ?? "#22ff88",
+      kind: a.kind ?? "start",
+      points: a.points,
+    })),
+    populationGroups: simulation.value.populationGroups,
+  });
+
+  savedSimulation.value = JSON.stringify(simulation.value);
   isDirty.value = false;
+}
+
+function runSimulation() {
+  console.log(
+    "Toggling simulation running state. Current state:",
+    sceneStates.value!.isSimulationRunning.isRunning,
+  );
+  sceneStates.value!.isSimulationRunning.isRunning =
+    !sceneStates.value!.isSimulationRunning.isRunning;
 }
 
 watch(simulationSelectMode, (mode) => {
@@ -500,9 +508,18 @@ onMounted(async () => {
               Save Simulation
             </Button>
 
-            <Button variant="outline" class="w-full">
+            <Button
+              :variant="'outline'"
+              class="w-full"
+              :class="
+                isSimulationRunning
+                  ? 'border-red-500 text-red-500 hover:bg-red-50'
+                  : ''
+              "
+              @click="runSimulation"
+            >
               <Play class="h-4 w-4 mr-2" />
-              Run Simulation
+              {{ isSimulationRunning ? "Stop Simulation" : "Run Simulation" }}
             </Button>
           </CardContent>
         </Card>

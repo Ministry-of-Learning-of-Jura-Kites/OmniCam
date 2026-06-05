@@ -334,6 +334,10 @@ export function createBaseSceneStates(
     }
   };
 
+  const isSimulationRunning = reactive<{ isRunning: boolean }>({
+    isRunning: false,
+  });
+
   const updateCoverageFaceCorner = (
     faceId: string,
     cornerIndex: number,
@@ -482,6 +486,7 @@ export function createBaseSceneStates(
     navmesh,
     simulationKind,
     simulation,
+    isSimulationRunning,
     miniScene,
   } as const;
 
