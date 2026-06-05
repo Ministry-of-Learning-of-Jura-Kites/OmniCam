@@ -36,6 +36,7 @@ import type {
 import CameraDirection from "../camera-direction/CameraDirection.vue";
 import MiniCameraScene from "../mini-camera-scene/MiniCameraScene.vue";
 import FailDialog from "~/components/dialog/FailDialog.vue";
+import SimulationAgents from "~/components/3d/simulation-agent/simulationAgent.vue";
 
 const { isPanelOpen, currentPanel, camPanelInfo } = inject(PANEL_KEY)!;
 const { selectedCamId } = camPanelInfo;
@@ -316,14 +317,6 @@ function handleSimulationAreaPointer(event: PointerEvent): boolean {
   const hit = getSurfaceHit(event);
   if (!hit) return false;
 
-  // const snapped =
-  //   sceneStates.value!.navmesh.snapToNavmesh(hit.point) ?? hit.point;
-  // console.log("Clicked point:", {
-  //   x: snapped.x,
-  //   y: snapped.y,
-  //   z: snapped.z,
-  // });
-
   draftCoveragePoints.value.push(hit.point.clone());
 
   if (draftCoveragePoints.value.length === 4) {
@@ -346,14 +339,6 @@ function handleSimulationAreaPointer(event: PointerEvent): boolean {
       face.type = "simulation";
 
       sceneStates.value!.facesManagement.add(id, face);
-      // console.log("before add", face);
-      // sceneStates.value!.simulation.areas.push({
-      //   id,
-      //   name: face.name,
-      //   color: face.color ?? "",
-      //   kind,
-      //   points: face.points,
-      // });
     }
 
     console.log("=== AFTER ADD ===");
@@ -540,13 +525,13 @@ function onCanvasPointer(event: PointerEvent) {
   // Priority 1: Line measurement
   if (lineMeasurement.value?.onPointerEvent(event, raycaster)) return;
 
-  const mode = sceneStates.value!.selectionMode.value;
+  // const mode = sceneStates.value!.selectionMode.value;
 
-  if (mode === "coverage-area") {
+  if (currentPanel.value === "algo") {
     if (handleCoverageAreaPointer(event)) return;
   }
 
-  if (mode === "simulation") {
+  if (currentPanel.value === "simulation") {
     if (handleSimulationAreaPointer(event)) return;
   }
 
@@ -947,6 +932,10 @@ const isShowingCamDirection = computed(() => {
             ]"
             :workspace="props.workspace"
           />
+
+          <Suspense v-if="sceneStates!.isSimulationRunning.isRunning">
+            <SimulationAgents />
+          </Suspense>
 
           <Suspense>
             <ModelLoader
