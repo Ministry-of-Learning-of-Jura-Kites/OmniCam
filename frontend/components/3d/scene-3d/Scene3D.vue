@@ -38,7 +38,7 @@ import MiniCameraScene from "../mini-camera-scene/MiniCameraScene.vue";
 import FailDialog from "~/components/dialog/FailDialog.vue";
 import SimulationAgents from "~/components/3d/simulation-agent/simulationAgent.vue";
 import RoutePathLine from "../route-path-line/RoutePathLine.vue";
-import type { DraggingWaypoint } from "~/types/simulation.js";
+import type { DraggingWaypoint } from "~/types/simulation.ts";
 
 const { isPanelOpen, currentPanel, camPanelInfo } = inject(PANEL_KEY)!;
 const { selectedCamId } = camPanelInfo;
