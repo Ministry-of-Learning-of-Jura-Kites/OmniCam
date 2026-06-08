@@ -5,6 +5,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
+	"github.com/nats-io/nats.go"
 	"go.uber.org/zap"
 	config_env "omnicam.com/backend/config"
 
@@ -25,6 +26,7 @@ type Dependencies struct {
 	Logger *zap.Logger
 	Env    *config_env.AppEnv
 	DB     *db_client.DB
+	Nc     *nats.Conn
 }
 
 func InitRoutes(deps Dependencies, router gin.IRouter) {

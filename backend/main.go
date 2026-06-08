@@ -5,7 +5,8 @@ import (
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
-	"go.opentelemetry.io/contrib/instrumentation/github.com/gin-gonic/gin/otelgin"
+	"github.com/nats-io/nats.go"
+	"go.uber.org/zap"
 	config_env "omnicam.com/backend/config"
 	api_routes "omnicam.com/backend/internal/routes"
 	"omnicam.com/backend/internal/utils"
@@ -24,7 +25,10 @@ func main() {
 	clientDB := db_client.InitDatabase(env, logger)
 
 	router := gin.Default()
-	router.Use(otelgin.Middleware(env.OtelServiceName))
+	nc, err := nats.Connect(env.NatsUrl)
+	if err != nil {
+		logger.Fatal("Error while connecting to nats", zap.Error(err))
+	}
 
 	var allowOrigins []string = []string{env.FrontendHost}
 
@@ -47,6 +51,7 @@ func main() {
 		Logger: logger,
 		Env:    env,
 		DB:     clientDB,
+		Nc:     nc,
 	}, apiV1)
 
 	router.Run()
