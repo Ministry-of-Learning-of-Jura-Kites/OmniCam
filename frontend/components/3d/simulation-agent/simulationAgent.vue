@@ -3,7 +3,6 @@ import {
   markRaw,
   shallowRef,
   inject,
-  watchEffect,
   computed,
   onMounted,
   onUnmounted,
@@ -167,8 +166,10 @@ function buildPathFromRoute(
 function disposeAgent(agent: AgentObject) {
   agent.mixer.stopAllAction();
   agent.mixer.uncacheRoot(agent.sceneObject);
+  console.log("im calling here");
 
   if (agent.sceneObject.parent) {
+    console.log("is in here");
     agent.sceneObject.parent.remove(agent.sceneObject);
   }
 }
@@ -313,24 +314,30 @@ function spawnAgents() {
   }
 }
 
-watchEffect(() => {
-  const state = sceneStates.value?.simulationState.value;
+watch(
+  () => sceneStates.value?.simulationState.value,
+  (state) => {
+    console.log("state changed:", state);
+    switch (state) {
+      case "idle":
+        for (const agent of agentObjects.value) {
+          disposeAgent(agent);
+        }
+        agentObjects.value = [];
+        activeAgentByGroup.value = {};
+        progressByGroup.value = {};
+        break;
 
-  switch (state) {
-    case "idle":
-      agentObjects.value = [];
-      activeAgentByGroup.value = {};
-      progressByGroup.value = {};
-      break;
+      case "running":
+        spawnAgents();
+        break;
 
-    case "running":
-      spawnAgents();
-      break;
-
-    case "finished":
-      break;
-  }
-});
+      case "finished":
+        break;
+    }
+  },
+  { immediate: true },
+);
 </script>
 
 <template>
