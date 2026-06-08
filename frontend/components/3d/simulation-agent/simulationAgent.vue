@@ -164,6 +164,15 @@ function buildPathFromRoute(
   return path;
 }
 
+function disposeAgent(agent: AgentObject) {
+  agent.mixer.stopAllAction();
+  agent.mixer.uncacheRoot(agent.sceneObject);
+
+  if (agent.sceneObject.parent) {
+    agent.sceneObject.parent.remove(agent.sceneObject);
+  }
+}
+
 function checkSimulationFinished() {
   const allFinished = population.value.every(
     (group) => (progressByGroup.value[group.id] ?? 0) >= group.count,
@@ -174,6 +183,7 @@ function checkSimulationFinished() {
 }
 
 function finishAgent(agent: AgentObject) {
+  disposeAgent(agent);
   agentObjects.value = agentObjects.value.filter((x) => x.id !== agent.id);
   progressByGroup.value[agent.groupId] =
     (progressByGroup.value[agent.groupId] ?? 0) + 1;

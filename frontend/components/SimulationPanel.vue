@@ -232,20 +232,24 @@ function deleteArea(id: string) {
 }
 
 async function loadSimulation() {
-  isLoadingSimulation.value = true; // ← pause syncRoutes during load
+  isLoadingSimulation.value = true;
 
   try {
     const workspace = await workspaceApi.getWorkspace(["simulation"]);
     const sim = workspace.simulation;
+
     if (!sim) return;
 
-    sceneStates.value!.simulation.areas.splice(
-      0,
-      sceneStates.value!.simulation.areas.length,
-      ...(sim.areas ?? []),
-    );
-
+    // Clear existing faces of type "simulation" first
     const faces = sceneStates.value!.facesManagement;
+    const existingSimFaceIds = Object.entries(faces.faces)
+      .filter(([, face]) => face.type === "simulation")
+      .map(([id]) => id);
+
+    for (const id of existingSimFaceIds) {
+      faces.remove(id);
+    }
+
     for (const area of sim.areas ?? []) {
       faces.add(area.id, {
         name: area.name,
@@ -269,12 +273,11 @@ async function loadSimulation() {
       ...(sim.routes ?? []),
     );
   } finally {
-    isLoadingSimulation.value = false; // ← always re-enable even on error
+    isLoadingSimulation.value = false;
     await nextTick();
-    syncRoutes(); // ← run once after load to fill in any missing combinations
+    syncRoutes();
   }
 }
-
 const activeRoute = computed(() =>
   sceneStates.value?.simulation.routes.find(
     (r) => r.id === activeRouteId.value,
@@ -282,6 +285,11 @@ const activeRoute = computed(() =>
 );
 
 async function saveSimulation() {
+  const validRoutes = simulation.value.routes.filter(
+    (r) => r.segments.length > 0,
+  );
+  const validRouteIds = new Set(validRoutes.map((r) => r.id));
+
   await workspaceApi.putSimulation({
     areas: simulation.value.areas.map((a) => ({
       id: a.id,
@@ -290,8 +298,10 @@ async function saveSimulation() {
       kind: a.kind ?? "start",
       points: a.points,
     })),
-    routes: simulation.value.routes,
-    populationGroups: simulation.value.populationGroups,
+    routes: validRoutes,
+    populationGroups: simulation.value.populationGroups.filter(
+      (g) => g.routeId !== "" && validRouteIds.has(g.routeId),
+    ),
   });
 
   savedSimulation.value = JSON.stringify(simulation.value);
@@ -555,10 +565,30 @@ onMounted(async () => {
           </CardHeader>
 
           <CardContent class="space-y-3">
+            <!-- Route Selection -->
+            <div class="space-y-1">
+              <label class="text-xs text-muted-foreground">
+                Selected Route
+              </label>
+
+              <select v-model="activeRouteId" class="sim-select w-full">
+                <option value="">Select Route</option>
+
+                <option
+                  v-for="path in simulation.routes"
+                  :key="path.id"
+                  :value="path.id"
+                >
+                  {{ path.name }}
+                </option>
+              </select>
+            </div>
+
             <div v-if="activeRoute">
               <div class="border rounded-md p-3 space-y-3 bg-muted/40">
                 <!-- Draw mode buttons -->
                 <div class="text-xs text-muted-foreground">Draw Path</div>
+
                 <div class="flex gap-2">
                   <Button
                     size="sm"
@@ -611,12 +641,14 @@ onMounted(async () => {
                   <div class="text-xs text-muted-foreground">
                     Segments ({{ activeRoute.segments.length }})
                   </div>
+
                   <div
                     v-for="(seg, i) in activeRoute.segments"
                     :key="i"
                     class="flex items-center justify-between text-xs bg-muted rounded px-2 py-1"
                   >
-                    <span class="capitalize">{{ seg.type }} {{ i + 1 }}</span>
+                    <span class="capitalize"> {{ seg.type }} {{ i + 1 }} </span>
+
                     <Button
                       size="icon"
                       variant="ghost"
@@ -638,6 +670,10 @@ onMounted(async () => {
                   Clear Path
                 </Button>
               </div>
+            </div>
+
+            <div v-else class="text-xs text-muted-foreground text-center py-4">
+              Select a route to edit.
             </div>
           </CardContent>
         </Card>

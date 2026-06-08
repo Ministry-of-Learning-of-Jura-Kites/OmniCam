@@ -67,7 +67,7 @@ export function useWorkspaceApi(
       await $fetch(route.simulation(), {
         method: "PUT",
         credentials: "include",
-        body: { simulation },
+        body: { simulation: simulation },
       });
     } catch (err) {
       error.value = err as Error;
