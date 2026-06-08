@@ -59,6 +59,92 @@ func (t *WorkspaceRoute) putWorkspaceSimulation(c *gin.Context) {
 		return
 	}
 
+	routeMap := make(map[string]bool)
+	for _, r := range req.Simulation.Routes {
+		if r.Id == "" {
+			c.JSON(http.StatusBadRequest, gin.H{
+				"error": "route id cannot be empty",
+			})
+			return
+		}
+		routeMap[r.Id] = true
+	}
+
+	// Validate population groups reference valid routes
+	for _, g := range req.Simulation.PopulationGroups {
+		if g.RouteId == "" {
+			c.JSON(http.StatusBadRequest, gin.H{
+				"error": "population group routeId cannot be empty",
+			})
+			return
+		}
+
+		if !routeMap[g.RouteId] {
+			c.JSON(http.StatusBadRequest, gin.H{
+				"error": "invalid routeId in population group",
+			})
+			return
+		}
+	}
+
+	areaMap := make(map[string]bool)
+	for _, a := range req.Simulation.Areas {
+		if a.Id == "" {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "area id cannot be empty"})
+			return
+		}
+		if a.Name == "" {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "area name cannot be empty"})
+			return
+		}
+		if a.Kind != "start" && a.Kind != "end" {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid area kind"})
+			return
+		}
+		areaMap[a.Id] = true
+	}
+
+	// Validate routes reference existing areas + have segments
+	for _, r := range req.Simulation.Routes {
+		if r.StartAreaId == "" || r.EndAreaId == "" {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "route must have startAreaId and endAreaId"})
+			return
+		}
+		if !areaMap[r.StartAreaId] {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid startAreaId in route"})
+			return
+		}
+		if !areaMap[r.EndAreaId] {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid endAreaId in route"})
+			return
+		}
+
+		if len(r.Segments) == 0 {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "route must have at least one segment"})
+			return
+		}
+
+		for _, seg := range r.Segments {
+			if seg.Type != "line" && seg.Type != "bezier" {
+				c.JSON(http.StatusBadRequest, gin.H{"error": "invalid segment type"})
+				return
+			}
+			if len(seg.Points) == 0 {
+				c.JSON(http.StatusBadRequest, gin.H{"error": "segment must have points"})
+				return
+			}
+			// Optional: stricter point count
+			if seg.Type == "line" && len(seg.Points) != 2 {
+				c.JSON(http.StatusBadRequest, gin.H{"error": "line segment must have exactly 2 points"})
+				return
+			}
+			if seg.Type == "bezier" && len(seg.Points) != 4 {
+				c.JSON(http.StatusBadRequest, gin.H{"error": "bezier segment must have exactly 4 points"})
+				return
+			}
+		}
+	}
+
 	simulationJson, err := json.Marshal(req.Simulation)
 	if err != nil {
 		t.Logger.Error(

@@ -26,8 +26,8 @@ import type { WorkspaceEventResponse } from "~/messages/protobufs/workspace_even
 import { useLivestream } from "../scene-3d/use-livestream";
 import { arrayPointsToNormal } from "~/utils/face-helper/get-avg-normal";
 import { v4 as uuidv4 } from "uuid";
-import { useNavmesh } from "../scene-3d/use-navmesh";
-import type { Simulation } from "~/types/simulation";
+import type { Simulation, SimulationState } from "~/types/simulation";
+// import type { NavMesh, Crowd } from "recast-navigation";
 
 export type SimulationFaceKind = "start" | "end";
 export interface ProcessedCoverageFace {
@@ -170,13 +170,25 @@ export function createBaseSceneStates(
     | undefined
   > = ref(undefined);
 
-  const navmesh = useNavmesh();
+  // const navMesh = ref<NavMesh | null>(null);
+  // const crowd = ref<Crowd | null>(null);
 
   const simulationKind = ref<SimulationFaceKind>("start");
+
+  const routeDrawing = reactive<{
+    activeRouteId: string | null;
+    mode: "none" | "line" | "bezier";
+    dragging: { segmentIndex: number; pointIndex: number } | null;
+  }>({
+    activeRouteId: null,
+    mode: "none",
+    dragging: null,
+  });
 
   const simulation = reactive<Simulation>({
     areas: [],
     populationGroups: [],
+    routes: [],
   });
 
   const errorLivestreamMessage: Ref<string | null> = ref<string | null>(null);
@@ -334,9 +346,7 @@ export function createBaseSceneStates(
     }
   };
 
-  const isSimulationRunning = reactive<{ isRunning: boolean }>({
-    isRunning: false,
-  });
+  const simulationState = ref<SimulationState>("idle");
 
   const updateCoverageFaceCorner = (
     faceId: string,
@@ -483,10 +493,12 @@ export function createBaseSceneStates(
     facesManagement,
     measurement,
     // addAreaFace,
-    navmesh,
+    // navMesh,
+    // crowd,
+    routeDrawing,
     simulationKind,
     simulation,
-    isSimulationRunning,
+    simulationState,
     miniScene,
   } as const;
 

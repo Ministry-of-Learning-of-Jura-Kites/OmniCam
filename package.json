@@ -22,6 +22,10 @@
   "dependencies": {
     "@fortawesome/fontawesome-free": "^7.0.1",
     "@nuxtjs/color-mode": "^3.5.2",
+    "@recast-navigation/core": "^0.43.1",
+    "@recast-navigation/generators": "^0.43.1",
+    "@recast-navigation/three": "^0.43.1",
+    "@recast-navigation/wasm": "^0.43.1",
     "@t3-oss/env-nuxt": "^0.13.8",
     "@tailwindcss/vite": "^4.1.12",
     "@tanstack/vue-table": "^8.21.3",
@@ -35,6 +39,7 @@
     "lucide-vue-next": "^0.541.0",
     "nuxt": "^4.3.1",
     "papaparse": "^5.5.3",
+    "recast-navigation": "^0.43.1",
     "reka-ui": "^2.7.0",
     "shadcn-ui": "^0.9.5",
     "tailwind-merge": "^3.3.1",

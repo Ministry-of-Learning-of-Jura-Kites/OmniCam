@@ -37,6 +37,8 @@ import CameraDirection from "../camera-direction/CameraDirection.vue";
 import MiniCameraScene from "../mini-camera-scene/MiniCameraScene.vue";
 import FailDialog from "~/components/dialog/FailDialog.vue";
 import SimulationAgents from "~/components/3d/simulation-agent/simulationAgent.vue";
+import RoutePathLine from "../route-path-line/RoutePathLine.vue";
+import type { DraggingWaypoint } from "~/types/simulation.js";
 
 const { isPanelOpen, currentPanel, camPanelInfo } = inject(PANEL_KEY)!;
 const { selectedCamId } = camPanelInfo;
@@ -44,6 +46,7 @@ const { selectedCamId } = camPanelInfo;
 const router = useRouter();
 const route = useRoute();
 
+let draggingWaypoint: DraggingWaypoint | null = null;
 // check refresh web
 const isHydrated = ref(false);
 
@@ -268,10 +271,138 @@ raycaster.layers.enable(CAMERA_UTILS_LAYER);
 
 const mouse = new Vector2();
 
-/**
- * ✅ UNIFIED POINTER HANDLER - One function, one source of truth
- * Prevents mode collisions by checking selectionMode FIRST
- */
+// ── Route path drawing ────────────────────────────────────────────
+function handleRouteDrawingPointer(event: PointerEvent): boolean {
+  const rd = sceneStates.value!.routeDrawing;
+  if (rd.mode === "none" || !rd.activeRouteId) return false;
+  if (event.type !== "pointerdown" || event.button !== 0) return false;
+
+  const isModifier = event.ctrlKey || event.altKey;
+  if (!isModifier) return false;
+
+  const hit = getSurfaceHit(event);
+  if (!hit) return false;
+
+  const point: [number, number, number] = [
+    hit.point.x,
+    hit.point.y,
+    hit.point.z,
+  ];
+
+  const route = sceneStates.value!.simulation.routes.find(
+    (r) => r.id === rd.activeRouteId,
+  );
+  if (!route) return false;
+
+  const segments = route.segments;
+  const last = segments[segments.length - 1];
+
+  let tailPoint: [number, number, number];
+
+  if (!last) {
+    // First segment — start from start area centroid
+    const startFaceEntry = Object.entries(
+      sceneStates.value!.facesManagement.faces,
+    ).find(([id]) => id === route.startAreaId);
+
+    if (startFaceEntry) {
+      const pts = startFaceEntry[1].points;
+      tailPoint = [
+        (pts[0][0] + pts[1][0] + pts[2][0] + pts[3][0]) / 4,
+        (pts[0][1] + pts[1][1] + pts[2][1] + pts[3][1]) / 4,
+        (pts[0][2] + pts[1][2] + pts[2][2] + pts[3][2]) / 4,
+      ];
+    } else {
+      tailPoint = point;
+    }
+  } else {
+    tailPoint = last.points[last.points.length - 1] as [number, number, number];
+  }
+
+  if (rd.mode === "line") {
+    segments.push({ type: "line", points: [tailPoint, point] });
+  } else {
+    const mid: [number, number, number] = [
+      (tailPoint[0] + point[0]) / 2,
+      (tailPoint[1] + point[1]) / 2,
+      (tailPoint[2] + point[2]) / 2,
+    ];
+    segments.push({ type: "bezier", points: [tailPoint, mid, point] });
+  }
+
+  return true;
+}
+function handleWaypointDrag(event: PointerEvent): boolean {
+  if (event.type === "pointerdown") {
+    const context = sceneStates.value!.tresContext.value;
+    if (!context) return false;
+
+    const allHits = raycaster.intersectObjects(context.scene.children, true);
+    const hit = allHits.find((h) => h.object.userData?.type === "waypoint");
+
+    if (hit) {
+      draggingWaypoint = {
+        routeId: hit.object.userData.routeId,
+        segmentIndex: hit.object.userData.segmentIndex,
+        pointIndex: hit.object.userData.pointIndex,
+      };
+      // Disable camera rotation while dragging
+      sceneStates.value!.isDraggingObject.value = true;
+      return true;
+    }
+  }
+
+  if (event.type === "pointermove" && draggingWaypoint) {
+    const hit = getSurfaceHit(event);
+    if (!hit) return true;
+
+    const newPoint: [number, number, number] = [
+      hit.point.x,
+      hit.point.y,
+      hit.point.z,
+    ];
+
+    const route = sceneStates.value!.simulation.routes.find(
+      (r) => r.id === draggingWaypoint!.routeId,
+    );
+    if (!route) return true;
+
+    const seg = route.segments[draggingWaypoint.segmentIndex];
+    if (!seg) return true;
+
+    // Update the dragged point
+    seg.points[draggingWaypoint.pointIndex] = newPoint;
+
+    // ── Chain update: keep segments connected ──────────────────
+    // If we moved the END of segment N, update START of segment N+1
+    const isEndPoint = draggingWaypoint.pointIndex === seg.points.length - 1;
+
+    if (isEndPoint) {
+      const nextSeg = route.segments[draggingWaypoint.segmentIndex + 1];
+      if (nextSeg) {
+        nextSeg.points[0] = newPoint;
+      }
+    }
+
+    // If we moved the START of segment N, update END of segment N-1
+    if (draggingWaypoint.pointIndex === 0) {
+      const prevSeg = route.segments[draggingWaypoint.segmentIndex - 1];
+      if (prevSeg) {
+        prevSeg.points[prevSeg.points.length - 1] = newPoint;
+      }
+    }
+
+    return true;
+  }
+
+  if (event.type === "pointerup" && draggingWaypoint) {
+    draggingWaypoint = null;
+    sceneStates.value!.isDraggingObject.value = false;
+    return false; // don't consume pointerup so camera stays responsive
+  }
+
+  return false;
+}
 function handleCoverageAreaPointer(event: PointerEvent): boolean {
   if (sceneStates.value!.selectionMode.value !== "coverage-area") return false;
 
@@ -306,6 +437,22 @@ function handleCoverageAreaPointer(event: PointerEvent): boolean {
   return true;
 }
 
+function getNextAvailableIndex(kind: string) {
+  const used = new Set(
+    Object.values(sceneStates.value!.facesManagement.faces)
+      .filter((f) => f.type === "simulation" && f.kind === kind)
+      .map((f) => {
+        const match = f.name?.match(/-(\d+)$/);
+        return match ? Number(match[1]) : null;
+      })
+      .filter(Boolean),
+  );
+
+  let i = 1;
+  while (used.has(i)) i++;
+  return i;
+}
+
 function handleSimulationAreaPointer(event: PointerEvent): boolean {
   if (sceneStates.value!.selectionMode.value !== "simulation") return false;
 
@@ -329,9 +476,7 @@ function handleSimulationAreaPointer(event: PointerEvent): boolean {
     if (face) {
       const kind = face.kind === "start" ? "start" : "end";
 
-      const count =
-        sceneStates.value!.simulation.areas.filter((a) => a.kind === kind)
-          .length + 1;
+      const count = getNextAvailableIndex(kind);
 
       face.name = `${kind}-${count}`;
 
@@ -532,7 +677,9 @@ function onCanvasPointer(event: PointerEvent) {
   }
 
   if (currentPanel.value === "simulation") {
+    if (handleWaypointDrag(event)) return;
     if (handleSimulationAreaPointer(event)) return;
+    if (handleRouteDrawingPointer(event)) return;
   }
 
   // Priority 4: Measurement panel (ctrl/alt + click)
@@ -695,17 +842,6 @@ watch(
   },
 );
 
-watch(
-  () => sceneStates.value!.modelRef.value,
-  (gltf) => {
-    if (!gltf) return;
-    nextTick(() => {
-      sceneStates.value!.navmesh.buildFromGLTF(gltf);
-    });
-  },
-  { immediate: true },
-);
-
 function handleModelError(msg: string) {
   failedMessage.value = msg;
   isFailedDialogOpen.value = true;
@@ -850,6 +986,8 @@ const isShowingCamDirection = computed(() => {
             :get-surface-hit="getSurfaceHit"
           />
 
+          <RoutePathLine />
+
           <TresPerspectiveCamera
             ref="perspectiveCamera"
             :position="
@@ -933,7 +1071,7 @@ const isShowingCamDirection = computed(() => {
             :workspace="props.workspace"
           />
 
-          <Suspense v-if="sceneStates!.isSimulationRunning.isRunning">
+          <Suspense v-if="sceneStates!.simulationState.value === 'running'">
             <SimulationAgents />
           </Suspense>
 
