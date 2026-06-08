@@ -9,6 +9,7 @@ import (
 type Simulation struct {
 	Areas            []SimulationArea  `json:"areas"`
 	PopulationGroups []PopulationGroup `json:"populationGroups"`
+	Routes           []SimulationRoute `json:"routes"`
 }
 
 type SimulationArea struct {
@@ -22,12 +23,24 @@ type SimulationArea struct {
 type PopulationGroup struct {
 	Id string `json:"id"`
 
-	StartAreaId string `json:"startAreaId"`
-	EndAreaId   string `json:"endAreaId"`
+	RouteId string `json:"routeId"`
 
 	Height float64 `json:"height"`
 	Speed  float64 `json:"speed"`
 	Count  int32   `json:"count"`
+}
+
+type SimulationRoute struct {
+	Id          string         `json:"id"`
+	Name        string         `json:"name"`
+	StartAreaId string         `json:"startAreaId"`
+	EndAreaId   string         `json:"endAreaId"`
+	Segments    []RouteSegment `json:"segments"`
+}
+
+type RouteSegment struct {
+	Type   string       `json:"type"`   // "line" | "bezier"
+	Points [][3]float64 `json:"points"` // 2 or 4 points
 }
 
 type ModelWorkspace struct {
