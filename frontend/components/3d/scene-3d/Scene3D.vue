@@ -102,6 +102,36 @@ const { isMapOpen } = inject(MAP_KEY)!;
 
 const COVERAGE_Y_OFFSET = 0.01;
 
+const simulationFaceLabels = computed(() => {
+  return selectedFaces.value
+    .filter(([_id, face]) => face.type === "simulation" && face.name)
+    .map(([id, face]) => {
+      const pts = face.points;
+      const center = new Vector3(
+        (pts[0][0] + pts[1][0] + pts[2][0] + pts[3][0]) / 4,
+        (pts[0][1] + pts[1][1] + pts[2][1] + pts[3][1]) / 4 + 0.15,
+        (pts[0][2] + pts[1][2] + pts[2][2] + pts[3][2]) / 4,
+      );
+      return { id, name: face.name!, center, kind: face.kind };
+    });
+});
+
+const routeLabelStyles = ref<
+  Record<string, ReturnType<typeof getMeasurementLabelStyle>>
+>({});
+
+const routePathLabels = computed(() => {
+  return sceneStates
+    .value!.simulation.routes.filter((route) => route.segments.length > 0)
+    .map((route) => {
+      // collect all points across all segments
+      const allPoints = route.segments.flatMap((seg) => seg.points);
+      const mid = allPoints[Math.floor(allPoints.length / 2)]!;
+      const center = new Vector3(mid[0], mid[1] + 0.15, mid[2]);
+      return { id: route.id, name: route.name, center };
+    });
+});
+
 const aspect = computed(() => {
   const width = sceneStates.value!.currentCam.value.widthRes;
   if (width == 0) return undefined;
@@ -568,6 +598,7 @@ const labelStyles = ref<
 >({});
 
 function updateLabelStyles() {
+  // existing measurement labels
   if (sceneStates.value?.measurement?.lines?.length) {
     const updated: typeof labelStyles.value = {};
     for (const line of sceneStates.value.measurement.lines) {
@@ -575,7 +606,46 @@ function updateLabelStyles() {
     }
     labelStyles.value = updated;
   }
+
+  // simulation area labels
+  const simUpdated: Record<
+    string,
+    ReturnType<typeof getMeasurementLabelStyle>
+  > = {};
+  for (const face of simulationFaceLabels.value) {
+    const screen = worldToScreen(face.center);
+    simUpdated[face.id] = screen
+      ? {
+          display: "block",
+          left: `${screen.x}px`,
+          top: `${screen.y}px`,
+          transform: "translate(-50%, -50%)",
+        }
+      : { display: "none" };
+  }
+  simLabelStyles.value = simUpdated;
+
+  const routeUpdated: Record<
+    string,
+    ReturnType<typeof getMeasurementLabelStyle>
+  > = {};
+  for (const route of routePathLabels.value) {
+    const screen = worldToScreen(route.center);
+    routeUpdated[route.id] = screen
+      ? {
+          display: "block",
+          left: `${screen.x}px`,
+          top: `${screen.y}px`,
+          transform: "translate(-50%, -50%)",
+        }
+      : { display: "none" };
+  }
+  routeLabelStyles.value = routeUpdated;
 }
+
+const simLabelStyles = ref<
+  Record<string, ReturnType<typeof getMeasurementLabelStyle>>
+>({});
 
 let labelRafId: number | null = null;
 
@@ -1137,6 +1207,35 @@ const isShowingCamDirection = computed(() => {
               class="px-2 py-1 rounded bg-black/70 text-white text-xs whitespace-nowrap border border-white/20"
             >
               {{ line.label }}
+            </div>
+          </div>
+          <div
+            v-for="face in simulationFaceLabels"
+            :key="`sim-label-${face.id}`"
+            class="absolute z-20 pointer-events-none"
+            :style="simLabelStyles[face.id]"
+          >
+            <div
+              class="px-2 py-1 rounded text-xs font-bold whitespace-nowrap border shadow"
+              :class="
+                face.kind === 'start'
+                  ? 'bg-green-900/80 border-green-400 text-green-300'
+                  : 'bg-red-900/80 border-red-400 text-red-300'
+              "
+            >
+              {{ face.name }}
+            </div>
+          </div>
+          <div
+            v-for="path in routePathLabels"
+            :key="`route-label-${path.id}`"
+            class="absolute z-20 pointer-events-none"
+            :style="routeLabelStyles[path.id]"
+          >
+            <div
+              class="px-2 py-1 rounded text-xs font-bold whitespace-nowrap border shadow bg-blue-900/80 border-blue-400 text-blue-300"
+            >
+              {{ path.name }}
             </div>
           </div>
         </div>

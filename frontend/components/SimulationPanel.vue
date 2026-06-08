@@ -288,9 +288,10 @@ async function saveSimulation() {
   const validRoutes = simulation.value.routes.filter(
     (r) => r.segments.length > 0,
   );
+
   const validRouteIds = new Set(validRoutes.map((r) => r.id));
 
-  await workspaceApi.putSimulation({
+  const payload = {
     areas: simulation.value.areas.map((a) => ({
       id: a.id,
       name: a.name ?? "Unnamed",
@@ -302,10 +303,17 @@ async function saveSimulation() {
     populationGroups: simulation.value.populationGroups.filter(
       (g) => g.routeId !== "" && validRouteIds.has(g.routeId),
     ),
-  });
+  };
 
-  savedSimulation.value = JSON.stringify(simulation.value);
-  isDirty.value = false;
+  try {
+    await workspaceApi.putSimulation(payload);
+
+    savedSimulation.value = JSON.stringify(simulation.value);
+    isDirty.value = false;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  } catch (err: any) {
+    console.error(err);
+  }
 }
 
 function setMode(mode: SimulationSelectMode) {
