@@ -1141,8 +1141,10 @@ const isShowingCamDirection = computed(() => {
             :workspace="props.workspace"
           />
 
-          <Suspense v-if="sceneStates!.simulationState.value === 'running'">
-            <SimulationAgents />
+          <Suspense>
+            <SimulationAgents
+              v-show="sceneStates!.simulationState.value === 'running'"
+            />
           </Suspense>
 
           <Suspense>
