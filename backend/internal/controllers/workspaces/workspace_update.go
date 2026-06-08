@@ -138,8 +138,8 @@ func (t *WorkspaceRoute) putWorkspaceSimulation(c *gin.Context) {
 				c.JSON(http.StatusBadRequest, gin.H{"error": "line segment must have exactly 2 points"})
 				return
 			}
-			if seg.Type == "bezier" && len(seg.Points) != 4 {
-				c.JSON(http.StatusBadRequest, gin.H{"error": "bezier segment must have exactly 4 points"})
+			if seg.Type == "bezier" && len(seg.Points) != 3 {
+				c.JSON(http.StatusBadRequest, gin.H{"error": "bezier segment must have exactly 3 points"})
 				return
 			}
 		}

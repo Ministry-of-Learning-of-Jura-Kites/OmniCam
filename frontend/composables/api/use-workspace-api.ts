@@ -61,20 +61,13 @@ export function useWorkspaceApi(
   }
 
   async function putSimulation(simulation: Simulation) {
-    const error = ref<Error | undefined>();
+    console.log("update simulation:", simulation);
 
-    try {
-      await $fetch(route.simulation(), {
-        method: "PUT",
-        credentials: "include",
-        body: { simulation: simulation },
-      });
-    } catch (err) {
-      error.value = err as Error;
-      console.error("putSimulation failed:", err);
-    }
-
-    return { error };
+    return await $fetch(route.simulation(), {
+      method: "PUT",
+      credentials: "include",
+      body: { simulation },
+    });
   }
 
   async function getWorkspace(fields: string[] = []) {
