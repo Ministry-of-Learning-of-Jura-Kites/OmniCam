@@ -6,7 +6,6 @@ import (
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	"go.opentelemetry.io/contrib/instrumentation/github.com/gin-gonic/gin/otelgin"
-	"go.opentelemetry.io/otel"
 	config_env "omnicam.com/backend/config"
 	api_routes "omnicam.com/backend/internal/routes"
 	"omnicam.com/backend/internal/utils"
@@ -48,7 +47,6 @@ func main() {
 		Logger: logger,
 		Env:    env,
 		DB:     clientDB,
-		Tracer: otel.Tracer("omnicam-backend"),
 	}, apiV1)
 
 	router.Run()
