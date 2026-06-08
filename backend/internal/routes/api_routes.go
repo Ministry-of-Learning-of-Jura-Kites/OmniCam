@@ -5,7 +5,6 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
-	"github.com/nats-io/nats.go"
 	"go.uber.org/zap"
 	config_env "omnicam.com/backend/config"
 
@@ -20,16 +19,12 @@ import (
 	controller_projects "omnicam.com/backend/internal/controllers/projects"
 	controller_workspaces "omnicam.com/backend/internal/controllers/workspaces"
 	db_client "omnicam.com/backend/pkg/db"
-
-	"go.opentelemetry.io/otel/trace"
 )
 
 type Dependencies struct {
 	Logger *zap.Logger
 	Env    *config_env.AppEnv
 	DB     *db_client.DB
-	Nc     *nats.Conn
-	Tracer trace.Tracer
 }
 
 func InitRoutes(deps Dependencies, router gin.IRouter) {
@@ -101,7 +96,6 @@ func InitRoutes(deps Dependencies, router gin.IRouter) {
 		Logger: deps.Logger,
 		Env:    deps.Env,
 		DB:     deps.DB,
-		Nc:     deps.Nc,
 		Upgrader: websocket.Upgrader{
 			ReadBufferSize:  1024,
 			WriteBufferSize: 1024,
@@ -207,7 +201,6 @@ func InitRoutes(deps Dependencies, router gin.IRouter) {
 		Logger: deps.Logger,
 		Env:    deps.Env,
 		DB:     deps.DB,
-		Tracer: deps.Tracer,
 	}
 	fileRoute.InitFileRouter(protectedRoute)
 }

@@ -5,10 +5,8 @@ import (
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
-	"github.com/nats-io/nats.go"
 	"go.opentelemetry.io/contrib/instrumentation/github.com/gin-gonic/gin/otelgin"
 	"go.opentelemetry.io/otel"
-	"go.uber.org/zap"
 	config_env "omnicam.com/backend/config"
 	api_routes "omnicam.com/backend/internal/routes"
 	"omnicam.com/backend/internal/utils"
@@ -23,11 +21,6 @@ func main() {
 	defer logger.Sync()
 
 	env := config_env.InitAppEnv(logger)
-
-	nc, err := nats.Connect(env.NatsUrl)
-	if err != nil {
-		logger.Fatal("Error while connecting to nats", zap.Error(err))
-	}
 
 	clientDB := db_client.InitDatabase(env, logger)
 
@@ -54,7 +47,6 @@ func main() {
 	api_routes.InitRoutes(api_routes.Dependencies{
 		Logger: logger,
 		Env:    env,
-		Nc:     nc,
 		DB:     clientDB,
 		Tracer: otel.Tracer("omnicam-backend"),
 	}, apiV1)
