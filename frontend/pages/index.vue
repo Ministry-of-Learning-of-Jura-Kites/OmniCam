@@ -98,10 +98,10 @@ watch(
 
     projects.value = data.reduce<Record<string, ProjectWithoutId>>((acc, p) => {
       const { id, imagePath, ...rest } = p;
-
       let url: string | undefined = undefined;
       if (imagePath) {
-        url = getUrlForProjectImage(id, imagePath).href;
+        url = `${getUrlForProjectImage(id, imagePath + rest.imageExtension).href}?t=${Date.now()}`;
+        console.log("new url : ", url);
       }
 
       acc[id] = {
@@ -191,7 +191,7 @@ async function updateProjectImage(id: string, file: File) {
 
       projects.value[id] = {
         ...projects.value[id],
-        imagePath: newImageUrl,
+        imagePath: `${newImageUrl}?t=${Date.now()}`,
       };
     }
 
