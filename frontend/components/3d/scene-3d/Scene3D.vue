@@ -887,6 +887,93 @@ function selectCurrentCamShortcut() {
   }
 }
 
+// function logRendererMemory(tag = "") {
+//   const renderer = sceneStates.value?.tresContext.value?.renderer
+//     .instance as any;
+//   const scene = sceneStates.value?.tresContext.value?.scene as any;
+
+//   if (!renderer || !scene) {
+//     console.warn("Renderer not ready");
+//     return;
+//   }
+
+//   const info = renderer.info;
+//   console.group(`THREE MEMORY ${tag}`);
+//   console.log("Geometries:", info.memory.geometries);
+//   console.log("Textures:", info.memory.textures);
+//   console.log("Programs:", info.programs?.length ?? "unknown");
+//   console.log("Render Calls:", info.render.calls);
+//   console.log("Triangles:", info.render.triangles);
+//   console.groupEnd();
+// }
+
+// function patchRendererTextureTracking() {
+//   const renderer = sceneStates.value?.tresContext.value?.renderer
+//     .instance as any;
+
+//   if (!renderer || renderer.__texturePatched) return;
+//   renderer.__texturePatched = true;
+
+//   let _texCount = renderer.info.memory.textures;
+
+//   Object.defineProperty(renderer.info.memory, "textures", {
+//     get() {
+//       return _texCount;
+//     },
+//     set(v) {
+//       if (v > _texCount) {
+//         console.warn(
+//           `[TEX LEAK] textures ${_texCount} → ${v} (+${v - _texCount})`,
+//         );
+
+//         console.log("[TEX STATE]", {
+//           geometries: renderer.info.memory.geometries,
+//           textures: v,
+//           programs: renderer.info.programs?.length,
+//           calls: renderer.info.render.calls,
+//         });
+
+//         console.trace();
+//       }
+
+//       _texCount = v;
+//     },
+//   });
+
+//   console.log("[patch] texture tracking active");
+
+//   const properties = renderer.properties;
+//   const originalGet = properties.get.bind(properties);
+
+//   properties.get = function (obj: any) {
+//     const result = originalGet(obj);
+
+//     if (obj?.isTexture && result && !result.__logged) {
+//       result.__logged = true;
+
+//       console.log("[TEXTURE SEEN]", {
+//         uuid: obj.uuid,
+//         name: obj.name,
+//         type: obj.constructor?.name,
+//         imageType: obj.image?.constructor?.name,
+//         width: obj.image?.width,
+//         height: obj.image?.height,
+//         colorSpace: obj.colorSpace,
+//         mapping: obj.mapping,
+//       });
+//     }
+
+//     return result;
+//   };
+// }
+
+// onMounted(() => {
+//   setInterval(() => {
+//     (window as any).memcheck = logRendererMemory;
+//     (window as any).patchtex = patchRendererTextureTracking; // ← add this
+//   }, 100);
+// });
+
 watch(
   () => sceneStates.value?.errorLivestreamMessage.value,
   (errorMessage) => {
@@ -1241,7 +1328,7 @@ const isShowingCamDirection = computed(() => {
             </div>
           </div>
         </div>
-        <div :ref="sceneStates!.tresCanvasParent" class="relative">
+        <div class="relative">
           <AxisGizmo />
         </div>
       </div>

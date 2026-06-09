@@ -3,16 +3,18 @@ import {
   markRaw,
   shallowRef,
   inject,
+  watch,
   computed,
   onMounted,
   onUnmounted,
+  nextTick,
 } from "vue";
 
 import { SCENE_STATES_KEY } from "~/constants/state-keys";
 import humanGlbUrl from "~/assets/models/human-fixed.glb?url";
 
 import type { ProcessedCoverageFace } from "../scene-states-provider/create-scene-states";
-import type { Object3D } from "three";
+import type { Material, Object3D, SkinnedMesh, Texture } from "three";
 
 import {
   Vector3,
@@ -23,6 +25,7 @@ import {
   DoubleSide,
   AnimationMixer,
   Mesh,
+  Bone,
   Timer,
   QuadraticBezierCurve3,
 } from "three";
@@ -40,7 +43,6 @@ const sourceScene = gltf.scene;
 const sourceAnimations = gltf.animations;
 
 let glbNativeHeight = 1;
-
 {
   const box = new Box3().setFromObject(sourceScene);
   const size = new Vector3();
@@ -48,11 +50,23 @@ let glbNativeHeight = 1;
   glbNativeHeight = size.y || 1;
 }
 
+const masterMixer = new AnimationMixer(sourceScene);
+if (sourceAnimations[0]) {
+  masterMixer.clipAction(sourceAnimations[0]).play();
+}
+
+const sourceBones = new Map<string, Bone>();
+sourceScene.traverse((o) => {
+  if (o instanceof Bone) sourceBones.set(o.name, o);
+});
+
 interface AgentObject {
   id: string;
   groupId: string;
-  sceneObject: Object3D;
-  mixer: AnimationMixer;
+  sceneObject: Object3D; // the root Group that gets added to the TresJS scene
+  // Per-agent bone map: clone bone name → clone Bone object
+  // Built once at spawn so the per-frame copy is also a simple Map lookup.
+  cloneBones: Map<string, Bone>;
   startPos: Vector3;
   endPos: Vector3;
   speed: number;
@@ -95,26 +109,58 @@ function fixMaterials(root: Object3D): void {
     obj.castShadow = true;
     obj.receiveShadow = true;
     const mats = Array.isArray(obj.material) ? obj.material : [obj.material];
-    for (const mat of mats) {
+    for (const mat of mats as Material[]) {
       if (!mat) continue;
       const needsBlend = NEEDS_TRANSPARENCY.has(mat.name);
-      if (needsBlend) {
-        mat.transparent = true;
-        mat.depthWrite = false;
-      } else {
-        mat.transparent = false;
-        mat.depthWrite = true;
-      }
+      mat.transparent = needsBlend;
+      mat.depthWrite = !needsBlend;
       mat.side = DoubleSide;
-      if (mat.map) mat.map.colorSpace = SRGBColorSpace;
+      const matWithMap = mat as Material & { map?: Texture };
+      if (matWithMap.map) matWithMap.map.colorSpace = SRGBColorSpace;
       mat.needsUpdate = true;
     }
     const matName = Array.isArray(obj.material)
       ? obj.material[0]?.name
       : obj.material?.name;
-    obj.renderOrder = RENDER_ORDER[matName] ?? 0;
+    obj.renderOrder = RENDER_ORDER[matName ?? ""] ?? 0;
   });
 }
+
+function createAgentModel(source: Object3D): {
+  model: Object3D;
+  cloneBones: Map<string, Bone>;
+} {
+  const sourceMeshes: Mesh[] = [];
+  source.traverse((o) => {
+    if (o instanceof Mesh) sourceMeshes.push(o);
+  });
+  const savedMaterials = sourceMeshes.map((m) => m.material);
+  sourceMeshes.forEach((m) => {
+    m.material = [];
+  });
+
+  const clone = SkeletonUtils.clone(source);
+
+  sourceMeshes.forEach((m, i) => {
+    m.material = savedMaterials[i]!;
+  });
+
+  let i = 0;
+  clone.traverse((o) => {
+    if (!(o instanceof Mesh)) return;
+    o.material = savedMaterials[i]!; // shared ref, not a copy
+    o.geometry = sourceMeshes[i]!.geometry; // shared ref, not a copy
+    i++;
+  });
+  const cloneBones = new Map<string, Bone>();
+  clone.traverse((o) => {
+    if (o instanceof Bone) cloneBones.set(o.name, o);
+  });
+
+  return { model: clone, cloneBones };
+}
+
+fixMaterials(sourceScene);
 
 function getFaceCenterWorld(face: ProcessedCoverageFace): Vector3 {
   const [p0, p1, , p3] = face.points;
@@ -133,16 +179,11 @@ function buildPathFromRoute(
   if (!route || route.segments.length === 0) {
     return [startPos.clone(), endPos.clone()];
   }
-
-  const path: Vector3[] = [];
-  path.push(startPos.clone());
-
+  const path: Vector3[] = [startPos.clone()];
   for (const seg of route.segments) {
     if (seg.type === "line") {
       const end = seg.points[seg.points.length - 1];
-      if (end) {
-        path.push(new Vector3(end[0], end[1], end[2]));
-      }
+      if (end) path.push(new Vector3(end[0], end[1], end[2]));
     } else if (seg.type === "bezier" && seg.points.length === 3) {
       const [a, ctrl, b] = seg.points;
       if (a && ctrl && b) {
@@ -152,43 +193,53 @@ function buildPathFromRoute(
           new Vector3(b[0], b[1], b[2]),
         );
         const sampled = curve.getPoints(16);
-        for (let i = 1; i < sampled.length; i++) {
-          path.push(sampled[i]!);
-        }
+        for (let i = 1; i < sampled.length; i++) path.push(sampled[i]!);
       }
     }
   }
-
   path.push(endPos.clone());
   return path;
 }
 
 function disposeAgent(agent: AgentObject) {
-  agent.mixer.stopAllAction();
-  agent.mixer.uncacheRoot(agent.sceneObject);
-  console.log("im calling here");
-
   if (agent.sceneObject.parent) {
-    console.log("is in here");
     agent.sceneObject.parent.remove(agent.sceneObject);
   }
+
+  agent.sceneObject.traverse((obj) => {
+    if ((obj as SkinnedMesh).isSkinnedMesh) {
+      const skinned = obj as SkinnedMesh;
+
+      skinned.skeleton.boneTexture?.dispose();
+      skinned.skeleton.dispose();
+    }
+
+    if (obj instanceof Mesh) {
+      obj.geometry = null!;
+      obj.material = null!;
+    }
+  });
+
+  agent.cloneBones.clear();
 }
 
 function checkSimulationFinished() {
   const allFinished = population.value.every(
     (group) => (progressByGroup.value[group.id] ?? 0) >= group.count,
   );
-  if (allFinished) {
-    sceneStates.value!.simulationState.value = "finished";
-  }
+  if (allFinished) sceneStates.value!.simulationState.value = "finished";
 }
 
 function finishAgent(agent: AgentObject) {
   disposeAgent(agent);
+
   agentObjects.value = agentObjects.value.filter((x) => x.id !== agent.id);
+
   progressByGroup.value[agent.groupId] =
     (progressByGroup.value[agent.groupId] ?? 0) + 1;
+
   activeAgentByGroup.value[agent.groupId] = null;
+
   spawnAgents();
   checkSimulationFinished();
 }
@@ -201,20 +252,24 @@ function lerpAngle(a: number, b: number, t: number) {
 function animate() {
   rafId = requestAnimationFrame(animate);
   const state = sceneStates.value?.simulationState.value;
-
   clock.update();
-
   if (state !== "running") {
     clock.getDelta();
     return;
   }
   const delta = clock.getDelta();
+  masterMixer.update(delta);
 
   for (const agent of [...agentObjects.value]) {
-    agent.mixer.update(delta);
+    for (const [name, srcBone] of sourceBones) {
+      const dstBone = agent.cloneBones.get(name);
+      if (!dstBone) continue;
+      dstBone.position.copy(srcBone.position);
+      dstBone.quaternion.copy(srcBone.quaternion);
+      dstBone.scale.copy(srcBone.scale);
+    }
 
     const target = agent.path[agent.currentWaypoint];
-
     if (!target) {
       finishAgent(agent);
       continue;
@@ -222,18 +277,15 @@ function animate() {
 
     const direction = target.clone().sub(agent.sceneObject.position);
     const distance = direction.length();
-
     if (distance < 0.15) {
       agent.currentWaypoint++;
       continue;
     }
 
     direction.normalize();
-
     agent.sceneObject.position.add(
       direction.clone().multiplyScalar(agent.speed * delta),
     );
-
     const targetAngle = Math.atan2(direction.x, direction.z);
     agent.sceneObject.rotation.y = lerpAngle(
       agent.sceneObject.rotation.y,
@@ -244,9 +296,17 @@ function animate() {
 }
 
 onMounted(() => animate());
-onUnmounted(() => cancelAnimationFrame(rafId));
 
-function spawnAgents() {
+onUnmounted(() => {
+  cancelAnimationFrame(rafId);
+  for (const agent of agentObjects.value) disposeAgent(agent);
+  agentObjects.value = [];
+  // ── Clean up the one master mixer ─────────────────────────────────────
+  masterMixer.stopAllAction();
+  masterMixer.uncacheRoot(sourceScene);
+});
+
+async function spawnAgents() {
   const groups = population.value;
   const faces = sceneStates.value!.facesManagement.faces as Record<
     string,
@@ -277,31 +337,22 @@ function spawnAgents() {
 
     const startPos = getFaceCenterWorld(startFaceEntry[1]);
     const endPos = getFaceCenterWorld(endFaceEntry[1]);
-
     const path = buildPathFromRoute(route, startPos, endPos);
 
-    const model = SkeletonUtils.clone(sourceScene);
-    fixMaterials(model);
-
-    const scale = group.height / glbNativeHeight;
-    model.scale.setScalar(scale);
-
-    const mixer = new AnimationMixer(model);
-    if (sourceAnimations.length > 0) {
-      const action = mixer.clipAction(sourceAnimations[0]!);
-      action.reset();
-      action.play();
-    }
+    // ── Create clone with shared materials/geometry, collect its bones ──
+    const { model, cloneBones } = createAgentModel(sourceScene);
+    model.scale.setScalar(group.height / glbNativeHeight);
 
     const root = markRaw(new Group());
     root.add(model);
     root.position.copy(startPos);
 
+    const agentId = `${group.id}_${progress}`;
     const agent: AgentObject = {
-      id: `${group.id}_${progress}`,
+      id: agentId,
       groupId: group.id,
       sceneObject: root,
-      mixer,
+      cloneBones,
       startPos,
       endPos,
       speed: group.speed ?? 1.4,
@@ -310,6 +361,7 @@ function spawnAgents() {
     };
 
     agentObjects.value.push(agent);
+    await nextTick();
     activeAgentByGroup.value[group.id] = root;
   }
 }
@@ -317,22 +369,15 @@ function spawnAgents() {
 watch(
   () => sceneStates.value?.simulationState.value,
   (state) => {
-    console.log("state changed:", state);
     switch (state) {
       case "idle":
-        for (const agent of agentObjects.value) {
-          disposeAgent(agent);
-        }
+        for (const agent of agentObjects.value) disposeAgent(agent);
         agentObjects.value = [];
         activeAgentByGroup.value = {};
         progressByGroup.value = {};
         break;
-
       case "running":
         spawnAgents();
-        break;
-
-      case "finished":
         break;
     }
   },
