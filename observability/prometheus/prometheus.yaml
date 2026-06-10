@@ -1,0 +1,51 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+  external_labels:
+    cluster: omnicam
+
+rule_files: []
+
+scrape_configs:
+  # OTel Collector's Prometheus exporter (omnicam service metrics)
+  - job_name: otel-collector
+    static_configs:
+      - targets: [otelcol:8889]
+        labels:
+          group: omnicam
+
+  # OTel Collector's own internal metrics
+  - job_name: otel-collector-internal
+    static_configs:
+      - targets: [otelcol:8888]
+        labels:
+          group: infrastructure
+
+  # Tempo metrics
+  - job_name: tempo
+    static_configs:
+      - targets: [tempo:3200]
+        labels:
+          group: infrastructure
+
+  # Loki metrics
+  - job_name: loki
+    static_configs:
+      - targets: [loki:3100]
+        labels:
+          group: infrastructure
+
+  # NATS (exposes Prometheus metrics on /metrics via the monitoring port)
+  - job_name: nats
+    static_configs:
+      - targets: [nats:8222]
+    metrics_path: /metrics
+    params:
+      subsz: ["1"]
+      connz: ["1"]
+      varz: ["1"]
+
+  # Postgres via postgres_exporter sidecar (add if needed; see notes)
+  # - job_name: postgres
+  #   static_configs:
+  #     - targets: [postgres-exporter:9187]

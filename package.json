@@ -17,7 +17,13 @@
     "swagger": "serve -s docs -l 8000",
     "proto": "node tools/gen_proto/main.js all",
     "proto:backend": "node tools/gen_proto/main.js back",
-    "proto:frontend": "node tools/gen_proto/main.js front"
+    "proto:frontend": "node tools/gen_proto/main.js front",
+    "docker:all:up": "docker compose --env-file observability/.env.observability -f docker-compose.yaml -f observability/docker-compose.observability.yaml up -d",
+    "docker:all:down": "docker compose --env-file observability/.env.observability -f docker-compose.yaml -f observability/docker-compose.observability.yaml down",
+    "docker:all:up:cached": "docker compose --env-file observability/.env.observability -f docker-compose.yaml -f observability/docker-compose.observability.yaml up -d --no-build --pull never",
+    "docker:all:down:v": "docker compose -f docker-compose.yaml -f observability/docker-compose.observability.yaml down -v",
+    "docker:obs:up": "docker compose -f observability/docker-compose.observability.yaml up -d",
+    "docker:obs:down": "docker compose -f observability/docker-compose.observability.yaml down"
   },
   "dependencies": {
     "@fortawesome/fontawesome-free": "^7.0.1",
