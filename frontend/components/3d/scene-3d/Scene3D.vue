@@ -80,8 +80,9 @@ const failedMessage = ref<string>("");
 // line measurement
 const lineMeasurement = ref<InstanceType<typeof LineMeasurement> | null>(null);
 
-// Draft points for coverage area selection (ONE mode only)
+// Draft points for area mode
 const draftCoveragePoints = ref<Vector3[]>([]);
+const draftSimulationPoints = ref<Vector3[]>([]);
 
 const config = useRuntimeConfig();
 const sceneStates = inject(SCENE_STATES_KEY)!;
@@ -149,6 +150,16 @@ const isPreviewing = computed(() => previewPoints.value.length === 4);
 const draftPointMarkers = computed<Point3[]>(() => {
   if (sceneStates.value!.selectionMode.value !== "coverage-area") return [];
   return draftCoveragePoints.value.map((p) => [p.x, p.y, p.z] as Point3);
+});
+
+const simulationDraftMarkers = computed<Point3[]>(() => {
+  if (sceneStates.value!.selectionMode.value !== "simulation") return [];
+  return draftSimulationPoints.value.map((p) => [p.x, p.y, p.z] as Point3);
+});
+
+watch([simulationDraftMarkers, draftSimulationPoints], () => {
+  console.log("the new stuff : ", simulationDraftMarkers);
+  console.log("get marked : ", draftPointMarkers);
 });
 
 const selectedCam = computed(() => {
@@ -494,11 +505,11 @@ function handleSimulationAreaPointer(event: PointerEvent): boolean {
   const hit = getSurfaceHit(event);
   if (!hit) return false;
 
-  draftCoveragePoints.value.push(hit.point.clone());
+  draftSimulationPoints.value.push(hit.point.clone());
 
-  if (draftCoveragePoints.value.length === 4) {
+  if (draftSimulationPoints.value.length === 4) {
     const face = buildCoverageFaceFromPickedPoints(
-      draftCoveragePoints.value as QuadrilateralVectors,
+      draftSimulationPoints.value as QuadrilateralVectors,
       "simulation",
       sceneStates.value!.simulationKind.value === "start" ? "start" : "end",
     );
@@ -524,7 +535,7 @@ function handleSimulationAreaPointer(event: PointerEvent): boolean {
       },
     );
     requestAnimationFrame(() => {
-      draftCoveragePoints.value = [];
+      draftSimulationPoints.value = [];
     });
   }
 
@@ -1227,6 +1238,23 @@ const isShowingCamDirection = computed(() => {
             ]"
             :workspace="props.workspace"
           />
+          <template v-if="sceneStates!.selectionMode.value === 'simulation'">
+            <TresMesh
+              v-for="(point, i) in simulationDraftMarkers"
+              :key="`sim-draft-point-${i}`"
+              :position="point"
+              :render-order="1002"
+            >
+              <TresSphereGeometry :args="[0.03, 16, 16]" />
+              <TresMeshBasicMaterial
+                color="#ff4d4d"
+                :transparent="true"
+                :opacity="0.95"
+                :depth-test="false"
+                :depth-write="false"
+              />
+            </TresMesh>
+          </template>
 
           <Suspense>
             <SimulationAgents
