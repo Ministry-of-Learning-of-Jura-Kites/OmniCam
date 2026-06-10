@@ -361,10 +361,6 @@ watch(activeRouteId, (id) => {
   }
 });
 
-watch(isSimulationRunning, () => {
-  console.log("simulation state : ", sceneStates.value?.simulationState.value);
-});
-
 onMounted(async () => {
   await loadSimulation();
   window.addEventListener("keydown", (e) => {

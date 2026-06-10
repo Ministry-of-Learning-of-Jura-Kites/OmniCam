@@ -157,11 +157,6 @@ const simulationDraftMarkers = computed<Point3[]>(() => {
   return draftSimulationPoints.value.map((p) => [p.x, p.y, p.z] as Point3);
 });
 
-watch([simulationDraftMarkers, draftSimulationPoints], () => {
-  console.log("the new stuff : ", simulationDraftMarkers);
-  console.log("get marked : ", draftPointMarkers);
-});
-
 const selectedCam = computed(() => {
   if (selectedCamId.value == null) {
     return null;
@@ -264,16 +259,6 @@ function buildCoverageFaceFromPickedPoints(
   const p1 = sorted[1]!;
   const p2 = sorted[2]!;
   const p3Raw = sorted[3]!;
-
-  console.log(
-    "Picked 4 points (sorted):",
-    sorted.map((p, i) => ({
-      i,
-      x: p.x,
-      y: p.y,
-      z: p.z,
-    })),
-  );
 
   const dir = new Vector3().subVectors(p2, p1).normalize();
   const v = new Vector3().subVectors(p3Raw, p0);
@@ -527,13 +512,6 @@ function handleSimulationAreaPointer(event: PointerEvent): boolean {
       sceneStates.value!.facesManagement.add(id, face);
     }
 
-    console.log("=== AFTER ADD ===");
-
-    Object.entries(sceneStates.value!.facesManagement.faces).forEach(
-      ([id, face]) => {
-        console.log(id, face.type, face.kind);
-      },
-    );
     requestAnimationFrame(() => {
       draftSimulationPoints.value = [];
     });
