@@ -101,7 +101,6 @@ watch(
       let url: string | undefined = undefined;
       if (imagePath) {
         url = `${getUrlForProjectImage(id, imagePath + rest.imageExtension).href}?t=${Date.now()}`;
-        console.log("new url : ", url);
       }
 
       acc[id] = {
