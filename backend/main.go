@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"strings"
 	"time"
 
 	"github.com/gin-contrib/cors"
@@ -32,7 +33,16 @@ func main() {
 	clientDB := db_client.InitDatabase(env, logger)
 
 	router := gin.Default()
-	router.Use(otelgin.Middleware(env.OtelServiceName))
+	router.Use(otelgin.Middleware(env.OtelServiceName,
+		otelgin.WithGinFilter(func(c *gin.Context) bool {
+			if c.GetHeader("Upgrade") == "websocket" ||
+				strings.Contains(c.Request.URL.Path, "/autosave") ||
+				strings.Contains(c.Request.URL.Path, "/livestream") {
+				return false
+			}
+			return true
+		}),
+	))
 	nc, err := nats.Connect(env.NatsUrl)
 	if err != nil {
 		logger.Fatal("Error while connecting to nats", zap.Error(err))
@@ -48,7 +58,7 @@ func main() {
 	router.Use(cors.New(cors.Config{
 		AllowOrigins:     allowOrigins,
 		AllowMethods:     []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
-		AllowHeaders:     []string{"Origin", "Content-Type", "Authorization"},
+		AllowHeaders:     []string{"Origin", "Content-Type", "Authorization", "traceparent", "tracestate"},
 		ExposeHeaders:    []string{"Content-Length"},
 		AllowCredentials: true,
 		MaxAge:           12 * time.Hour,

@@ -1,10 +1,11 @@
 package controller_camera
 
 import (
+	"context"
 	"encoding/json"
-	"fmt"
 	"net/http"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -12,6 +13,10 @@ import (
 	"github.com/gorilla/websocket"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/nats-io/nats.go"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/propagation"
+	"go.opentelemetry.io/otel/trace"
 	"go.uber.org/zap"
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
@@ -31,6 +36,7 @@ type UpdateEventRoute struct {
 	DB       *db_client.DB
 	Nc       *nats.Conn
 	Upgrader websocket.Upgrader
+	writeMu  sync.Mutex
 }
 
 type EventContext struct {
@@ -41,6 +47,13 @@ type EventContext struct {
 	Subject string
 	Scale   float64
 	Height  float64
+	Ctx     context.Context
+}
+
+func (r *UpdateEventRoute) writeMessage(conn *websocket.Conn, messageType int, data []byte) error {
+	r.writeMu.Lock()
+	defer r.writeMu.Unlock()
+	return conn.WriteMessage(messageType, data)
 }
 
 // Camera handlers
@@ -52,7 +65,7 @@ func (t *UpdateEventRoute) handleEventDelete(
 		return
 	}
 
-	newVersion, err := t.DB.Queries.UpdateWorkspaceCams(e.Gin, db_sqlc_gen.UpdateWorkspaceCamsParams{
+	newVersion, err := t.DB.Queries.UpdateWorkspaceCams(e.Ctx, db_sqlc_gen.UpdateWorkspaceCamsParams{
 		Key:     []string{deleteId},
 		UserID:  e.UserID,
 		ModelID: e.ModelID,
@@ -77,7 +90,7 @@ func (t *UpdateEventRoute) handleEventUpsert(
 		t.Logger.Error("error while marshaling camera", zap.Error(err))
 		return
 	}
-	newVersion, err := t.DB.Queries.UpdateWorkspaceCams(e.Gin, db_sqlc_gen.UpdateWorkspaceCamsParams{
+	newVersion, err := t.DB.Queries.UpdateWorkspaceCams(e.Ctx, db_sqlc_gen.UpdateWorkspaceCamsParams{
 		Key:     []string{upsert.Id},
 		Value:   marshalled,
 		UserID:  e.UserID,
@@ -105,7 +118,7 @@ func (t *UpdateEventRoute) handleCalibration(
 		return // stale/duplicate
 	}
 
-	row, err := t.DB.Queries.UpdateWorkspaceCalibration(e.Gin, db_sqlc_gen.UpdateWorkspaceCalibrationParams{
+	row, err := t.DB.Queries.UpdateWorkspaceCalibration(e.Ctx, db_sqlc_gen.UpdateWorkspaceCalibrationParams{
 		UserID:      e.UserID,
 		ModelID:     e.ModelID,
 		ScaleFactor: event.Calibrate.ScaleFactor,
@@ -140,7 +153,7 @@ func (t *UpdateEventRoute) handleFaceUpsert(
 		return
 	}
 
-	newVersion, err := t.DB.Queries.UpdateWorkspaceTargetTrapezoids(e.Gin, db_sqlc_gen.UpdateWorkspaceTargetTrapezoidsParams{
+	newVersion, err := t.DB.Queries.UpdateWorkspaceTargetTrapezoids(e.Ctx, db_sqlc_gen.UpdateWorkspaceTargetTrapezoidsParams{
 		Key:     []string{event.FaceUpsert.CoverageFace.Id},
 		Value:   marshalled,
 		UserID:  e.UserID,
@@ -166,13 +179,12 @@ func (t *UpdateEventRoute) handleFaceDelete(
 		return // stale/duplicate
 	}
 
-	newVersion, err := t.DB.Queries.UpdateWorkspaceTargetTrapezoids(e.Gin, db_sqlc_gen.UpdateWorkspaceTargetTrapezoidsParams{
+	newVersion, err := t.DB.Queries.UpdateWorkspaceTargetTrapezoids(e.Ctx, db_sqlc_gen.UpdateWorkspaceTargetTrapezoidsParams{
 		Key:     []string{event.FaceDelete.Id},
 		Value:   nil,
 		UserID:  e.UserID,
 		ModelID: e.ModelID,
 	})
-	fmt.Println(event.FaceDelete.Id)
 	if err != nil {
 		t.Logger.Error("error updating face", zap.Error(err))
 		return
@@ -232,7 +244,7 @@ func (t *UpdateEventRoute) handleAutosaveEvent(
 	trapJSON, _ := json.Marshal(trapUpserts)
 
 	// One DB call, one version increment
-	newVersion, err := t.DB.Queries.BulkUpdateWorkspace(e.Gin, db_sqlc_gen.BulkUpdateWorkspaceParams{
+	newVersion, err := t.DB.Queries.BulkUpdateWorkspace(e.Ctx, db_sqlc_gen.BulkUpdateWorkspaceParams{
 		UserID:      e.UserID,
 		ModelID:     e.ModelID,
 		CamUpserts:  camJSON,
@@ -257,23 +269,31 @@ func (t *UpdateEventRoute) handleAutosaveEvent(
 	})
 }
 
-func (t *UpdateEventRoute) sendOptimizationEventResp(conn *websocket.Conn, optiResp *protobufs.OptimizationEventResp) {
-	// 3. Wrap it in the top-level WorkspaceEventResponse (the oneof)
+func (t *UpdateEventRoute) sendOptimizationEventResp(conn *websocket.Conn, ctx context.Context, optiResp *protobufs.OptimizationEventResp) {
+	carrier := propagation.MapCarrier{}
+	otel.GetTextMapPropagator().Inject(ctx, carrier)
+
 	eventResp := &protobufs.WorkspaceEventResponse{
+		Trace: &protobufs.TraceContext{
+			Traceparent: carrier["traceparent"],
+			Tracestate:  carrier["tracestate"],
+		},
 		Resp: &protobufs.WorkspaceEventResponse_Optimize{
 			Optimize: optiResp,
 		},
 	}
 
 	bytes, err := proto.Marshal(eventResp)
+
 	if err != nil {
 		t.Logger.Error("error marshalling response", zap.Error(err))
 		return
 	}
-	conn.WriteMessage(websocket.BinaryMessage, bytes)
+	t.writeMessage(conn, websocket.BinaryMessage, bytes)
+	// conn.WriteMessage(websocket.BinaryMessage, bytes)
 }
 
-func (t *UpdateEventRoute) sendOptimizeInternalError(conn *websocket.Conn, jobId string) {
+func (t *UpdateEventRoute) sendOptimizeInternalError(conn *websocket.Conn, ctx context.Context, jobId string) {
 	resp := &protobufs.OptimizationEventResp{
 		JobId: jobId,
 		Payload: &protobufs.OptimizationEventResp_ErrorResp{
@@ -284,20 +304,30 @@ func (t *UpdateEventRoute) sendOptimizeInternalError(conn *websocket.Conn, jobId
 			},
 		},
 	}
-	t.sendOptimizationEventResp(conn, resp)
+	t.sendOptimizationEventResp(conn, ctx, resp)
 }
 
-func (t *UpdateEventRoute) handleOptimizeEvent(projectId uuid.UUID, modelId uuid.UUID, conn *websocket.Conn, casted *protobufs.OptimizationEventReq) {
+func (t *UpdateEventRoute) handleOptimizeEvent(ctx context.Context, projectId uuid.UUID, modelId uuid.UUID, conn *websocket.Conn, casted *protobufs.OptimizationEventReq) {
 	if len(casted.GetCoverageFace()) == 0 {
 		t.Logger.Warn("optimization aborted: no coverage faces provided")
 		return
 	}
-	faces := make([][][]float64, 0, len(casted.GetCoverageFace()))
 
+	tr := otel.Tracer("omnicam-backend")
+	ctx, span := tr.Start(ctx, "optimization.request",
+		trace.WithSpanKind(trace.SpanKindProducer),
+		trace.WithAttributes(
+			attribute.String("model.id", modelId.String()),
+			attribute.String("project.id", projectId.String()),
+		),
+	)
+
+	defer span.End()
+
+	faces := make([][][]float64, 0, len(casted.GetCoverageFace()))
 	for _, face := range casted.GetCoverageFace() {
 		var points [][]float64
 		for _, p := range face.GetPoints() {
-			// Each point is a slice of 3 floats to represent the Tuple
 			points = append(points, []float64{p.GetX(), p.GetY(), p.GetZ()})
 		}
 		faces = append(faces, points)
@@ -308,12 +338,13 @@ func (t *UpdateEventRoute) handleOptimizeEvent(projectId uuid.UUID, modelId uuid
 		camConfigs = append(camConfigs, map[string]interface{}{
 			"name":   c.GetName(),
 			"vfov":   c.GetFov(),
-			"pixels": []float64{c.GetWidthRes(), c.GetHeightRes()}, // Maps to Tuple[float, float]
+			"pixels": []float64{c.GetWidthRes(), c.GetHeightRes()},
 			"amount": c.GetAmount(),
 		})
 	}
 
 	jobId := uuid.New().String()
+	span.SetAttributes(attribute.String("job.id", jobId))
 
 	payload := map[string]interface{}{
 		"faces":       faces,
@@ -330,30 +361,42 @@ func (t *UpdateEventRoute) handleOptimizeEvent(projectId uuid.UUID, modelId uuid
 			zap.Error(err),
 			zap.Int("face_count", len(faces)),
 		)
+		span.RecordError(err)
 		return
 	}
 
 	pubTopic := strings.NewReplacer("{jobId}", jobId).Replace(t.Env.OptiReqTopicPattern)
 
-	msg, err := t.Nc.Request(pubTopic, jsonData, 2*time.Minute)
+	natsMsg := nats.NewMsg(pubTopic)
+	natsMsg.Data = jsonData
+
+	// inject trace context into NATS headers so algo continues the same trace
+	carrier := propagation.MapCarrier{}
+	otel.GetTextMapPropagator().Inject(ctx, carrier)
+	for k, v := range carrier {
+		natsMsg.Header.Set(k, v)
+	}
+
+	msg, err := t.Nc.RequestMsg(natsMsg, 2*time.Minute)
 	if err != nil {
 		t.Logger.Error("Failed to publish to nats stream for optimiz algo",
 			zap.Error(err),
 			zap.String("job_id", jobId),
 		)
-		t.sendOptimizeInternalError(conn, jobId)
+		span.RecordError(err)
+		t.sendOptimizeInternalError(conn, ctx, jobId)
 		return
 	}
 
 	optiResp := &protobufs.OptimizationEventResp{}
-
 	if err := protojson.Unmarshal(msg.Data, optiResp); err != nil {
 		t.Logger.Error("failed to unmarshal proto-json", zap.Error(err))
-		t.sendOptimizeInternalError(conn, jobId)
+		span.RecordError(err)
+		t.sendOptimizeInternalError(conn, ctx, jobId)
 		return
 	}
 
-	t.sendOptimizationEventResp(conn, optiResp)
+	t.sendOptimizationEventResp(conn, ctx, optiResp)
 }
 
 // Have to use websocket instead of SSE because protobuf is binary
@@ -366,7 +409,6 @@ func (t *UpdateEventRoute) getLivestream(c *gin.Context) {
 		return
 	}
 
-	// TODO: Secure sharable link(?)
 	strWorkspaceOwnerId := c.Param("workspaceOwnerId")
 	workspaceOwnerId, err := utils.ParseUuidBase64(strWorkspaceOwnerId)
 	if err != nil {
@@ -377,24 +419,21 @@ func (t *UpdateEventRoute) getLivestream(c *gin.Context) {
 
 	username := c.GetString("username")
 
-	_, err = t.DB.Queries.GetUserWithModel(c, db_sqlc_gen.GetUserWithModelParams{
+	_, err = t.DB.Queries.GetUserWithModel(c.Request.Context(), db_sqlc_gen.GetUserWithModelParams{
 		Username: pgtype.Text{Valid: true, String: username},
 		ModelID:  modelId,
 	})
 	if err != nil {
-		// Respond not found for security
 		t.Logger.Error("not a member of project", zap.String("modelId", modelId.String()), zap.Error(err))
 		c.JSON(http.StatusNotFound, gin.H{})
 		return
 	}
 
-	// Get workspace
-	_, err = t.DB.Queries.GetWorkspaceByID(c, db_sqlc_gen.GetWorkspaceByIDParams{
+	_, err = t.DB.Queries.GetWorkspaceByID(c.Request.Context(), db_sqlc_gen.GetWorkspaceByIDParams{
 		UserID:  workspaceOwnerId,
 		ModelID: modelId,
 	})
 	if err != nil {
-		// Respond not found for security
 		t.Logger.Error("workspace not found", zap.Error(err))
 		c.JSON(http.StatusNotFound, gin.H{})
 		return
@@ -429,7 +468,6 @@ func (t *UpdateEventRoute) getLivestream(c *gin.Context) {
 			}
 
 			dataBytes, err := proto.Marshal(resp)
-
 			if err != nil {
 				t.Logger.Error("error while marshalling response", zap.Error(err))
 				return
@@ -474,13 +512,11 @@ func (t *UpdateEventRoute) getAutosave(c *gin.Context) {
 		return
 	}
 
-	// Check owner
-	workspace, err := t.DB.Queries.GetWorkspaceByID(c, db_sqlc_gen.GetWorkspaceByIDParams{
+	workspace, err := t.DB.Queries.GetWorkspaceByID(c.Request.Context(), db_sqlc_gen.GetWorkspaceByIDParams{
 		UserID:  userId,
 		ModelID: modelId,
 	})
 	if err != nil {
-		// Respond not found for security
 		t.Logger.Error("workspace not found", zap.Error(err))
 		c.JSON(http.StatusNotFound, gin.H{})
 		return
@@ -493,8 +529,20 @@ func (t *UpdateEventRoute) getAutosave(c *gin.Context) {
 
 	subject := strings.NewReplacer("modelId", modelId.String(), "userId", userId.String()).Replace(t.Env.LivestreamTopicPattern)
 
+	tr := otel.Tracer("omnicam-backend")
+
+	// Start websocket session span — carries the trace for the entire session lifetime
+	wsCtx, span := tr.Start(context.Background(), "autosave.websocket.session",
+		trace.WithSpanKind(trace.SpanKindServer),
+		trace.WithAttributes(
+			attribute.String("model.id", modelId.String()),
+			attribute.String("user.id", userId.String()),
+		),
+	)
+
 	go func() {
 		defer conn.Close()
+		defer span.End() // ← ends when goroutine exits, not when getAutosave returns
 
 		currentVersion := workspace.Version
 
@@ -506,9 +554,9 @@ func (t *UpdateEventRoute) getAutosave(c *gin.Context) {
 			Subject: subject,
 			Scale:   workspace.ScaleFactor,
 			Height:  workspace.ModelHeight,
+			Ctx:     wsCtx, // ← websocket session context with span
 		}
 
-		// Send initial state on connect — both camera version + calibration values
 		initResp := &protobufs.AutosaveEventResponse{
 			LastUpdatedVersion: currentVersion,
 		}
@@ -521,16 +569,43 @@ func (t *UpdateEventRoute) getAutosave(c *gin.Context) {
 				break
 			}
 
-			// Decode unified wrapper
 			msg := &protobufs.WorkspaceEventRequest{}
 			if err := proto.Unmarshal(rawMsg, msg); err != nil {
 				t.Logger.Error("error unmarshalling event", zap.Error(err))
 				continue
 			}
 
+			carrier := propagation.MapCarrier{}
+
+			if msg.Trace != nil {
+				carrier["traceparent"] = msg.Trace.Traceparent
+				carrier["tracestate"] = msg.Trace.Tracestate
+			}
+
+			ctx := context.Background()
+
+			if msg.Trace != nil {
+				carrier := propagation.MapCarrier{
+					"traceparent": msg.Trace.Traceparent,
+					"tracestate":  msg.Trace.Tracestate,
+				}
+
+				ctx = otel.GetTextMapPropagator().
+					Extract(context.Background(), carrier)
+			}
+
 			switch casted := msg.Event.(type) {
 			case *protobufs.WorkspaceEventRequest_Autosave:
+				// child span per autosave batch
+				_, autosaveSpan := tr.Start(
+					ctx,
+					"autosave.event.batch",
+					trace.WithAttributes(
+						attribute.Int("event.count", len(casted.Autosave.Events)),
+					),
+				)
 				t.handleAutosaveEvent(e, &currentVersion, casted.Autosave)
+				autosaveSpan.End()
 
 				broadcast, _ := proto.Marshal(&protobufs.LivestreamBroadcast{
 					Event: &protobufs.LivestreamBroadcast_Autosave{
@@ -538,9 +613,10 @@ func (t *UpdateEventRoute) getAutosave(c *gin.Context) {
 					},
 				})
 				t.Nc.Publish(e.Subject, broadcast)
+
 			case *protobufs.WorkspaceEventRequest_Optimize:
 				go func() {
-					t.handleOptimizeEvent(projectId, modelId, conn, casted.Optimize)
+					t.handleOptimizeEvent(ctx, projectId, modelId, conn, casted.Optimize)
 				}()
 			}
 		}

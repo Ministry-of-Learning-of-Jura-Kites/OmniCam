@@ -30,6 +30,9 @@ from dev.visualization import init_3d_scene, render_from_state
 import pyvista as pv
 from basic_types import Array4x3
 from nats.aio.msg import Msg
+from pkg.telemetry import init_telemetry
+from opentelemetry import trace, propagate
+from opentelemetry.trace import SpanKind, StatusCode
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -85,7 +88,7 @@ def assign_faces(state: State, seed: int):
     num_faces = len(state.faces)
     num_cameras = len(state.cameras)
     if num_cameras == 0 or num_faces == 0:
-        return
+        return state
 
     face_centers = np.array([center_of_face(f) for f in state.faces])
     face_normals = np.array([normal_vec_of_face(f) for f in state.faces])
@@ -231,7 +234,20 @@ def assign_faces(state: State, seed: int):
 
 
 def transform_faces(faces: List[List[Tuple[float, float, float]]]) -> Array4x3:
-    return [np.array(face, dtype=np.float64) for face in faces]
+    # FIX: filter out empty / invalid faces early
+    cleaned = []
+    for face in faces:
+        if face is None or len(face) < 3:
+            continue
+        arr = np.array(face, dtype=np.float64)
+
+        # FIX: reject degenerate faces (all points same or NaN)
+        if np.isnan(arr).any() or np.allclose(arr[0], arr[-1]):
+            continue
+
+        cleaned.append(arr)
+
+    return cleaned
 
 
 def transform_cameras(raw_cam_configs: List[ReqCameraConfiguration]):
@@ -273,16 +289,28 @@ def optimize(req: OptimizeRequest, seed: int = 2000) -> State:
         )
     )
 
+    if raw_data is None or raw_data.n_points == 0:
+        raise ValueError("Loaded GLB mesh is empty")
+
     combined_mesh = raw_data.combine()
 
     surface = combined_mesh.extract_surface()
+
+    if surface is None or surface.n_cells == 0:
+        raise ValueError("Surface extraction failed: no cells found")
 
     # 4. Final Optimization (The 5-30s target pipeline)
     gltf = surface.clean(tolerance=1e-5).triangulate()
 
     # Ensure only triangles exist before decimation
+    if gltf is None or gltf.n_cells == 0:
+        raise ValueError("Triangulation resulted in empty mesh")
+
     if not gltf.is_all_triangles:
         gltf = gltf.extract_cells_by_type(vtk.VTK_TRIANGLE)
+
+    if gltf is None or gltf.n_cells == 0:
+        raise ValueError("No triangles available after filtering")
 
     # current_cells = gltf.n_cells
     # target_cells = 40000  # The "Sweet Spot" for fast ray-casting
@@ -437,35 +465,51 @@ def cam_state_to_proto(cam_state: CameraState) -> cam_pb.Camera:
 
 
 async def main():
+    tracer = init_telemetry()
+
     async def message_handler(msg: Msg):
-        print("Received message", msg)
-        try:
-            payload = OptimizeRequest.model_validate_json(msg.data)
+        carrier = dict(msg.headers) if msg.headers else {}
+        ctx = propagate.extract(carrier)
 
-            result_state = optimize(payload)
+        with tracer.start_as_current_span(
+            "optimization.process",
+            context=ctx,
+            kind=SpanKind.CONSUMER,
+        ) as span:
+            span.set_attribute("nats.subject", msg.subject)
+            try:
+                payload = OptimizeRequest.model_validate_json(msg.data)
+                span.set_attribute("job_id", payload.job_id)
+                span.set_attribute("model_id", payload.model_id)
 
-            opti_res = opt_pb.OptimizationEventResp(
-                success_resp=opt_pb.SuccessOptimizationEventResp(
-                    cameras=[cam_state_to_proto(cam) for cam in result_state.cameras],
-                ),
-                job_id=payload.job_id,
-            )
-        except ValidationError as e:
-            opti_res = opt_pb.OptimizationEventResp(
-                error_resp=opt_pb.ErrorOptimizationEventResp(error=f"Bad request {e}")
-            )
-        except Exception as e:
-            traceback.print_exc()
-            print(e)
-            opti_res = opt_pb.OptimizationEventResp(
-                error_resp=opt_pb.ErrorOptimizationEventResp(error="Internal error")
-            )
-        finally:
-            res_str = MessageToJson(
-                opti_res,
-                indent=0,
-            )
-            await msg.respond(res_str.encode("utf-8"))
+                result_state = optimize(payload)
+
+                opti_res = opt_pb.OptimizationEventResp(
+                    success_resp=opt_pb.SuccessOptimizationEventResp(
+                        cameras=[
+                            cam_state_to_proto(cam) for cam in result_state.cameras
+                        ],
+                    ),
+                    job_id=payload.job_id,
+                )
+                span.set_status(StatusCode.OK)
+            except ValidationError as e:
+                span.set_status(StatusCode.ERROR, str(e))
+                opti_res = opt_pb.OptimizationEventResp(
+                    error_resp=opt_pb.ErrorOptimizationEventResp(
+                        error=f"Bad request {e}"
+                    )
+                )
+            except Exception as e:
+                span.set_status(StatusCode.ERROR, str(e))
+                span.record_exception(e)
+                traceback.print_exc()
+                opti_res = opt_pb.OptimizationEventResp(
+                    error_resp=opt_pb.ErrorOptimizationEventResp(error="Internal error")
+                )
+            finally:
+                res_str = MessageToJson(opti_res, indent=0)
+                await msg.respond(res_str.encode("utf-8"))
 
     try:
         print("Trying to connect to nats...")

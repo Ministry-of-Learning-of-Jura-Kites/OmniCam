@@ -33,7 +33,7 @@ func (t *DeleteProjectMemberRoute) deleteMember(c *gin.Context) {
 		return
 	}
 
-	err = t.DB.Queries.DeleteProjectMember(c, db_sqlc_gen.DeleteProjectMemberParams{
+	err = t.DB.Queries.DeleteProjectMember(c.Request.Context(), db_sqlc_gen.DeleteProjectMemberParams{
 		UserID:    userID,
 		ProjectID: projectID,
 	})

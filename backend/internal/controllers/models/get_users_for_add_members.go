@@ -55,7 +55,7 @@ func (t *UsersForAddMembersRoute) getAllUsersForAddMembers(c *gin.Context) {
 	search := c.DefaultQuery("search", "")
 	pageOffset := (page - 1) * pageSize
 
-	users, err := t.DB.Queries.GetUsersForAddMembers(c, db_sqlc_gen.GetUsersForAddMembersParams{
+	users, err := t.DB.Queries.GetUsersForAddMembers(c.Request.Context(), db_sqlc_gen.GetUsersForAddMembersParams{
 		PageSize:   int32(pageSize),
 		PageOffset: int32(pageOffset),
 		Search:     search,
@@ -67,7 +67,7 @@ func (t *UsersForAddMembersRoute) getAllUsersForAddMembers(c *gin.Context) {
 		return
 	}
 
-	total, err := t.DB.Queries.CountUsersForAddMembers(c, db_sqlc_gen.CountUsersForAddMembersParams{
+	total, err := t.DB.Queries.CountUsersForAddMembers(c.Request.Context(), db_sqlc_gen.CountUsersForAddMembersParams{
 		Search:    search,
 		ProjectID: projectID,
 	})

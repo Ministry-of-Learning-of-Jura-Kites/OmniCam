@@ -38,7 +38,7 @@ func (t *GetProjectRoute) getAll(c *gin.Context) {
 		return
 	}
 
-	user, err := t.DB.Queries.GetUserByUsername(c, username.(string))
+	user, err := t.DB.Queries.GetUserByUsername(c.Request.Context(), username.(string))
 	if err != nil {
 		t.Logger.Error("failed to get user by username", zap.Error(err))
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "user not found"})
@@ -59,7 +59,7 @@ func (t *GetProjectRoute) getAll(c *gin.Context) {
 
 	pageOffset := (page - 1) * pageSize
 
-	projects, err := t.DB.Queries.GetProjectsByUserId(c, db_sqlc_gen.GetProjectsByUserIdParams{
+	projects, err := t.DB.Queries.GetProjectsByUserId(c.Request.Context(), db_sqlc_gen.GetProjectsByUserIdParams{
 		UserID:     user.ID,
 		PageSize:   int32(pageSize),
 		PageOffset: int32(pageOffset),
@@ -99,7 +99,7 @@ func (t *GetProjectRoute) getById(c *gin.Context) {
 		return
 	}
 
-	project, err := t.DB.Queries.GetProjectById(c, id)
+	project, err := t.DB.Queries.GetProjectById(c.Request.Context(), id)
 	if err != nil {
 		t.Logger.Error("project not found", zap.Error(err))
 		c.JSON(http.StatusNotFound, gin.H{})

@@ -54,7 +54,7 @@ func (t *DeleteModelRoute) delete(c *gin.Context) {
 	}
 
 	// Check if user is in project
-	_, err = t.DB.Queries.GetUserOfProject(c, db_sqlc_gen.GetUserOfProjectParams{
+	_, err = t.DB.Queries.GetUserOfProject(c.Request.Context(), db_sqlc_gen.GetUserOfProjectParams{
 		UserID:    pgUserId,
 		Projectid: projectId,
 	})
@@ -64,7 +64,7 @@ func (t *DeleteModelRoute) delete(c *gin.Context) {
 		return
 	}
 
-	model, err := t.DB.Queries.GetModelByID(c, db_sqlc_gen.GetModelByIDParams{
+	model, err := t.DB.Queries.GetModelByID(c.Request.Context(), db_sqlc_gen.GetModelByIDParams{
 		ID: modelId,
 	})
 	if err != nil {
@@ -96,7 +96,7 @@ func (t *DeleteModelRoute) delete(c *gin.Context) {
 
 	deleteFile(model.FilePath, model.ModelExtension)
 	deleteFile(model.ImagePath, model.ImageExtension)
-	_, err = t.DB.Queries.DeleteModel(c, modelId)
+	_, err = t.DB.Queries.DeleteModel(c.Request.Context(), modelId)
 	if err != nil {
 		t.Logger.Error("something wrong with DB deletion", zap.Error(err))
 		c.JSON(http.StatusInternalServerError, gin.H{})

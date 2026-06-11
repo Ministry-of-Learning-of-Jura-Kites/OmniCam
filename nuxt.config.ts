@@ -79,6 +79,11 @@ export default defineNuxtConfig({
       nuxtBackendSecure: true,
       externalBackendHost: "error",
       devMode: false,
+
+      otelEndpoint: "",
+      otelServiceName: "",
+      otelServiceVersion: "",
+      deployEnv: "",
     },
   },
 });

@@ -16,7 +16,7 @@ type UserRoute struct {
 }
 
 func (t *UserRoute) GetAll(c *gin.Context) {
-	users, err := t.DB.Queries.GetAllUser(c)
+	users, err := t.DB.Queries.GetAllUser(c.Request.Context())
 	if err != nil {
 		t.Logger.Error("failed to fetch users", zap.Error(err))
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to fetch users"})

@@ -157,7 +157,7 @@ func (t *WorkspaceRoute) putWorkspaceSimulation(c *gin.Context) {
 	}
 
 	version, err := t.DB.Queries.UpdateWorkspaceSimulation(
-		c,
+		c.Request.Context(),
 		db_sqlc_gen.UpdateWorkspaceSimulationParams{
 			UserID:     userId,
 			ModelID:    modelId,

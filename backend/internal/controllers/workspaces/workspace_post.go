@@ -32,7 +32,7 @@ func (t *WorkspaceRoute) postWorkspaceMe(c *gin.Context) {
 		return
 	}
 
-	workspace, err := t.DB.Queries.CreateWorkspace(c, db_sqlc_gen.CreateWorkspaceParams{
+	workspace, err := t.DB.Queries.CreateWorkspace(c.Request.Context(), db_sqlc_gen.CreateWorkspaceParams{
 		UserID:  userId,
 		ModelID: modelId,
 	})

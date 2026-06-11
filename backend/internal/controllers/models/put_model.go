@@ -57,7 +57,7 @@ func (t *PutModelRoute) put(c *gin.Context) {
 	}
 
 	// Check if user is in project
-	_, err = t.DB.Queries.GetUserOfProject(c, db_sqlc_gen.GetUserOfProjectParams{
+	_, err = t.DB.Queries.GetUserOfProject(c.Request.Context(), db_sqlc_gen.GetUserOfProjectParams{
 		UserID:    pgUserId,
 		Projectid: projectId,
 	})
@@ -91,7 +91,7 @@ func (t *PutModelRoute) put(c *gin.Context) {
 		params.Description = pgtype.Text{Valid: false}
 	}
 
-	data, err := t.DB.Queries.UpdateModel(c, params)
+	data, err := t.DB.Queries.UpdateModel(c.Request.Context(), params)
 	if err != nil {
 		t.Logger.Error("error while updating project", zap.Error(err))
 		c.JSON(http.StatusInternalServerError, gin.H{})

@@ -23,7 +23,7 @@ func (t *GetMeRoute) GetMe(c *gin.Context) {
 		return
 	}
 
-	user, err := t.DB.Queries.GetUserByUsername(c, username.(string))
+	user, err := t.DB.Queries.GetUserByUsername(c.Request.Context(), username.(string))
 	if err != nil {
 		t.Logger.Error("failed to fetch user", zap.Error(err))
 		c.JSON(http.StatusNotFound, gin.H{"error": "user not found"})

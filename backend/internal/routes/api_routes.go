@@ -105,6 +105,7 @@ func InitRoutes(deps Dependencies, router gin.IRouter) {
 				return r.Header.Get("Origin") == deps.Env.FrontendHost
 			},
 		},
+		Nc: deps.Nc,
 	}
 	cameraAutosaveRoute.InitRoute(protectedRoute)
 

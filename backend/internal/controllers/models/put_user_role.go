@@ -43,7 +43,7 @@ func (t *PutUserRoleRoute) updateMemberRole(c *gin.Context) {
 		return
 	}
 
-	err = t.DB.Queries.PutUserRole(c, db_sqlc_gen.PutUserRoleParams{
+	err = t.DB.Queries.PutUserRole(c.Request.Context(), db_sqlc_gen.PutUserRoleParams{
 		Role:      db_sqlc_gen.Role(req.Role),
 		ProjectID: projectID,
 		UserID:    userID,
