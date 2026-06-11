@@ -114,7 +114,6 @@ export function useProject() {
       `${uuidToBase64Url(hexId)}/image`,
       getProjectBaseUrl(),
     );
-    // console.log("url on update : ", url);
     return await $fetch<{ imagePath: string; fileExtension: string }>(
       url.href,
       {
