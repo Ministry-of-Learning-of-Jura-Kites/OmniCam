@@ -53,48 +53,64 @@ pipelines:
               services:
                 - docker
               script:
-                - export DOCKER_BUILDKIT=1
                 - echo "$DOCKER_HUB_ACCESS_TOKEN" | docker login docker.io -u "$DOCKER_HUB_USER" --password-stdin
-                - FINAL_TAG="${BITBUCKET_TAG:-${MANUAL_TAG:-manual-build}}"
-                - docker build -t docker.io/oxygenai/omnicam-frontend:${FINAL_TAG} -t docker.io/oxygenai/omnicam-frontend:latest -f ./frontend/Dockerfile .
-                - docker push docker.io/oxygenai/omnicam-frontend:${FINAL_TAG}
-                - docker push docker.io/oxygenai/omnicam-frontend:latest
+                - export FINAL_TAG="${BITBUCKET_TAG:-${MANUAL_TAG:-manual-build}}"
+                - docker buildx create --use --name ci-builder || docker buildx use ci-builder
+                - docker buildx build --push
+                  --cache-from type=registry,ref=docker.io/oxygenai/buildkit-cache:omnicam-frontend
+                  --cache-to type=registry,ref=docker.io/oxygenai/buildkit-cache:omnicam-frontend,mode=max
+                  -t docker.io/oxygenai/omnicam-frontend:${FINAL_TAG}
+                  -t docker.io/oxygenai/omnicam-frontend:latest
+                  -f ./frontend/Dockerfile
+                  .
 
           - step: &build-push-backend
               name: Build & Push Backend
               services:
                 - docker
               script:
-                - export DOCKER_BUILDKIT=1
                 - echo "$DOCKER_HUB_ACCESS_TOKEN" | docker login docker.io -u "$DOCKER_HUB_USER" --password-stdin
-                - FINAL_TAG="${BITBUCKET_TAG:-${MANUAL_TAG:-manual-build}}"
-                - docker build -t docker.io/oxygenai/omnicam-backend:${FINAL_TAG} -t docker.io/oxygenai/omnicam-backend:latest -f ./backend/Dockerfile .
-                - docker push docker.io/oxygenai/omnicam-backend:${FINAL_TAG}
-                - docker push docker.io/oxygenai/omnicam-backend:latest
+                - export FINAL_TAG="${BITBUCKET_TAG:-${MANUAL_TAG:-manual-build}}"
+                - docker buildx create --use --name ci-builder || docker buildx use ci-builder
+                - docker buildx build --push
+                  --cache-from type=registry,ref=docker.io/oxygenai/buildkit-cache:omnicam-backend
+                  --cache-to type=registry,ref=docker.io/oxygenai/buildkit-cache:omnicam-backend,mode=max
+                  -t docker.io/oxygenai/omnicam-backend:${FINAL_TAG}
+                  -t docker.io/oxygenai/omnicam-backend:latest
+                  -f ./backend/Dockerfile
+                  .
 
           - step: &build-push-algo
               name: Build & Push Algo
               services:
                 - docker
               script:
-                - export DOCKER_BUILDKIT=1
                 - echo "$DOCKER_HUB_ACCESS_TOKEN" | docker login docker.io -u "$DOCKER_HUB_USER" --password-stdin
-                - FINAL_TAG="${BITBUCKET_TAG:-${MANUAL_TAG:-manual-build}}"
-                - docker build -t docker.io/oxygenai/omnicam-algo:${FINAL_TAG} -t docker.io/oxygenai/omnicam-algo:latest -f ./predictive-algorithm/Dockerfile .
-                - docker push docker.io/oxygenai/omnicam-algo:${FINAL_TAG}
-                - docker push docker.io/oxygenai/omnicam-algo:latest
+                - export FINAL_TAG="${BITBUCKET_TAG:-${MANUAL_TAG:-manual-build}}"
+                - docker buildx create --use --name ci-builder || docker buildx use ci-builder
+                - docker buildx build --push
+                  --cache-from type=registry,ref=docker.io/oxygenai/buildkit-cache:omnicam-algo
+                  --cache-to type=registry,ref=docker.io/oxygenai/buildkit-cache:omnicam-algo,mode=max
+                  -t docker.io/oxygenai/omnicam-algo:${FINAL_TAG}
+                  -t docker.io/oxygenai/omnicam-algo:latest
+                  -f ./predictive-algorithm/Dockerfile
+                  .
 
           - step: &build-push-data-migration
               name: Build & Push Data Migration
               services:
                 - docker
               script:
-                - export DOCKER_BUILDKIT=1
                 - echo "$DOCKER_HUB_ACCESS_TOKEN" | docker login docker.io -u "$DOCKER_HUB_USER" --password-stdin
-                - FINAL_TAG="${BITBUCKET_TAG:-${MANUAL_TAG:-manual-build}}"
-                - docker build -t docker.io/oxygenai/omnicam-data-migration:${FINAL_TAG} -t docker.io/oxygenai/omnicam-data-migration:latest -f ./db/Dockerfile .
-                - docker push docker.io/oxygenai/omnicam-data-migration:${FINAL_TAG}
-                - docker push docker.io/oxygenai/omnicam-data-migration:latest
+                - export FINAL_TAG="${BITBUCKET_TAG:-${MANUAL_TAG:-manual-build}}"
+                - docker buildx create --use --name ci-builder || docker buildx use ci-builder
+                - docker buildx build --push
+                  --cache-from type=registry,ref=docker.io/oxygenai/buildkit-cache:omnicam-data-migration
+                  --cache-to type=registry,ref=docker.io/oxygenai/buildkit-cache:omnicam-data-migration,mode=max
+                  -t docker.io/oxygenai/omnicam-data-migration:${FINAL_TAG}
+                  -t docker.io/oxygenai/omnicam-data-migration:latest
+                  -f ./db/Dockerfile
+                  .
 
   custom:
     manual-release-build:
