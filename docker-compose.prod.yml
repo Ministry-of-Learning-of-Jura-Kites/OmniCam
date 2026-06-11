@@ -1,0 +1,134 @@
+services:
+  db:
+    image: postgres:17
+    container_name: omnicam_postgres
+    env_file:
+      - .db.env.prod
+    networks:
+      - private_net
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  migrate:
+    image: docker.io/oxygenai/omnicam_data_migration:${IMAGE_TAG:-latest}
+    env_file:
+      - .backend.env.prod
+    networks:
+      - private_net
+    depends_on:
+      db:
+        condition: service_healthy
+
+  nats:
+    image: nats:2.12.6-alpine
+    container_name: omnicam_nats
+    restart: always
+    command: ["-m", "8222"]
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "wget",
+          "--no-verbose",
+          "--tries=1",
+          "--spider",
+          "http://localhost:8222/healthz",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    networks:
+      - private_net
+
+  backend:
+    build:
+      context: .
+      dockerfile: ./backend/Dockerfile
+    image: docker.io/oxygenai/omnicam_backend:${IMAGE_TAG:-latest}
+    container_name: omnicam_backend
+    env_file:
+      - .backend.env.prod
+    expose:
+      - 8080
+    volumes:
+      - few/omnicam/OmniCam/uploads:/app/uploads
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      db:
+        condition: service_healthy
+      nats:
+        condition: service_healthy
+
+    labels:
+      traefik.enable: "true"
+      traefik.docker.network: "traefik-proxy"
+      traefik.http.routers.pytha-vision.rule: "Host(`backend.omnicam.ops.oxygenci.com`)"
+      traefik.http.routers.pytha-vision.entrypoints: "websecure"
+      traefik.http.routers.pytha-vision.tls: "true"
+      traefik.http.services.pytha-vision.loadbalancer.server.port: "80"
+    networks:
+      app_net:
+        aliases:
+          - backend
+      traefik-proxy:
+      private_net:
+
+  frontend:
+    build:
+      context: .
+      dockerfile: ./frontend/Dockerfile
+    image: docker.io/oxygenai/omnicam_frontend:${IMAGE_TAG:-latest}
+    container_name: omnicam_frontend
+    env_file:
+      - .frontend.env.prod
+    expose:
+      - 3000
+    depends_on:
+      backend:
+        condition: service_started
+
+    labels:
+      traefik.enable: "true"
+      traefik.docker.network: "traefik-proxy"
+      traefik.http.routers.pytha-vision.rule: "Host(`omnicam.ops.oxygenci.com`)"
+      traefik.http.routers.pytha-vision.entrypoints: "websecure"
+      traefik.http.routers.pytha-vision.tls: "true"
+      traefik.http.services.pytha-vision.loadbalancer.server.port: "3000"
+    networks:
+      - traefik-proxy
+      - app_net
+
+  optimization:
+    build:
+      context: .
+      dockerfile: ./predictive-algorithm/Dockerfile
+    image: docker.io/oxygenai/omnicam_algo:${IMAGE_TAG:-latest}
+    container_name: omnicam_algo
+    env_file:
+      - .algo.env.prod
+    expose:
+      - 8081
+    depends_on:
+      nats:
+        condition: service_healthy
+    volumes:
+      - few/omnicam/OmniCam/uploads:/app/uploads
+    networks:
+      - private_net
+
+networks:
+  private_net:
+  app_net:
+  traefik-proxy:
+    external: true
+
+volumes:
+  postgres_data:
+  uploads:

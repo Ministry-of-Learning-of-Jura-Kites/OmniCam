@@ -50,7 +50,7 @@ pipelines:
   tags:
     "*":
       - parallel:
-          - step:
+          - step: &build-push-frontend
               name: Build & Push Frontend
               services:
                 - docker
@@ -67,14 +67,13 @@ pipelines:
                     - components.json
                     - tsconfig.json
               script:
-                - OWNER_LC=$(echo "${BITBUCKET_WORKSPACE}" | tr '[:upper:]' '[:lower:]')
-                - docker login crg.apkg.io -u "$BITBUCKET_PACKAGES_USERNAME" -p "$BITBUCKET_PACKAGES_TOKEN"
+                - docker login docker.io -u "$DOCKER_HUB_USER" -p "$DOCKER_HUB_ACCESS_TOKEN"
                 - FINAL_TAG="${BITBUCKET_TAG:-${MANUAL_TAG:-manual-build}}"
-                - docker build -t crg.apkg.io/${OWNER_LC}/omnicam_frontend:${FINAL_TAG} -t crg.apkg.io/${OWNER_LC}/omnicam_frontend:latest -f ./frontend/Dockerfile .
-                - docker push crg.apkg.io/${OWNER_LC}/omnicam_frontend:${FINAL_TAG}
-                - docker push crg.apkg.io/${OWNER_LC}/omnicam_frontend:latest
+                - docker build -t docker.io/oxygenai/omnicam_frontend:${FINAL_TAG} -t docker.io/oxygenai/omnicam_frontend:latest -f ./frontend/Dockerfile .
+                - docker push docker.io/oxygenai/omnicam_frontend:${FINAL_TAG}
+                - docker push docker.io/oxygenai/omnicam_frontend:latest
 
-          - step:
+          - step: &build-push-backend
               name: Build & Push Backend
               services:
                 - docker
@@ -89,14 +88,13 @@ pipelines:
                     - "db/**"
                     - protobufs
               script:
-                - OWNER_LC=$(echo "${BITBUCKET_WORKSPACE}" | tr '[:upper:]' '[:lower:]')
-                - docker login crg.apkg.io -u "$BITBUCKET_PACKAGES_USERNAME" -p "$BITBUCKET_PACKAGES_TOKEN"
+                - docker login docker.io -u "$DOCKER_HUB_USER" -p "$DOCKER_HUB_ACCESS_TOKEN"
                 - FINAL_TAG="${BITBUCKET_TAG:-${MANUAL_TAG:-manual-build}}"
-                - docker build -t crg.apkg.io/${OWNER_LC}/omnicam_backend:${FINAL_TAG} -t crg.apkg.io/${OWNER_LC}/omnicam_backend:latest -f ./backend/Dockerfile .
-                - docker push crg.apkg.io/${OWNER_LC}/omnicam_backend:${FINAL_TAG}
-                - docker push crg.apkg.io/${OWNER_LC}/omnicam_backend:latest
+                - docker build -t docker.io/oxygenai/omnicam_backend:${FINAL_TAG} -t docker.io/oxygenai/omnicam_backend:latest -f ./backend/Dockerfile .
+                - docker push docker.io/oxygenai/omnicam_backend:${FINAL_TAG}
+                - docker push docker.io/oxygenai/omnicam_backend:latest
 
-          - step:
+          - step: &build-push-algo
               name: Build & Push Algo
               services:
                 - docker
@@ -105,12 +103,26 @@ pipelines:
                   includePaths:
                     - "predictive-algorithm/**"
               script:
-                - OWNER_LC=$(echo "${BITBUCKET_WORKSPACE}" | tr '[:upper:]' '[:lower:]')
-                - docker login crg.apkg.io -u "$BITBUCKET_PACKAGES_USERNAME" -p "$BITBUCKET_PACKAGES_TOKEN"
+                - docker login docker.io -u "$DOCKER_HUB_USER" -p "$DOCKER_HUB_ACCESS_TOKEN"
                 - FINAL_TAG="${BITBUCKET_TAG:-${MANUAL_TAG:-manual-build}}"
-                - docker build -t crg.apkg.io/${OWNER_LC}/omnicam_algo:${FINAL_TAG} -t crg.apkg.io/${OWNER_LC}/omnicam_algo:latest -f ./predictive-algorithm/Dockerfile .
-                - docker push crg.apkg.io/${OWNER_LC}/omnicam_algo:${FINAL_TAG}
-                - docker push crg.apkg.io/${OWNER_LC}/omnicam_algo:latest
+                - docker build -t docker.io/oxygenai/omnicam_algo:${FINAL_TAG} -t docker.io/oxygenai/omnicam_algo:latest -f ./predictive-algorithm/Dockerfile .
+                - docker push docker.io/oxygenai/omnicam_algo:${FINAL_TAG}
+                - docker push docker.io/oxygenai/omnicam_algo:latest
+
+          - step: &build-push-data-migration
+              name: Build & Push Data Migration
+              services:
+                - docker
+              condition:
+                changesets:
+                  includePaths:
+                    - "db/**"
+              script:
+                - docker login docker.io -u "$DOCKER_HUB_USER" -p "$DOCKER_HUB_ACCESS_TOKEN"
+                - FINAL_TAG="${BITBUCKET_TAG:-${MANUAL_TAG:-manual-build}}"
+                - docker build -t docker.io/oxygenai/omnicam_data_migration:${FINAL_TAG} -t docker.io/oxygenai/omnicam_data_migration:latest -f ./db/Dockerfile .
+                - docker push docker.io/oxygenai/omnicam_data_migration:${FINAL_TAG}
+                - docker push docker.io/oxygenai/omnicam_data_migration:latest
 
   custom:
     manual-release-build:
@@ -118,35 +130,8 @@ pipelines:
           - name: MANUAL_TAG
             default: "manual-build"
             description: "Custom tag for the image"
-      # IMPORTANT: YAML reference expanded cleanly
       - parallel:
-          - step:
-              name: Build & Push Frontend
-              services: [docker]
-              script:
-                - OWNER_LC=$(echo "${BITBUCKET_WORKSPACE}" | tr '[:upper:]' '[:lower:]')
-                - docker login crg.apkg.io -u "$BITBUCKET_PACKAGES_USERNAME" -p "$BITBUCKET_PACKAGES_TOKEN"
-                - FINAL_TAG="${MANUAL_TAG:-manual-build}"
-                - docker build -t crg.apkg.io/${OWNER_LC}/omnicam_frontend:${FINAL_TAG} -t crg.apkg.io/${OWNER_LC}/omnicam_frontend:latest -f ./frontend/Dockerfile .
-                - docker push crg.apkg.io/${OWNER_LC}/omnicam_frontend:${FINAL_TAG}
-                - docker push crg.apkg.io/${OWNER_LC}/omnicam_frontend:latest
-          - step:
-              name: Build & Push Backend
-              services: [docker]
-              script:
-                - OWNER_LC=$(echo "${BITBUCKET_WORKSPACE}" | tr '[:upper:]' '[:lower:]')
-                - docker login crg.apkg.io -u "$BITBUCKET_PACKAGES_USERNAME" -p "$BITBUCKET_PACKAGES_TOKEN"
-                - FINAL_TAG="${MANUAL_TAG:-manual-build}"
-                - docker build -t crg.apkg.io/${OWNER_LC}/omnicam_backend:${FINAL_TAG} -t crg.apkg.io/${OWNER_LC}/omnicam_backend:latest -f ./backend/Dockerfile .
-                - docker push crg.apkg.io/${OWNER_LC}/omnicam_backend:${FINAL_TAG}
-                - docker push crg.apkg.io/${OWNER_LC}/omnicam_backend:latest
-          - step:
-              name: Build & Push Algo
-              services: [docker]
-              script:
-                - OWNER_LC=$(echo "${BITBUCKET_WORKSPACE}" | tr '[:upper:]' '[:lower:]')
-                - docker login crg.apkg.io -u "$BITBUCKET_PACKAGES_USERNAME" -p "$BITBUCKET_PACKAGES_TOKEN"
-                - FINAL_TAG="${MANUAL_TAG:-manual-build}"
-                - docker build -t crg.apkg.io/${OWNER_LC}/omnicam_algo:${FINAL_TAG} -t crg.apkg.io/${OWNER_LC}/omnicam_algo:latest -f ./predictive-algorithm/Dockerfile .
-                - docker push crg.apkg.io/${OWNER_LC}/omnicam_algo:${FINAL_TAG}
-                - docker push crg.apkg.io/${OWNER_LC}/omnicam_algo:latest
+          - step: *build-push-algo
+          - step: *build-push-frontend
+          - step: *build-push-backend
+          - step: *build-push-data-migration
