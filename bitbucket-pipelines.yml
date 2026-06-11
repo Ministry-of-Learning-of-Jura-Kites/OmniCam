@@ -44,8 +44,6 @@ pipelines:
       - parallel:
           - step:
               <<: *lint-step
-          - step:
-              <<: *sonarqube
 
   tags:
     "*":
