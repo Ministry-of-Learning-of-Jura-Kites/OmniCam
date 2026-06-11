@@ -6,6 +6,43 @@ import (
 	messages_trapezoids "omnicam.com/backend/pkg/messages/trapezoids"
 )
 
+type Simulation struct {
+	Areas            []SimulationArea  `json:"areas"`
+	PopulationGroups []PopulationGroup `json:"populationGroups"`
+	Routes           []SimulationRoute `json:"routes"`
+}
+
+type SimulationArea struct {
+	Id     string       `json:"id"`
+	Name   string       `json:"name"`
+	Color  string       `json:"color"`
+	Points [][3]float64 `json:"points"`
+	Kind   string       `json:"kind"`
+}
+
+type PopulationGroup struct {
+	Id string `json:"id"`
+
+	RouteId string `json:"routeId"`
+
+	Height float64 `json:"height"`
+	Speed  float64 `json:"speed"`
+	Count  int32   `json:"count"`
+}
+
+type SimulationRoute struct {
+	Id          string         `json:"id"`
+	Name        string         `json:"name"`
+	StartAreaId string         `json:"startAreaId"`
+	EndAreaId   string         `json:"endAreaId"`
+	Segments    []RouteSegment `json:"segments"`
+}
+
+type RouteSegment struct {
+	Type   string       `json:"type"`   // "line" | "bezier"
+	Points [][3]float64 `json:"points"` // 2 or 4 points
+}
+
 type ModelWorkspace struct {
 	ModelId          uuid.UUID                       `json:"modelId"`
 	Name             string                          `json:"name"`
@@ -22,4 +59,5 @@ type ModelWorkspace struct {
 	ModelExtension   string                          `json:"fileExtension"`
 	ImagePath        string                          `json:"imagePath"`
 	ImageExtension   string                          `json:"imageExtension"`
+	Simulation       Simulation                      `json:"simulation"`
 }

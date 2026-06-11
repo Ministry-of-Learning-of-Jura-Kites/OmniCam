@@ -107,6 +107,20 @@ func (t *WorkspaceRoute) getWorkspace(c *gin.Context) {
 		}
 	}
 
+	var simulation messages_model_workspace.Simulation
+
+	if slices.Contains(includedFields, "simulation") {
+		err := json.Unmarshal(data.Simulation, &simulation)
+		if err != nil {
+			t.Logger.Error(
+				"simulation json invalid",
+				zap.Error(err),
+			)
+			c.JSON(http.StatusInternalServerError, gin.H{})
+			return
+		}
+	}
+
 	c.JSON(http.StatusOK, gin.H{"data": messages_model_workspace.ModelWorkspace{
 		ModelId:          modelId,
 		Name:             data.Model.Name,
@@ -123,5 +137,6 @@ func (t *WorkspaceRoute) getWorkspace(c *gin.Context) {
 		TargetTrapezoids: &targetTrapezoids,
 		ScaleFactor:      data.ScaleFactor,
 		ModelHeight:      data.ModelHeight,
+		Simulation:       simulation,
 	}})
 }

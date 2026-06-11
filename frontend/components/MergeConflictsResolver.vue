@@ -44,8 +44,14 @@ const runtimeConfig = useRuntimeConfig();
 
 const projectId = route.params.projectId as string;
 const modelId = route.params.modelId as string;
+const workspaceId = route.params.workspaceId as string;
 
-const { postResolve } = useWorkspaceApi(projectId, modelId, runtimeConfig);
+const { postResolve } = useWorkspaceApi(
+  projectId,
+  modelId,
+  workspaceId,
+  runtimeConfig,
+);
 
 // initialize defaults whenever conflicts change
 watch(

@@ -98,7 +98,6 @@ func InitRoutes(deps Dependencies, router gin.IRouter) {
 		Logger: deps.Logger,
 		Env:    deps.Env,
 		DB:     deps.DB,
-		Nc:     deps.Nc,
 		Upgrader: websocket.Upgrader{
 			ReadBufferSize:  1024,
 			WriteBufferSize: 1024,

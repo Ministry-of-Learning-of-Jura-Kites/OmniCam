@@ -1,58 +1,53 @@
+// ~/composables/useWorkspaceApi.ts
 import type { RuntimeConfig } from "nuxt/schema";
 import { MODEL_INFO_KEY } from "~/constants/state-keys";
-import { getApiBaseUrlWithProtocol } from "~/utils/url";
-
-function getWorkspaceMeUrl(
-  projectId: string,
-  modelId: string,
-  config: RuntimeConfig,
-) {
-  const base = getApiBaseUrlWithProtocol("http", config);
-
-  return concatUrl(
-    `projects/${projectId}/models/${modelId}/workspaces/me`,
-    base,
-  ).href;
-}
+import type { Simulation } from "~/types/simulation";
 
 export function useWorkspaceApi(
   projectId: string,
   modelId: string,
+  workspaceId: string,
   runtimeConfig: RuntimeConfig,
 ) {
+  const route = useWorkspaceRoute(
+    projectId,
+    modelId,
+    workspaceId,
+    runtimeConfig,
+  );
+
   async function postMerge() {
-    const baseUrl = getWorkspaceMeUrl(projectId, modelId, runtimeConfig);
-    const resp = await fetch(concatUrl("merge", baseUrl).href, {
+    const resp = await fetch(route.merge(), {
       method: "POST",
       credentials: "include",
     });
+
     return { resp };
   }
 
   async function postCreateMe() {
-    const data = await $fetch(
-      getWorkspaceMeUrl(projectId, modelId, runtimeConfig),
-      {
-        method: "POST",
-        credentials: "include",
-      },
-    );
+    const data = await $fetch(route.me(), {
+      method: "POST",
+      credentials: "include",
+    });
+
     useState(`${MODEL_INFO_KEY}-${modelId}`, () => data);
   }
 
   async function deleteWorkspaceMe() {
-    await $fetch(getWorkspaceMeUrl(projectId, modelId, runtimeConfig), {
+    await $fetch(route.me(), {
       method: "DELETE",
       credentials: "include",
     });
+
     useState(`${MODEL_INFO_KEY}-${modelId}`, () => undefined);
   }
 
   async function postResolve(results: Record<string, Record<string, unknown>>) {
     const error = ref<Error | undefined>();
-    const baseUrl = getWorkspaceMeUrl(projectId, modelId, runtimeConfig);
+
     try {
-      await $fetch<{ error?: string }>(concatUrl("resolve", baseUrl).href, {
+      await $fetch(route.resolve(), {
         method: "POST",
         credentials: "include",
         body: { merged: results },
@@ -61,8 +56,37 @@ export function useWorkspaceApi(
       error.value = err as Error;
       console.error("postResolve failed:", err);
     }
+
     return { error };
   }
 
-  return { postMerge, postCreateMe, deleteWorkspaceMe, postResolve };
+  async function putSimulation(simulation: Simulation) {
+    return await $fetch(route.simulation(), {
+      method: "PUT",
+      credentials: "include",
+      body: { simulation },
+    });
+  }
+
+  async function getWorkspace(fields: string[] = []) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const data = await $fetch<{ data: any }>(route.workspaceIdUrl(), {
+      method: "GET",
+      credentials: "include",
+      query: {
+        fields,
+      },
+    });
+
+    return data.data;
+  }
+
+  return {
+    getWorkspace,
+    postMerge,
+    postCreateMe,
+    deleteWorkspaceMe,
+    postResolve,
+    putSimulation,
+  };
 }

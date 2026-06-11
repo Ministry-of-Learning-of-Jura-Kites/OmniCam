@@ -65,32 +65,47 @@ func (t *FileRoute) serveFile(c *gin.Context, pathSegments ...string) {
 func (t *FileRoute) getProjectFile(c *gin.Context) {
 	projectIdStr := c.Param("projectId")
 	fileExt := c.Param("fileExt")
+
 	projectId, err := utils.ParseUuidBase64(projectIdStr)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"message": "invalid projectId"})
+		c.JSON(http.StatusBadRequest, gin.H{
+			"message": "invalid projectId",
+		})
 		return
 	}
 
 	userId, err := utils.GetUuidFromCtx(c, "userId")
 	if err != nil {
-		c.JSON(http.StatusForbidden, gin.H{"message": "permission denied"})
+		c.JSON(http.StatusForbidden, gin.H{
+			"message": "permission denied",
+		})
 		return
 	}
 
 	hasAccess, err := t.userHasProjectAccess(c, userId, projectId)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"message": "failed to validate access"})
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"message": "failed to validate access",
+		})
 		return
 	}
 
 	if !hasAccess {
-		c.JSON(http.StatusForbidden, gin.H{"message": "permission denied"})
+		c.JSON(http.StatusForbidden, gin.H{
+			"message": "permission denied",
+		})
 		return
 	}
+
 	fileType := "images"
 
-	// Construct file root/uplodas/images/projectId.ext
-	filePath := fmt.Sprintf(internal.Root+"/uploads/%s/%s.%s", fileType, projectId.String(), fileExt)
+	filePath := fmt.Sprintf(
+		internal.Root+"/uploads/%s/%s.%s",
+		fileType,
+		projectId.String(),
+		fileExt,
+	)
+
 	t.serveFile(c, filePath)
 }
 
@@ -125,7 +140,6 @@ func (t *FileRoute) getModelFile(c *gin.Context) {
 	}
 
 	if !hasAccess {
-		// Return not found for security
 		c.JSON(http.StatusNotFound, gin.H{})
 		return
 	}

@@ -22,6 +22,7 @@ export interface Project {
   createdAt: string;
   updatedAt: string;
   imagePath?: string;
+  imageExtension?: string;
   imageData?: Stream;
 }
 
@@ -113,7 +114,6 @@ export function useProject() {
       `${uuidToBase64Url(hexId)}/image`,
       getProjectBaseUrl(),
     );
-
     return await $fetch<{ imagePath: string; fileExtension: string }>(
       url.href,
       {

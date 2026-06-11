@@ -26,15 +26,20 @@ import type { WorkspaceEventResponse } from "~/messages/protobufs/workspace_even
 import { useLivestream } from "../scene-3d/use-livestream";
 import { arrayPointsToNormal } from "~/utils/face-helper/get-avg-normal";
 import { v4 as uuidv4 } from "uuid";
+import type { Simulation, SimulationState } from "~/types/simulation";
+// import type { NavMesh, Crowd } from "recast-navigation";
 
+export type SimulationFaceKind = "start" | "end";
 export interface ProcessedCoverageFace {
   name: string;
+  type?: "coverage" | "simulation";
   points: QuadrilateralPoints;
   color: string | undefined;
   hidden: boolean;
   normal: Vector3;
   // Derived field
   center?: [number, number, number];
+  kind?: SimulationFaceKind;
 }
 export interface ModelWithCamsResp {
   data: {
@@ -165,6 +170,27 @@ export function createBaseSceneStates(
     | undefined
   > = ref(undefined);
 
+  // const navMesh = ref<NavMesh | null>(null);
+  // const crowd = ref<Crowd | null>(null);
+
+  const simulationKind = ref<SimulationFaceKind>("start");
+
+  const routeDrawing = reactive<{
+    activeRouteId: string | null;
+    mode: "none" | "line" | "bezier";
+    dragging: { segmentIndex: number; pointIndex: number } | null;
+  }>({
+    activeRouteId: null,
+    mode: "none",
+    dragging: null,
+  });
+
+  const simulation = reactive<Simulation>({
+    areas: [],
+    populationGroups: [],
+    routes: [],
+  });
+
   const errorLivestreamMessage: Ref<string | null> = ref<string | null>(null);
 
   const currentCamId: Ref<string | null> = ref(null);
@@ -255,13 +281,17 @@ export function createBaseSceneStates(
   const perspectiveCamera = ref<PerspectiveCamera | null>(null);
   const cubeCamera = ref<CubeCamera | null>(null);
 
-  const selectionMode = ref<"none" | "coverage-area" | "measurement">("none");
+  const selectionMode = ref<
+    "none" | "coverage-area" | "measurement" | "simulation"
+  >("none");
   const initialCoverageFaces = transformFacesData(modelWithCamsResp);
   const coverageFaces =
     reactive<Record<string, ProcessedCoverageFace>>(initialCoverageFaces);
   const coverageAllHidden = ref(false);
 
-  const setCoverageMode = (mode: "none" | "coverage-area" | "measurement") => {
+  const setCoverageMode = (
+    mode: "none" | "coverage-area" | "measurement" | "simulation",
+  ) => {
     selectionMode.value = mode;
   };
 
@@ -291,6 +321,8 @@ export function createBaseSceneStates(
     coverageFaces[id] = {
       ...face,
       color: face.color ?? "#22ff88",
+      type: face.type ?? "coverage",
+      kind: face.type === "simulation" ? face.kind : undefined,
       hidden: face.hidden ?? false,
     };
   };
@@ -312,6 +344,8 @@ export function createBaseSceneStates(
       delete coverageFaces[face];
     }
   };
+
+  const simulationState = ref<SimulationState>("idle");
 
   const updateCoverageFaceCorner = (
     faceId: string,
@@ -457,6 +491,13 @@ export function createBaseSceneStates(
     cubeCamera,
     facesManagement,
     measurement,
+    // addAreaFace,
+    // navMesh,
+    // crowd,
+    routeDrawing,
+    simulationKind,
+    simulation,
+    simulationState,
     miniScene,
   } as const;
 
@@ -496,7 +537,6 @@ export function createSceneStatesWithHelper(
       }
 
       if (resp.optimize.successResp) {
-        console.log(resp.optimize.successResp.cameras);
         for (const cam of resp.optimize.successResp.cameras) {
           optimization!.candidateCameras[cam.id] =
             transformProtoEventToCamera(cam);

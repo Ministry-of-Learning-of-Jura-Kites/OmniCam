@@ -22,14 +22,13 @@ func main() {
 
 	env := config_env.InitAppEnv(logger)
 
+	clientDB := db_client.InitDatabase(env, logger)
+
+	router := gin.Default()
 	nc, err := nats.Connect(env.NatsUrl)
 	if err != nil {
 		logger.Fatal("Error while connecting to nats", zap.Error(err))
 	}
-
-	clientDB := db_client.InitDatabase(env, logger)
-
-	router := gin.Default()
 
 	var allowOrigins []string = []string{env.FrontendHost}
 
@@ -51,8 +50,8 @@ func main() {
 	api_routes.InitRoutes(api_routes.Dependencies{
 		Logger: logger,
 		Env:    env,
-		Nc:     nc,
 		DB:     clientDB,
+		Nc:     nc,
 	}, apiV1)
 
 	router.Run()
