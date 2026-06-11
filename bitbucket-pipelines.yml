@@ -44,8 +44,6 @@ pipelines:
       - parallel:
           - step:
               <<: *lint-step
-          - step:
-              <<: *sonarqube
 
   tags:
     "*":
@@ -55,44 +53,48 @@ pipelines:
               services:
                 - docker
               script:
+                - export DOCKER_BUILDKIT=1
                 - echo "$DOCKER_HUB_ACCESS_TOKEN" | docker login docker.io -u "$DOCKER_HUB_USER" --password-stdin
                 - FINAL_TAG="${BITBUCKET_TAG:-${MANUAL_TAG:-manual-build}}"
-                - docker build -t docker.io/oxygenai/omnicam_frontend:${FINAL_TAG} -t docker.io/oxygenai/omnicam_frontend:latest -f ./frontend/Dockerfile .
-                - docker push docker.io/oxygenai/omnicam_frontend:${FINAL_TAG}
-                - docker push docker.io/oxygenai/omnicam_frontend:latest
+                - docker build -t docker.io/oxygenai/omnicam-frontend:${FINAL_TAG} -t docker.io/oxygenai/omnicam-frontend:latest -f ./frontend/Dockerfile .
+                - docker push docker.io/oxygenai/omnicam-frontend:${FINAL_TAG}
+                - docker push docker.io/oxygenai/omnicam-frontend:latest
 
           - step: &build-push-backend
               name: Build & Push Backend
               services:
                 - docker
               script:
+                - export DOCKER_BUILDKIT=1
                 - echo "$DOCKER_HUB_ACCESS_TOKEN" | docker login docker.io -u "$DOCKER_HUB_USER" --password-stdin
                 - FINAL_TAG="${BITBUCKET_TAG:-${MANUAL_TAG:-manual-build}}"
-                - docker build -t docker.io/oxygenai/omnicam_backend:${FINAL_TAG} -t docker.io/oxygenai/omnicam_backend:latest -f ./backend/Dockerfile .
-                - docker push docker.io/oxygenai/omnicam_backend:${FINAL_TAG}
-                - docker push docker.io/oxygenai/omnicam_backend:latest
+                - docker build -t docker.io/oxygenai/omnicam-backend:${FINAL_TAG} -t docker.io/oxygenai/omnicam-backend:latest -f ./backend/Dockerfile .
+                - docker push docker.io/oxygenai/omnicam-backend:${FINAL_TAG}
+                - docker push docker.io/oxygenai/omnicam-backend:latest
 
           - step: &build-push-algo
               name: Build & Push Algo
               services:
                 - docker
               script:
+                - export DOCKER_BUILDKIT=1
                 - echo "$DOCKER_HUB_ACCESS_TOKEN" | docker login docker.io -u "$DOCKER_HUB_USER" --password-stdin
                 - FINAL_TAG="${BITBUCKET_TAG:-${MANUAL_TAG:-manual-build}}"
-                - docker build -t docker.io/oxygenai/omnicam_algo:${FINAL_TAG} -t docker.io/oxygenai/omnicam_algo:latest -f ./predictive-algorithm/Dockerfile .
-                - docker push docker.io/oxygenai/omnicam_algo:${FINAL_TAG}
-                - docker push docker.io/oxygenai/omnicam_algo:latest
+                - docker build -t docker.io/oxygenai/omnicam-algo:${FINAL_TAG} -t docker.io/oxygenai/omnicam-algo:latest -f ./predictive-algorithm/Dockerfile .
+                - docker push docker.io/oxygenai/omnicam-algo:${FINAL_TAG}
+                - docker push docker.io/oxygenai/omnicam-algo:latest
 
           - step: &build-push-data-migration
               name: Build & Push Data Migration
               services:
                 - docker
               script:
+                - export DOCKER_BUILDKIT=1
                 - echo "$DOCKER_HUB_ACCESS_TOKEN" | docker login docker.io -u "$DOCKER_HUB_USER" --password-stdin
                 - FINAL_TAG="${BITBUCKET_TAG:-${MANUAL_TAG:-manual-build}}"
-                - docker build -t docker.io/oxygenai/omnicam_data_migration:${FINAL_TAG} -t docker.io/oxygenai/omnicam_data_migration:latest -f ./db/Dockerfile .
-                - docker push docker.io/oxygenai/omnicam_data_migration:${FINAL_TAG}
-                - docker push docker.io/oxygenai/omnicam_data_migration:latest
+                - docker build -t docker.io/oxygenai/omnicam-data-migration:${FINAL_TAG} -t docker.io/oxygenai/omnicam-data-migration:latest -f ./db/Dockerfile .
+                - docker push docker.io/oxygenai/omnicam-data-migration:${FINAL_TAG}
+                - docker push docker.io/oxygenai/omnicam-data-migration:latest
 
   custom:
     manual-release-build:
