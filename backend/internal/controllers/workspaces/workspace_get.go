@@ -60,7 +60,7 @@ func (t *WorkspaceRoute) getWorkspace(c *gin.Context) {
 
 	username := c.GetString("username")
 
-	_, err = t.DB.Queries.GetUserOfProject(c, db_sqlc_gen.GetUserOfProjectParams{
+	_, err = t.DB.Queries.GetUserOfProject(c.Request.Context(), db_sqlc_gen.GetUserOfProjectParams{
 		Username: pgtype.Text{
 			String: username,
 			Valid:  true,
@@ -75,7 +75,7 @@ func (t *WorkspaceRoute) getWorkspace(c *gin.Context) {
 
 	includedFields := c.QueryArray("fields")
 
-	data, err := t.DB.Queries.GetWorkspaceByID(c, db_sqlc_gen.GetWorkspaceByIDParams{
+	data, err := t.DB.Queries.GetWorkspaceByID(c.Request.Context(), db_sqlc_gen.GetWorkspaceByIDParams{
 		Fields:  includedFields,
 		UserID:  ownerID,
 		ModelID: modelId,

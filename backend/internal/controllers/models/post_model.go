@@ -104,7 +104,7 @@ func (t *PostModelRoutes) post(c *gin.Context) {
 	}
 
 	// --- Insert into DB using web paths ---
-	data, err := t.DB.Queries.CreateModel(c, db_sqlc_gen.CreateModelParams{
+	data, err := t.DB.Queries.CreateModel(c.Request.Context(), db_sqlc_gen.CreateModelParams{
 		ID:             modelId,
 		ProjectID:      projectId,
 		Name:           req.Name,

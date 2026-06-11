@@ -29,7 +29,7 @@ func (t *AuthRoute) login(c *gin.Context) {
 		return
 	}
 
-	user, err := t.DB.Queries.GetUserByIdentifier(c, req.Identifier)
+	user, err := t.DB.Queries.GetUserByIdentifier(c.Request.Context(), req.Identifier)
 	if err != nil {
 		t.Logger.Error("user not found", zap.Error(err))
 		c.JSON(http.StatusBadRequest, gin.H{})

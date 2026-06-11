@@ -6,6 +6,7 @@ export function useAutosaveWs(
   modelId: string,
   workspace: string,
 ) {
+  const { $otel } = useNuxtApp();
   const runtimeConfig = useRuntimeConfig();
   let autosaveWs: UseWebSocketReturn<unknown> | undefined = undefined;
   const autosaveAlert = ref<{
@@ -29,6 +30,7 @@ export function useAutosaveWs(
       },
 
       onConnected: () => {
+        $otel.traceWsSend(autosaveWs?.ws.value, "connect");
         if (wasConnected) {
           autosaveAlert.value = {
             title: "Autosave Reconnected",
@@ -46,7 +48,6 @@ export function useAutosaveWs(
       },
 
       onDisconnected: (ws, event) => {
-        console.log("is this connect : ", wasConnected);
         if (!wasConnected) return;
 
         if (isDisconnectedAlertVisible) return;
@@ -69,6 +70,13 @@ export function useAutosaveWs(
           };
         }
       },
+      onMessage: $otel.traceWsReceive(
+        websocketUrl.toString(),
+        "autosave",
+        (data) => {
+          console.log("[Autosave] message received", data);
+        },
+      ),
     });
   }
 

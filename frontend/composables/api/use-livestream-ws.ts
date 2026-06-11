@@ -7,6 +7,7 @@ export function useLivestreamWs(
   workspace: string,
   runtimeConfig: RuntimeConfig,
 ) {
+  const { $otel } = useNuxtApp();
   let livestreamWs: UseWebSocketReturn<unknown> | undefined = undefined;
   const livestreamAlert = ref<{
     title: string;
@@ -29,6 +30,7 @@ export function useLivestreamWs(
       },
 
       onConnected: () => {
+        $otel.traceWsSend(livestreamWs?.ws.value, "livestream.connect");
         if (wasConnected) {
           livestreamAlert.value = {
             title: "Livestream Reconnected",
@@ -53,8 +55,6 @@ export function useLivestreamWs(
         isDisconnectedAlertVisible = true;
 
         const closeEvent = event as CloseEvent;
-
-        console.log("livestream disconnected, code:", closeEvent);
 
         if (closeEvent?.code === 1011) {
           livestreamAlert.value = {

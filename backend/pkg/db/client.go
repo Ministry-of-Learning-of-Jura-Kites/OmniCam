@@ -4,7 +4,9 @@ import (
 	"context"
 	"time"
 
+	"github.com/exaring/otelpgx"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"go.opentelemetry.io/otel"
 	"go.uber.org/zap"
 
 	// "go.uber.org/zap/internal/pool"
@@ -22,6 +24,12 @@ func InitDatabase(env *config_env.AppEnv, logger *zap.Logger) *DB {
 	if err != nil {
 		logger.Fatal("Unable to parse DATABASE_URL", zap.Error(err))
 	}
+
+	config.ConnConfig.Tracer = otelpgx.NewTracer(
+		otelpgx.WithTracerProvider(otel.GetTracerProvider()),
+		otelpgx.WithTrimSQLInSpanName(),
+		otelpgx.WithDisableQuerySpanNamePrefix(),
+	)
 
 	var pool *pgxpool.Pool
 	maxRetries := 5

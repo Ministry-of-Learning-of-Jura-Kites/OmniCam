@@ -38,7 +38,7 @@ func (t *PostProjectRoute) post(c *gin.Context) {
 		return
 	}
 
-	user, err := t.DB.Queries.GetUserByUsername(c, username.(string))
+	user, err := t.DB.Queries.GetUserByUsername(c.Request.Context(), username.(string))
 	if err != nil {
 		t.Logger.Error("failed to get user by username", zap.Error(err))
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "user not found"})
@@ -95,7 +95,7 @@ func (t *PostProjectRoute) post(c *gin.Context) {
 
 	queries := t.DB.Queries.WithTx(tx)
 
-	project, err := queries.CreateProject(c, db_sqlc_gen.CreateProjectParams{
+	project, err := queries.CreateProject(c.Request.Context(), db_sqlc_gen.CreateProjectParams{
 		ID:          projectID,
 		Name:        req.Name,
 		Description: req.Description,

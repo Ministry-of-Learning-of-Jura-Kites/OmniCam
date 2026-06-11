@@ -52,7 +52,7 @@ func (t *PutImageModelRoute) updateImage(c *gin.Context) {
 	}
 
 	// Check if user is in project
-	_, err = t.DB.Queries.GetUserOfProject(c, db_sqlc_gen.GetUserOfProjectParams{
+	_, err = t.DB.Queries.GetUserOfProject(c.Request.Context(), db_sqlc_gen.GetUserOfProjectParams{
 		UserID:    pgUserId,
 		Projectid: projectId,
 	})
@@ -106,7 +106,7 @@ func (t *PutImageModelRoute) updateImage(c *gin.Context) {
 
 	// Web path for DB/frontend
 	webImagePath := "/uploads/images/" + projectId.String() + modelId.String()
-	_, err = t.DB.Queries.UpdateModelImage(c, db_sqlc_gen.UpdateModelImageParams{
+	_, err = t.DB.Queries.UpdateModelImage(c.Request.Context(), db_sqlc_gen.UpdateModelImageParams{
 		ID:             modelId,
 		ImagePath:      webImagePath,
 		ImageExtension: imageExt,

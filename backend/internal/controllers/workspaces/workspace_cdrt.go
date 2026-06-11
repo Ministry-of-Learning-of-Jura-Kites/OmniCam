@@ -231,7 +231,7 @@ func (t *WorkspaceRoute) postResolveWorkspaceMe(c *gin.Context) {
 	}
 
 	// Get workspace cams
-	workspaceData, err := t.DB.Queries.GetWorkspaceByID(c, db_sqlc_gen.GetWorkspaceByIDParams{
+	workspaceData, err := t.DB.Queries.GetWorkspaceByID(c.Request.Context(), db_sqlc_gen.GetWorkspaceByIDParams{
 		Fields:  []string{"cameras"},
 		UserID:  userId,
 		ModelID: modelId,
@@ -267,7 +267,7 @@ func (t *WorkspaceRoute) postResolveWorkspaceMe(c *gin.Context) {
 	}
 
 	// Get  model cams
-	modelData, err := t.DB.Queries.GetModelByID(c, db_sqlc_gen.GetModelByIDParams{
+	modelData, err := t.DB.Queries.GetModelByID(c.Request.Context(), db_sqlc_gen.GetModelByIDParams{
 		Fields: []string{"cameras"},
 		ID:     modelId,
 	})
@@ -341,20 +341,20 @@ func (t *WorkspaceRoute) postResolveWorkspaceMe(c *gin.Context) {
 	}
 
 	queries := t.DB.Queries.WithTx(tx)
-	queries.UpdateModelCams(c, db_sqlc_gen.UpdateModelCamsParams{
+	queries.UpdateModelCams(c.Request.Context(), db_sqlc_gen.UpdateModelCamsParams{
 		Value:   workspaceData.Cameras,
 		ModelID: modelId,
 	})
-	queries.UpdateModelCalibration(c, db_sqlc_gen.UpdateModelCalibrationParams{
+	queries.UpdateModelCalibration(c.Request.Context(), db_sqlc_gen.UpdateModelCalibrationParams{
 		ModelID:     modelId,
 		ScaleFactor: workspaceData.ScaleFactor,
 		ModelHeight: workspaceData.ModelHeight,
 	})
-	queries.DeleteWorkspace(c, db_sqlc_gen.DeleteWorkspaceParams{
+	queries.DeleteWorkspace(c.Request.Context(), db_sqlc_gen.DeleteWorkspaceParams{
 		UserID:  userId,
 		ModelID: modelId,
 	})
-	tx.Commit(c)
+	tx.Commit(c.Request.Context())
 
 	c.Status(http.StatusOK)
 }
@@ -375,7 +375,7 @@ func (t *WorkspaceRoute) postMergeWorkspace(c *gin.Context) {
 		return
 	}
 
-	workspaceData, err := t.DB.Queries.GetWorkspaceByID(c, db_sqlc_gen.GetWorkspaceByIDParams{
+	workspaceData, err := t.DB.Queries.GetWorkspaceByID(c.Request.Context(), db_sqlc_gen.GetWorkspaceByIDParams{
 		Fields:  []string{"cameras", "base_cameras"},
 		UserID:  userId,
 		ModelID: modelId,
@@ -386,7 +386,7 @@ func (t *WorkspaceRoute) postMergeWorkspace(c *gin.Context) {
 		return
 	}
 
-	modelData, err := t.DB.Queries.GetModelByID(c, db_sqlc_gen.GetModelByIDParams{
+	modelData, err := t.DB.Queries.GetModelByID(c.Request.Context(), db_sqlc_gen.GetModelByIDParams{
 		Fields: []string{"cameras"},
 		ID:     modelId,
 	})
@@ -410,7 +410,7 @@ func (t *WorkspaceRoute) postMergeWorkspace(c *gin.Context) {
 		if !calibrationChanged {
 			return nil // skip if nothing to save
 		}
-		_, err := t.DB.Queries.UpdateModelCalibration(c, db_sqlc_gen.UpdateModelCalibrationParams{
+		_, err := t.DB.Queries.UpdateModelCalibration(c.Request.Context(), db_sqlc_gen.UpdateModelCalibrationParams{
 			ModelID:     modelId,
 			ScaleFactor: workspaceData.ScaleFactor,
 			ModelHeight: workspaceData.ModelHeight,
@@ -435,7 +435,7 @@ func (t *WorkspaceRoute) postMergeWorkspace(c *gin.Context) {
 
 	switch cmp.Compare(modelData.Version, workspaceData.BaseVersion) {
 	case 0:
-		newVersion, err := t.DB.Queries.UpdateModelCams(c, db_sqlc_gen.UpdateModelCamsParams{
+		newVersion, err := t.DB.Queries.UpdateModelCams(c.Request.Context(), db_sqlc_gen.UpdateModelCamsParams{
 			Value:   workspaceData.Cameras,
 			ModelID: modelId,
 		})
@@ -449,7 +449,7 @@ func (t *WorkspaceRoute) postMergeWorkspace(c *gin.Context) {
 			c.JSON(http.StatusInternalServerError, gin.H{})
 			return
 		}
-		err = t.DB.Queries.UpdateSetWorkspaceCams(c, db_sqlc_gen.UpdateSetWorkspaceCamsParams{
+		err = t.DB.Queries.UpdateSetWorkspaceCams(c.Request.Context(), db_sqlc_gen.UpdateSetWorkspaceCamsParams{
 			Cameras:     workspaceData.Cameras,
 			BaseCameras: workspaceData.Cameras,
 			BaseVersion: newVersion,
@@ -500,7 +500,7 @@ func (t *WorkspaceRoute) postMergeWorkspace(c *gin.Context) {
 		}
 
 		if len(conflicts) == 0 {
-			base_version, err := t.DB.Queries.UpdateModelCams(c, db_sqlc_gen.UpdateModelCamsParams{
+			base_version, err := t.DB.Queries.UpdateModelCams(c.Request.Context(), db_sqlc_gen.UpdateModelCamsParams{
 				Value:   mergedEncoded,
 				ModelID: modelId,
 			})
@@ -514,7 +514,7 @@ func (t *WorkspaceRoute) postMergeWorkspace(c *gin.Context) {
 				c.JSON(http.StatusInternalServerError, gin.H{})
 				return
 			}
-			err = t.DB.Queries.UpdateSetWorkspaceCams(c, db_sqlc_gen.UpdateSetWorkspaceCamsParams{
+			err = t.DB.Queries.UpdateSetWorkspaceCams(c.Request.Context(), db_sqlc_gen.UpdateSetWorkspaceCamsParams{
 				Cameras:     mergedEncoded,
 				BaseCameras: mergedEncoded,
 				BaseVersion: base_version,

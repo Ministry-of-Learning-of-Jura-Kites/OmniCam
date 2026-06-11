@@ -24,7 +24,7 @@ func (t *GetProjectMembersRoute) getProjectMembers(c *gin.Context) {
 		return
 	}
 
-	members, err := t.DB.Queries.GetProjectMembers(c, projectID)
+	members, err := t.DB.Queries.GetProjectMembers(c.Request.Context(), projectID)
 	if err != nil {
 		t.Logger.Error("failed to get project members", zap.Error(err))
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to retrieve project members"})

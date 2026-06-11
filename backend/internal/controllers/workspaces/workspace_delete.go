@@ -25,7 +25,7 @@ func (t *WorkspaceRoute) deleteWorkspaceMe(c *gin.Context) {
 		return
 	}
 
-	err = t.DB.Queries.DeleteWorkspace(c, db_sqlc_gen.DeleteWorkspaceParams{
+	err = t.DB.Queries.DeleteWorkspace(c.Request.Context(), db_sqlc_gen.DeleteWorkspaceParams{
 		UserID:  userId,
 		ModelID: modelId,
 	})

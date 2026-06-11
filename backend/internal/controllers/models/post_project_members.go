@@ -48,7 +48,7 @@ func (t *PostProjectMembersRoute) addProjectMembers(c *gin.Context) {
 		roles = append(roles, m.Role)
 	}
 
-	err = t.DB.Queries.PostProjectMembers(c, db_sqlc_gen.PostProjectMembersParams{
+	err = t.DB.Queries.PostProjectMembers(c.Request.Context(), db_sqlc_gen.PostProjectMembersParams{
 		ProjectID: projectID,
 		UserIds:   userIDs,
 		Roles:     roles,

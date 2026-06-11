@@ -24,7 +24,7 @@ type FileRoute struct {
 }
 
 func (t *FileRoute) userHasProjectAccess(c *gin.Context, userId uuid.UUID, projectId uuid.UUID) (bool, error) {
-	projects, err := t.DB.Queries.GetProjectsByUserId(c, db_sqlc_gen.GetProjectsByUserIdParams{
+	projects, err := t.DB.Queries.GetProjectsByUserId(c.Request.Context(), db_sqlc_gen.GetProjectsByUserIdParams{
 		UserID:     userId,
 		PageSize:   1000, // or any large number
 		PageOffset: 0,
