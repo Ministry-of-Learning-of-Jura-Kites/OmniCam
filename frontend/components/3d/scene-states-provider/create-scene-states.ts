@@ -318,7 +318,6 @@ export function createBaseSceneStates(
   };
 
   const addCoverageFace = (id: string, face: ProcessedCoverageFace) => {
-    console.log("face in function add : ", face);
     coverageFaces[id] = {
       ...face,
       color: face.color ?? "#22ff88",
@@ -538,7 +537,6 @@ export function createSceneStatesWithHelper(
       }
 
       if (resp.optimize.successResp) {
-        console.log(resp.optimize.successResp.cameras);
         for (const cam of resp.optimize.successResp.cameras) {
           optimization!.candidateCameras[cam.id] =
             transformProtoEventToCamera(cam);

@@ -61,8 +61,6 @@ export function useWorkspaceApi(
   }
 
   async function putSimulation(simulation: Simulation) {
-    console.log("update simulation:", simulation);
-
     return await $fetch(route.simulation(), {
       method: "PUT",
       credentials: "include",
