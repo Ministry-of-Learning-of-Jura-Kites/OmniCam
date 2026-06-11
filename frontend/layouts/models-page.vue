@@ -88,6 +88,15 @@ function toggleCalibration() {
   }
 }
 
+function toggleSimulation() {
+  if (currentPanel.value === "simulation" && isPanelOpen.value) {
+    currentPanel.value = "camera";
+  } else {
+    currentPanel.value = "simulation";
+    openPanel();
+  }
+}
+
 function toggleMeasurement() {
   if (currentPanel.value === "measurement" && isPanelOpen.value) {
     currentPanel.value = "camera";
@@ -108,6 +117,9 @@ provide(PANEL_KEY, {
   calibrationPanelInfo: {
     toggleCalibration,
     calibrationGridScale,
+  },
+  simulationPanelInfo: {
+    toggleSimulation,
   },
   toggleMeasurement,
 });
@@ -183,6 +195,7 @@ const showPanelWarning = computed(() => {
           />
           <LazyAlgoPanel v-else-if="currentPanel === 'algo'" />
           <LazyMeasurementPanel v-else-if="currentPanel === 'measurement'" />
+          <LazySimulationPanel v-else-if="currentPanel === 'simulation'" />
         </div>
       </div>
 

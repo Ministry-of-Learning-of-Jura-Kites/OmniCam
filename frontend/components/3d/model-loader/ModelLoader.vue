@@ -9,6 +9,9 @@ import {
   acceleratedRaycast,
 } from "three-mesh-bvh";
 import { MINIMAP_LAYER } from "~/constants";
+// import { init as initRecast, Crowd } from "recast-navigation";
+// import { threeToSoloNavMesh, NavMeshHelper } from "@recast-navigation/three";
+// import { Crowd } from "recast-navigation";
 
 const sceneStates = inject(SCENE_STATES_KEY)!;
 // const mesh = ref<Mesh>();
@@ -83,11 +86,11 @@ onMounted(() => {
         const gltf = useGLTF(blobUrl);
         const stopInner = watch(
           () => gltf.state.value,
-          (s) => {
+          async (s) => {
             if (s != undefined) {
               // s.scene.traverse(applyFisheye);
               state.value = s;
-
+              // const walkableMeshes: Mesh[] = [];
               s.scene.traverse((child) => {
                 child.layers.enable(MINIMAP_LAYER);
                 if ((child as Mesh).isMesh) {
@@ -99,6 +102,58 @@ onMounted(() => {
               });
 
               sceneStates.value!.modelRef.value = s;
+
+              // s.scene.traverse((child) => {
+              //   if ((child as Mesh).isMesh) {
+              //     walkableMeshes.push(child as Mesh);
+              //   }
+              // });
+
+              // try {
+              //   await initRecast(); // WASM init — safe to call multiple times
+
+              //   const { navMesh, success } = threeToSoloNavMesh(
+              //     walkableMeshes,
+              //     {
+              //       cs: 0.1, // finer voxel size
+              //       ch: 0.02, // finer height resolution
+
+              //       walkableSlopeAngle: 35,
+
+              //       walkableHeight: 1.5,
+              //       walkableClimb: 0.5,
+
+              //       walkableRadius: 0.1,
+
+              //       maxEdgeLen: 32,
+              //       maxSimplificationError: 2,
+
+              //       minRegionArea: 0,
+              //       maxVertsPerPoly: 6,
+
+              //       detailSampleDist: 1,
+              //       detailSampleMaxError: 0.05,
+              //     },
+              //   );
+              //   if (!success || !navMesh) {
+              //     console.error("[ModelLoader] NavMesh build failed");
+              //   } else {
+              //     console.log("[ModelLoader] NavMesh ready ✓");
+
+              //     sceneStates.value!.navMesh.value = navMesh;
+              //     const crowd = new Crowd(navMesh, {
+              //       maxAgents: 20,
+              //       maxAgentRadius: 0.3,
+              //     });
+
+              //     sceneStates.value!.crowd.value = crowd;
+
+              //     const helper = new NavMeshHelper(navMesh);
+              //     s.scene.add(helper);
+              //   }
+              // } catch (e) {
+              //   console.error("[ModelLoader] NavMesh init error:", e);
+              // }
 
               URL.revokeObjectURL(blobUrl!);
 
@@ -114,6 +169,8 @@ onMounted(() => {
 });
 
 onUnmounted(() => {
+  // sceneStates.value?.crowd?.value?.destroy();
+  // sceneStates.value?.navMesh?.value?.destroy();
   if (state?.value?.scene) {
     state.value.scene.traverse((child: Object3D) => {
       if (isMesh(child)) {

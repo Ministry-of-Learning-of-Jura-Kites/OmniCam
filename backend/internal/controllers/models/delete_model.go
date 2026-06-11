@@ -73,29 +73,29 @@ func (t *DeleteModelRoute) delete(c *gin.Context) {
 		return
 	}
 
-	deleteFile := func(dbPath string) {
+	deleteFile := func(dbPath string, ext string) {
 		if dbPath == "" {
 			return
 		}
 
 		relativePath := strings.TrimPrefix(dbPath, "/uploads/")
+		// Append extension if provided
+		if ext != "" {
+			relativePath = relativePath + ext
+		}
 
-		// Use internal.Root from root.go
 		fullPath := path.Join(internal.Root, "uploads", relativePath)
-		dirPath := path.Dir(fullPath)
+		absPath, _ := filepath.Abs(fullPath)
 
-		absPath, _ := filepath.Abs(dirPath)
-		t.Logger.Info("Absolute delete path:", zap.String("absPath", absPath))
-		t.Logger.Info("Attempting to delete folder:", zap.String("dirPath", dirPath)) // Debug log
+		t.Logger.Info("Attempting to delete file:", zap.String("absPath", absPath))
 
-		if err := os.RemoveAll(absPath); err != nil {
-			t.Logger.Error("failed to remove folder", zap.String("path", absPath), zap.Error(err))
+		if err := os.Remove(absPath); err != nil {
+			t.Logger.Error("failed to remove file", zap.String("path", absPath), zap.Error(err))
 		}
 	}
 
-	deleteFile(model.FilePath)
-	deleteFile(model.ImagePath)
-
+	deleteFile(model.FilePath, model.ModelExtension)
+	deleteFile(model.ImagePath, model.ImageExtension)
 	_, err = t.DB.Queries.DeleteModel(c, modelId)
 	if err != nil {
 		t.Logger.Error("something wrong with DB deletion", zap.Error(err))

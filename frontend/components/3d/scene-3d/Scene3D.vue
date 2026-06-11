@@ -36,7 +36,9 @@ import type {
 import CameraDirection from "../camera-direction/CameraDirection.vue";
 import MiniCameraScene from "../mini-camera-scene/MiniCameraScene.vue";
 import FailDialog from "~/components/dialog/FailDialog.vue";
-// import { watchDebounced } from "@vueuse/core";
+import SimulationAgents from "~/components/3d/simulation-agent/simulationAgent.vue";
+import RoutePathLine from "../route-path-line/RoutePathLine.vue";
+import type { DraggingWaypoint } from "~/types/simulation.ts";
 
 const { isPanelOpen, currentPanel, camPanelInfo } = inject(PANEL_KEY)!;
 const { selectedCamId } = camPanelInfo;
@@ -44,15 +46,23 @@ const { selectedCamId } = camPanelInfo;
 const router = useRouter();
 const route = useRoute();
 
+let draggingWaypoint: DraggingWaypoint | null = null;
+// check refresh web
+const isHydrated = ref(false);
+
 const selectedFaces = computed(() =>
   Object.entries(
     sceneStates.value!.facesManagement.faces ?? ({} as ProcessedCoverageFace),
   ).filter(
     ([_id, face]) =>
-      !sceneStates.value!.facesManagement.isAllHidden.value && !face.hidden,
+      !sceneStates.value!.facesManagement.isAllHidden.value &&
+      !face.hidden &&
+      face.type !== undefined,
   ),
 );
+
 type Point3 = [number, number, number];
+
 const props = withDefaults(
   defineProps<{
     projectId: string;
@@ -66,8 +76,13 @@ const props = withDefaults(
 
 const isFailedDialogOpen = ref<boolean>(false);
 const failedMessage = ref<string>("");
+
 // line measurement
 const lineMeasurement = ref<InstanceType<typeof LineMeasurement> | null>(null);
+
+// Draft points for area mode
+const draftCoveragePoints = ref<Vector3[]>([]);
+const draftSimulationPoints = ref<Vector3[]>([]);
 
 const config = useRuntimeConfig();
 const sceneStates = inject(SCENE_STATES_KEY)!;
@@ -88,7 +103,35 @@ const { isMapOpen } = inject(MAP_KEY)!;
 
 const COVERAGE_Y_OFFSET = 0.01;
 
-const draftCoveragePoints = ref<Vector3[]>([]);
+const simulationFaceLabels = computed(() => {
+  return selectedFaces.value
+    .filter(([_id, face]) => face.type === "simulation" && face.name)
+    .map(([id, face]) => {
+      const pts = face.points;
+      const center = new Vector3(
+        (pts[0][0] + pts[1][0] + pts[2][0] + pts[3][0]) / 4,
+        (pts[0][1] + pts[1][1] + pts[2][1] + pts[3][1]) / 4 + 0.15,
+        (pts[0][2] + pts[1][2] + pts[2][2] + pts[3][2]) / 4,
+      );
+      return { id, name: face.name!, center, kind: face.kind };
+    });
+});
+
+const routeLabelStyles = ref<
+  Record<string, ReturnType<typeof getMeasurementLabelStyle>>
+>({});
+
+const routePathLabels = computed(() => {
+  return sceneStates
+    .value!.simulation.routes.filter((route) => route.segments.length > 0)
+    .map((route) => {
+      // collect all points across all segments
+      const allPoints = route.segments.flatMap((seg) => seg.points);
+      const mid = allPoints[Math.floor(allPoints.length / 2)]!;
+      const center = new Vector3(mid[0], mid[1] + 0.15, mid[2]);
+      return { id: route.id, name: route.name, center };
+    });
+});
 
 const aspect = computed(() => {
   const width = sceneStates.value!.currentCam.value.widthRes;
@@ -99,7 +142,6 @@ const aspect = computed(() => {
 
 const previewPoints = computed<Point3[]>(() => {
   if (sceneStates.value!.selectionMode.value !== "coverage-area") return [];
-
   return buildDraftCoveragePreview(draftCoveragePoints.value);
 });
 
@@ -107,8 +149,12 @@ const isPreviewing = computed(() => previewPoints.value.length === 4);
 
 const draftPointMarkers = computed<Point3[]>(() => {
   if (sceneStates.value!.selectionMode.value !== "coverage-area") return [];
-
   return draftCoveragePoints.value.map((p) => [p.x, p.y, p.z] as Point3);
+});
+
+const simulationDraftMarkers = computed<Point3[]>(() => {
+  if (sceneStates.value!.selectionMode.value !== "simulation") return [];
+  return draftSimulationPoints.value.map((p) => [p.x, p.y, p.z] as Point3);
 });
 
 const selectedCam = computed(() => {
@@ -136,19 +182,8 @@ function getNextMeasurementColor(): string {
   return MEASUREMENT_PALETTE[used % MEASUREMENT_PALETTE.length]!;
 }
 
-usePromptUnsaved(sceneStates.value!);
-
-useCameraUpdate(sceneStates.value!);
-
-// ── Raycasting & Input Events (Omitted same logic for brevity) ───────
-const raycaster = new Raycaster();
-raycaster.layers.enable(CAMERA_UTILS_LAYER);
-
-const mouse = new Vector2();
-
 function clearDraftCoverageSelection() {
-  draftCoveragePoints.value = [];
-  // sceneStates.value!.tresContext.value?.invalidate?.();
+  draftCoveragePoints.value.length = 0;
 }
 
 function buildDraftCoveragePreview(points: Vector3[]): Point3[] {
@@ -163,19 +198,17 @@ function buildDraftCoveragePreview(points: Vector3[]): Point3[] {
   const p0 = sorted[0]!;
   const p1 = sorted[1]!;
   const p2 = sorted[2]!;
-  // 3 points EXACTLY: Return a triangle (P0 -> P1 -> P2)
+
   if (count === 3) {
     return points.map((p) => [p.x, p.y, p.z] as Point3);
   }
 
   if (count === 4) {
     const p3Raw = sorted[3]!;
-
     const dir = new Vector3().subVectors(p2, p1).normalize();
     const v = new Vector3().subVectors(p3Raw, p0);
     const dot = v.dot(dir);
     const p3 = p0.clone().add(dir.multiplyScalar(dot));
-
     return [p0, p1, p2, p3].map((p) => [p.x, p.y, p.z] as Point3);
   }
 
@@ -216,6 +249,8 @@ function sortPointsConvex(points: Vector3[]): Vector3[] {
 
 function buildCoverageFaceFromPickedPoints(
   points: QuadrilateralVectors,
+  type: "coverage" | "simulation" = "coverage",
+  kind: "start" | "end" = "start",
 ): ProcessedCoverageFace | null {
   if (points.length !== 4) return null;
   const sorted = sortPointsConvex(points);
@@ -225,7 +260,6 @@ function buildCoverageFaceFromPickedPoints(
   const p2 = sorted[2]!;
   const p3Raw = sorted[3]!;
 
-  // 1. Force Trapezoid/Parallelism
   const dir = new Vector3().subVectors(p2, p1).normalize();
   const v = new Vector3().subVectors(p3Raw, p0);
   const p3 = p0.clone().add(dir.multiplyScalar(v.dot(dir)));
@@ -233,14 +267,13 @@ function buildCoverageFaceFromPickedPoints(
   const finalPoints = [p0, p1, p2, p3];
   const centerV = averageVector(finalPoints);
 
-  // 2. Initial Normal Calculation (Vector3)
   const e1 = new Vector3().subVectors(p1, p0);
   const e2 = new Vector3().subVectors(p2, p0);
   const finalNormal = new Vector3().crossVectors(e1, e2).normalize();
 
-  // 4. Final Validation
   const width = p0.distanceTo(p1);
   const height = p1.distanceTo(p2);
+
   if (width < 0.05 || height < 0.05) {
     console.error("Face too small, rejecting.");
     return null;
@@ -249,12 +282,245 @@ function buildCoverageFaceFromPickedPoints(
   return {
     ...defaultCoverageFace,
     points: finalPoints.map(threeVector3ToNumbers) as QuadrilateralPoints,
-    normal: finalNormal, // Maintained as Vector3
+    type,
+    kind,
+    normal: finalNormal,
     center: [centerV.x, centerV.y, centerV.z],
   };
 }
 
-function handleMeasurementPointer(event: PointerEvent) {
+usePromptUnsaved(sceneStates.value!);
+useCameraUpdate(sceneStates.value!);
+
+const raycaster = new Raycaster();
+raycaster.layers.enable(CAMERA_UTILS_LAYER);
+
+const mouse = new Vector2();
+
+// ── Route path drawing ────────────────────────────────────────────
+function handleRouteDrawingPointer(event: PointerEvent): boolean {
+  const rd = sceneStates.value!.routeDrawing;
+  if (rd.mode === "none" || !rd.activeRouteId) return false;
+  if (event.type !== "pointerdown" || event.button !== 0) return false;
+
+  const isModifier = event.ctrlKey || event.altKey;
+  if (!isModifier) return false;
+
+  const hit = getSurfaceHit(event);
+  if (!hit) return false;
+
+  const point: [number, number, number] = [
+    hit.point.x,
+    hit.point.y,
+    hit.point.z,
+  ];
+
+  const route = sceneStates.value!.simulation.routes.find(
+    (r) => r.id === rd.activeRouteId,
+  );
+  if (!route) return false;
+
+  const segments = route.segments;
+  const last = segments[segments.length - 1];
+
+  let tailPoint: [number, number, number];
+
+  if (!last) {
+    // First segment — start from start area centroid
+    const startFaceEntry = Object.entries(
+      sceneStates.value!.facesManagement.faces,
+    ).find(([id]) => id === route.startAreaId);
+
+    if (startFaceEntry) {
+      const pts = startFaceEntry[1].points;
+      tailPoint = [
+        (pts[0][0] + pts[1][0] + pts[2][0] + pts[3][0]) / 4,
+        (pts[0][1] + pts[1][1] + pts[2][1] + pts[3][1]) / 4,
+        (pts[0][2] + pts[1][2] + pts[2][2] + pts[3][2]) / 4,
+      ];
+    } else {
+      tailPoint = point;
+    }
+  } else {
+    tailPoint = last.points[last.points.length - 1] as [number, number, number];
+  }
+
+  if (rd.mode === "line") {
+    segments.push({ type: "line", points: [tailPoint, point] });
+  } else {
+    const mid: [number, number, number] = [
+      (tailPoint[0] + point[0]) / 2,
+      (tailPoint[1] + point[1]) / 2,
+      (tailPoint[2] + point[2]) / 2,
+    ];
+    segments.push({ type: "bezier", points: [tailPoint, mid, point] });
+  }
+
+  return true;
+}
+function handleWaypointDrag(event: PointerEvent): boolean {
+  if (event.type === "pointerdown") {
+    const context = sceneStates.value!.tresContext.value;
+    if (!context) return false;
+
+    const allHits = raycaster.intersectObjects(context.scene.children, true);
+    const hit = allHits.find((h) => h.object.userData?.type === "waypoint");
+
+    if (hit) {
+      draggingWaypoint = {
+        routeId: hit.object.userData.routeId,
+        segmentIndex: hit.object.userData.segmentIndex,
+        pointIndex: hit.object.userData.pointIndex,
+      };
+      // Disable camera rotation while dragging
+      sceneStates.value!.isDraggingObject.value = true;
+      return true;
+    }
+  }
+
+  if (event.type === "pointermove" && draggingWaypoint) {
+    const hit = getSurfaceHit(event);
+    if (!hit) return true;
+
+    const newPoint: [number, number, number] = [
+      hit.point.x,
+      hit.point.y,
+      hit.point.z,
+    ];
+
+    const route = sceneStates.value!.simulation.routes.find(
+      (r) => r.id === draggingWaypoint!.routeId,
+    );
+    if (!route) return true;
+
+    const seg = route.segments[draggingWaypoint.segmentIndex];
+    if (!seg) return true;
+
+    // Update the dragged point
+    seg.points[draggingWaypoint.pointIndex] = newPoint;
+
+    // ── Chain update: keep segments connected ──────────────────
+    // If we moved the END of segment N, update START of segment N+1
+    const isEndPoint = draggingWaypoint.pointIndex === seg.points.length - 1;
+
+    if (isEndPoint) {
+      const nextSeg = route.segments[draggingWaypoint.segmentIndex + 1];
+      if (nextSeg) {
+        nextSeg.points[0] = newPoint;
+      }
+    }
+
+    // If we moved the START of segment N, update END of segment N-1
+    if (draggingWaypoint.pointIndex === 0) {
+      const prevSeg = route.segments[draggingWaypoint.segmentIndex - 1];
+      if (prevSeg) {
+        prevSeg.points[prevSeg.points.length - 1] = newPoint;
+      }
+    }
+
+    return true;
+  }
+
+  if (event.type === "pointerup" && draggingWaypoint) {
+    draggingWaypoint = null;
+    sceneStates.value!.isDraggingObject.value = false;
+    return false; // don't consume pointerup so camera stays responsive
+  }
+
+  return false;
+}
+function handleCoverageAreaPointer(event: PointerEvent): boolean {
+  if (sceneStates.value!.selectionMode.value !== "coverage-area") return false;
+
+  const isModifierPressed = event.ctrlKey || event.metaKey;
+  if (!isModifierPressed) return false;
+
+  if (event.type !== "pointerdown" || event.button !== 0) return false;
+
+  const hit = getSurfaceHit(event);
+  if (!hit) return false;
+
+  if (draftCoveragePoints.value.length >= 4) {
+    clearDraftCoverageSelection();
+  }
+
+  draftCoveragePoints.value.push(hit.point.clone());
+
+  if (draftCoveragePoints.value.length === 4) {
+    const face = buildCoverageFaceFromPickedPoints(
+      draftCoveragePoints.value as QuadrilateralVectors,
+    );
+
+    if (face) {
+      face.type = "coverage";
+      sceneStates.value!.facesManagement.add(uuidv4(), face);
+    }
+
+    requestAnimationFrame(clearDraftCoverageSelection);
+    return true;
+  }
+
+  return true;
+}
+
+function getNextAvailableIndex(kind: string) {
+  const used = new Set(
+    Object.values(sceneStates.value!.facesManagement.faces)
+      .filter((f) => f.type === "simulation" && f.kind === kind)
+      .map((f) => {
+        const match = f.name?.match(/-(\d+)$/);
+        return match ? Number(match[1]) : null;
+      })
+      .filter(Boolean),
+  );
+
+  let i = 1;
+  while (used.has(i)) i++;
+  return i;
+}
+
+function handleSimulationAreaPointer(event: PointerEvent): boolean {
+  if (sceneStates.value!.selectionMode.value !== "simulation") return false;
+
+  const isModifierPressed = event.ctrlKey || event.altKey;
+  if (!isModifierPressed) return false;
+
+  if (event.type !== "pointerdown" || event.button !== 0) return false;
+
+  const hit = getSurfaceHit(event);
+  if (!hit) return false;
+
+  draftSimulationPoints.value.push(hit.point.clone());
+
+  if (draftSimulationPoints.value.length === 4) {
+    const face = buildCoverageFaceFromPickedPoints(
+      draftSimulationPoints.value as QuadrilateralVectors,
+      "simulation",
+      sceneStates.value!.simulationKind.value === "start" ? "start" : "end",
+    );
+
+    if (face) {
+      const kind = face.kind === "start" ? "start" : "end";
+
+      const count = getNextAvailableIndex(kind);
+
+      face.name = `${kind}-${count}`;
+
+      const id = uuidv4();
+      face.type = "simulation";
+
+      sceneStates.value!.facesManagement.add(id, face);
+    }
+
+    requestAnimationFrame(() => {
+      draftSimulationPoints.value = [];
+    });
+  }
+
+  return true;
+}
+
+function handleMeasurementPointer(event: PointerEvent): boolean {
   const measurement = sceneStates.value!.measurement!;
 
   const isModifierPressed = event.ctrlKey || event.altKey;
@@ -271,14 +537,12 @@ function handleMeasurementPointer(event: PointerEvent) {
 
   const point = hit.point.clone();
 
-  // first click
   if (!measurement.draftStartPoint) {
     measurement.draftStartPoint = point;
     return true;
   }
 
   measurement.addLine(measurement.draftStartPoint, point);
-
   measurement.resetDraft();
 
   return true;
@@ -296,7 +560,6 @@ function worldToScreen(position: Vector3) {
 
   const projected = position.clone().project(camera);
 
-  // Point is behind the camera
   if (projected.z > 1) return null;
 
   return {
@@ -324,6 +587,7 @@ const labelStyles = ref<
 >({});
 
 function updateLabelStyles() {
+  // existing measurement labels
   if (sceneStates.value?.measurement?.lines?.length) {
     const updated: typeof labelStyles.value = {};
     for (const line of sceneStates.value.measurement.lines) {
@@ -331,7 +595,46 @@ function updateLabelStyles() {
     }
     labelStyles.value = updated;
   }
+
+  // simulation area labels
+  const simUpdated: Record<
+    string,
+    ReturnType<typeof getMeasurementLabelStyle>
+  > = {};
+  for (const face of simulationFaceLabels.value) {
+    const screen = worldToScreen(face.center);
+    simUpdated[face.id] = screen
+      ? {
+          display: "block",
+          left: `${screen.x}px`,
+          top: `${screen.y}px`,
+          transform: "translate(-50%, -50%)",
+        }
+      : { display: "none" };
+  }
+  simLabelStyles.value = simUpdated;
+
+  const routeUpdated: Record<
+    string,
+    ReturnType<typeof getMeasurementLabelStyle>
+  > = {};
+  for (const route of routePathLabels.value) {
+    const screen = worldToScreen(route.center);
+    routeUpdated[route.id] = screen
+      ? {
+          display: "block",
+          left: `${screen.x}px`,
+          top: `${screen.y}px`,
+          transform: "translate(-50%, -50%)",
+        }
+      : { display: "none" };
+  }
+  routeLabelStyles.value = routeUpdated;
 }
+
+const simLabelStyles = ref<
+  Record<string, ReturnType<typeof getMeasurementLabelStyle>>
+>({});
 
 let labelRafId: number | null = null;
 
@@ -342,6 +645,7 @@ function labelLoop() {
 
 onMounted(() => {
   labelRafId = requestAnimationFrame(labelLoop);
+  isHydrated.value = true;
 });
 
 onUnmounted(() => {
@@ -351,46 +655,6 @@ onUnmounted(() => {
   }
 });
 
-function handleCoverageAreaPointer(event: PointerEvent) {
-  if (sceneStates.value!.selectionMode.value !== "coverage-area") return false;
-
-  const isModifierPressed = event.ctrlKey || event.metaKey;
-
-  if (event.type !== "pointerdown" || !isModifierPressed) {
-    return false;
-  }
-
-  if (draftCoveragePoints.value.length >= 4) {
-    clearDraftCoverageSelection();
-  }
-
-  const hit = getSurfaceHit(event);
-
-  if (!hit) return false;
-
-  const forward = new Vector3(0, 0, 1);
-  forward.applyEuler(sceneStates.value!.spectatorCameraRotation!);
-
-  draftCoveragePoints.value = [...draftCoveragePoints.value, hit.point.clone()];
-
-  if (draftCoveragePoints.value.length === 4) {
-    const face = buildCoverageFaceFromPickedPoints(
-      draftCoveragePoints.value as QuadrilateralVectors,
-    );
-
-    if (face) {
-      sceneStates.value!.facesManagement.add(uuidv4(), face);
-    }
-
-    requestAnimationFrame(() => {
-      clearDraftCoverageSelection();
-    });
-
-    return true;
-  }
-
-  return true;
-}
 function getSurfaceHit(
   event: PointerEvent,
 ): { point: Vector3; normal: Vector3 } | null {
@@ -426,6 +690,7 @@ function getSurfaceHit(
       normal: normal,
     };
   }
+
   const worldNormal = hit.face.normal
     .clone()
     .applyMatrix3(new Matrix3().getNormalMatrix(hit.object.matrixWorld))
@@ -452,24 +717,38 @@ function onCanvasKeydown(event: KeyboardEvent) {
 
 function onCanvasPointer(event: PointerEvent) {
   if (!sceneStates.value!.tresContext.value || !perspectiveCamera.value) return;
+
   const ele = sceneStates.value!.tresContext.value.renderer.instance.domElement;
   const rect = ele.getBoundingClientRect();
-  mouse.x = ((event.clientX - rect.left) / rect.width!) * 2 - 1;
-  mouse.y = -((event.clientY - rect.top) / rect.height!) * 2 + 1;
+
+  mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+  mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+
   raycaster.setFromCamera(mouse, perspectiveCamera.value!);
 
+  // Priority 1: Line measurement
   if (lineMeasurement.value?.onPointerEvent(event, raycaster)) return;
 
-  if (sceneStates.value!.selectionMode.value === "coverage-area") {
-    const handled = handleCoverageAreaPointer(event);
-    if (handled) return;
-  }
-  if (currentPanel.value === "measurement") {
-    const handled = handleMeasurementPointer(event);
-    if (handled) return;
+  // const mode = sceneStates.value!.selectionMode.value;
+
+  if (currentPanel.value === "algo") {
+    if (handleCoverageAreaPointer(event)) return;
   }
 
+  if (currentPanel.value === "simulation") {
+    if (handleWaypointDrag(event)) return;
+    if (handleSimulationAreaPointer(event)) return;
+    if (handleRouteDrawingPointer(event)) return;
+  }
+
+  // Priority 4: Measurement panel (ctrl/alt + click)
+  if (currentPanel.value === "measurement") {
+    if (handleMeasurementPointer(event)) return;
+  }
+
+  // Priority 5: Object interaction (cameras, gizmos, etc.)
   const objectsToSearch = [...sceneStates.value!.draggableObjects];
+
   if (event.type === "pointerdown" || event.type === "pointerup") {
     for (const obj of sceneStates.value!.clickableObjects) {
       objectsToSearch.push(obj);
@@ -477,6 +756,7 @@ function onCanvasPointer(event: PointerEvent) {
   }
 
   const intersects = raycaster.intersectObjects(objectsToSearch, false);
+
   if (intersects.length > 0) {
     const foundObj = intersects[0];
     const userData = foundObj?.object.userData as IUserData;
@@ -545,7 +825,6 @@ onMounted(() => {
         "contextmenu",
         (event: Event) => {
           event.preventDefault();
-
           sceneStates.value!.spectatorRotation.onBlur(
             event as unknown as FocusEvent,
           );
@@ -568,10 +847,11 @@ if (config.public.devMode) {
     }
   });
 }
+
 watch(
   () => sceneStates.value!.selectionMode.value,
-  (mode) => {
-    if (mode !== "coverage-area") {
+  (newMode, oldMode) => {
+    if (newMode !== oldMode) {
       clearDraftCoverageSelection();
     }
   },
@@ -595,11 +875,98 @@ function selectCurrentCamShortcut() {
     currentPanel.value = "camera";
   }
 }
+
+// function logRendererMemory(tag = "") {
+//   const renderer = sceneStates.value?.tresContext.value?.renderer
+//     .instance as any;
+//   const scene = sceneStates.value?.tresContext.value?.scene as any;
+
+//   if (!renderer || !scene) {
+//     console.warn("Renderer not ready");
+//     return;
+//   }
+
+//   const info = renderer.info;
+//   console.group(`THREE MEMORY ${tag}`);
+//   console.log("Geometries:", info.memory.geometries);
+//   console.log("Textures:", info.memory.textures);
+//   console.log("Programs:", info.programs?.length ?? "unknown");
+//   console.log("Render Calls:", info.render.calls);
+//   console.log("Triangles:", info.render.triangles);
+//   console.groupEnd();
+// }
+
+// function patchRendererTextureTracking() {
+//   const renderer = sceneStates.value?.tresContext.value?.renderer
+//     .instance as any;
+
+//   if (!renderer || renderer.__texturePatched) return;
+//   renderer.__texturePatched = true;
+
+//   let _texCount = renderer.info.memory.textures;
+
+//   Object.defineProperty(renderer.info.memory, "textures", {
+//     get() {
+//       return _texCount;
+//     },
+//     set(v) {
+//       if (v > _texCount) {
+//         console.warn(
+//           `[TEX LEAK] textures ${_texCount} → ${v} (+${v - _texCount})`,
+//         );
+
+//         console.log("[TEX STATE]", {
+//           geometries: renderer.info.memory.geometries,
+//           textures: v,
+//           programs: renderer.info.programs?.length,
+//           calls: renderer.info.render.calls,
+//         });
+
+//         console.trace();
+//       }
+
+//       _texCount = v;
+//     },
+//   });
+
+//   console.log("[patch] texture tracking active");
+
+//   const properties = renderer.properties;
+//   const originalGet = properties.get.bind(properties);
+
+//   properties.get = function (obj: any) {
+//     const result = originalGet(obj);
+
+//     if (obj?.isTexture && result && !result.__logged) {
+//       result.__logged = true;
+
+//       console.log("[TEXTURE SEEN]", {
+//         uuid: obj.uuid,
+//         name: obj.name,
+//         type: obj.constructor?.name,
+//         imageType: obj.image?.constructor?.name,
+//         width: obj.image?.width,
+//         height: obj.image?.height,
+//         colorSpace: obj.colorSpace,
+//         mapping: obj.mapping,
+//       });
+//     }
+
+//     return result;
+//   };
+// }
+
+// onMounted(() => {
+//   setInterval(() => {
+//     (window as any).memcheck = logRendererMemory;
+//     (window as any).patchtex = patchRendererTextureTracking; // ← add this
+//   }, 100);
+// });
+
 watch(
   () => sceneStates.value?.errorLivestreamMessage.value,
   (errorMessage) => {
     if (!errorMessage) return;
-
     isFailedDialogOpen.value = true;
     failedMessage.value = errorMessage;
   },
@@ -613,7 +980,6 @@ watch(
         lineColors[line.id] = getNextMeasurementColor();
       }
     }
-    // clean up removed lines
     for (const id of Object.keys(lineColors)) {
       if (!sceneStates.value!.measurement.lines.find((l) => l.id === id)) {
         delete lineColors[id];
@@ -633,43 +999,8 @@ function handleFailCloseAll() {
 
 function handleGoBack() {
   const projectId = route.params.projectId;
-
   router.push(`/projects/${projectId}`);
 }
-
-// function logRendererMemory(tag = "") {
-//   const renderer = sceneStates.value?.tresContext.value?.renderer
-//     .instance as any;
-
-//   if (!renderer) {
-//     console.warn("Renderer not ready");
-//     return;
-//   }
-
-//   // flush internal render list caches
-//   renderer.renderLists?.dispose?.();
-
-//   const info = renderer.info;
-
-//   console.group(`THREE MEMORY ${tag}`);
-
-//   console.log("Geometries:", info.memory.geometries);
-//   console.log("Textures:", info.memory.textures);
-
-//   // shader programs
-//   console.log("Programs:", info.programs?.length ?? "unknown");
-
-//   console.log("Render Calls:", info.render.calls);
-//   console.log("Triangles:", info.render.triangles);
-//   console.log("Lines:", info.render.lines);
-//   console.log("Points:", info.render.points);
-
-//   console.groupEnd();
-// }
-
-// onMounted(() => {
-//   (window as any).memcheck = logRendererMemory;
-// });
 
 const isShowingCamDirection = computed(() => {
   return (
@@ -801,6 +1132,8 @@ const isShowingCamDirection = computed(() => {
             :get-surface-hit="getSurfaceHit"
           />
 
+          <RoutePathLine />
+
           <TresPerspectiveCamera
             ref="perspectiveCamera"
             :position="
@@ -870,8 +1203,6 @@ const isShowingCamDirection = computed(() => {
 
           <FrustumOverlay />
 
-          <!-- <AxisGizmo /> -->
-
           <Suspense><Environment preset="city" /></Suspense>
           <TresAmbientLight :intensity="0.4" />
           <TresDirectionalLight :position="[10, 10, 5]" :intensity="1" />
@@ -885,6 +1216,29 @@ const isShowingCamDirection = computed(() => {
             ]"
             :workspace="props.workspace"
           />
+          <template v-if="sceneStates!.selectionMode.value === 'simulation'">
+            <TresMesh
+              v-for="(point, i) in simulationDraftMarkers"
+              :key="`sim-draft-point-${i}`"
+              :position="point"
+              :render-order="1002"
+            >
+              <TresSphereGeometry :args="[0.03, 16, 16]" />
+              <TresMeshBasicMaterial
+                color="#ff4d4d"
+                :transparent="true"
+                :opacity="0.95"
+                :depth-test="false"
+                :depth-write="false"
+              />
+            </TresMesh>
+          </template>
+
+          <Suspense>
+            <SimulationAgents
+              v-show="sceneStates!.simulationState.value === 'running'"
+            />
+          </Suspense>
 
           <Suspense>
             <ModelLoader
@@ -894,7 +1248,6 @@ const isShowingCamDirection = computed(() => {
             />
           </Suspense>
 
-          <!-- Grid  1 unit = 1 m -->
           <Grid
             :position="[0, -sceneStates!.calibration.heightOffset, 0]"
             :args="[1, 1]"
@@ -951,8 +1304,37 @@ const isShowingCamDirection = computed(() => {
               {{ line.label }}
             </div>
           </div>
+          <div
+            v-for="face in simulationFaceLabels"
+            :key="`sim-label-${face.id}`"
+            class="absolute z-20 pointer-events-none"
+            :style="simLabelStyles[face.id]"
+          >
+            <div
+              class="px-2 py-1 rounded text-xs font-bold whitespace-nowrap border shadow"
+              :class="
+                face.kind === 'start'
+                  ? 'bg-green-900/80 border-green-400 text-green-300'
+                  : 'bg-red-900/80 border-red-400 text-red-300'
+              "
+            >
+              {{ face.name }}
+            </div>
+          </div>
+          <div
+            v-for="path in routePathLabels"
+            :key="`route-label-${path.id}`"
+            class="absolute z-20 pointer-events-none"
+            :style="routeLabelStyles[path.id]"
+          >
+            <div
+              class="px-2 py-1 rounded text-xs font-bold whitespace-nowrap border shadow bg-blue-900/80 border-blue-400 text-blue-300"
+            >
+              {{ path.name }}
+            </div>
+          </div>
         </div>
-        <div :ref="sceneStates!.tresCanvasParent" class="relative">
+        <div class="relative">
           <AxisGizmo />
         </div>
       </div>
@@ -984,7 +1366,6 @@ const isShowingCamDirection = computed(() => {
   background: rgba(0, 0, 0, 0.5);
 }
 
-/* CUSTOM SLIDER STYLING */
 .slider {
   appearance: none;
   width: 100%;

@@ -5,7 +5,7 @@ import {
   type LoginRequest,
   type RegisterRequest,
 } from "~/composables/api/use-auth";
-import { isEmail } from "validator";
+import validator from "validator";
 import FailDialog from "~/components/dialog/FailDialog.vue";
 
 definePageMeta({
@@ -138,7 +138,7 @@ function checkPasswordFormat(password: string): boolean {
   return hasNumber && hasSymbol;
 }
 function checkEmailFormat(email: string): boolean {
-  return isEmail(email);
+  return validator.isEmail(email);
 }
 const errors = computed(() => {
   return {

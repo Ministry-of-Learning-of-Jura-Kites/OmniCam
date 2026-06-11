@@ -21,7 +21,15 @@ export interface CalibrationPanelInfo {
   calibrationGridScale: Ref<number>;
 }
 
-export type PanelType = "camera" | "calibration" | "measurement" | "algo";
+export interface SimulationPanelInfo {
+  toggleSimulation: () => void;
+}
+export type PanelType =
+  | "camera"
+  | "calibration"
+  | "measurement"
+  | "algo"
+  | "simulation";
 
 // export type ToolMode = "none" | "orbit" | "measurement" | "calibration";
 
@@ -29,6 +37,8 @@ export interface PanelInfo {
   camPanelInfo: CamPanelInfo;
 
   calibrationPanelInfo: CalibrationPanelInfo;
+
+  simulationPanelInfo: SimulationPanelInfo;
 
   currentPanel: Ref<PanelType>;
 
