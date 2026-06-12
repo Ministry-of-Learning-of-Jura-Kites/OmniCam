@@ -11,7 +11,9 @@ export default defineEventHandler((event) => {
 
   if (isPublicPage) return;
 
-  const authToken = getCookie(event, "auth_token");
+  const config = useRuntimeConfig();
+
+  const authToken = getCookie(event, config.public.cookieName);
 
   if (!authToken) {
     return sendRedirect(event, "/authentication");

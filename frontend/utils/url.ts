@@ -6,9 +6,9 @@ export function getApiProtocol(
 ) {
   switch (type) {
     case "http":
-      return config.public.nuxtBackendSecure ? "http" : "https";
+      return config.public.backendSecure ? "https" : "http";
     case "websocket":
-      return config.public.nuxtBackendSecure ? "ws" : "wss";
+      return config.public.backendSecure ? "wss" : "ws";
   }
 }
 

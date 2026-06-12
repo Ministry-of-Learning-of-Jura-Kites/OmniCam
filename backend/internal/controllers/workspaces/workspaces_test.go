@@ -155,7 +155,7 @@ func TestWorkspacesMe(t *testing.T) {
 				req, _ := http.NewRequest("GET",
 					fmt.Sprintf("/api/v1/projects/%s/models/%s/workspaces/me", projectIdBase64, modelIdBase64),
 					nil)
-				req.AddCookie(&http.Cookie{Name: "auth_token", Value: tc.Token})
+				req.AddCookie(&http.Cookie{Name: "omnicam_token", Value: tc.Token})
 
 				w := httptest.NewRecorder()
 				tc.Router.ServeHTTP(w, req)
@@ -178,7 +178,7 @@ func TestWorkspacesMe(t *testing.T) {
 				req, _ := http.NewRequest("POST",
 					fmt.Sprintf("/api/v1/projects/%s/models/%s/workspaces/me", projectIdBase64, modelIdBase64),
 					nil)
-				req.AddCookie(&http.Cookie{Name: "auth_token", Value: tc.Token})
+				req.AddCookie(&http.Cookie{Name: "omnicam_token", Value: tc.Token})
 
 				w := httptest.NewRecorder()
 				tc.Router.ServeHTTP(w, req)
@@ -198,7 +198,7 @@ func TestWorkspacesMe(t *testing.T) {
 				req, _ = http.NewRequest("GET",
 					fmt.Sprintf("/api/v1/projects/%s/models/%s/workspaces/me", projectIdBase64, modelIdBase64),
 					nil)
-				req.AddCookie(&http.Cookie{Name: "auth_token", Value: tc.Token})
+				req.AddCookie(&http.Cookie{Name: "omnicam_token", Value: tc.Token})
 
 				w = httptest.NewRecorder()
 				tc.Router.ServeHTTP(w, req)
@@ -216,7 +216,7 @@ func TestWorkspacesMe(t *testing.T) {
 				req, _ := http.NewRequest("POST",
 					fmt.Sprintf("/api/v1/projects/%s/models/%s/workspaces/me", projectIdBase64, modelIdBase64),
 					nil)
-				req.AddCookie(&http.Cookie{Name: "auth_token", Value: tc.Token})
+				req.AddCookie(&http.Cookie{Name: "omnicam_token", Value: tc.Token})
 				w := httptest.NewRecorder()
 				tc.Router.ServeHTTP(w, req)
 				require.Equal(t, http.StatusCreated, w.Code)
@@ -236,7 +236,7 @@ func TestWorkspacesMe(t *testing.T) {
 				req, _ := http.NewRequest("POST",
 					fmt.Sprintf("/api/v1/projects/%s/models/%s/workspaces/me/merge", projectIdBase64, modelIdBase64),
 					nil)
-				req.AddCookie(&http.Cookie{Name: "auth_token", Value: tc.Token})
+				req.AddCookie(&http.Cookie{Name: "omnicam_token", Value: tc.Token})
 				w := httptest.NewRecorder()
 				tc.Router.ServeHTTP(w, req)
 				require.Equal(t, http.StatusNotFound, w.Code)
@@ -251,7 +251,7 @@ func TestWorkspacesMe(t *testing.T) {
 				req, _ := http.NewRequest("POST",
 					fmt.Sprintf("/api/v1/projects/%s/models/%s/workspaces/me/merge", projectIdBase64, invalidModelId),
 					nil)
-				req.AddCookie(&http.Cookie{Name: "auth_token", Value: tc.Token})
+				req.AddCookie(&http.Cookie{Name: "omnicam_token", Value: tc.Token})
 
 				w := httptest.NewRecorder()
 				tc.Router.ServeHTTP(w, req)
@@ -284,7 +284,7 @@ func TestPostMergeWorkspace(t *testing.T) {
 				req, _ := http.NewRequest("POST",
 					fmt.Sprintf("/api/v1/projects/%s/models/%s/workspaces/me/merge", projectIdBase64, invalidModelId),
 					nil)
-				req.AddCookie(&http.Cookie{Name: "auth_token", Value: tc.Token})
+				req.AddCookie(&http.Cookie{Name: "omnicam_token", Value: tc.Token})
 
 				w := httptest.NewRecorder()
 				tc.Router.ServeHTTP(w, req)
@@ -302,7 +302,7 @@ func TestPostMergeWorkspace(t *testing.T) {
 				req, _ := http.NewRequest("POST",
 					fmt.Sprintf("/api/v1/projects/%s/models/%s/workspaces/me/merge", projectIdBase64, modelIdBase64),
 					nil)
-				req.AddCookie(&http.Cookie{Name: "auth_token", Value: tc.Token})
+				req.AddCookie(&http.Cookie{Name: "omnicam_token", Value: tc.Token})
 
 				w := httptest.NewRecorder()
 				tc.Router.ServeHTTP(w, req)
@@ -331,7 +331,7 @@ func TestPostMergeWorkspace(t *testing.T) {
 				req, _ := http.NewRequest("POST",
 					fmt.Sprintf("/api/v1/projects/%s/models/%s/workspaces/me/merge", projectIdBase64, modelIdBase64),
 					nil)
-				req.AddCookie(&http.Cookie{Name: "auth_token", Value: tc.Token})
+				req.AddCookie(&http.Cookie{Name: "omnicam_token", Value: tc.Token})
 				w := httptest.NewRecorder()
 				tc.Router.ServeHTTP(w, req)
 
@@ -369,7 +369,7 @@ func TestPostMergeWorkspace(t *testing.T) {
 				req, _ := http.NewRequest("POST",
 					fmt.Sprintf("/api/v1/projects/%s/models/%s/workspaces/me/merge", projectIdBase64, modelIdBase64),
 					nil)
-				req.AddCookie(&http.Cookie{Name: "auth_token", Value: tc.Token})
+				req.AddCookie(&http.Cookie{Name: "omnicam_token", Value: tc.Token})
 				w := httptest.NewRecorder()
 				tc.Router.ServeHTTP(w, req)
 
@@ -426,7 +426,7 @@ func TestPostMergeWorkspace(t *testing.T) {
 				req, _ := http.NewRequest("POST",
 					fmt.Sprintf("/api/v1/projects/%s/models/%s/workspaces/me/merge", projectIdBase64, modelIdBase64),
 					nil)
-				req.AddCookie(&http.Cookie{Name: "auth_token", Value: tc.Token})
+				req.AddCookie(&http.Cookie{Name: "omnicam_token", Value: tc.Token})
 				w := httptest.NewRecorder()
 				tc.Router.ServeHTTP(w, req)
 
@@ -454,7 +454,7 @@ func TestPostMergeWorkspace(t *testing.T) {
 		// 		req, _ := http.NewRequest("POST",
 		// 			fmt.Sprintf("/api/v1/projects/%s/models/%s/workspaces/me/merge", projectIdBase64, modelIdBase64),
 		// 			nil)
-		// 		req.AddCookie(&http.Cookie{Name: "auth_token", Value: tc.Token})
+		// 		req.AddCookie(&http.Cookie{Name: "omnicam_token", Value: tc.Token})
 		// 		w := httptest.NewRecorder()
 		// 		tc.Router.ServeHTTP(w, req)
 
@@ -487,7 +487,7 @@ func TestPostResolveWorkspaceMe(t *testing.T) {
 				req, _ := http.NewRequest("POST",
 					fmt.Sprintf("/api/v1/projects/%s/models/%s/workspaces/me/resolve", projectIdBase64, invalidModelId),
 					nil)
-				req.AddCookie(&http.Cookie{Name: "auth_token", Value: tc.Token})
+				req.AddCookie(&http.Cookie{Name: "omnicam_token", Value: tc.Token})
 
 				w := httptest.NewRecorder()
 				tc.Router.ServeHTTP(w, req)
@@ -508,7 +508,7 @@ func TestPostResolveWorkspaceMe(t *testing.T) {
 				req, _ := http.NewRequest("POST",
 					fmt.Sprintf("/api/v1/projects/%s/models/%s/workspaces/me/resolve", projectIdBase64, modelIdBase64),
 					nil)
-				req.AddCookie(&http.Cookie{Name: "auth_token", Value: tc.Token})
+				req.AddCookie(&http.Cookie{Name: "omnicam_token", Value: tc.Token})
 
 				w := httptest.NewRecorder()
 				tc.Router.ServeHTTP(w, req)
@@ -544,7 +544,7 @@ func TestPostResolveWorkspaceMe(t *testing.T) {
 						projectIdBase64, modelIdBase64),
 					strings.NewReader(`invalid-json`))
 				req.Header.Set("Content-Type", "application/json")
-				req.AddCookie(&http.Cookie{Name: "auth_token", Value: tc.Token})
+				req.AddCookie(&http.Cookie{Name: "omnicam_token", Value: tc.Token})
 
 				w := httptest.NewRecorder()
 				tc.Router.ServeHTTP(w, req)
@@ -592,7 +592,7 @@ func TestPostResolveWorkspaceMe(t *testing.T) {
 						projectIdBase64, modelIdBase64),
 					strings.NewReader(`{"merged":{"123":{"angleX":1}}}`))
 				req.Header.Set("Content-Type", "application/json")
-				req.AddCookie(&http.Cookie{Name: "auth_token", Value: tc.Token})
+				req.AddCookie(&http.Cookie{Name: "omnicam_token", Value: tc.Token})
 
 				w := httptest.NewRecorder()
 				tc.Router.ServeHTTP(w, req)
@@ -637,7 +637,7 @@ func TestPostResolveWorkspaceMe(t *testing.T) {
 						projectIdBase64, modelIdBase64),
 					strings.NewReader(`{"merged":{}}`))
 				req.Header.Set("Content-Type", "application/json")
-				req.AddCookie(&http.Cookie{Name: "auth_token", Value: tc.Token})
+				req.AddCookie(&http.Cookie{Name: "omnicam_token", Value: tc.Token})
 
 				w := httptest.NewRecorder()
 				tc.Router.ServeHTTP(w, req)
