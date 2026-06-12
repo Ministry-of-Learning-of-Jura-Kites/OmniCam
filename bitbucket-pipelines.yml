@@ -53,6 +53,9 @@ pipelines:
               services:
                 - docker
               script:
+                - apt-get update && apt-get install -y git-lfs
+                - git lfs install
+                - git lfs pull
                 - echo "$DOCKER_HUB_ACCESS_TOKEN" | docker login docker.io -u "$DOCKER_HUB_USER" --password-stdin
                 - export FINAL_TAG="${BITBUCKET_TAG:-${MANUAL_TAG:-manual-build}}"
                 - docker buildx create --use --name ci-builder || docker buildx use ci-builder
