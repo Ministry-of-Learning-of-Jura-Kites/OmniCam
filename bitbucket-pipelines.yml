@@ -57,6 +57,7 @@ pipelines:
           - step: &build-push-frontend
               name: Build & Push Frontend
               image: docker:27
+              size: 2x
               caches:
                 - apt
               services:
@@ -78,6 +79,7 @@ pipelines:
           - step: &build-push-backend
               name: Build & Push Backend
               image: docker:27
+              size: 2x
               caches:
                 - apt
               services:
@@ -99,6 +101,7 @@ pipelines:
           - step: &build-push-algo
               name: Build & Push Algo
               image: docker:27
+              size: 2x
               caches:
                 - apt
               services:
@@ -120,6 +123,7 @@ pipelines:
           - step: &build-push-data-migration
               name: Build & Push Data Migration
               image: docker:27
+              size: 2x
               caches:
                 - apt
               services:
