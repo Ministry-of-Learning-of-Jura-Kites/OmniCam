@@ -4,15 +4,18 @@ import (
 	"context"
 
 	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/exporters/otlp/otlplog/otlploggrpc"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc"
+	"go.opentelemetry.io/otel/log/global"
 	"go.opentelemetry.io/otel/propagation"
+	sdklog "go.opentelemetry.io/otel/sdk/log"
 	sdkresource "go.opentelemetry.io/otel/sdk/resource"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 	"go.uber.org/zap"
 )
 
 func InitTelemetry(ctx context.Context, logger *zap.Logger) func() {
-	exporter, err := otlptracegrpc.New(ctx)
+	traceExporter, err := otlptracegrpc.New(ctx)
 	if err != nil {
 		logger.Fatal("Failed to create OTLP trace exporter", zap.Error(err))
 	}
@@ -29,7 +32,7 @@ func InitTelemetry(ctx context.Context, logger *zap.Logger) func() {
 	}
 
 	tp := sdktrace.NewTracerProvider(
-		sdktrace.WithBatcher(exporter),
+		sdktrace.WithBatcher(traceExporter),
 		sdktrace.WithResource(res),
 	)
 
@@ -38,6 +41,17 @@ func InitTelemetry(ctx context.Context, logger *zap.Logger) func() {
 		propagation.TraceContext{},
 		propagation.Baggage{},
 	))
+
+	logExporter, err := otlploggrpc.New(ctx)
+	if err != nil {
+		logger.Warn("Failed to create OTLP log exporter", zap.Error(err))
+	} else {
+		lp := sdklog.NewLoggerProvider(
+			sdklog.WithProcessor(sdklog.NewBatchProcessor(logExporter)),
+			sdklog.WithResource(res),
+		)
+		global.SetLoggerProvider(lp)
+	}
 
 	logger.Info("Telemetry initialized")
 

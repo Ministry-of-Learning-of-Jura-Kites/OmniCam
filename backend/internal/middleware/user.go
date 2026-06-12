@@ -12,6 +12,7 @@ import (
 	"go.uber.org/zap"
 	config_env "omnicam.com/backend/config"
 	"omnicam.com/backend/internal/utils"
+	"omnicam.com/backend/pkg/logger"
 )
 
 type AuthMiddleware struct {
@@ -40,6 +41,8 @@ func (t *AuthMiddleware) CreateHandler() gin.HandlerFunc {
 
 		token, err := jwt.ParseWithClaims(tokenStr, claims, keyFunc, jwt.WithLeeway(5*time.Second))
 		if err != nil {
+			logger.WithTraceID(c.Request.Context(), t.Logger).
+				Error("invalid jwt token", zap.Error(err))
 			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{
 				"error":  "invalid token",
 				"detail": err.Error(),
@@ -48,6 +51,7 @@ func (t *AuthMiddleware) CreateHandler() gin.HandlerFunc {
 		}
 
 		if !token.Valid {
+			logger.WithTraceID(c.Request.Context(), t.Logger).Info("token expired or invalid")
 			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "token expired or invalid"})
 			return
 		}
@@ -55,12 +59,14 @@ func (t *AuthMiddleware) CreateHandler() gin.HandlerFunc {
 		username := claims.Username
 		userId, err := uuid.Parse(claims.UserID)
 		if err != nil {
-			t.Logger.Error("error while converting str id to uuid", zap.Error(err))
+			logger.WithTraceID(c.Request.Context(), t.Logger).
+				Error("failed to parse userId from token", zap.Error(err))
 			c.JSON(http.StatusInternalServerError, gin.H{})
 			return
 		}
 
 		if strings.TrimSpace(username) == "" {
+			logger.WithTraceID(c.Request.Context(), t.Logger).Info("username not found in token")
 			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{
 				"error": "username not found in token",
 			})

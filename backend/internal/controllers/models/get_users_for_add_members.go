@@ -12,6 +12,7 @@ import (
 	"omnicam.com/backend/internal/utils"
 	db_client "omnicam.com/backend/pkg/db"
 	db_sqlc_gen "omnicam.com/backend/pkg/db/sqlc-gen"
+	"omnicam.com/backend/pkg/logger"
 )
 
 type UserResponse struct {
@@ -35,19 +36,21 @@ func (t *UsersForAddMembersRoute) getAllUsersForAddMembers(c *gin.Context) {
 	strId := c.Param("projectId")
 	projectID, err := utils.ParseUuidBase64(strId)
 	if err != nil {
-		t.Logger.Error("error decoding Base64", zap.Error(err))
+		logger.WithTraceID(c.Request.Context(), t.Logger).Error("error decoding Base64", zap.Error(err))
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid project ID"})
 		return
 	}
 
 	page, err := strconv.Atoi(c.DefaultQuery("page", "1"))
 	if err != nil || page < 1 {
+		logger.WithTraceID(c.Request.Context(), t.Logger).Error("invalid page number", zap.Error(err))
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid page number"})
 		return
 	}
 
 	pageSize, err := strconv.Atoi(c.DefaultQuery("pageSize", "10"))
 	if err != nil || pageSize < 1 {
+		logger.WithTraceID(c.Request.Context(), t.Logger).Error("invalid page size", zap.Error(err))
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid page size"})
 		return
 	}
@@ -62,7 +65,7 @@ func (t *UsersForAddMembersRoute) getAllUsersForAddMembers(c *gin.Context) {
 		ProjectID:  projectID,
 	})
 	if err != nil {
-		t.Logger.Error("failed to get all users", zap.Error(err))
+		logger.WithTraceID(c.Request.Context(), t.Logger).Error("failed to get all user", zap.Error(err))
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to retrieve users"})
 		return
 	}
@@ -72,7 +75,7 @@ func (t *UsersForAddMembersRoute) getAllUsersForAddMembers(c *gin.Context) {
 		ProjectID: projectID,
 	})
 	if err != nil {
-		t.Logger.Error("failed to count all users", zap.Error(err))
+		logger.WithTraceID(c.Request.Context(), t.Logger).Error("failed to count all users", zap.Error(err))
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to count users"})
 		return
 	}
@@ -101,6 +104,7 @@ func (t *UsersForAddMembersRoute) getAllUsersForAddMembers(c *gin.Context) {
 		})
 	}
 
+	logger.WithTraceID(c.Request.Context(), t.Logger).Info("successfully add members")
 	c.JSON(http.StatusOK, gin.H{
 		"data":  userList,
 		"count": total,

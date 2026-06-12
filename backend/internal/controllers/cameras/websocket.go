@@ -24,6 +24,7 @@ import (
 	"omnicam.com/backend/internal/utils"
 	db_client "omnicam.com/backend/pkg/db"
 	db_sqlc_gen "omnicam.com/backend/pkg/db/sqlc-gen"
+	"omnicam.com/backend/pkg/logger"
 	messages_cameras "omnicam.com/backend/pkg/messages/cameras"
 	messages_errors "omnicam.com/backend/pkg/messages/errors"
 	"omnicam.com/backend/pkg/messages/protobufs"
@@ -71,8 +72,8 @@ func (t *UpdateEventRoute) handleEventDelete(
 		ModelID: e.ModelID,
 	})
 	if err != nil {
-		t.Logger.Error("error while updating workspace", zap.Error(err))
-		return
+		logger.WithTraceID(e.Ctx, t.Logger).
+			Error("error while updating workspace", zap.Error(err))
 	}
 
 	resp := &protobufs.AutosaveEventResponse{
@@ -87,7 +88,8 @@ func (t *UpdateEventRoute) handleEventUpsert(
 	cam := messages_cameras.ProtoCamToCam(upsert)
 	marshalled, err := json.Marshal(cam)
 	if err != nil {
-		t.Logger.Error("error while marshaling camera", zap.Error(err))
+		logger.WithTraceID(e.Ctx, t.Logger).
+			Error("error while marshaling camera", zap.Error(err))
 		return
 	}
 	newVersion, err := t.DB.Queries.UpdateWorkspaceCams(e.Ctx, db_sqlc_gen.UpdateWorkspaceCamsParams{
@@ -97,7 +99,8 @@ func (t *UpdateEventRoute) handleEventUpsert(
 		ModelID: e.ModelID,
 	})
 	if err != nil {
-		t.Logger.Error("error while updating workspace cameras", zap.Error(err))
+		logger.WithTraceID(e.Ctx, t.Logger).
+			Error("error while updating workspace cameras", zap.Error(err))
 		return
 	}
 
@@ -125,7 +128,8 @@ func (t *UpdateEventRoute) handleCalibration(
 		ModelHeight: event.Calibrate.ModelHeight,
 	})
 	if err != nil {
-		t.Logger.Error("error updating calibration", zap.Error(err))
+		logger.WithTraceID(e.Ctx, t.Logger).
+			Error("error updating calibration", zap.Error(err))
 		return
 	}
 
@@ -149,7 +153,8 @@ func (t *UpdateEventRoute) handleFaceUpsert(
 	trapezoid := messsages_trapezoids.ProtoTrapezoidToTrapezoid(event.FaceUpsert.CoverageFace)
 	marshalled, err := json.Marshal(trapezoid)
 	if err != nil {
-		t.Logger.Error("error while marshaling camera", zap.Error(err))
+		logger.WithTraceID(e.Ctx, t.Logger).
+			Error("error while marshaling camera", zap.Error(err))
 		return
 	}
 
@@ -160,7 +165,8 @@ func (t *UpdateEventRoute) handleFaceUpsert(
 		ModelID: e.ModelID,
 	})
 	if err != nil {
-		t.Logger.Error("error updating face", zap.Error(err))
+		logger.WithTraceID(e.Ctx, t.Logger).
+			Error("error updating face", zap.Error(err))
 		return
 	}
 
@@ -186,7 +192,8 @@ func (t *UpdateEventRoute) handleFaceDelete(
 		ModelID: e.ModelID,
 	})
 	if err != nil {
-		t.Logger.Error("error updating face", zap.Error(err))
+		logger.WithTraceID(e.Ctx, t.Logger).
+			Error("error updating face", zap.Error(err))
 		return
 	}
 
@@ -203,7 +210,8 @@ func (t *UpdateEventRoute) sendAutosaveEventResponse(e *EventContext, resp *prot
 		},
 	})
 	if err != nil {
-		t.Logger.Error("error marshalling response", zap.Error(err))
+		logger.WithTraceID(e.Ctx, t.Logger).
+			Error("error marshalling response", zap.Error(err))
 		return
 	}
 
@@ -256,7 +264,8 @@ func (t *UpdateEventRoute) handleAutosaveEvent(
 	})
 
 	if err != nil {
-		t.Logger.Error("batch update failed", zap.Error(err))
+		logger.WithTraceID(e.Ctx, t.Logger).
+			Error("batch update failed", zap.Error(err))
 		return
 	}
 
@@ -286,7 +295,8 @@ func (t *UpdateEventRoute) sendOptimizationEventResp(conn *websocket.Conn, ctx c
 	bytes, err := proto.Marshal(eventResp)
 
 	if err != nil {
-		t.Logger.Error("error marshalling response", zap.Error(err))
+		logger.WithTraceID(ctx, t.Logger).
+			Error("error marshalling response", zap.Error(err))
 		return
 	}
 	t.writeMessage(conn, websocket.BinaryMessage, bytes)
@@ -309,7 +319,8 @@ func (t *UpdateEventRoute) sendOptimizeInternalError(conn *websocket.Conn, ctx c
 
 func (t *UpdateEventRoute) handleOptimizeEvent(ctx context.Context, projectId uuid.UUID, modelId uuid.UUID, conn *websocket.Conn, casted *protobufs.OptimizationEventReq) {
 	if len(casted.GetCoverageFace()) == 0 {
-		t.Logger.Warn("optimization aborted: no coverage faces provided")
+		logger.WithTraceID(ctx, t.Logger).
+			Warn("optimization aborted: no coverage faces provided")
 		return
 	}
 
@@ -357,10 +368,8 @@ func (t *UpdateEventRoute) handleOptimizeEvent(ctx context.Context, projectId uu
 
 	jsonData, err := json.Marshal(payload)
 	if err != nil {
-		t.Logger.Error("failed to serialize optimize request",
-			zap.Error(err),
-			zap.Int("face_count", len(faces)),
-		)
+		logger.WithTraceID(ctx, t.Logger).
+			Error("failed to searilize optimize request", zap.Error(err), zap.Int("face_count", len(faces)))
 		span.RecordError(err)
 		return
 	}
@@ -377,12 +386,17 @@ func (t *UpdateEventRoute) handleOptimizeEvent(ctx context.Context, projectId uu
 		natsMsg.Header.Set(k, v)
 	}
 
+	logger.WithTraceID(ctx, t.Logger).Info("optimization started",
+		zap.String("jobId", jobId),
+		zap.String("modelId", modelId.String()),
+		zap.Int("faceCount", len(faces)),
+		zap.Int("camCount", len(camConfigs)),
+	)
+
 	msg, err := t.Nc.RequestMsg(natsMsg, 2*time.Minute)
 	if err != nil {
-		t.Logger.Error("Failed to publish to nats stream for optimiz algo",
-			zap.Error(err),
-			zap.String("job_id", jobId),
-		)
+		logger.WithTraceID(ctx, t.Logger).
+			Error("failed to publish to nats stream for optimization", zap.Error(err), zap.String("job_id", jobId))
 		span.RecordError(err)
 		t.sendOptimizeInternalError(conn, ctx, jobId)
 		return
@@ -390,13 +404,17 @@ func (t *UpdateEventRoute) handleOptimizeEvent(ctx context.Context, projectId uu
 
 	optiResp := &protobufs.OptimizationEventResp{}
 	if err := protojson.Unmarshal(msg.Data, optiResp); err != nil {
-		t.Logger.Error("failed to unmarshal proto-json", zap.Error(err))
+		logger.WithTraceID(ctx, t.Logger).Error("failed to unmarshal proto-json", zap.Error(err))
 		span.RecordError(err)
 		t.sendOptimizeInternalError(conn, ctx, jobId)
 		return
 	}
 
 	t.sendOptimizationEventResp(conn, ctx, optiResp)
+	logger.WithTraceID(ctx, t.Logger).Info("optimization completed",
+		zap.String("jobId", jobId),
+		zap.String("modelId", modelId.String()),
+	)
 }
 
 // Have to use websocket instead of SSE because protobuf is binary
@@ -404,7 +422,8 @@ func (t *UpdateEventRoute) getLivestream(c *gin.Context) {
 	strModelId := c.Param("modelId")
 	modelId, err := utils.ParseUuidBase64(strModelId)
 	if err != nil {
-		t.Logger.Error(messages_errors.ErrorWhileConvertToUUID, zap.Error(err))
+		logger.WithTraceID(c.Request.Context(), t.Logger).
+			Error(messages_errors.ErrorWhileConvertToUUID, zap.Error(err))
 		c.JSON(http.StatusBadRequest, gin.H{"error": messages_errors.InvalidModelID})
 		return
 	}
@@ -412,7 +431,8 @@ func (t *UpdateEventRoute) getLivestream(c *gin.Context) {
 	strWorkspaceOwnerId := c.Param("workspaceOwnerId")
 	workspaceOwnerId, err := utils.ParseUuidBase64(strWorkspaceOwnerId)
 	if err != nil {
-		t.Logger.Error(messages_errors.ErrorWhileConvertToUUID, zap.Error(err))
+		logger.WithTraceID(c.Request.Context(), t.Logger).
+			Error(messages_errors.ErrorWhileConvertToUUID, zap.Error(err))
 		c.JSON(http.StatusBadRequest, gin.H{"error": messages_errors.InvalidModelID})
 		return
 	}
@@ -424,7 +444,12 @@ func (t *UpdateEventRoute) getLivestream(c *gin.Context) {
 		ModelID:  modelId,
 	})
 	if err != nil {
-		t.Logger.Error("not a member of project", zap.String("modelId", modelId.String()), zap.Error(err))
+		logger.WithTraceID(c.Request.Context(), t.Logger).
+			Error("not a member of project",
+				zap.String("modelId", modelId.String()),
+				zap.String("username", username),
+				zap.Error(err),
+			)
 		c.JSON(http.StatusNotFound, gin.H{})
 		return
 	}
@@ -434,13 +459,20 @@ func (t *UpdateEventRoute) getLivestream(c *gin.Context) {
 		ModelID: modelId,
 	})
 	if err != nil {
-		t.Logger.Error("workspace not found", zap.Error(err))
+		logger.WithTraceID(c.Request.Context(), t.Logger).
+			Error("workspace not found",
+				zap.String("modelId", modelId.String()),
+				zap.String("workspaceOwnerId", workspaceOwnerId.String()),
+				zap.Error(err),
+			)
 		c.JSON(http.StatusNotFound, gin.H{})
 		return
 	}
 
 	conn, err := t.Upgrader.Upgrade(c.Writer, c.Request, nil)
 	if err != nil {
+		logger.WithTraceID(c.Request.Context(), t.Logger).
+			Error("websocket upgrade failed", zap.Error(err))
 		return
 	}
 
@@ -455,8 +487,11 @@ func (t *UpdateEventRoute) getLivestream(c *gin.Context) {
 			sendData(msg.Data)
 		})
 		if err != nil {
-			t.Logger.Error("fail to send message", zap.Error(err), zap.String("subject", subject))
-
+			logger.WithTraceID(c.Request.Context(), t.Logger).
+				Error("failed to subscribe to livestream topic",
+					zap.Error(err),
+					zap.String("subject", subject),
+				)
 			resp := &protobufs.LivestreamBroadcast{
 				Event: &protobufs.LivestreamBroadcast_Error{
 					Error: &protobufs.EventError{
@@ -469,7 +504,8 @@ func (t *UpdateEventRoute) getLivestream(c *gin.Context) {
 
 			dataBytes, err := proto.Marshal(resp)
 			if err != nil {
-				t.Logger.Error("error while marshalling response", zap.Error(err))
+				logger.WithTraceID(c.Request.Context(), t.Logger).
+					Error("failed to marshal livestream error response", zap.Error(err))
 				return
 			}
 			conn.WriteMessage(websocket.BinaryMessage, dataBytes)
@@ -479,10 +515,11 @@ func (t *UpdateEventRoute) getLivestream(c *gin.Context) {
 		<-c.Done()
 
 		if err := sub.Drain(); err != nil {
-			t.Logger.Error("error draining NATS subscription",
-				zap.Error(err),
-				zap.String("subject", subject),
-			)
+			logger.WithTraceID(c.Request.Context(), t.Logger).
+				Error("error draining NATS subscription",
+					zap.Error(err),
+					zap.String("subject", subject),
+				)
 		}
 	}()
 }
@@ -492,7 +529,11 @@ func (t *UpdateEventRoute) getAutosave(c *gin.Context) {
 	strProjectId := c.Param("projectId")
 	projectId, err := utils.ParseUuidBase64(strProjectId)
 	if err != nil {
-		t.Logger.Error(messages_errors.ErrorWhileConvertToUUID, zap.Error(err))
+		logger.WithTraceID(c.Request.Context(), t.Logger).Error(
+			messages_errors.ErrorWhileConvertToUUID,
+			zap.String("projectId", strProjectId),
+			zap.Error(err),
+		)
 		c.JSON(http.StatusBadRequest, gin.H{"error": messages_errors.InvalidModelID})
 		return
 	}
@@ -500,14 +541,21 @@ func (t *UpdateEventRoute) getAutosave(c *gin.Context) {
 	strModelId := c.Param("modelId")
 	modelId, err := utils.ParseUuidBase64(strModelId)
 	if err != nil {
-		t.Logger.Error(messages_errors.ErrorWhileConvertToUUID, zap.Error(err))
+		logger.WithTraceID(c.Request.Context(), t.Logger).Error(
+			messages_errors.ErrorWhileConvertToUUID,
+			zap.String("modelId", strModelId),
+			zap.Error(err),
+		)
 		c.JSON(http.StatusBadRequest, gin.H{"error": messages_errors.InvalidModelID})
 		return
 	}
 
 	userId, err := utils.GetUuidFromCtx(c, "userId")
 	if err != nil {
-		t.Logger.Error("error while getting userId", zap.Error(err))
+		logger.WithTraceID(c.Request.Context(), t.Logger).Error(
+			"error while getting userId",
+			zap.Error(err),
+		)
 		c.JSON(http.StatusInternalServerError, gin.H{})
 		return
 	}
@@ -517,7 +565,12 @@ func (t *UpdateEventRoute) getAutosave(c *gin.Context) {
 		ModelID: modelId,
 	})
 	if err != nil {
-		t.Logger.Error("workspace not found", zap.Error(err))
+		logger.WithTraceID(c.Request.Context(), t.Logger).Error(
+			"workspace not found",
+			zap.String("modelId", modelId.String()),
+			zap.String("userId", userId.String()),
+			zap.Error(err),
+		)
 		c.JSON(http.StatusNotFound, gin.H{})
 		return
 	}
@@ -540,9 +593,18 @@ func (t *UpdateEventRoute) getAutosave(c *gin.Context) {
 		),
 	)
 
+	t.Logger.Info("autosave websocket connected",
+		zap.String("modelId", modelId.String()),
+		zap.String("userId", userId.String()),
+	)
+
 	go func() {
 		defer conn.Close()
 		defer span.End() // ← ends when goroutine exits, not when getAutosave returns
+		t.Logger.Info("autosave websocket disconnected",
+			zap.String("modelId", modelId.String()),
+			zap.String("userId", userId.String()),
+		)
 
 		currentVersion := workspace.Version
 
@@ -565,13 +627,19 @@ func (t *UpdateEventRoute) getAutosave(c *gin.Context) {
 		for {
 			_, rawMsg, err := conn.ReadMessage()
 			if err != nil {
-				t.Logger.Error("error reading message", zap.Error(err))
+				logger.WithTraceID(c.Request.Context(), t.Logger).Error(
+					"error reading websocket message",
+					zap.Error(err),
+				)
 				break
 			}
 
 			msg := &protobufs.WorkspaceEventRequest{}
 			if err := proto.Unmarshal(rawMsg, msg); err != nil {
-				t.Logger.Error("error unmarshalling event", zap.Error(err))
+				logger.WithTraceID(c.Request.Context(), t.Logger).Error(
+					"error unmarshalling event",
+					zap.Error(err),
+				)
 				continue
 			}
 
