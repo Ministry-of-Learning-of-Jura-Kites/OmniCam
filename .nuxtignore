@@ -5,3 +5,6 @@ backend
 db
 predictive-algorithm
 tools
+protobufs
+docs
+.github
