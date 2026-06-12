@@ -1,7 +1,9 @@
+name: omnicam-services
+
 services:
   db:
     image: postgres:17
-    container_name: omnicam_postgres
+    container_name: omnicam-postgres
     env_file:
       - .db.env.prod
     networks:
@@ -15,9 +17,12 @@ services:
       retries: 5
 
   migrate:
-    image: docker.io/oxygenai/omnicam_data_migration:${IMAGE_TAG:-latest}
+    image: docker.io/oxygenai/omnicam-data-migration:v2026.06.3
     env_file:
       - .backend.env.prod
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      ["migrate -path /migrations -database $$DATABASE_URL?sslmode=disable up"]
     networks:
       - private_net
     depends_on:
@@ -26,7 +31,7 @@ services:
 
   nats:
     image: nats:2.12.6-alpine
-    container_name: omnicam_nats
+    container_name: omnicam-nats
     restart: always
     command: ["-m", "8222"]
     healthcheck:
@@ -50,14 +55,14 @@ services:
     build:
       context: .
       dockerfile: ./backend/Dockerfile
-    image: docker.io/oxygenai/omnicam_backend:${IMAGE_TAG:-latest}
-    container_name: omnicam_backend
+    image: docker.io/oxygenai/omnicam-backend:v2026.06.3
+    container_name: omnicam-backend
     env_file:
       - .backend.env.prod
     expose:
       - 8080
     volumes:
-      - few/omnicam/OmniCam/uploads:/app/uploads
+      - ~/few/omnicam/OmniCam/uploads:/app/uploads
     depends_on:
       migrate:
         condition: service_completed_successfully
@@ -65,14 +70,13 @@ services:
         condition: service_healthy
       nats:
         condition: service_healthy
-
     labels:
       traefik.enable: "true"
       traefik.docker.network: "traefik-proxy"
-      traefik.http.routers.pytha-vision.rule: "Host(`backend.omnicam.ops.oxygenci.com`)"
-      traefik.http.routers.pytha-vision.entrypoints: "websecure"
-      traefik.http.routers.pytha-vision.tls: "true"
-      traefik.http.services.pytha-vision.loadbalancer.server.port: "80"
+      traefik.http.routers.omnicam-backend.rule: "Host(`omnicam-backend.ops.oxygenci.com`)"
+      traefik.http.routers.omnicam-backend.entrypoints: "websecure"
+      traefik.http.routers.omnicam-backend.tls: "true"
+      traefik.http.services.omnicam-backend.loadbalancer.server.port: "8080"
     networks:
       app_net:
         aliases:
@@ -84,8 +88,8 @@ services:
     build:
       context: .
       dockerfile: ./frontend/Dockerfile
-    image: docker.io/oxygenai/omnicam_frontend:${IMAGE_TAG:-latest}
-    container_name: omnicam_frontend
+    image: docker.io/oxygenai/omnicam-frontend:v2026.06.3
+    container_name: omnicam-frontend
     env_file:
       - .frontend.env.prod
     expose:
@@ -93,14 +97,13 @@ services:
     depends_on:
       backend:
         condition: service_started
-
     labels:
       traefik.enable: "true"
       traefik.docker.network: "traefik-proxy"
-      traefik.http.routers.pytha-vision.rule: "Host(`omnicam.ops.oxygenci.com`)"
-      traefik.http.routers.pytha-vision.entrypoints: "websecure"
-      traefik.http.routers.pytha-vision.tls: "true"
-      traefik.http.services.pytha-vision.loadbalancer.server.port: "3000"
+      traefik.http.routers.omnicam-frontend.rule: "Host(`omnicam.ops.oxygenci.com`)"
+      traefik.http.routers.omnicam-frontend.entrypoints: "websecure"
+      traefik.http.routers.omnicam-frontend.tls: "true"
+      traefik.http.services.omnicam-frontend.loadbalancer.server.port: "3000"
     networks:
       - traefik-proxy
       - app_net
@@ -109,8 +112,8 @@ services:
     build:
       context: .
       dockerfile: ./predictive-algorithm/Dockerfile
-    image: docker.io/oxygenai/omnicam_algo:${IMAGE_TAG:-latest}
-    container_name: omnicam_algo
+    image: docker.io/oxygenai/omnicam-algo:v2026.06.3
+    container_name: omnicam-algo
     env_file:
       - .algo.env.prod
     expose:
@@ -119,7 +122,7 @@ services:
       nats:
         condition: service_healthy
     volumes:
-      - few/omnicam/OmniCam/uploads:/app/uploads
+      - ~/few/omnicam/OmniCam/uploads:/app/uploads
     networks:
       - private_net
 
@@ -131,4 +134,5 @@ networks:
 
 volumes:
   postgres_data:
-  uploads:
+    external: true
+    name: omnicam-services_postgres_data
