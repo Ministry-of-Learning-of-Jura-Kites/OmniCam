@@ -4,18 +4,11 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
+	"omnicam.com/backend/internal/utils"
 )
 
 func (t *AuthRoute) logout(c *gin.Context) {
-	c.SetCookie(
-		"auth_token", // cookie name
-		"",           // empty value
-		-1,           // max age negative = delete
-		"/",          // path
-		"",           // domain (empty = current domain)
-		false,        // secure (set true if using HTTPS)
-		true,         // httpOnly
-	)
+	utils.DeleteCookie(c, t.Env)
 
 	c.JSON(http.StatusOK, gin.H{
 		"message": "logged out successfully",

@@ -136,7 +136,7 @@ func TestProjectsCRUD(t *testing.T) {
 				reqBody := `{"name":"Project Alpha","description":"Test project"}`
 				req, _ := http.NewRequest("POST", "/api/v1/projects", strings.NewReader(reqBody))
 				req.Header.Set("Content-Type", "application/json")
-				req.AddCookie(&http.Cookie{Name: "auth_token", Value: tc.Token})
+				req.AddCookie(&http.Cookie{Name: "omnicam_token", Value: tc.Token})
 
 				w := httptest.NewRecorder()
 				tc.Router.ServeHTTP(w, req)
@@ -167,7 +167,7 @@ func TestProjectsCRUD(t *testing.T) {
 				require.NoError(t, err)
 
 				req, _ := http.NewRequest("GET", fmt.Sprintf("/api/v1/projects/%s", projectIdBase64), nil)
-				req.AddCookie(&http.Cookie{Name: "auth_token", Value: tc.Token})
+				req.AddCookie(&http.Cookie{Name: "omnicam_token", Value: tc.Token})
 
 				w := httptest.NewRecorder()
 				tc.Router.ServeHTTP(w, req)
@@ -198,7 +198,7 @@ func TestProjectsCRUD(t *testing.T) {
 				updateBody := `{"name":"Project Gamma Updated"}`
 				req, _ := http.NewRequest("PUT", fmt.Sprintf("/api/v1/projects/%s", projectIdBase64), strings.NewReader(updateBody))
 				req.Header.Set("Content-Type", "application/json")
-				req.AddCookie(&http.Cookie{Name: "auth_token", Value: tc.Token})
+				req.AddCookie(&http.Cookie{Name: "omnicam_token", Value: tc.Token})
 
 				w := httptest.NewRecorder()
 				tc.Router.ServeHTTP(w, req)
@@ -229,7 +229,7 @@ func TestProjectsCRUD(t *testing.T) {
 				updateBody := `{"name":"Project Gamma Updated"}`
 				req, _ := http.NewRequest("PUT", fmt.Sprintf("/api/v1/projects/%s", projectIdBase64), strings.NewReader(updateBody))
 				req.Header.Set("Content-Type", "application/json")
-				req.AddCookie(&http.Cookie{Name: "auth_token", Value: tc.Token})
+				req.AddCookie(&http.Cookie{Name: "omnicam_token", Value: tc.Token})
 
 				w := httptest.NewRecorder()
 				tc.Router.ServeHTTP(w, req)
@@ -258,7 +258,7 @@ func TestProjectsCRUD(t *testing.T) {
 				require.NoError(t, err)
 
 				req, _ := http.NewRequest("DELETE", fmt.Sprintf("/api/v1/projects/%s", projectIdBase64), nil)
-				req.AddCookie(&http.Cookie{Name: "auth_token", Value: tc.Token})
+				req.AddCookie(&http.Cookie{Name: "omnicam_token", Value: tc.Token})
 
 				w := httptest.NewRecorder()
 				tc.Router.ServeHTTP(w, req)

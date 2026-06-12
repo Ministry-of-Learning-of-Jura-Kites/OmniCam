@@ -1,0 +1,10 @@
+uploads
+node_modules
+backend
+.output
+db
+predictive-algorithm
+tools
+protobufs
+docs
+.github

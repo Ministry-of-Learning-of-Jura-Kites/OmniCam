@@ -21,7 +21,7 @@ type AuthMiddleware struct {
 
 func (t *AuthMiddleware) CreateHandler() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		tokenStr, err := c.Cookie("auth_token")
+		tokenStr, err := c.Cookie(t.Env.CookieName)
 
 		if err != nil {
 			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{

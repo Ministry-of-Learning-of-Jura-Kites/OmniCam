@@ -76,7 +76,8 @@ export default defineNuxtConfig({
     public: {
       nuxtHost: "localhost",
       nuxtPort: 3000,
-      nuxtBackendSecure: true,
+      cookieName: "omnicam_token",
+      backendSecure: true,
       externalBackendHost: "error",
       devMode: false,
     },

@@ -16,17 +16,14 @@ type AppEnv struct {
 	DatabaseUrl   string `env:"DATABASE_URL"`
 	ModelFilePath string `env:"MODEL_FILE_PATH"`
 	FrontendHost  string `env:"FRONTEND_HOST"`
+	CookieHost    string `env:"COOKIE_HOST"`
+	CookieName    string `env:"COOKIE_NAME"`
+	Secure        bool   `env:"SECURE"`
 
 	// JWT
 	JWTSecret        string `env:"JWT_SECRET"`
 	RawJWTExpireTime string `env:"JWT_EXPIRE_TIME"`
 	JWTExpireTime    time.Duration
-
-	// // Redis Configuration
-	// RedisHost     string `env:"REDIS_HOST"`
-	// RedisPort     string `env:"REDIS_PORT"`
-	// RedisPassword string `env:"REDIS_PASSWORD"`
-	// RedisDB       int    `env:"REDIS_DB"`
 
 	// Nats
 	NatsUrl string `env:"NATS_URL"`
