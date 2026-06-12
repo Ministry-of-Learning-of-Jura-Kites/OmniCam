@@ -1,11 +1,17 @@
 image: atlassian/default-image:latest
 
+options:
+  runtime:
+    cloud:
+      version: "3"
+
 definitions:
   services:
     docker:
       memory: 2048
   caches:
     node-custom: node_modules
+    apt: /var/cache/apt
     sonar: ~/.sonar
 
 clone:
@@ -24,7 +30,7 @@ pipelines:
                 - npm ci
                 - npm run style-check
                 - npm run lint
-          - step: &sonarqube
+          - step:
               name: sonarqube
               image: sonarsource/sonar-scanner-cli:12
               runs-on:
@@ -53,15 +59,10 @@ pipelines:
               services:
                 - docker
               script:
-                - apt-get update && apt-get install -y git-lfs
-                - git lfs install
-                - git lfs pull
                 - echo "$DOCKER_HUB_ACCESS_TOKEN" | docker login docker.io -u "$DOCKER_HUB_USER" --password-stdin
                 - export FINAL_TAG="${BITBUCKET_TAG:-${MANUAL_TAG:-manual-build}}"
-                - docker buildx create --name ci-builder || true
-                - docker buildx use ci-builder
-                - |
-                  docker buildx build --push
+                - docker buildx create --use --name ci-builder || docker buildx use ci-builder
+                - docker buildx build --push
                   --cache-from type=registry,ref=docker.io/oxygenai/buildkit-cache:omnicam-frontend
                   --cache-to type=registry,ref=docker.io/oxygenai/buildkit-cache:omnicam-frontend,mode=max
                   -t docker.io/oxygenai/omnicam-frontend:${FINAL_TAG}
@@ -76,8 +77,7 @@ pipelines:
               script:
                 - echo "$DOCKER_HUB_ACCESS_TOKEN" | docker login docker.io -u "$DOCKER_HUB_USER" --password-stdin
                 - export FINAL_TAG="${BITBUCKET_TAG:-${MANUAL_TAG:-manual-build}}"
-                - docker buildx create --name ci-builder || true
-                - docker buildx use ci-builder
+                - docker buildx create --use --name ci-builder || docker buildx use ci-builder
                 - docker buildx build --push
                   --cache-from type=registry,ref=docker.io/oxygenai/buildkit-cache:omnicam-backend
                   --cache-to type=registry,ref=docker.io/oxygenai/buildkit-cache:omnicam-backend,mode=max
@@ -93,8 +93,7 @@ pipelines:
               script:
                 - echo "$DOCKER_HUB_ACCESS_TOKEN" | docker login docker.io -u "$DOCKER_HUB_USER" --password-stdin
                 - export FINAL_TAG="${BITBUCKET_TAG:-${MANUAL_TAG:-manual-build}}"
-                - docker buildx create --name ci-builder || true
-                - docker buildx use ci-builder
+                - docker buildx create --use --name ci-builder || docker buildx use ci-builder
                 - docker buildx build --push
                   --cache-from type=registry,ref=docker.io/oxygenai/buildkit-cache:omnicam-algo
                   --cache-to type=registry,ref=docker.io/oxygenai/buildkit-cache:omnicam-algo,mode=max
@@ -110,8 +109,7 @@ pipelines:
               script:
                 - echo "$DOCKER_HUB_ACCESS_TOKEN" | docker login docker.io -u "$DOCKER_HUB_USER" --password-stdin
                 - export FINAL_TAG="${BITBUCKET_TAG:-${MANUAL_TAG:-manual-build}}"
-                - docker buildx create --name ci-builder || true
-                - docker buildx use ci-builder
+                - docker buildx create --use --name ci-builder || docker buildx use ci-builder
                 - docker buildx build --push
                   --cache-from type=registry,ref=docker.io/oxygenai/buildkit-cache:omnicam-data-migration
                   --cache-to type=registry,ref=docker.io/oxygenai/buildkit-cache:omnicam-data-migration,mode=max
