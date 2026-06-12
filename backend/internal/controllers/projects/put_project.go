@@ -11,6 +11,7 @@ import (
 	"omnicam.com/backend/internal/utils"
 	db_client "omnicam.com/backend/pkg/db"
 	db_sqlc_gen "omnicam.com/backend/pkg/db/sqlc-gen"
+	"omnicam.com/backend/pkg/logger"
 )
 
 type PutProjectRoute struct {
@@ -28,21 +29,21 @@ func (t *PutProjectRoute) put(c *gin.Context) {
 	strProjectId := c.Param("projectId")
 	projectId, err := utils.ParseUuidBase64(strProjectId)
 	if err != nil {
-		t.Logger.Error("error while converting str id to uuid", zap.Error(err))
+		logger.WithTraceID(c.Request.Context(), t.Logger).Error("error while converting str id to uuid", zap.Error(err))
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid model ID"})
 		return
 	}
 
 	userId, err := utils.GetUuidFromCtx(c, "userId")
 	if err != nil {
-		t.Logger.Error("error while getting userId form", zap.Error(err))
+		logger.WithTraceID(c.Request.Context(), t.Logger).Error("error while getting userId form", zap.Error(err))
 		c.JSON(http.StatusInternalServerError, gin.H{})
 		return
 	}
 
 	pgUserId, err := utils.UuidToPgUuid(userId)
 	if err != nil {
-		t.Logger.Error("Error while convert uuid to pgtype", zap.Error(err))
+		logger.WithTraceID(c.Request.Context(), t.Logger).Error("error while convert uuid to pgtype", zap.Error(err))
 		c.JSON(http.StatusInternalServerError, gin.H{})
 		return
 	}
@@ -53,7 +54,10 @@ func (t *PutProjectRoute) put(c *gin.Context) {
 		Projectid: projectId,
 	})
 	if err != nil {
-		t.Logger.Debug("user of project not found", zap.String("projectId", strProjectId), zap.String("userId", userId.String()), zap.Error(err))
+		logger.WithTraceID(c.Request.Context(), t.Logger).Error("user of project not found",
+			zap.Error(err),
+			zap.String("userId", pgUserId.String()),
+		)
 		c.JSON(http.StatusForbidden, gin.H{})
 		return
 	}
@@ -62,7 +66,7 @@ func (t *PutProjectRoute) put(c *gin.Context) {
 
 	err = c.ShouldBindJSON(&req)
 	if err != nil {
-		t.Logger.Debug("error while validating body", zap.Error(err))
+		logger.WithTraceID(c.Request.Context(), t.Logger).Error("error while validating body", zap.Error(err))
 		c.JSON(http.StatusBadRequest, gin.H{})
 		return
 	}
@@ -85,11 +89,14 @@ func (t *PutProjectRoute) put(c *gin.Context) {
 
 	project, err := t.DB.Queries.UpdateProject(c.Request.Context(), params)
 	if err != nil {
-		t.Logger.Error("error while updating project", zap.Error(err))
+		logger.WithTraceID(c.Request.Context(), t.Logger).Error("error while updating project", zap.Error(err))
 		c.JSON(http.StatusInternalServerError, gin.H{})
 		return
 	}
 
+	logger.WithTraceID(c.Request.Context(), t.Logger).Info("successfully update project",
+		zap.String("projcetId", strProjectId),
+	)
 	c.JSON(http.StatusOK, gin.H{"data": Project{
 		Id:             project.ID,
 		Name:           project.Name,

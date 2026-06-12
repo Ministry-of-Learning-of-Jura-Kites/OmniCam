@@ -7,6 +7,7 @@ import (
 	"go.uber.org/zap"
 	"omnicam.com/backend/internal/utils"
 	db_sqlc_gen "omnicam.com/backend/pkg/db/sqlc-gen"
+	"omnicam.com/backend/pkg/logger"
 	messages_errors "omnicam.com/backend/pkg/messages/errors"
 )
 
@@ -21,7 +22,7 @@ type RegisterRequest struct {
 func (t *AuthRoute) register(c *gin.Context) {
 	var req RegisterRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		t.Logger.Debug("invalid form data", zap.Error(err))
+		logger.WithTraceID(c.Request.Context(), t.Logger).Debug("invalid form data", zap.Error(err))
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid form data"})
 		return
 	}
@@ -37,7 +38,7 @@ func (t *AuthRoute) register(c *gin.Context) {
 
 	hashedPassword, err := utils.HashPassword(req.Password)
 	if err != nil {
-		t.Logger.Error("failed to hash password", zap.Error(err))
+		logger.WithTraceID(c.Request.Context(), t.Logger).Error("failed to hash password", zap.Error(err))
 		c.JSON(http.StatusInternalServerError, gin.H{"error": messages_errors.FailedToCreateUser})
 		return
 	}
@@ -50,20 +51,23 @@ func (t *AuthRoute) register(c *gin.Context) {
 		Password:  []byte(hashedPassword),
 	})
 	if err != nil {
-		t.Logger.Error(messages_errors.FailedToCreateUser, zap.Error(err))
+		logger.WithTraceID(c.Request.Context(), t.Logger).Error(messages_errors.FailedToCreateUser, zap.Error(err))
 		c.JSON(http.StatusInternalServerError, gin.H{"error": messages_errors.FailedToCreateUser})
 		return
 	}
 
 	jwtToken, err := utils.GenerateJWT(user.FirstName, user.LastName, user.ID.String(), user.Username, t.Env.JWTSecret, t.Env.JWTExpireTime)
 	if err != nil {
-		t.Logger.Error("failed to generate JWT", zap.Error(err))
+		logger.WithTraceID(c.Request.Context(), t.Logger).Error("failed to generate JWT", zap.Error(err))
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to login"})
 		return
 	}
 
 	utils.SetCookie(c, jwtToken, t.Env)
 
+	logger.WithTraceID(c.Request.Context(), t.Logger).Info("Successfully register",
+		zap.String("userId", user.ID.String()),
+	)
 	c.JSON(http.StatusOK, gin.H{
 		"data": gin.H{
 			"id":         user.ID,

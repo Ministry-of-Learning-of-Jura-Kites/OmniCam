@@ -9,6 +9,7 @@ import (
 	"omnicam.com/backend/internal/utils"
 	db_client "omnicam.com/backend/pkg/db"
 	db_sqlc_gen "omnicam.com/backend/pkg/db/sqlc-gen"
+	"omnicam.com/backend/pkg/logger"
 )
 
 type DeleteProjectMemberRoute struct {
@@ -22,6 +23,11 @@ func (t *DeleteProjectMemberRoute) deleteMember(c *gin.Context) {
 	projectParam := c.Param("projectId")
 	projectID, err := utils.ParseUuidBase64(projectParam)
 	if err != nil {
+		logger.WithTraceID(c.Request.Context(), t.Logger).Error(
+			"invalid project ID",
+			zap.String("projectId", projectParam),
+			zap.Error(err),
+		)
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid project ID"})
 		return
 	}
@@ -29,6 +35,11 @@ func (t *DeleteProjectMemberRoute) deleteMember(c *gin.Context) {
 	userParam := c.Param("userId")
 	userID, err := utils.ParseUuidBase64(userParam)
 	if err != nil {
+		logger.WithTraceID(c.Request.Context(), t.Logger).Error(
+			"invalid user ID",
+			zap.String("userId", userParam),
+			zap.Error(err),
+		)
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid user ID"})
 		return
 	}
@@ -38,10 +49,17 @@ func (t *DeleteProjectMemberRoute) deleteMember(c *gin.Context) {
 		ProjectID: projectID,
 	})
 	if err != nil {
+		logger.WithTraceID(c.Request.Context(), t.Logger).Error(
+			"failed to delete project member",
+			zap.String("projectId", projectID.String()),
+			zap.String("userId", userID.String()),
+			zap.Error(err),
+		)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to delete member"})
 		return
 	}
 
+	logger.WithTraceID(c.Request.Context(), t.Logger).Info("successfully removed member", zap.String("projectId", projectID.String()), zap.String("userId", userID.String()))
 	c.JSON(http.StatusOK, gin.H{"message": "member removed successfully"})
 }
 

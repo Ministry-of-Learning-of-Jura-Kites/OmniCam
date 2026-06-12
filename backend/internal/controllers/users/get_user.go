@@ -7,6 +7,7 @@ import (
 	"go.uber.org/zap"
 	config_env "omnicam.com/backend/config"
 	db_client "omnicam.com/backend/pkg/db"
+	"omnicam.com/backend/pkg/logger"
 )
 
 type UserRoute struct {
@@ -18,12 +19,11 @@ type UserRoute struct {
 func (t *UserRoute) GetAll(c *gin.Context) {
 	users, err := t.DB.Queries.GetAllUser(c.Request.Context())
 	if err != nil {
-		t.Logger.Error("failed to fetch users", zap.Error(err))
+		logger.WithTraceID(c.Request.Context(), t.Logger).Error("failed to fetch users", zap.Error(err))
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to fetch users"})
 		return
 	}
 
-	// build safe response (no password exposure)
 	resp := make([]gin.H, 0, len(users))
 	for _, u := range users {
 		resp = append(resp, gin.H{
@@ -37,6 +37,7 @@ func (t *UserRoute) GetAll(c *gin.Context) {
 		})
 	}
 
+	logger.WithTraceID(c.Request.Context(), t.Logger).Info("successfully get user")
 	c.JSON(http.StatusOK, gin.H{"data": resp})
 }
 

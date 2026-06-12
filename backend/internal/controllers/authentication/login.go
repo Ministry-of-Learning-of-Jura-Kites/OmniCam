@@ -8,6 +8,7 @@ import (
 	config_env "omnicam.com/backend/config"
 	"omnicam.com/backend/internal/utils"
 	db_client "omnicam.com/backend/pkg/db"
+	"omnicam.com/backend/pkg/logger"
 )
 
 type AuthRoute struct {
@@ -24,34 +25,37 @@ type LoginRequest struct {
 func (t *AuthRoute) login(c *gin.Context) {
 	var req LoginRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		t.Logger.Debug("invalid login data", zap.Error(err))
+		logger.WithTraceID(c.Request.Context(), t.Logger).Error("invalid login data", zap.Error(err))
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid login data"})
 		return
 	}
 
 	user, err := t.DB.Queries.GetUserByIdentifier(c.Request.Context(), req.Identifier)
 	if err != nil {
-		t.Logger.Error("user not found", zap.Error(err))
+		logger.WithTraceID(c.Request.Context(), t.Logger).Error("user not found", zap.Error(err))
 		c.JSON(http.StatusBadRequest, gin.H{})
 		return
 	}
 
 	isSuccess := utils.CheckPassword(string(user.Password), req.Password)
 	if !isSuccess {
-		t.Logger.Error("password is incorrect", zap.Error((err)))
+		logger.WithTraceID(c.Request.Context(), t.Logger).Error("password is incorrect")
 		c.JSON(http.StatusBadRequest, gin.H{})
 		return
 	}
 
 	jwtToken, err := utils.GenerateJWT(user.FirstName, user.LastName, user.ID.String(), user.Username, t.Env.JWTSecret, t.Env.JWTExpireTime)
 	if err != nil {
-		t.Logger.Error("failed to generate JWT token", zap.Error(err))
+		logger.WithTraceID(c.Request.Context(), t.Logger).Error("failed to generate JWT token", zap.Error(err))
 		c.JSON(http.StatusBadRequest, gin.H{"message": "gen jwt token failed"})
 		return
 	}
 
 	utils.SetCookie(c, jwtToken, t.Env)
 
+	logger.WithTraceID(c.Request.Context(), t.Logger).Info("Successfully login",
+		zap.String("userId", user.ID.String()),
+	)
 	c.JSON(http.StatusOK, gin.H{
 		"data": gin.H{
 			"id":         user.ID,

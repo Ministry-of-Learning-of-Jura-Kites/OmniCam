@@ -13,6 +13,7 @@ import (
 	"omnicam.com/backend/internal/utils"
 	db_client "omnicam.com/backend/pkg/db"
 	db_sqlc_gen "omnicam.com/backend/pkg/db/sqlc-gen"
+	"omnicam.com/backend/pkg/logger"
 )
 
 type PutImageProjectRoute struct {
@@ -25,21 +26,21 @@ func (t *PutImageProjectRoute) updateImage(c *gin.Context) {
 	strProjectId := c.Param("projectId")
 	projectId, err := utils.ParseUuidBase64(strProjectId)
 	if err != nil {
-		t.Logger.Error("error while converting str id to uuid", zap.Error(err))
+		logger.WithTraceID(c.Request.Context(), t.Logger).Error("error while converting str id to uuid", zap.Error(err))
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid model ID"})
 		return
 	}
 
 	userId, err := utils.GetUuidFromCtx(c, "userId")
 	if err != nil {
-		t.Logger.Error("error while getting userId form", zap.Error(err))
+		logger.WithTraceID(c.Request.Context(), t.Logger).Error("error while getting userId form", zap.Error(err))
 		c.JSON(http.StatusInternalServerError, gin.H{})
 		return
 	}
 
 	pgUserId, err := utils.UuidToPgUuid(userId)
 	if err != nil {
-		t.Logger.Error("Error while convert uuid to pgtype", zap.Error(err))
+		logger.WithTraceID(c.Request.Context(), t.Logger).Error("error while convert uuid to pgtype", zap.Error(err))
 		c.JSON(http.StatusInternalServerError, gin.H{})
 		return
 	}
@@ -50,32 +51,36 @@ func (t *PutImageProjectRoute) updateImage(c *gin.Context) {
 		Projectid: projectId,
 	})
 	if err != nil {
-		t.Logger.Debug("user of project not found", zap.String("projectId", strProjectId), zap.String("userId", userId.String()), zap.Error(err))
+		logger.WithTraceID(c.Request.Context(), t.Logger).Error("user of project not found",
+			zap.Error(err),
+			zap.String("projectId", strProjectId),
+		)
 		c.JSON(http.StatusForbidden, gin.H{})
 		return
 	}
 
 	imageFile, err := c.FormFile("image")
 	if err != nil {
-		t.Logger.Error("Image file is required", zap.Error(err))
+		logger.WithTraceID(c.Request.Context(), t.Logger).Error("image file is required", zap.Error(err))
 		c.JSON(http.StatusBadRequest, gin.H{"error": "image file is required"})
 		return
 	}
 
 	imageExt := filepath.Ext(imageFile.Filename)
 	if imageExt != ".jpg" && imageExt != ".png" {
+		logger.WithTraceID(c.Request.Context(), t.Logger).Error("image must be .jpg or .png")
 		c.JSON(http.StatusBadRequest, gin.H{"error": "image must be .jpg or .png"})
 		return
 	}
 
-	t.Logger.Info("Received project image",
+	logger.WithTraceID(c.Request.Context(), t.Logger).Info("received project image",
 		zap.String("filename", imageFile.Filename),
 		zap.Int64("size", imageFile.Size),
 	)
 
 	imageDir := filepath.Join(internal.Root, "uploads", "images")
 	if err := os.MkdirAll(imageDir, os.ModePerm); err != nil {
-		t.Logger.Error("Failed to create image directory", zap.Error(err))
+		logger.WithTraceID(c.Request.Context(), t.Logger).Error("failed to create image directory", zap.Error(err))
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to create folder for project image"})
 		return
 	}
@@ -89,7 +94,7 @@ func (t *PutImageProjectRoute) updateImage(c *gin.Context) {
 
 	fsImagePath := filepath.Join(imageDir, projectId.String()+imageExt)
 	if err := c.SaveUploadedFile(imageFile, fsImagePath); err != nil {
-		t.Logger.Error("Failed to save image file", zap.Error(err))
+		logger.WithTraceID(c.Request.Context(), t.Logger).Error("failed to save image", zap.Error(err))
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to save image"})
 		return
 	}
@@ -102,12 +107,12 @@ func (t *PutImageProjectRoute) updateImage(c *gin.Context) {
 		ImageExtension: imageExt,
 	})
 	if err != nil {
-		t.Logger.Error("Error while updating project image", zap.Error(err))
+		logger.WithTraceID(c.Request.Context(), t.Logger).Error("error while updating project image", zap.Error(err))
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to update project image in DB"})
 		return
 	}
 
-	t.Logger.Info("Project image updated", zap.String("path", fsImagePath))
+	logger.WithTraceID(c.Request.Context(), t.Logger).Info("project image updated", zap.String("path", fsImagePath))
 	c.JSON(http.StatusOK, gin.H{
 		"message":       "project image updated successfully",
 		"imagePath":     webImagePath,

@@ -7,6 +7,7 @@ import (
 	"go.uber.org/zap"
 	config_env "omnicam.com/backend/config"
 	db_client "omnicam.com/backend/pkg/db"
+	"omnicam.com/backend/pkg/logger"
 )
 
 type GetMeRoute struct {
@@ -18,18 +19,19 @@ type GetMeRoute struct {
 func (t *GetMeRoute) GetMe(c *gin.Context) {
 	username, exists := c.Get("username")
 	if !exists {
-		t.Logger.Error("username not found in context")
+		logger.WithTraceID(c.Request.Context(), t.Logger).Error("username not found in context")
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
 		return
 	}
 
 	user, err := t.DB.Queries.GetUserByUsername(c.Request.Context(), username.(string))
 	if err != nil {
-		t.Logger.Error("failed to fetch user", zap.Error(err))
+		logger.WithTraceID(c.Request.Context(), t.Logger).Error("failed to fetch user", zap.Error(err))
 		c.JSON(http.StatusNotFound, gin.H{"error": "user not found"})
 		return
 	}
 
+	logger.WithTraceID(c.Request.Context(), t.Logger).Info("", zap.String("f", user.ID.String()))
 	c.JSON(http.StatusOK, gin.H{
 		"data": gin.H{
 			"id":         user.ID,

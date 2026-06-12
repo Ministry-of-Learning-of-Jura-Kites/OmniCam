@@ -22,15 +22,15 @@ func main() {
 	ctx := context.Background()
 	utils.RegisterCustomValidations()
 
-	logger := logger.InitLogger(false)
-	defer logger.Sync()
+	log := logger.InitLogger(false)
+	defer log.Sync()
 
-	env := config_env.InitAppEnv(logger)
+	env := config_env.InitAppEnv(log)
 
-	shutdown := telemetry.InitTelemetry(ctx, logger)
+	shutdown := telemetry.InitTelemetry(ctx, log)
 	defer shutdown()
 
-	clientDB := db_client.InitDatabase(env, logger)
+	clientDB := db_client.InitDatabase(env, log)
 
 	router := gin.Default()
 	router.Use(otelgin.Middleware(env.OtelServiceName,
@@ -45,14 +45,14 @@ func main() {
 	))
 	nc, err := nats.Connect(env.NatsUrl)
 	if err != nil {
-		logger.Fatal("Error while connecting to nats", zap.Error(err))
+		log.Fatal("Error while connecting to nats", zap.Error(err))
 	}
 
 	var allowOrigins []string = []string{env.FrontendHost}
 
 	if env.Mode == "DEV" {
 		allowOrigins = append(allowOrigins, "http://localhost:8000")
-		logger.Info("Enabled cors for swagger")
+		log.Info("Enabled cors for swagger")
 	}
 
 	router.Use(cors.New(cors.Config{
@@ -66,7 +66,7 @@ func main() {
 
 	apiV1 := router.Group("/api/v1")
 	api_routes.InitRoutes(api_routes.Dependencies{
-		Logger: logger,
+		Logger: log,
 		Env:    env,
 		DB:     clientDB,
 		Nc:     nc,
