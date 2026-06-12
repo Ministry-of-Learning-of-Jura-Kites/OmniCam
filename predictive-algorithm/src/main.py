@@ -55,6 +55,12 @@ class OptimizeRequest(BaseModel):
     project_id: str
 
 
+def get_trace_id():
+    span = trace.get_current_span()
+    ctx = span.get_span_context()
+    return format(ctx.trace_id, "032x") if ctx else None
+
+
 def create_arbitrary_face(center, width, height, normal):
     """
     Generates a rectangular face centered at 'center' with a specific 'normal'.
@@ -466,6 +472,7 @@ def cam_state_to_proto(cam_state: CameraState) -> cam_pb.Camera:
 
 async def main():
     tracer = init_telemetry()
+    logger = logging.getLogger("omnicam-algo")
 
     async def message_handler(msg: Msg):
         carrier = dict(msg.headers) if msg.headers else {}
@@ -477,13 +484,34 @@ async def main():
             kind=SpanKind.CONSUMER,
         ) as span:
             span.set_attribute("nats.subject", msg.subject)
+            logger.info("job_received", extra={"subject": msg.subject})
             try:
                 payload = OptimizeRequest.model_validate_json(msg.data)
+                logger.info(
+                    "job_parsed",
+                    extra={
+                        "job_id": payload.job_id,
+                        "model_id": payload.model_id,
+                        "faces": len(payload.faces),
+                        "cameras": len(payload.cam_configs),
+                        "trace_id": get_trace_id(),
+                    },
+                )
                 span.set_attribute("job_id", payload.job_id)
                 span.set_attribute("model_id", payload.model_id)
-
+                logger.info(
+                    "optimization_started",
+                    extra={
+                        "job_id": payload.job_id,
+                    },
+                )
                 result_state = optimize(payload)
-
+                logger.info(
+                    "optimization_finished",
+                    extra={
+                        "job_id": payload.job_id,
+                    },
+                )
                 opti_res = opt_pb.OptimizationEventResp(
                     success_resp=opt_pb.SuccessOptimizationEventResp(
                         cameras=[
@@ -494,6 +522,13 @@ async def main():
                 )
                 span.set_status(StatusCode.OK)
             except ValidationError as e:
+                logger.exception(
+                    "optimization_failed",
+                    extra={
+                        "job_id": getattr(payload, "job_id", None),
+                        "trace_id": get_trace_id(),
+                    },
+                )
                 span.set_status(StatusCode.ERROR, str(e))
                 opti_res = opt_pb.OptimizationEventResp(
                     error_resp=opt_pb.ErrorOptimizationEventResp(
