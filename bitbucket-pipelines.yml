@@ -11,7 +11,6 @@ definitions:
       memory: 4096
   caches:
     node-custom: node_modules
-    apt: /var/cache/apt
     sonar: ~/.sonar
 
 clone:
@@ -58,8 +57,6 @@ pipelines:
               name: Build & Push Frontend
               image: docker:27
               size: 2x
-              caches:
-                - apt
               services:
                 - docker
               script:
@@ -68,20 +65,18 @@ pipelines:
                 - export FINAL_TAG="${BITBUCKET_TAG:-${MANUAL_TAG:-manual-build}}"
                 - docker buildx create --use --name ci-builder || docker buildx use ci-builder
                 - |
-                  docker buildx build --push
-                  --cache-from type=registry,ref=docker.io/oxygenai/buildkit-cache:omnicam-frontend
-                  --cache-to type=registry,ref=docker.io/oxygenai/buildkit-cache:omnicam-frontend,mode=max
-                  -t docker.io/oxygenai/omnicam-frontend:${FINAL_TAG}
-                  -t docker.io/oxygenai/omnicam-frontend:latest
-                  -f ./frontend/Dockerfile
-                  .
+                  docker buildx build --push \
+                    --cache-from type=registry,ref=docker.io/oxygenai/buildkit-cache:omnicam-frontend \
+                    --cache-to type=registry,ref=docker.io/oxygenai/buildkit-cache:omnicam-frontend,mode=max \
+                    -t docker.io/oxygenai/omnicam-frontend:${FINAL_TAG} \
+                    -t docker.io/oxygenai/omnicam-frontend:latest \
+                    -f ./frontend/Dockerfile \
+                    .
 
           - step: &build-push-backend
               name: Build & Push Backend
               image: docker:27
               size: 2x
-              caches:
-                - apt
               services:
                 - docker
               script:
@@ -90,20 +85,18 @@ pipelines:
                 - export FINAL_TAG="${BITBUCKET_TAG:-${MANUAL_TAG:-manual-build}}"
                 - docker buildx create --use --name ci-builder || docker buildx use ci-builder
                 - |
-                  docker buildx build --push
-                  --cache-from type=registry,ref=docker.io/oxygenai/buildkit-cache:omnicam-backend
-                  --cache-to type=registry,ref=docker.io/oxygenai/buildkit-cache:omnicam-backend,mode=max
-                  -t docker.io/oxygenai/omnicam-backend:${FINAL_TAG}
-                  -t docker.io/oxygenai/omnicam-backend:latest
-                  -f ./backend/Dockerfile
-                  .
+                  docker buildx build --push \
+                    --cache-from type=registry,ref=docker.io/oxygenai/buildkit-cache:omnicam-backend \
+                    --cache-to type=registry,ref=docker.io/oxygenai/buildkit-cache:omnicam-backend,mode=max \
+                    -t docker.io/oxygenai/omnicam-backend:${FINAL_TAG} \
+                    -t docker.io/oxygenai/omnicam-backend:latest \
+                    -f ./backend/Dockerfile \
+                    .
 
           - step: &build-push-algo
               name: Build & Push Algo
               image: docker:27
               size: 2x
-              caches:
-                - apt
               services:
                 - docker
               script:
@@ -112,20 +105,18 @@ pipelines:
                 - export FINAL_TAG="${BITBUCKET_TAG:-${MANUAL_TAG:-manual-build}}"
                 - docker buildx create --use --name ci-builder || docker buildx use ci-builder
                 - |
-                  docker buildx build --push
-                  --cache-from type=registry,ref=docker.io/oxygenai/buildkit-cache:omnicam-algo
-                  --cache-to type=registry,ref=docker.io/oxygenai/buildkit-cache:omnicam-algo,mode=max
-                  -t docker.io/oxygenai/omnicam-algo:${FINAL_TAG}
-                  -t docker.io/oxygenai/omnicam-algo:latest
-                  -f ./predictive-algorithm/Dockerfile
-                  .
+                  docker buildx build --push \
+                    --cache-from type=registry,ref=docker.io/oxygenai/buildkit-cache:omnicam-algo \
+                    --cache-to type=registry,ref=docker.io/oxygenai/buildkit-cache:omnicam-algo,mode=max \
+                    -t docker.io/oxygenai/omnicam-algo:${FINAL_TAG} \
+                    -t docker.io/oxygenai/omnicam-algo:latest \
+                    -f ./predictive-algorithm/Dockerfile \
+                    .
 
           - step: &build-push-data-migration
               name: Build & Push Data Migration
               image: docker:27
               size: 2x
-              caches:
-                - apt
               services:
                 - docker
               script:
@@ -134,13 +125,13 @@ pipelines:
                 - export FINAL_TAG="${BITBUCKET_TAG:-${MANUAL_TAG:-manual-build}}"
                 - docker buildx create --use --name ci-builder || docker buildx use ci-builder
                 - |
-                  docker buildx build --push
-                  --cache-from type=registry,ref=docker.io/oxygenai/buildkit-cache:omnicam-data-migration
-                  --cache-to type=registry,ref=docker.io/oxygenai/buildkit-cache:omnicam-data-migration,mode=max
-                  -t docker.io/oxygenai/omnicam-data-migration:${FINAL_TAG}
-                  -t docker.io/oxygenai/omnicam-data-migration:latest
-                  -f ./db/Dockerfile
-                  .
+                  docker buildx build --push \
+                    --cache-from type=registry,ref=docker.io/oxygenai/buildkit-cache:omnicam-data-migration \
+                    --cache-to type=registry,ref=docker.io/oxygenai/buildkit-cache:omnicam-data-migration,mode=max \
+                    -t docker.io/oxygenai/omnicam-data-migration:${FINAL_TAG} \
+                    -t docker.io/oxygenai/omnicam-data-migration:latest \
+                    -f ./db/Dockerfile \
+                    .
 
   custom:
     manual-release-build:
