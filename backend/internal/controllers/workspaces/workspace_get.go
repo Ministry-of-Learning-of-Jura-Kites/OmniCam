@@ -12,6 +12,7 @@ import (
 	"go.uber.org/zap"
 	"omnicam.com/backend/internal/utils"
 	db_sqlc_gen "omnicam.com/backend/pkg/db/sqlc-gen"
+	"omnicam.com/backend/pkg/logger"
 	messages_cameras "omnicam.com/backend/pkg/messages/cameras"
 	messages_model_workspace "omnicam.com/backend/pkg/messages/model_workspace"
 	messages_trapezoid "omnicam.com/backend/pkg/messages/trapezoids"
@@ -21,7 +22,8 @@ func (t *WorkspaceRoute) getWorkspace(c *gin.Context) {
 	strModelId := c.Param("modelId")
 	modelId, err := utils.ParseUuidBase64(strModelId)
 	if err != nil {
-		t.Logger.Error("error while converting str id to uuid", zap.Error(err))
+		logger.WithTraceID(c.Request.Context(), t.Logger).
+			Debug("error while converting str id to uuid", zap.Error(err))
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid model ID"})
 		return
 	}
@@ -29,7 +31,8 @@ func (t *WorkspaceRoute) getWorkspace(c *gin.Context) {
 	strProjectId := c.Param("projectId")
 	projectId, err := utils.ParseUuidBase64(strProjectId)
 	if err != nil {
-		t.Logger.Error("error while converting str id to uuid", zap.Error(err))
+		logger.WithTraceID(c.Request.Context(), t.Logger).
+			Error("error while converting str id to uuid", zap.Error(err))
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid project ID"})
 		return
 	}
@@ -41,7 +44,8 @@ func (t *WorkspaceRoute) getWorkspace(c *gin.Context) {
 	if isWorkspaceMe {
 		userID, err := utils.GetUuidFromCtx(c, "userId")
 		if err != nil {
-			t.Logger.Error("error while getting userId form", zap.Error(err))
+			logger.WithTraceID(c.Request.Context(), t.Logger).
+				Error("error while getting userId from context", zap.Error(err))
 			c.JSON(http.StatusInternalServerError, gin.H{})
 			return
 		}
@@ -51,7 +55,8 @@ func (t *WorkspaceRoute) getWorkspace(c *gin.Context) {
 		parsed, err := utils.ParseUuidBase64(strWorkspaceId)
 		workspaceId = parsed
 		if err != nil {
-			t.Logger.Error("error while converting str id to uuid", zap.Error(err))
+			logger.WithTraceID(c.Request.Context(), t.Logger).
+				Debug("error while converting str id to uuid", zap.Error(err))
 			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid workspace ID"})
 			return
 		}
@@ -60,7 +65,7 @@ func (t *WorkspaceRoute) getWorkspace(c *gin.Context) {
 
 	username := c.GetString("username")
 
-	_, err = t.DB.Queries.GetUserOfProject(c, db_sqlc_gen.GetUserOfProjectParams{
+	_, err = t.DB.Queries.GetUserOfProject(c.Request.Context(), db_sqlc_gen.GetUserOfProjectParams{
 		Username: pgtype.Text{
 			String: username,
 			Valid:  true,
@@ -68,20 +73,26 @@ func (t *WorkspaceRoute) getWorkspace(c *gin.Context) {
 		Projectid: projectId,
 	})
 	if err != nil {
-		t.Logger.Error("user of project not found", zap.String("projectId", strProjectId), zap.String("username", username), zap.Error(err))
+		logger.WithTraceID(c.Request.Context(), t.Logger).
+			Error("user of project not found",
+				zap.String("projectId", strProjectId),
+				zap.String("username", username),
+				zap.Error(err),
+			)
 		c.JSON(http.StatusNotFound, gin.H{})
 		return
 	}
 
 	includedFields := c.QueryArray("fields")
 
-	data, err := t.DB.Queries.GetWorkspaceByID(c, db_sqlc_gen.GetWorkspaceByIDParams{
+	data, err := t.DB.Queries.GetWorkspaceByID(c.Request.Context(), db_sqlc_gen.GetWorkspaceByIDParams{
 		Fields:  includedFields,
 		UserID:  ownerID,
 		ModelID: modelId,
 	})
 	if err != nil {
-		t.Logger.Error("model not found", zap.Error(err))
+		logger.WithTraceID(c.Request.Context(), t.Logger).
+			Error("model not found", zap.Error(err))
 		c.JSON(http.StatusNotFound, gin.H{})
 		return
 	}
@@ -91,7 +102,8 @@ func (t *WorkspaceRoute) getWorkspace(c *gin.Context) {
 		cams, err := messages_cameras.UnmarshalCameras(data.Cameras)
 		cameras = cams
 		if err != nil {
-			t.Logger.Error("cameras jsonb are invalid", zap.Error(err))
+			logger.WithTraceID(c.Request.Context(), t.Logger).
+				Error("cameras jsonb are invalid", zap.Error(err))
 			c.JSON(http.StatusInternalServerError, gin.H{})
 			return
 		}
@@ -101,7 +113,8 @@ func (t *WorkspaceRoute) getWorkspace(c *gin.Context) {
 	if slices.Contains(includedFields, "target_area_trapezoids") {
 		err := json.Unmarshal(data.TargetAreaTrapezoids, &targetTrapezoids)
 		if err != nil {
-			t.Logger.Error("targetTrapezoids jsonb are invalid", zap.Error(err))
+			logger.WithTraceID(c.Request.Context(), t.Logger).
+				Error("targetTrapezoids jsonb are invalid", zap.Error(err))
 			c.JSON(http.StatusInternalServerError, gin.H{})
 			return
 		}
@@ -112,15 +125,17 @@ func (t *WorkspaceRoute) getWorkspace(c *gin.Context) {
 	if slices.Contains(includedFields, "simulation") {
 		err := json.Unmarshal(data.Simulation, &simulation)
 		if err != nil {
-			t.Logger.Error(
-				"simulation json invalid",
-				zap.Error(err),
-			)
+			logger.WithTraceID(c.Request.Context(), t.Logger).
+				Error("simulation json invalid", zap.Error(err))
 			c.JSON(http.StatusInternalServerError, gin.H{})
 			return
 		}
 	}
 
+	logger.WithTraceID(c.Request.Context(), t.Logger).Info("successfully get workspace",
+		zap.String("projectId", strProjectId),
+		zap.String("modelId", strModelId),
+	)
 	c.JSON(http.StatusOK, gin.H{"data": messages_model_workspace.ModelWorkspace{
 		ModelId:          modelId,
 		Name:             data.Model.Name,

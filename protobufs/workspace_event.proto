@@ -7,13 +7,19 @@ import "workspace_autosave.proto";
 // Go: generated under go/autosave
 option go_package = "omnicam.com/pkg/messages/protobufs";
 
-message WorkspaceEventRequest{
-  oneof event {
-    AutosaveEventRequest autosave = 1;
-    OptimizationEventReq optimize = 2;
-  }
+message TraceContext {
+  string traceparent = 1;
+  string tracestate = 2;
 }
 
+message WorkspaceEventRequest{
+  TraceContext trace = 1;
+
+  oneof event {
+    AutosaveEventRequest autosave = 2;
+    OptimizationEventReq optimize = 3;
+  }
+}
 message LivestreamBroadcast{
   oneof event{
     EventError error = 1;
@@ -22,9 +28,11 @@ message LivestreamBroadcast{
 }
 
 message WorkspaceEventResponse {
+  TraceContext trace = 1;
+
   oneof resp {
-    AutosaveEventResponse autosave = 1;
-    OptimizationEventResp optimize = 2;
-    EventError error = 3;
+    AutosaveEventResponse autosave = 2;
+    OptimizationEventResp optimize = 3;
+    EventError error = 4;
   }
 }

@@ -10,6 +10,7 @@ import (
 	"omnicam.com/backend/internal/utils"
 	db_client "omnicam.com/backend/pkg/db"
 	db_sqlc_gen "omnicam.com/backend/pkg/db/sqlc-gen"
+	"omnicam.com/backend/pkg/logger"
 )
 
 type AddProjectMembersRequest struct {
@@ -29,14 +30,14 @@ func (t *PostProjectMembersRoute) addProjectMembers(c *gin.Context) {
 
 	projectID, err := utils.ParseUuidBase64(strProjectId)
 	if err != nil {
-		t.Logger.Error("error decoding Base64 projectId", zap.Error(err))
+		logger.WithTraceID(c.Request.Context(), t.Logger).Debug("error decoding Base64 projectId", zap.Error(err))
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid base64 projectId"})
 		return
 	}
 
 	var req []AddProjectMembersRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		t.Logger.Error("invalid request body", zap.Error(err))
+		logger.WithTraceID(c.Request.Context(), t.Logger).Debug("invalid request body", zap.Error(err))
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid JSON body"})
 		return
 	}
@@ -48,17 +49,21 @@ func (t *PostProjectMembersRoute) addProjectMembers(c *gin.Context) {
 		roles = append(roles, m.Role)
 	}
 
-	err = t.DB.Queries.PostProjectMembers(c, db_sqlc_gen.PostProjectMembersParams{
+	err = t.DB.Queries.PostProjectMembers(c.Request.Context(), db_sqlc_gen.PostProjectMembersParams{
 		ProjectID: projectID,
 		UserIds:   userIDs,
 		Roles:     roles,
 	})
 	if err != nil {
+		logger.WithTraceID(c.Request.Context(), t.Logger).Error("add member to project fail", zap.Error(err))
 		t.Logger.Error("add member to project fail", zap.Error(err))
 		c.JSON(http.StatusBadRequest, gin.H{})
 		return
 	}
 
+	logger.WithTraceID(c.Request.Context(), t.Logger).Info("successfully add new project member",
+		zap.String("projectId", strProjectId),
+	)
 	c.JSON(http.StatusOK, gin.H{"status": "success"})
 }
 

@@ -15,6 +15,7 @@ import (
 	"omnicam.com/backend/internal/utils"
 	db_client "omnicam.com/backend/pkg/db"
 	db_sqlc_gen "omnicam.com/backend/pkg/db/sqlc-gen"
+	"omnicam.com/backend/pkg/logger"
 )
 
 type FileRoute struct {
@@ -24,7 +25,7 @@ type FileRoute struct {
 }
 
 func (t *FileRoute) userHasProjectAccess(c *gin.Context, userId uuid.UUID, projectId uuid.UUID) (bool, error) {
-	projects, err := t.DB.Queries.GetProjectsByUserId(c, db_sqlc_gen.GetProjectsByUserIdParams{
+	projects, err := t.DB.Queries.GetProjectsByUserId(c.Request.Context(), db_sqlc_gen.GetProjectsByUserIdParams{
 		UserID:     userId,
 		PageSize:   1000, // or any large number
 		PageOffset: 0,
@@ -48,6 +49,10 @@ func (t *FileRoute) serveFile(c *gin.Context, pathSegments ...string) {
 	filePath := filepath.Join(pathSegments...)
 
 	if _, err := os.Stat(filePath); os.IsNotExist(err) {
+		logger.WithTraceID(c.Request.Context(), t.Logger).Debug(
+			"file not found",
+			zap.String("filePath", filePath),
+		)
 		c.JSON(http.StatusNotFound, gin.H{"message": "file not found"})
 		return
 	}
@@ -68,6 +73,11 @@ func (t *FileRoute) getProjectFile(c *gin.Context) {
 
 	projectId, err := utils.ParseUuidBase64(projectIdStr)
 	if err != nil {
+		logger.WithTraceID(c.Request.Context(), t.Logger).Debug(
+			"invalid projectId",
+			zap.String("projectId", projectIdStr),
+			zap.Error(err),
+		)
 		c.JSON(http.StatusBadRequest, gin.H{
 			"message": "invalid projectId",
 		})
@@ -76,6 +86,10 @@ func (t *FileRoute) getProjectFile(c *gin.Context) {
 
 	userId, err := utils.GetUuidFromCtx(c, "userId")
 	if err != nil {
+		logger.WithTraceID(c.Request.Context(), t.Logger).Debug(
+			"failed to get userId from context",
+			zap.Error(err),
+		)
 		c.JSON(http.StatusForbidden, gin.H{
 			"message": "permission denied",
 		})
@@ -84,6 +98,12 @@ func (t *FileRoute) getProjectFile(c *gin.Context) {
 
 	hasAccess, err := t.userHasProjectAccess(c, userId, projectId)
 	if err != nil {
+		logger.WithTraceID(c.Request.Context(), t.Logger).Error(
+			"failed to validate access",
+			zap.String("projectId", projectId.String()),
+			zap.String("userId", userId.String()),
+			zap.Error(err),
+		)
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"message": "failed to validate access",
 		})
@@ -91,6 +111,11 @@ func (t *FileRoute) getProjectFile(c *gin.Context) {
 	}
 
 	if !hasAccess {
+		logger.WithTraceID(c.Request.Context(), t.Logger).Warn(
+			"access denied",
+			zap.String("projectId", projectId.String()),
+			zap.String("userId", userId.String()),
+		)
 		c.JSON(http.StatusForbidden, gin.H{
 			"message": "permission denied",
 		})
@@ -117,29 +142,54 @@ func (t *FileRoute) getModelFile(c *gin.Context) {
 
 	projectId, err := utils.ParseUuidBase64(projectIdStr)
 	if err != nil {
+		logger.WithTraceID(c.Request.Context(), t.Logger).Error(
+			"invalid projectId",
+			zap.String("projectId", projectIdStr),
+			zap.Error(err),
+		)
 		c.JSON(http.StatusBadRequest, gin.H{"message": "invalid projectId"})
 		return
 	}
 
 	modelId, err := utils.ParseUuidBase64(modelIdStr)
 	if err != nil {
+		logger.WithTraceID(c.Request.Context(), t.Logger).Error(
+			"invalid modelId",
+			zap.String("modelId", modelIdStr),
+			zap.Error(err),
+		)
 		c.JSON(http.StatusBadRequest, gin.H{"message": "invalid modelId"})
 		return
 	}
 
 	userId, err := utils.GetUuidFromCtx(c, "userId")
 	if err != nil {
+		logger.WithTraceID(c.Request.Context(), t.Logger).Error(
+			"failed to get userId from context",
+			zap.Error(err),
+		)
 		c.JSON(http.StatusForbidden, gin.H{"message": "permission denied"})
 		return
 	}
 
 	hasAccess, err := t.userHasProjectAccess(c, userId, projectId)
 	if err != nil {
+		logger.WithTraceID(c.Request.Context(), t.Logger).Error(
+			"failed to validate access",
+			zap.String("projectId", projectId.String()),
+			zap.String("userId", userId.String()),
+			zap.Error(err),
+		)
 		c.JSON(http.StatusInternalServerError, gin.H{"message": "failed to validate access"})
 		return
 	}
 
 	if !hasAccess {
+		logger.WithTraceID(c.Request.Context(), t.Logger).Warn(
+			"access denied",
+			zap.String("projectId", projectId.String()),
+			zap.String("userId", userId.String()),
+		)
 		c.JSON(http.StatusNotFound, gin.H{})
 		return
 	}
@@ -153,6 +203,9 @@ func (t *FileRoute) getModelFile(c *gin.Context) {
 
 	filePath := fmt.Sprintf(internal.Root+"/uploads/%s/%s/%s.%s", fileType, projectId.String(), modelId.String(), fileExt)
 
+	logger.WithTraceID(c.Request.Context(), t.Logger).Info("successfully serve file",
+		zap.String("filePath", filePath),
+	)
 	t.serveFile(c, filePath)
 }
 

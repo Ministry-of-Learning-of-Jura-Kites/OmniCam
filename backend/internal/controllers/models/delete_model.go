@@ -14,6 +14,7 @@ import (
 	"omnicam.com/backend/internal/utils"
 	db_client "omnicam.com/backend/pkg/db"
 	db_sqlc_gen "omnicam.com/backend/pkg/db/sqlc-gen"
+	"omnicam.com/backend/pkg/logger"
 )
 
 type DeleteModelRoute struct {
@@ -26,7 +27,11 @@ func (t *DeleteModelRoute) delete(c *gin.Context) {
 	strModelId := c.Param("modelId")
 	modelId, err := utils.ParseUuidBase64(strModelId)
 	if err != nil {
-		t.Logger.Error("error while converting str id to uuid", zap.Error(err))
+		logger.WithTraceID(c.Request.Context(), t.Logger).Debug(
+			"invalid model ID",
+			zap.String("modelId", strModelId),
+			zap.Error(err),
+		)
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid model ID"})
 		return
 	}
@@ -34,41 +39,61 @@ func (t *DeleteModelRoute) delete(c *gin.Context) {
 	strProjectId := c.Param("projectId")
 	projectId, err := utils.ParseUuidBase64(strProjectId)
 	if err != nil {
-		t.Logger.Error("error while converting str id to uuid", zap.Error(err))
+		logger.WithTraceID(c.Request.Context(), t.Logger).Debug(
+			"invalid project ID",
+			zap.String("projectId", strProjectId),
+			zap.Error(err),
+		)
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid project ID"})
 		return
 	}
 
 	userId, err := utils.GetUuidFromCtx(c, "userId")
 	if err != nil {
-		t.Logger.Error("error while getting userId form", zap.Error(err))
+		logger.WithTraceID(c.Request.Context(), t.Logger).Debug(
+			"error while getting userId from context",
+			zap.Error(err),
+		)
 		c.JSON(http.StatusInternalServerError, gin.H{})
 		return
 	}
 
 	pgUserId, err := utils.UuidToPgUuid(userId)
 	if err != nil {
-		t.Logger.Error("Error while convert uuid to pgtype", zap.Error(err))
+		logger.WithTraceID(c.Request.Context(), t.Logger).Debug(
+			"failed to convert uuid to pg uuid",
+			zap.String("userId", userId.String()),
+			zap.Error(err),
+		)
 		c.JSON(http.StatusInternalServerError, gin.H{})
 		return
 	}
 
 	// Check if user is in project
-	_, err = t.DB.Queries.GetUserOfProject(c, db_sqlc_gen.GetUserOfProjectParams{
+	_, err = t.DB.Queries.GetUserOfProject(c.Request.Context(), db_sqlc_gen.GetUserOfProjectParams{
 		UserID:    pgUserId,
 		Projectid: projectId,
 	})
 	if err != nil {
-		t.Logger.Debug("user of project not found", zap.String("projectId", strProjectId), zap.String("userId", userId.String()), zap.Error(err))
+		logger.WithTraceID(c.Request.Context(), t.Logger).Warn(
+			"access denied: user not in project",
+			zap.String("projectId", projectId.String()),
+			zap.String("userId", userId.String()),
+			zap.Error(err),
+		)
 		c.JSON(http.StatusForbidden, gin.H{})
 		return
 	}
 
-	model, err := t.DB.Queries.GetModelByID(c, db_sqlc_gen.GetModelByIDParams{
+	model, err := t.DB.Queries.GetModelByID(c.Request.Context(), db_sqlc_gen.GetModelByIDParams{
 		ID: modelId,
 	})
 	if err != nil {
-		t.Logger.Error("failed to get model", zap.Error(err))
+		logger.WithTraceID(c.Request.Context(), t.Logger).Error(
+			"failed to get model",
+			zap.String("modelId", modelId.String()),
+			zap.Error(err),
+		)
 		c.JSON(http.StatusNotFound, gin.H{})
 		return
 	}
@@ -87,22 +112,34 @@ func (t *DeleteModelRoute) delete(c *gin.Context) {
 		fullPath := path.Join(internal.Root, "uploads", relativePath)
 		absPath, _ := filepath.Abs(fullPath)
 
-		t.Logger.Info("Attempting to delete file:", zap.String("absPath", absPath))
+		logger.WithTraceID(c.Request.Context(), t.Logger).Info(
+			"attempting to delete file",
+			zap.String("path", absPath),
+		)
 
 		if err := os.Remove(absPath); err != nil {
-			t.Logger.Error("failed to remove file", zap.String("path", absPath), zap.Error(err))
+			logger.WithTraceID(c.Request.Context(), t.Logger).Error(
+				"failed to remove file",
+				zap.String("path", absPath),
+				zap.Error(err),
+			)
 		}
 	}
 
 	deleteFile(model.FilePath, model.ModelExtension)
 	deleteFile(model.ImagePath, model.ImageExtension)
-	_, err = t.DB.Queries.DeleteModel(c, modelId)
+	_, err = t.DB.Queries.DeleteModel(c.Request.Context(), modelId)
 	if err != nil {
-		t.Logger.Error("something wrong with DB deletion", zap.Error(err))
+		logger.WithTraceID(c.Request.Context(), t.Logger).Error(
+			"database deletion failed",
+			zap.String("modelId", modelId.String()),
+			zap.Error(err),
+		)
 		c.JSON(http.StatusInternalServerError, gin.H{})
 		return
 	}
 
+	logger.WithTraceID(c.Request.Context(), t.Logger).Info("successfully delete model", zap.String("modelId", strModelId))
 	c.JSON(http.StatusOK, gin.H{"message": "delete successfully", "data": modelId})
 }
 

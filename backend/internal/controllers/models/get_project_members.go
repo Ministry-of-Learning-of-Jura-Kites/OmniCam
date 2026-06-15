@@ -8,6 +8,7 @@ import (
 	config_env "omnicam.com/backend/config"
 	"omnicam.com/backend/internal/utils"
 	db_client "omnicam.com/backend/pkg/db"
+	"omnicam.com/backend/pkg/logger"
 )
 
 type GetProjectMembersRoute struct {
@@ -20,13 +21,14 @@ func (t *GetProjectMembersRoute) getProjectMembers(c *gin.Context) {
 	strId := c.Param("projectId")
 	projectID, err := utils.ParseUuidBase64(strId)
 	if err != nil {
+		logger.WithTraceID(c.Request.Context(), t.Logger).Debug("error decoding Base64", zap.Error(err))
 		t.Logger.Error("error decoding Base64", zap.Error(err))
 		return
 	}
 
-	members, err := t.DB.Queries.GetProjectMembers(c, projectID)
+	members, err := t.DB.Queries.GetProjectMembers(c.Request.Context(), projectID)
 	if err != nil {
-		t.Logger.Error("failed to get project members", zap.Error(err))
+		logger.WithTraceID(c.Request.Context(), t.Logger).Error("failed to get project members", zap.Error(err))
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to retrieve project members"})
 		return
 	}
@@ -43,6 +45,7 @@ func (t *GetProjectMembersRoute) getProjectMembers(c *gin.Context) {
 		})
 	}
 
+	logger.WithTraceID(c.Request.Context(), t.Logger).Info("successfully get members")
 	c.JSON(http.StatusOK, gin.H{
 		"data":  memberList,
 		"count": len(memberList),

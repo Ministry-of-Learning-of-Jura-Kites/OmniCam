@@ -9,6 +9,7 @@ import (
 	"omnicam.com/backend/internal/utils"
 	db_client "omnicam.com/backend/pkg/db"
 	db_sqlc_gen "omnicam.com/backend/pkg/db/sqlc-gen"
+	"omnicam.com/backend/pkg/logger"
 )
 
 type PutUserRoleRoute struct {
@@ -27,32 +28,39 @@ func (t *PutUserRoleRoute) updateMemberRole(c *gin.Context) {
 
 	projectID, err := utils.ParseUuidBase64(projectParam)
 	if err != nil {
+		logger.WithTraceID(c.Request.Context(), t.Logger).Debug("invalid project Id", zap.Error(err))
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid project ID"})
 		return
 	}
 
 	userID, err := utils.ParseUuidBase64(userParam)
 	if err != nil {
+		logger.WithTraceID(c.Request.Context(), t.Logger).Debug("invalid user Id", zap.Error(err))
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid user ID"})
 		return
 	}
 
 	var req UpdateMemberRoleRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
+		logger.WithTraceID(c.Request.Context(), t.Logger).Debug("invalid user Id", zap.Error(err))
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request"})
 		return
 	}
 
-	err = t.DB.Queries.PutUserRole(c, db_sqlc_gen.PutUserRoleParams{
+	err = t.DB.Queries.PutUserRole(c.Request.Context(), db_sqlc_gen.PutUserRoleParams{
 		Role:      db_sqlc_gen.Role(req.Role),
 		ProjectID: projectID,
 		UserID:    userID,
 	})
 	if err != nil {
+		logger.WithTraceID(c.Request.Context(), t.Logger).Error("failed to update role", zap.Error(err))
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to update role"})
 		return
 	}
 
+	logger.WithTraceID(c.Request.Context(), t.Logger).Info("successfully update role",
+		zap.String("userId", userID.String()),
+	)
 	c.JSON(http.StatusOK, gin.H{"message": "role updated successfully"})
 }
 

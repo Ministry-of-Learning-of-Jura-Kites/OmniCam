@@ -85,6 +85,10 @@ async function fetchUsers() {
       searchText.value,
     );
 
+    if (!res.data) {
+      return;
+    }
+
     const fetched = res.data.map((d) => ({
       id: d.id,
       username: d.username,

@@ -17,6 +17,7 @@ import (
 	"omnicam.com/backend/internal/utils"
 	db_client "omnicam.com/backend/pkg/db"
 	db_sqlc_gen "omnicam.com/backend/pkg/db/sqlc-gen"
+	"omnicam.com/backend/pkg/logger"
 )
 
 type PostProjectRoute struct {
@@ -33,14 +34,14 @@ type CreateProjectRequest struct {
 func (t *PostProjectRoute) post(c *gin.Context) {
 	username, exists := c.Get("username")
 	if !exists {
-		t.Logger.Error("username not found in context")
+		logger.WithTraceID(c.Request.Context(), t.Logger).Error("username not found in context")
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
 		return
 	}
 
-	user, err := t.DB.Queries.GetUserByUsername(c, username.(string))
+	user, err := t.DB.Queries.GetUserByUsername(c.Request.Context(), username.(string))
 	if err != nil {
-		t.Logger.Error("failed to get user by username", zap.Error(err))
+		logger.WithTraceID(c.Request.Context(), t.Logger).Error("failed to get user by username", zap.Error(err))
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "user not found"})
 		return
 	}
@@ -48,13 +49,13 @@ func (t *PostProjectRoute) post(c *gin.Context) {
 
 	_, err = utils.GetUuidFromCtx(c, "userId")
 	if err != nil {
-		t.Logger.Error("error while getting userId form", zap.Error(err))
+		logger.WithTraceID(c.Request.Context(), t.Logger).Debug("error while getting userId form", zap.Error(err))
 		c.JSON(http.StatusInternalServerError, gin.H{})
 		return
 	}
 
 	if err := c.ShouldBind(&req); err != nil {
-		t.Logger.Debug("error while validating form", zap.Error(err))
+		logger.WithTraceID(c.Request.Context(), t.Logger).Debug("error while validating form", zap.Error(err))
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid form data"})
 		return
 	}
@@ -66,20 +67,21 @@ func (t *PostProjectRoute) post(c *gin.Context) {
 	if err == nil {
 		ext := filepath.Ext(imageFile.Filename)
 		if ext != ".jpg" && ext != ".png" {
+			logger.WithTraceID(c.Request.Context(), t.Logger).Error("image must be .jpg or .png")
 			c.JSON(http.StatusBadRequest, gin.H{"error": "image must be .jpg or .png"})
 			return
 		}
 
 		uploadDir := filepath.Join(internal.Root, "uploads", "images")
 		if mkErr := os.MkdirAll(uploadDir, os.ModePerm); mkErr != nil {
-			t.Logger.Error("failed to create upload dir", zap.Error(mkErr))
+			logger.WithTraceID(c.Request.Context(), t.Logger).Error("failed to create upload dir", zap.Error(mkErr))
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to create upload dir"})
 			return
 		}
 
 		fsImagePath := filepath.Join(uploadDir, projectID.String()+ext) // local filesystem path
 		if saveErr := c.SaveUploadedFile(imageFile, fsImagePath); saveErr != nil {
-			t.Logger.Error("failed to save project image", zap.Error(saveErr))
+			logger.WithTraceID(c.Request.Context(), t.Logger).Error("failed to save project image", zap.Error(saveErr))
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to save project image"})
 			return
 		}
@@ -88,14 +90,14 @@ func (t *PostProjectRoute) post(c *gin.Context) {
 
 	tx, err := t.DB.Pool.Begin(c)
 	if err != nil {
-		t.Logger.Error("error while creating transaction", zap.Error(err))
+		logger.WithTraceID(c.Request.Context(), t.Logger).Error("error while creating transaction", zap.Error(err))
 		c.JSON(http.StatusInternalServerError, gin.H{})
 		return
 	}
 
 	queries := t.DB.Queries.WithTx(tx)
 
-	project, err := queries.CreateProject(c, db_sqlc_gen.CreateProjectParams{
+	project, err := queries.CreateProject(c.Request.Context(), db_sqlc_gen.CreateProjectParams{
 		ID:          projectID,
 		Name:        req.Name,
 		Description: req.Description,
@@ -104,12 +106,13 @@ func (t *PostProjectRoute) post(c *gin.Context) {
 	if err != nil {
 		var pgErr *pgconn.PgError
 		if errors.As(err, &pgErr) && pgErr.Code == pgerrcode.UniqueViolation {
+			logger.WithTraceID(c.Request.Context(), t.Logger).Warn("project name cannot be duplicate")
 			c.JSON(http.StatusBadRequest, gin.H{
 				"error": "project with this name already exists",
 			})
 			return
 		}
-		t.Logger.Error("error while creating project", zap.Error(err))
+		logger.WithTraceID(c.Request.Context(), t.Logger).Error("error while creating project", zap.Error(err))
 		c.JSON(http.StatusInternalServerError, gin.H{})
 		return
 	}
@@ -119,13 +122,16 @@ func (t *PostProjectRoute) post(c *gin.Context) {
 		UserID:    user.ID,
 		Role:      db_sqlc_gen.RoleOwner,
 	}); err != nil {
-		t.Logger.Error("failed to add user to project", zap.Error(err))
+		logger.WithTraceID(c.Request.Context(), t.Logger).Error("failed to post project", zap.Error(err))
 		c.JSON(http.StatusBadRequest, gin.H{})
 		return
 	}
 	tx.Commit(c)
 
 	// --- Response ---
+	logger.WithTraceID(c.Request.Context(), t.Logger).Info("successfully create project",
+		zap.String("projectId", project.ID.String()),
+	)
 	c.JSON(http.StatusOK, gin.H{"data": Project{
 		Id:          project.ID,
 		Name:        project.Name,

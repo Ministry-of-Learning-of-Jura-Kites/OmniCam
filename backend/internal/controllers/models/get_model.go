@@ -13,6 +13,7 @@ import (
 	"omnicam.com/backend/internal/utils"
 	db_client "omnicam.com/backend/pkg/db"
 	db_sqlc_gen "omnicam.com/backend/pkg/db/sqlc-gen"
+	"omnicam.com/backend/pkg/logger"
 	messages_cameras "omnicam.com/backend/pkg/messages/cameras"
 	messages_model_workspace "omnicam.com/backend/pkg/messages/model_workspace"
 )
@@ -32,7 +33,7 @@ func (t *GetModelRoute) getModelById(c *gin.Context) {
 	strModelId := c.Param("modelId")
 	modelId, err := utils.ParseUuidBase64(strModelId)
 	if err != nil {
-		t.Logger.Error("error while converting str id to uuid", zap.Error(err))
+		logger.WithTraceID(c.Request.Context(), t.Logger).Debug("error while converting str id to uuid", zap.Error(err))
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid model ID"})
 		return
 	}
@@ -40,7 +41,8 @@ func (t *GetModelRoute) getModelById(c *gin.Context) {
 	strProjectId := c.Param("projectId")
 	projectId, err := utils.ParseUuidBase64(strProjectId)
 	if err != nil {
-		t.Logger.Error("error while converting str id to uuid", zap.Error(err))
+		logger.WithTraceID(c.Request.Context(), t.Logger).Error("error while converting str id to uuid", zap.Error(err))
+		t.Logger.Debug("error while converting str id to uuid", zap.Error(err))
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid model ID"})
 		return
 	}
@@ -49,7 +51,7 @@ func (t *GetModelRoute) getModelById(c *gin.Context) {
 
 	username := c.GetString("username")
 
-	userInfo, err := t.DB.Queries.GetUserOfProject(c, db_sqlc_gen.GetUserOfProjectParams{
+	userInfo, err := t.DB.Queries.GetUserOfProject(c.Request.Context(), db_sqlc_gen.GetUserOfProjectParams{
 		Username: pgtype.Text{
 			String: username,
 			Valid:  true,
@@ -57,19 +59,19 @@ func (t *GetModelRoute) getModelById(c *gin.Context) {
 		Projectid: projectId,
 	})
 	if err != nil {
-		t.Logger.Error("user of project not found", zap.String("projectId", strProjectId), zap.String("username", username), zap.Error(err))
+		logger.WithTraceID(c.Request.Context(), t.Logger).Error("user of project not found", zap.String("projectId", strProjectId), zap.String("username", username), zap.Error(err))
 		c.JSON(http.StatusNotFound, gin.H{})
 		return
 	}
 
 	uuidBytes, err := userInfo.ID.MarshalBinary()
 	if err != nil {
-		t.Logger.Error("Failed to marshal uuid", zap.String("username", username), zap.Error(err))
+		logger.WithTraceID(c.Request.Context(), t.Logger).Error("Failed to marshal uuid", zap.String("username", username), zap.Error(err))
 		c.JSON(http.StatusInternalServerError, gin.H{})
 		return
 	}
 
-	data, err := t.DB.Queries.GetModelByID(c, db_sqlc_gen.GetModelByIDParams{
+	data, err := t.DB.Queries.GetModelByID(c.Request.Context(), db_sqlc_gen.GetModelByIDParams{
 		Fields: includedFields,
 		ID:     modelId,
 		UserID: pgtype.UUID{
@@ -78,7 +80,7 @@ func (t *GetModelRoute) getModelById(c *gin.Context) {
 		},
 	})
 	if err != nil {
-		t.Logger.Error("model not found", zap.Error(err))
+		logger.WithTraceID(c.Request.Context(), t.Logger).Error("model not fonud", zap.Error(err))
 		c.JSON(http.StatusNotFound, gin.H{})
 		return
 	}
@@ -86,6 +88,7 @@ func (t *GetModelRoute) getModelById(c *gin.Context) {
 	cameras, err := messages_cameras.UnmarshalCameras(data.Cameras)
 	if data.Cameras != nil {
 		if err != nil {
+			logger.WithTraceID(c.Request.Context(), t.Logger).Error("cameras jsonb are invalid", zap.Error(err))
 			t.Logger.Error("cameras jsonb are invalid", zap.Error(err))
 			c.JSON(http.StatusInternalServerError, gin.H{})
 			return
@@ -97,6 +100,10 @@ func (t *GetModelRoute) getModelById(c *gin.Context) {
 		workspaceExists = &data.WorkspaceExists
 	}
 
+	logger.WithTraceID(c.Request.Context(), t.Logger).Info("successfully get model",
+		zap.String("modelId", strModelId),
+		zap.String("projectId", strProjectId),
+	)
 	c.JSON(http.StatusOK, gin.H{"data": Model{
 		ModelWorkspace: messages_model_workspace.ModelWorkspace{
 			ModelId:        modelId,
@@ -123,38 +130,41 @@ func (t *GetModelRoute) getAllModel(c *gin.Context) {
 
 	projectId, err := utils.ParseUuidBase64(strProjectId)
 	if err != nil {
+		logger.WithTraceID(c.Request.Context(), t.Logger).Error("invalid project id", zap.Error(err))
 		c.JSON(http.StatusBadRequest, gin.H{})
 		return
 	}
 
 	page, err := strconv.Atoi(c.DefaultQuery("page", "1"))
 	if err != nil || page < 1 {
+		logger.WithTraceID(c.Request.Context(), t.Logger).Error("invalid page number", zap.Error(err))
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid page number"})
 		return
 	}
 
 	pageSize, err := strconv.Atoi(c.DefaultQuery("pageSize", "10"))
 	if err != nil || pageSize < 1 {
+		logger.WithTraceID(c.Request.Context(), t.Logger).Error("invalid page size", zap.Error(err))
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid page size"})
 		return
 	}
 
 	offset := (page - 1) * pageSize
 	// column1 -> projectId column2 -> page size column3 -> offset (the data from desc (createBy))
-	data, err := t.DB.Queries.GetAllfdfModels(c, db_sqlc_gen.GetAllfdfModelsParams{
+	data, err := t.DB.Queries.GetAllfdfModels(c.Request.Context(), db_sqlc_gen.GetAllfdfModelsParams{
 		ProjectID:  projectId,
 		PageSize:   int32(pageSize),
 		PageOffset: int32(offset),
 	})
 	if err != nil {
-		t.Logger.Error("models not found or database error", zap.Error(err))
+		logger.WithTraceID(c.Request.Context(), t.Logger).Error("models not found or database error", zap.Error(err))
 		c.JSON(http.StatusNotFound, gin.H{})
 		return
 	}
 
-	dataCount, err := t.DB.Queries.CountModels(c, projectId)
+	dataCount, err := t.DB.Queries.CountModels(c.Request.Context(), projectId)
 	if err != nil {
-		t.Logger.Error("models not found or database error", zap.Error(err))
+		logger.WithTraceID(c.Request.Context(), t.Logger).Error("models not found or database error", zap.Error(err))
 		c.JSON(http.StatusNotFound, gin.H{})
 		return
 	}
@@ -176,6 +186,7 @@ func (t *GetModelRoute) getAllModel(c *gin.Context) {
 		})
 	}
 
+	logger.WithTraceID(c.Request.Context(), t.Logger).Info("successfully get all models")
 	c.JSON(http.StatusOK, gin.H{"data": dataList, "count": dataCount})
 }
 

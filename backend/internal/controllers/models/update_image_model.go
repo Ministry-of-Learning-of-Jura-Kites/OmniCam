@@ -12,6 +12,7 @@ import (
 	"omnicam.com/backend/internal/utils"
 	db_client "omnicam.com/backend/pkg/db"
 	db_sqlc_gen "omnicam.com/backend/pkg/db/sqlc-gen"
+	"omnicam.com/backend/pkg/logger"
 )
 
 type PutImageModelRoute struct {
@@ -24,7 +25,7 @@ func (t *PutImageModelRoute) updateImage(c *gin.Context) {
 	strProjectId := c.Param("projectId")
 	projectId, err := utils.ParseUuidBase64(strProjectId)
 	if err != nil {
-		t.Logger.Error("error while converting str id to uuid", zap.Error(err))
+		logger.WithTraceID(c.Request.Context(), t.Logger).Debug("error while converting str id to uuid", zap.Error(err))
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid model ID"})
 		return
 	}
@@ -32,58 +33,56 @@ func (t *PutImageModelRoute) updateImage(c *gin.Context) {
 	strModelId := c.Param("modelId")
 	modelId, err := utils.ParseUuidBase64(strModelId)
 	if err != nil {
-		t.Logger.Error("error while converting str id to uuid", zap.Error(err))
+		logger.WithTraceID(c.Request.Context(), t.Logger).Debug("error while converting str id to uuid", zap.Error(err))
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid model ID"})
 		return
 	}
 
 	userId, err := utils.GetUuidFromCtx(c, "userId")
 	if err != nil {
-		t.Logger.Error("error while getting userId form", zap.Error(err))
+		logger.WithTraceID(c.Request.Context(), t.Logger).Debug("error while getting user Id form", zap.Error(err))
 		c.JSON(http.StatusInternalServerError, gin.H{})
 		return
 	}
 
 	pgUserId, err := utils.UuidToPgUuid(userId)
 	if err != nil {
-		t.Logger.Error("Error while convert uuid to pgtype", zap.Error(err))
+		logger.WithTraceID(c.Request.Context(), t.Logger).Debug("Error while convert uuid to pgtype", zap.Error(err))
 		c.JSON(http.StatusInternalServerError, gin.H{})
 		return
 	}
 
 	// Check if user is in project
-	_, err = t.DB.Queries.GetUserOfProject(c, db_sqlc_gen.GetUserOfProjectParams{
+	_, err = t.DB.Queries.GetUserOfProject(c.Request.Context(), db_sqlc_gen.GetUserOfProjectParams{
 		UserID:    pgUserId,
 		Projectid: projectId,
 	})
 	if err != nil {
-		t.Logger.Debug("user of project not found", zap.String("projectId", strProjectId), zap.String("userId", userId.String()), zap.Error(err))
+		logger.WithTraceID(c.Request.Context(), t.Logger).Error("user of project not found", zap.String("projectId", strProjectId), zap.String("userId", userId.String()), zap.Error(err))
 		c.JSON(http.StatusForbidden, gin.H{})
 		return
 	}
 
 	imageFile, err := c.FormFile("image")
 	if err != nil {
-		t.Logger.Error("Image file is required", zap.Error(err))
+		logger.WithTraceID(c.Request.Context(), t.Logger).Error("Image file is required", zap.Error(err))
 		c.JSON(http.StatusBadRequest, gin.H{"error": "image file is required"})
 		return
 	}
 
 	imageExt := filepath.Ext(imageFile.Filename)
 	if imageExt != ".jpg" && imageExt != ".png" {
+		logger.WithTraceID(c.Request.Context(), t.Logger).Error("image must be .jpg or .png", zap.Error(err))
 		c.JSON(http.StatusBadRequest, gin.H{"error": "image must be .jpg or .png"})
 		return
 	}
 
-	t.Logger.Info("Received image file",
-		zap.String("filename", imageFile.Filename),
-		zap.Int64("size", imageFile.Size),
-	)
+	logger.WithTraceID(c.Request.Context(), t.Logger).Info("Received image file", zap.String("filename", imageFile.Filename), zap.Int64("size", imageFile.Size))
 
 	// Where to save on disk -> <project-root>/uploads/model/{projectId}/{modelId}
 	imageDir := filepath.Join(internal.Root, "uploads", "images", projectId.String())
 	if err := os.MkdirAll(imageDir, os.ModePerm); err != nil {
-		t.Logger.Error("Failed to create image directory", zap.Error(err))
+		logger.WithTraceID(c.Request.Context(), t.Logger).Error("failed to create image directory", zap.Error(err))
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to create folder for model image"})
 		return
 	}
@@ -99,25 +98,27 @@ func (t *PutImageModelRoute) updateImage(c *gin.Context) {
 	// Save the new image
 	fsImagePath := filepath.Join(imageDir, modelId.String()+imageExt)
 	if err := c.SaveUploadedFile(imageFile, fsImagePath); err != nil {
-		t.Logger.Error("Failed to save image file", zap.Error(err))
+		logger.WithTraceID(c.Request.Context(), t.Logger).Error("failed to save image file", zap.Error(err))
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to save image"})
 		return
 	}
 
 	// Web path for DB/frontend
 	webImagePath := "/uploads/images/" + projectId.String() + modelId.String()
-	_, err = t.DB.Queries.UpdateModelImage(c, db_sqlc_gen.UpdateModelImageParams{
+	_, err = t.DB.Queries.UpdateModelImage(c.Request.Context(), db_sqlc_gen.UpdateModelImageParams{
 		ID:             modelId,
 		ImagePath:      webImagePath,
 		ImageExtension: imageExt,
 	})
 	if err != nil {
-		t.Logger.Error("Error while updating model image", zap.Error(err))
+		logger.WithTraceID(c.Request.Context(), t.Logger).Error("Error while updating model image", zap.Error(err))
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to update model image in DB"})
 		return
 	}
 
-	t.Logger.Info("Model image updated", zap.String("path", fsImagePath))
+	logger.WithTraceID(c.Request.Context(), t.Logger).Info("model image updated",
+		zap.String("path", fsImagePath),
+	)
 
 	c.JSON(http.StatusOK, gin.H{
 		"message":        "image updated successfully",

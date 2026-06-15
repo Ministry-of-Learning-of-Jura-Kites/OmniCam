@@ -101,7 +101,7 @@ def assign_faces(state: State, seed: int):
 
     seed_centers = face_centers[seeds_idx]
     seed_normals = face_normals[seeds_idx]
-
+    logger.debug("KMeans++ seeds selected", extra={"seeds": seeds_idx})
     # 2. Compute Hybrid Cost
     dist_mat = cdist(face_centers, seed_centers, metric="euclidean")
 
@@ -263,7 +263,10 @@ def optimize(req: OptimizeRequest, seed: int = 2000) -> State:
         from pyvistaqt import BackgroundPlotter
 
         pl = BackgroundPlotter()
-
+    logger.info(
+        "Loading 3D model",
+        extra={"project_id": req.project_id, "model_id": req.model_id},
+    )
     raw_data = pv.read(
         path.join(
             env_settings.model_file_path,
@@ -277,13 +280,17 @@ def optimize(req: OptimizeRequest, seed: int = 2000) -> State:
 
     surface = combined_mesh.extract_surface()
 
+    logger.info(
+        "Mesh processed",
+        extra={"cells": gltf.n_cells, "triangulated": gltf.is_all_triangles},
+    )
+
     # 4. Final Optimization (The 5-30s target pipeline)
     gltf = surface.clean(tolerance=1e-5).triangulate()
 
     # Ensure only triangles exist before decimation
     if not gltf.is_all_triangles:
         gltf = gltf.extract_cells_by_type(vtk.VTK_TRIANGLE)
-
     # current_cells = gltf.n_cells
     # target_cells = 40000  # The "Sweet Spot" for fast ray-casting
 
@@ -307,6 +314,8 @@ def optimize(req: OptimizeRequest, seed: int = 2000) -> State:
     gltf_locator.SetDataSet(gltf)
     gltf_locator.BuildLocator()
 
+    logger.info("VTK locator built")
+
     faces = transform_faces(req.faces)
     cameras = transform_cameras(req.cam_configs)
     state = State(
@@ -325,8 +334,14 @@ def optimize(req: OptimizeRequest, seed: int = 2000) -> State:
     if num_cameras > num_faces:
         return
 
+    logger.info(
+        "Assigning faces started",
+        extra={"num_faces": len(state.faces), "num_cameras": len(state.cameras)},
+    )
+
     state = assign_faces(state, seed)
 
+    logger.info("Assigning faces completed", extra={"empty_cameras_fixed": True})
     if env_settings.dev_mode:
         init_3d_scene(pl, state)
         render_from_state(pl, state)
@@ -438,12 +453,26 @@ def cam_state_to_proto(cam_state: CameraState) -> cam_pb.Camera:
 
 async def main():
     async def message_handler(msg: Msg):
-        print("Received message", msg)
+        logger.info("Received optimization request", extra={"subject": msg.subject})
         try:
             payload = OptimizeRequest.model_validate_json(msg.data)
+            logger.info(
+                "Request received",
+                extra={
+                    "subject": msg.subject,
+                    "size_bytes": len(msg.data),
+                },
+            )
 
+            start = time.perf_counter()
             result_state = optimize(payload)
-
+            logger.info(
+                "Request finished",
+                extra={
+                    "elapsed_ms": (time.perf_counter() - start) * 1000,
+                    "job_id": payload.job_id,
+                },
+            )
             opti_res = opt_pb.OptimizationEventResp(
                 success_resp=opt_pb.SuccessOptimizationEventResp(
                     cameras=[cam_state_to_proto(cam) for cam in result_state.cameras],
@@ -451,14 +480,24 @@ async def main():
                 job_id=payload.job_id,
             )
         except ValidationError as e:
+            logger.error("Invalid request", extra={"error": str(e)})
             opti_res = opt_pb.OptimizationEventResp(
-                error_resp=opt_pb.ErrorOptimizationEventResp(error=f"Bad request {e}")
+                error_resp=opt_pb.EventError(error=f"Bad request {e}")
             )
         except Exception as e:
+            logger.error(
+                "Optimization failed",
+                extra={
+                    "job_id": payload.job_id,
+                    "model_id": payload.model_id,
+                    "error": str(e),
+                },
+                exc_info=True,
+            )
             traceback.print_exc()
             print(e)
             opti_res = opt_pb.OptimizationEventResp(
-                error_resp=opt_pb.ErrorOptimizationEventResp(error="Internal error")
+                error_resp=opt_pb.EventError(error="Internal error")
             )
         finally:
             res_str = MessageToJson(

@@ -1,46 +1,64 @@
 package main
 
 import (
+	"context"
+	"strings"
 	"time"
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	"github.com/nats-io/nats.go"
+	"go.opentelemetry.io/contrib/instrumentation/github.com/gin-gonic/gin/otelgin"
 	"go.uber.org/zap"
 	config_env "omnicam.com/backend/config"
 	api_routes "omnicam.com/backend/internal/routes"
 	"omnicam.com/backend/internal/utils"
 	db_client "omnicam.com/backend/pkg/db"
 	"omnicam.com/backend/pkg/logger"
+	"omnicam.com/backend/pkg/telemetry"
 )
 
 func main() {
+	ctx := context.Background()
 	utils.RegisterCustomValidations()
 
-	logger := logger.InitLogger(false)
-	defer logger.Sync()
+	log := logger.InitLogger(false)
+	defer log.Sync()
 
-	env := config_env.InitAppEnv(logger)
+	env := config_env.InitAppEnv(log)
 
-	clientDB := db_client.InitDatabase(env, logger)
+	shutdown := telemetry.InitTelemetry(ctx, log)
+	defer shutdown()
+
+	clientDB := db_client.InitDatabase(env, log)
 
 	router := gin.Default()
+	router.Use(otelgin.Middleware(env.OtelServiceName,
+		otelgin.WithGinFilter(func(c *gin.Context) bool {
+			if c.GetHeader("Upgrade") == "websocket" ||
+				strings.Contains(c.Request.URL.Path, "/autosave") ||
+				strings.Contains(c.Request.URL.Path, "/livestream") {
+				return false
+			}
+			return true
+		}),
+	))
 	nc, err := nats.Connect(env.NatsUrl)
 	if err != nil {
-		logger.Fatal("Error while connecting to nats", zap.Error(err))
+		log.Fatal("Error while connecting to nats", zap.Error(err))
 	}
 
 	var allowOrigins []string = []string{env.FrontendHost}
 
 	if env.Mode == "DEV" {
 		allowOrigins = append(allowOrigins, "http://localhost:8000")
-		logger.Info("Enabled cors for swagger")
+		log.Info("Enabled cors for swagger")
 	}
 
 	router.Use(cors.New(cors.Config{
 		AllowOrigins:     allowOrigins,
 		AllowMethods:     []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
-		AllowHeaders:     []string{"Origin", "Content-Type", "Authorization"},
+		AllowHeaders:     []string{"Origin", "Content-Type", "Authorization", "traceparent", "tracestate"},
 		ExposeHeaders:    []string{"Content-Length"},
 		AllowCredentials: true,
 		MaxAge:           12 * time.Hour,
@@ -48,7 +66,7 @@ func main() {
 
 	apiV1 := router.Group("/api/v1")
 	api_routes.InitRoutes(api_routes.Dependencies{
-		Logger: logger,
+		Logger: log,
 		Env:    env,
 		DB:     clientDB,
 		Nc:     nc,

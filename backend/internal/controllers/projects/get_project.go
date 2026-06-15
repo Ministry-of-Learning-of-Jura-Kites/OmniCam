@@ -12,6 +12,7 @@ import (
 	"omnicam.com/backend/internal/utils"
 	db_client "omnicam.com/backend/pkg/db"
 	db_sqlc_gen "omnicam.com/backend/pkg/db/sqlc-gen"
+	"omnicam.com/backend/pkg/logger"
 )
 
 type Project struct {
@@ -33,39 +34,41 @@ type GetProjectRoute struct {
 func (t *GetProjectRoute) getAll(c *gin.Context) {
 	username, exists := c.Get("username")
 	if !exists {
-		t.Logger.Error("username not found in context")
+		logger.WithTraceID(c.Request.Context(), t.Logger).Debug("username not found in context")
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
 		return
 	}
 
-	user, err := t.DB.Queries.GetUserByUsername(c, username.(string))
+	user, err := t.DB.Queries.GetUserByUsername(c.Request.Context(), username.(string))
 	if err != nil {
-		t.Logger.Error("failed to get user by username", zap.Error(err))
+		logger.WithTraceID(c.Request.Context(), t.Logger).Error("failed to get user by username", zap.Error(err))
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "user not found"})
 		return
 	}
 
 	page, err := strconv.Atoi(c.DefaultQuery("page", "1"))
 	if err != nil || page < 1 {
+		logger.WithTraceID(c.Request.Context(), t.Logger).Error("invalid page number", zap.Error(err))
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid page number"})
 		return
 	}
 
 	pageSize, err := strconv.Atoi(c.DefaultQuery("pageSize", "10"))
 	if err != nil || pageSize < 1 {
+		logger.WithTraceID(c.Request.Context(), t.Logger).Error("invalid page size", zap.Error(err))
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid page size"})
 		return
 	}
 
 	pageOffset := (page - 1) * pageSize
 
-	projects, err := t.DB.Queries.GetProjectsByUserId(c, db_sqlc_gen.GetProjectsByUserIdParams{
+	projects, err := t.DB.Queries.GetProjectsByUserId(c.Request.Context(), db_sqlc_gen.GetProjectsByUserIdParams{
 		UserID:     user.ID,
 		PageSize:   int32(pageSize),
 		PageOffset: int32(pageOffset),
 	})
 	if err != nil {
-		t.Logger.Error("failed to get projects by user id", zap.Error(err))
+		logger.WithTraceID(c.Request.Context(), t.Logger).Error("failed to get projects by user id", zap.Error(err))
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to get projects"})
 		return
 	}
@@ -83,6 +86,7 @@ func (t *GetProjectRoute) getAll(c *gin.Context) {
 		})
 	}
 
+	logger.WithTraceID(c.Request.Context(), t.Logger).Info("successfully get project")
 	c.JSON(http.StatusOK, gin.H{
 		"data":     projectList,
 		"page":     page,
@@ -94,18 +98,21 @@ func (t *GetProjectRoute) getById(c *gin.Context) {
 	strId := c.Param("projectId")
 	id, err := utils.ParseUuidBase64(strId)
 	if err != nil {
-		t.Logger.Error("error while converting str id to uuid", zap.Error(err))
+		logger.WithTraceID(c.Request.Context(), t.Logger).Debug("error while convering str id to uuid", zap.Error(err))
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid project ID"})
 		return
 	}
 
-	project, err := t.DB.Queries.GetProjectById(c, id)
+	project, err := t.DB.Queries.GetProjectById(c.Request.Context(), id)
 	if err != nil {
-		t.Logger.Error("project not found", zap.Error(err))
+		logger.WithTraceID(c.Request.Context(), t.Logger).Error("project not found", zap.Error(err))
 		c.JSON(http.StatusNotFound, gin.H{})
 		return
 	}
 
+	logger.WithTraceID(c.Request.Context(), t.Logger).Info("successfully get project by id",
+		zap.String("projectId", strId),
+	)
 	c.JSON(http.StatusOK, gin.H{"data": Project{
 		Id:          id,
 		Name:        project.Name,
