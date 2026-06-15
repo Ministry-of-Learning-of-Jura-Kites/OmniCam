@@ -33,7 +33,7 @@ func (t *GetModelRoute) getModelById(c *gin.Context) {
 	strModelId := c.Param("modelId")
 	modelId, err := utils.ParseUuidBase64(strModelId)
 	if err != nil {
-		logger.WithTraceID(c.Request.Context(), t.Logger).Error("error while converting str id to uuid", zap.Error(err))
+		logger.WithTraceID(c.Request.Context(), t.Logger).Debug("error while converting str id to uuid", zap.Error(err))
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid model ID"})
 		return
 	}
@@ -42,7 +42,7 @@ func (t *GetModelRoute) getModelById(c *gin.Context) {
 	projectId, err := utils.ParseUuidBase64(strProjectId)
 	if err != nil {
 		logger.WithTraceID(c.Request.Context(), t.Logger).Error("error while converting str id to uuid", zap.Error(err))
-		t.Logger.Error("error while converting str id to uuid", zap.Error(err))
+		t.Logger.Debug("error while converting str id to uuid", zap.Error(err))
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid model ID"})
 		return
 	}

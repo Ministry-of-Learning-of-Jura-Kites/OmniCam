@@ -9,12 +9,8 @@ import {
   acceleratedRaycast,
 } from "three-mesh-bvh";
 import { MINIMAP_LAYER } from "~/constants";
-// import { init as initRecast, Crowd } from "recast-navigation";
-// import { threeToSoloNavMesh, NavMeshHelper } from "@recast-navigation/three";
-// import { Crowd } from "recast-navigation";
 
 const sceneStates = inject(SCENE_STATES_KEY)!;
-// const mesh = ref<Mesh>();
 
 const props = withDefaults(
   defineProps<{
@@ -27,6 +23,7 @@ const props = withDefaults(
     position: () => [0, 0, 0],
   },
 );
+
 const emit = defineEmits<{
   (e: "err", message: string): void;
 }>();
@@ -50,135 +47,72 @@ function disposeMaterial(mat: Material) {
   mat.dispose();
 }
 
-console.log("path", props.path);
 const state = shallowRef<GLTF | null>(null);
-const { data, error, status } = await useFetch<ArrayBuffer>(props.path ?? "", {
-  method: "GET",
-  credentials: "include",
-  responseType: "arrayBuffer",
-  cache: "no-cache",
-});
+const data = shallowRef<ArrayBuffer | null>(null);
 
-watch(
-  error,
-  (err) => {
-    if (err) {
-      emit("err", `Failed to load 3D model (HTTP ${status.value}).`);
-    }
-  },
-  { immediate: true },
-);
-
-onMounted(() => {
+onMounted(async () => {
   if (!BufferGeometry.prototype.computeBoundsTree) {
     BufferGeometry.prototype.computeBoundsTree = computeBoundsTree;
     BufferGeometry.prototype.disposeBoundsTree = disposeBoundsTree;
     Mesh.prototype.raycast = acceleratedRaycast;
   }
 
-  const stopWatch = watch(
-    data,
-    (newData) => {
-      if (newData) {
-        const blob = new Blob([newData], { type: "model/gltf-binary" });
-        const blobUrl = URL.createObjectURL(blob);
+  // fetch model data without top-level await — no Suspense conflict
+  try {
+    const resp = await fetch(props.path ?? "", {
+      method: "GET",
+      credentials: "include",
+      cache: "no-cache",
+    });
 
-        const gltf = useGLTF(blobUrl);
-        const stopInner = watch(
-          () => gltf.state.value,
-          async (s) => {
-            if (s != undefined) {
-              // s.scene.traverse(applyFisheye);
-              state.value = s;
-              // const walkableMeshes: Mesh[] = [];
-              s.scene.traverse((child) => {
-                child.layers.enable(MINIMAP_LAYER);
-                if ((child as Mesh).isMesh) {
-                  const mesh = child as Mesh;
-                  mesh.geometry.computeBoundsTree();
-                  // Optional: Helps with raycasting through complex hierarchies
-                  mesh.raycast = acceleratedRaycast;
-                }
-              });
+    if (!resp.ok) {
+      emit("err", `Failed to load 3D model (HTTP ${resp.status}).`);
+      return;
+    }
 
-              sceneStates.value!.modelRef.value = s;
+    data.value = await resp.arrayBuffer();
+  } catch (error: unknown) {
+    console.error(error);
+  }
 
-              // s.scene.traverse((child) => {
-              //   if ((child as Mesh).isMesh) {
-              //     walkableMeshes.push(child as Mesh);
-              //   }
-              // });
+  if (!data.value) return;
 
-              // try {
-              //   await initRecast(); // WASM init — safe to call multiple times
+  const blob = new Blob([data.value], { type: "model/gltf-binary" });
+  const blobUrl = URL.createObjectURL(blob);
 
-              //   const { navMesh, success } = threeToSoloNavMesh(
-              //     walkableMeshes,
-              //     {
-              //       cs: 0.1, // finer voxel size
-              //       ch: 0.02, // finer height resolution
+  const gltf = useGLTF(blobUrl);
 
-              //       walkableSlopeAngle: 35,
+  const stopInner = watch(
+    () => gltf.state.value,
+    async (s) => {
+      if (s != undefined) {
+        state.value = s;
 
-              //       walkableHeight: 1.5,
-              //       walkableClimb: 0.5,
+        s.scene.traverse((child) => {
+          child.layers.enable(MINIMAP_LAYER);
+          if ((child as Mesh).isMesh) {
+            const mesh = child as Mesh;
+            mesh.geometry.computeBoundsTree();
+            mesh.raycast = acceleratedRaycast;
+          }
+        });
 
-              //       walkableRadius: 0.1,
+        sceneStates.value!.modelRef.value = s;
 
-              //       maxEdgeLen: 32,
-              //       maxSimplificationError: 2,
-
-              //       minRegionArea: 0,
-              //       maxVertsPerPoly: 6,
-
-              //       detailSampleDist: 1,
-              //       detailSampleMaxError: 0.05,
-              //     },
-              //   );
-              //   if (!success || !navMesh) {
-              //     console.error("[ModelLoader] NavMesh build failed");
-              //   } else {
-              //     console.log("[ModelLoader] NavMesh ready ✓");
-
-              //     sceneStates.value!.navMesh.value = navMesh;
-              //     const crowd = new Crowd(navMesh, {
-              //       maxAgents: 20,
-              //       maxAgentRadius: 0.3,
-              //     });
-
-              //     sceneStates.value!.crowd.value = crowd;
-
-              //     const helper = new NavMeshHelper(navMesh);
-              //     s.scene.add(helper);
-              //   }
-              // } catch (e) {
-              //   console.error("[ModelLoader] NavMesh init error:", e);
-              // }
-
-              URL.revokeObjectURL(blobUrl!);
-
-              stopInner();
-              stopWatch();
-            }
-          },
-        );
+        URL.revokeObjectURL(blobUrl);
+        stopInner();
       }
     },
-    { immediate: true },
   );
 });
 
 onUnmounted(() => {
-  // sceneStates.value?.crowd?.value?.destroy();
-  // sceneStates.value?.navMesh?.value?.destroy();
   if (state?.value?.scene) {
     state.value.scene.traverse((child: Object3D) => {
       if (isMesh(child)) {
         const mesh = child as Mesh;
-        // Dispose Geometries
         mesh.geometry?.dispose();
 
-        // Dispose Materials
         if (Array.isArray(mesh.material)) {
           mesh.material.forEach((mat: Material) => disposeMaterial(mat));
         } else {
@@ -195,10 +129,9 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <!-- <primitive v-if="state?.scene" ref="mesh" :object="state.scene" /> -->
   <primitive v-if="state?.scene" ref="mesh" :object="state.scene" />
 
-  <!-- Block Placeholder  -->
+  <!-- Block Placeholder while loading -->
   <TresMesh v-if="state?.scene == null" :position="props.position ?? [0, 0, 0]">
     <TresBoxGeometry />
     <TresMeshStandardMaterial

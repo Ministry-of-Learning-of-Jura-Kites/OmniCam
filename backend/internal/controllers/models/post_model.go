@@ -36,13 +36,13 @@ func (t *PostModelRoutes) post(c *gin.Context) {
 	strProjectId := c.Param("projectId")
 	projectId, err := utils.ParseUuidBase64(strProjectId)
 	if err != nil {
-		logger.WithTraceID(c.Request.Context(), t.Logger).Error("error while converting str id to uuid", zap.Error(err))
+		logger.WithTraceID(c.Request.Context(), t.Logger).Debug("error while converting str id to uuid", zap.Error(err))
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid model ID"})
 		return
 	}
 
 	if err := c.ShouldBind(&req); err != nil {
-		logger.WithTraceID(c.Request.Context(), t.Logger).Error("error while validating form", zap.Error(err))
+		logger.WithTraceID(c.Request.Context(), t.Logger).Debug("error while validating form", zap.Error(err))
 		c.JSON(http.StatusBadRequest, gin.H{})
 		return
 	}
@@ -51,11 +51,11 @@ func (t *PostModelRoutes) post(c *gin.Context) {
 	file, err := c.FormFile("file")
 	fileExt := filepath.Ext(file.Filename)
 	if err != nil {
-		logger.WithTraceID(c.Request.Context(), t.Logger).Error("file is required", zap.Error(err))
+		logger.WithTraceID(c.Request.Context(), t.Logger).Debug("file is required", zap.Error(err))
 		return
 	}
 	if fileExt != ".glb" {
-		logger.WithTraceID(c.Request.Context(), t.Logger).Error("model file must have .glb extension", zap.Error(err))
+		logger.WithTraceID(c.Request.Context(), t.Logger).Debug("model file must have .glb extension", zap.Error(err))
 		c.JSON(http.StatusBadRequest, gin.H{"error": "model file must have .glb extension"})
 		return
 	}

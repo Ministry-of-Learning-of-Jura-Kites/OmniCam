@@ -34,7 +34,7 @@ type GetProjectRoute struct {
 func (t *GetProjectRoute) getAll(c *gin.Context) {
 	username, exists := c.Get("username")
 	if !exists {
-		logger.WithTraceID(c.Request.Context(), t.Logger).Error("username not found in context")
+		logger.WithTraceID(c.Request.Context(), t.Logger).Debug("username not found in context")
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
 		return
 	}
@@ -98,7 +98,7 @@ func (t *GetProjectRoute) getById(c *gin.Context) {
 	strId := c.Param("projectId")
 	id, err := utils.ParseUuidBase64(strId)
 	if err != nil {
-		logger.WithTraceID(c.Request.Context(), t.Logger).Error("error while convering str id to uuid", zap.Error(err))
+		logger.WithTraceID(c.Request.Context(), t.Logger).Debug("error while convering str id to uuid", zap.Error(err))
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid project ID"})
 		return
 	}

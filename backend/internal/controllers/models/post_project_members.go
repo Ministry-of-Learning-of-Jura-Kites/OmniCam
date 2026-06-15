@@ -30,14 +30,14 @@ func (t *PostProjectMembersRoute) addProjectMembers(c *gin.Context) {
 
 	projectID, err := utils.ParseUuidBase64(strProjectId)
 	if err != nil {
-		logger.WithTraceID(c.Request.Context(), t.Logger).Error("error decoding Base64 projectId", zap.Error(err))
+		logger.WithTraceID(c.Request.Context(), t.Logger).Debug("error decoding Base64 projectId", zap.Error(err))
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid base64 projectId"})
 		return
 	}
 
 	var req []AddProjectMembersRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		logger.WithTraceID(c.Request.Context(), t.Logger).Error("invalid request body", zap.Error(err))
+		logger.WithTraceID(c.Request.Context(), t.Logger).Debug("invalid request body", zap.Error(err))
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid JSON body"})
 		return
 	}

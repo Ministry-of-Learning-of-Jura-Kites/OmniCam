@@ -1240,13 +1240,13 @@ const isShowingCamDirection = computed(() => {
             />
           </Suspense>
 
-          <Suspense>
-            <ModelLoader
-              v-if="modelPath != undefined"
-              :path="modelPath!.href"
-              @err="handleModelError"
-            />
-          </Suspense>
+          <!-- <Suspense> -->
+          <ModelLoader
+            v-if="modelPath != undefined"
+            :path="modelPath!.href"
+            @err="handleModelError"
+          />
+          <!-- </Suspense> -->
 
           <Grid
             :position="[0, -sceneStates!.calibration.heightOffset, 0]"

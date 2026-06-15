@@ -25,21 +25,21 @@ type LoginRequest struct {
 func (t *AuthRoute) login(c *gin.Context) {
 	var req LoginRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		logger.WithTraceID(c.Request.Context(), t.Logger).Error("invalid login data", zap.Error(err))
+		logger.WithTraceID(c.Request.Context(), t.Logger).Debug("invalid login data", zap.Error(err))
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid login data"})
 		return
 	}
 
 	user, err := t.DB.Queries.GetUserByIdentifier(c.Request.Context(), req.Identifier)
 	if err != nil {
-		logger.WithTraceID(c.Request.Context(), t.Logger).Error("user not found", zap.Error(err))
+		logger.WithTraceID(c.Request.Context(), t.Logger).Debug("user not found", zap.Error(err))
 		c.JSON(http.StatusBadRequest, gin.H{})
 		return
 	}
 
 	isSuccess := utils.CheckPassword(string(user.Password), req.Password)
 	if !isSuccess {
-		logger.WithTraceID(c.Request.Context(), t.Logger).Error("password is incorrect")
+		logger.WithTraceID(c.Request.Context(), t.Logger).Debug("password is incorrect")
 		c.JSON(http.StatusBadRequest, gin.H{})
 		return
 	}
