@@ -34,6 +34,9 @@ services:
     container_name: omnicam-nats
     restart: always
     command: ["-m", "8222"]
+    expose:
+      - 4222
+      - 8222
     healthcheck:
       test:
         [
