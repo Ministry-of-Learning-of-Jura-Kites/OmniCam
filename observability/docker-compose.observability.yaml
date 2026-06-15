@@ -88,7 +88,7 @@ services:
     image: prom/prometheus:v2.53.0
     container_name: omnicam_prometheus
     env_file:
-      - ./observability/.env.observability
+      - ./observability/.env
     command:
       - "--config.file=/etc/prometheus/prometheus.yaml"
       - "--storage.tsdb.path=/prometheus"
@@ -108,7 +108,7 @@ services:
     image: grafana/grafana:11.1.0
     container_name: omnicam_grafana
     env_file:
-      - ./observability/.env.observability
+      - ./observability/.env
     volumes:
       - ./observability/grafana/provisioning:/etc/grafana/provisioning:ro
       - grafana_data:/var/lib/grafana
