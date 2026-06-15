@@ -13,11 +13,11 @@ message TraceContext {
 }
 
 message WorkspaceEventRequest{
-  TraceContext trace = 100;
+  TraceContext trace = 1;
 
   oneof event {
-    AutosaveEventRequest autosave = 1;
-    OptimizationEventReq optimize = 2;
+    AutosaveEventRequest autosave = 2;
+    OptimizationEventReq optimize = 3;
   }
 }
 message LivestreamBroadcast{
@@ -28,11 +28,11 @@ message LivestreamBroadcast{
 }
 
 message WorkspaceEventResponse {
-  TraceContext trace = 100;
+  TraceContext trace = 1;
 
   oneof resp {
-    AutosaveEventResponse autosave = 1;
-    OptimizationEventResp optimize = 2;
-    EventError error = 3;
+    AutosaveEventResponse autosave = 2;
+    OptimizationEventResp optimize = 3;
+    EventError error = 4;
   }
 }
