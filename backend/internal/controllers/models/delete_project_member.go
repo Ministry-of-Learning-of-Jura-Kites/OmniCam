@@ -23,7 +23,7 @@ func (t *DeleteProjectMemberRoute) deleteMember(c *gin.Context) {
 	projectParam := c.Param("projectId")
 	projectID, err := utils.ParseUuidBase64(projectParam)
 	if err != nil {
-		logger.WithTraceID(c.Request.Context(), t.Logger).Error(
+		logger.WithTraceID(c.Request.Context(), t.Logger).Debug(
 			"invalid project ID",
 			zap.String("projectId", projectParam),
 			zap.Error(err),
@@ -35,7 +35,7 @@ func (t *DeleteProjectMemberRoute) deleteMember(c *gin.Context) {
 	userParam := c.Param("userId")
 	userID, err := utils.ParseUuidBase64(userParam)
 	if err != nil {
-		logger.WithTraceID(c.Request.Context(), t.Logger).Error(
+		logger.WithTraceID(c.Request.Context(), t.Logger).Debug(
 			"invalid user ID",
 			zap.String("userId", userParam),
 			zap.Error(err),

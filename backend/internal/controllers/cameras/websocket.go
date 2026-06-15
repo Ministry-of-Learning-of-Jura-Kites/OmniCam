@@ -118,6 +118,7 @@ func (t *UpdateEventRoute) handleCalibration(
 	currentVersion *int32,
 ) {
 	if inputVersion <= uint32(*currentVersion) {
+		logger.WithTraceID(e.Gin.Request.Context(), t.Logger).Warn("version mismatch", zap.Uint32("inputVersion", inputVersion), zap.Uint32("currentVersion", uint32(*currentVersion)))
 		return // stale/duplicate
 	}
 
@@ -147,6 +148,7 @@ func (t *UpdateEventRoute) handleFaceUpsert(
 	inputVersion uint32,
 	currentVersion *int32) {
 	if inputVersion <= uint32(*currentVersion) {
+		logger.WithTraceID(e.Gin.Request.Context(), t.Logger).Warn("version mismatch", zap.Uint32("inputVersion", inputVersion), zap.Uint32("currentVersion", uint32(*currentVersion)))
 		return // stale/duplicate
 	}
 
@@ -182,6 +184,7 @@ func (t *UpdateEventRoute) handleFaceDelete(
 	inputVersion uint32,
 	currentVersion *int32) {
 	if inputVersion <= uint32(*currentVersion) {
+		logger.WithTraceID(e.Gin.Request.Context(), t.Logger).Warn("version mismatch", zap.Uint32("inputVersion", inputVersion), zap.Uint32("currentVersion", uint32(*currentVersion)))
 		return // stale/duplicate
 	}
 
@@ -445,7 +448,7 @@ func (t *UpdateEventRoute) getLivestream(c *gin.Context) {
 	})
 	if err != nil {
 		logger.WithTraceID(c.Request.Context(), t.Logger).
-			Error("not a member of project",
+			Warn("not a member of project",
 				zap.String("modelId", modelId.String()),
 				zap.String("username", username),
 				zap.Error(err),

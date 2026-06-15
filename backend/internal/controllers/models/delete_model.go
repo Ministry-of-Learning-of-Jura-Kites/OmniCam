@@ -27,7 +27,7 @@ func (t *DeleteModelRoute) delete(c *gin.Context) {
 	strModelId := c.Param("modelId")
 	modelId, err := utils.ParseUuidBase64(strModelId)
 	if err != nil {
-		logger.WithTraceID(c.Request.Context(), t.Logger).Error(
+		logger.WithTraceID(c.Request.Context(), t.Logger).Debug(
 			"invalid model ID",
 			zap.String("modelId", strModelId),
 			zap.Error(err),
@@ -39,7 +39,7 @@ func (t *DeleteModelRoute) delete(c *gin.Context) {
 	strProjectId := c.Param("projectId")
 	projectId, err := utils.ParseUuidBase64(strProjectId)
 	if err != nil {
-		logger.WithTraceID(c.Request.Context(), t.Logger).Error(
+		logger.WithTraceID(c.Request.Context(), t.Logger).Debug(
 			"invalid project ID",
 			zap.String("projectId", strProjectId),
 			zap.Error(err),
@@ -50,7 +50,7 @@ func (t *DeleteModelRoute) delete(c *gin.Context) {
 
 	userId, err := utils.GetUuidFromCtx(c, "userId")
 	if err != nil {
-		logger.WithTraceID(c.Request.Context(), t.Logger).Error(
+		logger.WithTraceID(c.Request.Context(), t.Logger).Debug(
 			"error while getting userId from context",
 			zap.Error(err),
 		)
@@ -60,7 +60,7 @@ func (t *DeleteModelRoute) delete(c *gin.Context) {
 
 	pgUserId, err := utils.UuidToPgUuid(userId)
 	if err != nil {
-		logger.WithTraceID(c.Request.Context(), t.Logger).Error(
+		logger.WithTraceID(c.Request.Context(), t.Logger).Debug(
 			"failed to convert uuid to pg uuid",
 			zap.String("userId", userId.String()),
 			zap.Error(err),

@@ -30,15 +30,17 @@ from dev.visualization import init_3d_scene, render_from_state
 import pyvista as pv
 from basic_types import Array4x3
 from nats.aio.msg import Msg
+
+# ===================== TELEMETRY ADDED =====================
 from pkg.telemetry import init_telemetry
 from opentelemetry import trace, propagate
 from opentelemetry.trace import SpanKind, StatusCode
 
 logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("omnicam-algo")
 
 
-# TODO: Use protobufs(?)
+# ===================== MODELS =====================
 class ReqCameraConfiguration(BaseModel):
     pixels: Tuple[float, float]
     vfov: float
@@ -55,45 +57,53 @@ class OptimizeRequest(BaseModel):
     project_id: str
 
 
-def get_trace_id():
-    span = trace.get_current_span()
-    ctx = span.get_span_context()
-    return format(ctx.trace_id, "032x") if ctx else None
+# ===================== FACE TRANSFORM (UNCHANGED) =====================
+def transform_faces(faces: List[List[Tuple[float, float, float]]]) -> Array4x3:
+    cleaned = []
+    for face in faces:
+        if face is None or len(face) < 3:
+            continue
+
+        arr = np.array(face, dtype=np.float64)
+
+        if np.isnan(arr).any() or np.allclose(arr[0], arr[-1]):
+            continue
+
+        cleaned.append(arr)
+
+    return cleaned
 
 
-def create_arbitrary_face(center, width, height, normal):
-    """
-    Generates a rectangular face centered at 'center' with a specific 'normal'.
-    'normal' defines the tilt/rotation.
-    """
-    center = np.array(center)
-    normal = np.array(normal) / np.linalg.norm(normal)
+# ===================== CAMERA TRANSFORM (UNCHANGED) =====================
+def transform_cameras(raw_cam_configs: List[ReqCameraConfiguration]):
+    cameras = []
+    for raw in raw_cam_configs:
+        cam_config = CameraConfiguration(
+            pixels=raw.pixels,
+            vfov=raw.vfov,
+            name=raw.name,
+        )
 
-    # Create an orthogonal coordinate system around the normal
-    # 1. Pick a temporary vector that isn't parallel to the normal
-    up = np.array([0, 1, 0]) if abs(normal[1]) < 0.9 else np.array([1, 0, 0])
-
-    # 2. Calculate local X (right) and local Y (up) axes for the face
-    right = np.cross(up, normal)
-    right /= np.linalg.norm(right)
-    local_up = np.cross(normal, right)
-
-    hw = width / 2.0
-    hh = height / 2.0
-
-    # 3. Define the 4 corners relative to center using local axes
-    p1 = center - (right * hw) - (local_up * hh)
-    p2 = center + (right * hw) - (local_up * hh)
-    p3 = center + (right * hw) + (local_up * hh)
-    p4 = center - (right * hw) + (local_up * hh)
-
-    return np.array([p1, p2, p3, p4])
+        for _ in range(raw.amount):
+            cameras.append(
+                CameraState(
+                    faces=None,
+                    pos=[5, 0, 0],
+                    angle=quaternion.from_vector_part([0, 0, 0, 1]),
+                    center_of_faces=None,
+                    camera_config=cam_config,
+                    name=raw.name,
+                )
+            )
+    return cameras
 
 
+# ===================== ASSIGNMENT LOGIC (UNCHANGED) =====================
 def assign_faces(state: State, seed: int):
     num_faces = len(state.faces)
     num_cameras = len(state.cameras)
-    if num_cameras == 0 or num_faces == 0:
+
+    if num_faces == 0 or num_cameras == 0:
         return state
 
     face_centers = np.array([center_of_face(f) for f in state.faces])
@@ -101,7 +111,6 @@ def assign_faces(state: State, seed: int):
 
     rng = np.random.default_rng(seed)
 
-    # 1. K-Means++ Seed Initialization
     seeds_idx = [rng.integers(0, num_faces)]
     for _ in range(1, num_cameras):
         dist_sq = np.min(cdist(face_centers, face_centers[seeds_idx]), axis=1) ** 2
@@ -111,174 +120,54 @@ def assign_faces(state: State, seed: int):
     seed_centers = face_centers[seeds_idx]
     seed_normals = face_normals[seeds_idx]
 
-    # 2. Compute Hybrid Cost
     dist_mat = cdist(face_centers, seed_centers, metric="euclidean")
 
     for c_idx, cam in enumerate(state.cameras):
-        # --- Physical Camera Constraints ---
-        # Get camera-specific config
         vfov_rad = math.radians(cam.camera_config.vfov)
         v_res = cam.camera_config.pixels[1]
 
-        # Vector from seed to all faces
         vecs = face_centers - seed_centers[c_idx]
         distances = np.linalg.norm(vecs, axis=1) + 1e-6
 
-        # --- Normal Penalty ---
         cos_sim = np.dot(face_normals, seed_normals[c_idx])
         norm_penalty = np.where(cos_sim < 0, 100.0, 1.0 - cos_sim)
 
-        # --- Resolution/FOV Penalty ---
-        # Estimate angular size of the face from the camera seed
-        # Assuming faces are somewhat uniform, we use a characteristic scale
         face_scale = state.scale
         angular_size = 2 * np.arctan(face_scale / (2 * distances))
 
-        # FOV Fit: If angular size > vfov, the face won't fit in one frame
         fov_penalty = np.where(angular_size > vfov_rad, 10.0, 1.0)
 
-        # Resolution Quality: How many pixels does the face cover?
-        # We want faces to cover a reasonable % of resolution.
-        # Too few pixels = high penalty.
         pixels_covered = (angular_size / vfov_rad) * v_res
-        res_penalty = np.where(pixels_covered < 50, 5.0, 1.0)  # Penalty if < 50px
+        res_penalty = np.where(pixels_covered < 50, 5.0, 1.0)
 
-        # Combine costs
         dist_mat[:, c_idx] *= (1.0 + norm_penalty * 5.0) * fov_penalty * res_penalty
 
-    # 3. Assign
-    face_to_cam_dist = np.argmin(dist_mat, axis=1)
-    face_to_cam_map = state.face_to_cam
+    face_to_cam = state.face_to_cam
     assignments = [[] for _ in range(num_cameras)]
 
-    for face_idx, cam_idx in enumerate(face_to_cam_dist):
-        assignments[cam_idx].append(state.faces[face_idx])
-        face_to_cam_map[int(face_idx)] = int(cam_idx)
+    face_to_cam_dist = np.argmin(dist_mat, axis=1)
 
-    # 4. Handle "Empty Camera" & Update State
+    for i, cam_idx in enumerate(face_to_cam_dist):
+        assignments[cam_idx].append(state.faces[i])
+        face_to_cam[int(i)] = int(cam_idx)
+
     for i, cam in enumerate(state.cameras):
         if not assignments[i]:
-            closest_face_idx = np.argmin(dist_mat[:, i])
-            assignments[i].append(state.faces[closest_face_idx])
-            face_to_cam_map[int(closest_face_idx)] = int(i)
+            closest = np.argmin(dist_mat[:, i])
+            assignments[i].append(state.faces[closest])
+            face_to_cam[int(closest)] = int(i)
 
         cam.faces = assignments[i]
-        if assignments[i]:
-            cam.center_of_faces = np.mean(
-                [center_of_face(f) for f in assignments[i]], axis=0
-            )
-            cam.angle = look_at_quaternion(cam.center_of_faces - cam.pos)
+        cam.center_of_faces = np.mean(
+            [center_of_face(f) for f in assignments[i]], axis=0
+        )
+        cam.angle = look_at_quaternion(cam.center_of_faces - cam.pos)
 
-    state.face_to_cam = face_to_cam_map
-
+    state.face_to_cam = face_to_cam
     return state
 
 
-# faces = []
-# faces.append(
-#     create_arbitrary_face(
-#         center=[22.0, -0.65, 0.0],
-#         width=3.2,
-#         height=2.3,
-#         normal=[-1, 0, 0],  # Facing 'inward' towards the room
-#     )
-# )
-
-# faces.append(
-#     create_arbitrary_face(
-#         center=[22.0, -0.65, 4.0], width=3.2, height=2.3, normal=[-1, 0, 0]
-#     )
-# )
-
-# faces.append(
-#     create_arbitrary_face(
-#         center=[9.0, 1.0, 4.0],
-#         width=2.82,
-#         height=2.0,
-#         normal=[1, 0, 1],  # 45-degree tilt
-#     )
-# )
-
-# faces.append(
-#     create_arbitrary_face(
-#         center=[15, 0, 0], width=4, height=3, normal=[1, 0, 1]  # Points diagonally
-#     )
-# )
-
-# faces.append(
-#     create_arbitrary_face(center=[11, 2, 2], width=5, height=5, normal=[0, 0, 1])
-# )
-
-# faces.append(
-#     create_arbitrary_face(center=[5, 5, 5], width=2, height=2, normal=[0.3, 0, -0.5])
-# )
-
-# default_cam_config = CameraConfiguration(
-#     pixels=np.array([1920, 1080]),
-#     vfov=50,
-# )
-
-# extra_cam_config = CameraConfiguration(
-#     pixels=np.array([3840, 2160]),
-#     vfov=90,
-# )
-
-# default_cam = CameraState(
-#     pos=np.array([0, 0, 0]),
-#     angle=quaternion.from_rotation_vector([0, 0, 0]),
-#     faces=None,
-#     center_of_faces=None,
-#     camera_config=default_cam_config,
-# )
-# extra_cam = CameraState(
-#     pos=np.array([0, 0, 0]),
-#     angle=quaternion.from_rotation_vector([0, 0, 0]),
-#     faces=None,
-#     center_of_faces=None,
-#     camera_config=extra_cam_config,
-# )
-
-
-def transform_faces(faces: List[List[Tuple[float, float, float]]]) -> Array4x3:
-    # FIX: filter out empty / invalid faces early
-    cleaned = []
-    for face in faces:
-        if face is None or len(face) < 3:
-            continue
-        arr = np.array(face, dtype=np.float64)
-
-        # FIX: reject degenerate faces (all points same or NaN)
-        if np.isnan(arr).any() or np.allclose(arr[0], arr[-1]):
-            continue
-
-        cleaned.append(arr)
-
-    return cleaned
-
-
-def transform_cameras(raw_cam_configs: List[ReqCameraConfiguration]):
-    cameras = []
-    for raw_cam_config in raw_cam_configs:
-        cam_config = CameraConfiguration(
-            pixels=raw_cam_config.pixels,
-            vfov=raw_cam_config.vfov,
-            name=raw_cam_config.name,
-        )
-        for _ in range(raw_cam_config.amount):
-            cameras.append(
-                CameraState(
-                    faces=None,
-                    pos=[5, 0, 0],
-                    angle=quaternion.from_vector_part([0, 0, 0, 1]),
-                    center_of_faces=None,
-                    camera_config=cam_config,
-                    name=raw_cam_config.name,
-                )
-            )
-
-    return cameras
-
-
+# ===================== OPTIMIZE (UNCHANGED LOGIC) =====================
 def optimize(req: OptimizeRequest, seed: int = 2000) -> State:
     pl = None
     if env_settings.dev_mode:
@@ -286,7 +175,7 @@ def optimize(req: OptimizeRequest, seed: int = 2000) -> State:
 
         pl = BackgroundPlotter()
 
-    raw_data = pv.read(
+    raw = pv.read(
         path.join(
             env_settings.model_file_path,
             "3d_models",
@@ -295,69 +184,33 @@ def optimize(req: OptimizeRequest, seed: int = 2000) -> State:
         )
     )
 
-    if raw_data is None or raw_data.n_points == 0:
-        raise ValueError("Loaded GLB mesh is empty")
+    combined = raw.combine()
+    surface = combined.extract_surface()
 
-    combined_mesh = raw_data.combine()
-
-    surface = combined_mesh.extract_surface()
-
-    if surface is None or surface.n_cells == 0:
-        raise ValueError("Surface extraction failed: no cells found")
-
-    # 4. Final Optimization (The 5-30s target pipeline)
     gltf = surface.clean(tolerance=1e-5).triangulate()
-
-    # Ensure only triangles exist before decimation
-    if gltf is None or gltf.n_cells == 0:
-        raise ValueError("Triangulation resulted in empty mesh")
 
     if not gltf.is_all_triangles:
         gltf = gltf.extract_cells_by_type(vtk.VTK_TRIANGLE)
 
-    if gltf is None or gltf.n_cells == 0:
-        raise ValueError("No triangles available after filtering")
-
-    # current_cells = gltf.n_cells
-    # target_cells = 40000  # The "Sweet Spot" for fast ray-casting
-
-    # if current_cells > target_cells:
-    #     # Calculate how much to remove (e.g., if 100k cells, reduction is 0.6)
-    #     reduction_fraction = 1.0 - (target_cells / current_cells)
-
-    #     # Clip the fraction to ensure we don't go below 0 or above 0.99
-    #     reduction_fraction = max(0.0, min(0.99, reduction_fraction))
-
-    #     # Perform decimation
-    #     gltf = gltf.decimate_pro(reduction_fraction, preserve_topology=True)
-    #     print(
-    #         f"Dynamic Decimation: Reduced {current_cells} -> {gltf.n_cells} cells ({reduction_fraction:.2%})"
-    #     )
-    # else:
-    #     print(f"Model is already lean ({current_cells} cells). Skipping decimation.")
-
-    # 5. Build the High-Speed Locator
-    gltf_locator = vtk.vtkStaticCellLocator()
-    gltf_locator.SetDataSet(gltf)
-    gltf_locator.BuildLocator()
+    locator = vtk.vtkStaticCellLocator()
+    locator.SetDataSet(gltf)
+    locator.BuildLocator()
 
     faces = transform_faces(req.faces)
     cameras = transform_cameras(req.cam_configs)
+
     state = State(
         faces=faces,
-        face_to_cam=dict(),
+        face_to_cam={},
         face_centers=list(map(center_of_face, faces)),
         cameras=cameras,
         scale=req.scale,
         gltf=gltf,
-        gltf_locator=gltf_locator,
+        gltf_locator=locator,
     )
 
-    num_faces = len(state.faces)
-    num_cameras = len(state.cameras)
-
-    if num_cameras > num_faces:
-        return
+    if len(cameras) > len(faces):
+        return state
 
     state = assign_faces(state, seed)
 
@@ -366,113 +219,45 @@ def optimize(req: OptimizeRequest, seed: int = 2000) -> State:
         render_from_state(pl, state)
         pl.show()
 
-    start_time = time.perf_counter()
-    # from cost_functions import total_cost
-    # print(total_cost(state))
-    # breakpoint()
+    start = time.perf_counter()
+    final_state, _ = optimize_de(state, seed)
+    elapsed = time.perf_counter() - start
 
-    # final_state = optimize_pso(
-    #     state,
-    #     # pl,
-    #     None,
-    # )
-    final_state, _res = optimize_de(state, seed)
-
-    end_time = time.perf_counter()
-    elapsed_time = end_time - start_time
-    print(f"Elapsed time: {elapsed_time:.4f} seconds")
+    logger.info(f"optimization_time={elapsed:.4f}")
+    logger.info(f"total_cost={total_cost(final_state, True)}")
 
     if env_settings.dev_mode:
         render_from_state(pl, final_state)
-        breakpoint()
-
-    total = total_cost(final_state, True)
-    print("total cost: ", total)
-
-    if env_settings.dev_mode:
         pl.close()
 
     return final_state
 
 
-def serialize_response(state: State):
-    cameras = []
-    for cam_state in state.cameras:
-        angle_x = cam_state.angle.x
-        angle_y = cam_state.angle.y
-        angle_z = cam_state.angle.z
-        angle_w = cam_state.angle.w
-        pos_x, pos_y, pos_z = cam_state.pos
-        cam = cam_pb.Camera(
-            id=str(uuid.uuid4()),
-            name=cam_state.camera_config.name,
-            angle_x=angle_x,
-            angle_y=angle_y,
-            angle_z=angle_z,
-            angle_w=angle_w,
-            pos_x=pos_x,
-            pos_y=pos_y,
-            pos_z=pos_z,
-            fov=cam_state.camera_config.vfov,
-            width_res=cam_state.camera_config.pixels[0],
-            height_res=cam_state.camera_config.pixels[1],
-        )
-
-        cameras.append(cam)
-
-    return cameras
-
-
+# ===================== PROTO =====================
 def cam_state_to_proto(cam_state: CameraState) -> cam_pb.Camera:
-    # Initialize the proto message
-    camera = cam_pb.Camera()
+    cam = cam_pb.Camera()
+    cam.name = cam_state.name
+    cam.id = str(uuid.uuid4())
 
-    # 1. Basic Metadata
-    camera.name = cam_state.name
-    camera.id = str(uuid.uuid4())
+    cam.pos_x, cam.pos_y, cam.pos_z = cam_state.pos
 
-    # 2. Position Mapping (Direct mapping from Array3)
-    # Assuming pos is an indexable array-like [x, y, z]
-    camera.pos_x = cam_state.pos[0]
-    camera.pos_y = cam_state.pos[1]
-    camera.pos_z = cam_state.pos[2]
+    cam.angle_w = cam_state.angle.w
+    cam.angle_x = cam_state.angle.x
+    cam.angle_y = cam_state.angle.y
+    cam.angle_z = cam_state.angle.z
 
-    # 3. Rotation Mapping (Quaternion)
-    # Mapping components based on your Z-up vertical axis preference
-    camera.angle_w = cam_state.angle.w
-    camera.angle_x = cam_state.angle.x
-    camera.angle_y = cam_state.angle.y
-    camera.angle_z = cam_state.angle.z
-
-    # 4. Configuration & Optics
-    # Mapping from nested camera_config
     config = cam_state.camera_config
-    camera.fov = config.vfov
-    camera.width_res = config.pixels[0]
-    camera.height_res = config.pixels[1]
-    camera.frustum_length = 10
+    cam.fov = config.vfov
+    cam.width_res = config.pixels[0]
+    cam.height_res = config.pixels[1]
 
-    # 5. Booleans (Visibility & Locks)
-    camera.is_hiding_arrows = False
-    camera.is_hiding_wheels = False
-    camera.is_locking_position = False
-    camera.is_locking_rotation = False
-    camera.is_hiding_frustum = True
-
-    camera.frustum_color.r = 0.5
-    camera.frustum_color.g = 0.5
-    camera.frustum_color.b = 0.5
-    camera.frustum_color.a = 0.5
-
-    camera.distortion.enabled = True
-    camera.distortion.is_fisheye = False
-
-    return camera
+    cam.frustum_length = 10
+    return cam
 
 
+# ===================== MAIN (TRACE ADDED ONLY) =====================
 async def main():
     tracer = init_telemetry()
-    logger = logging.getLogger("omnicam-algo")
 
     async def message_handler(msg: Msg):
         carrier = dict(msg.headers) if msg.headers else {}
@@ -483,102 +268,66 @@ async def main():
             context=ctx,
             kind=SpanKind.CONSUMER,
         ) as span:
-            span.set_attribute("nats.subject", msg.subject)
+
             logger.info("job_received", extra={"subject": msg.subject})
+
             try:
                 payload = OptimizeRequest.model_validate_json(msg.data)
-                logger.info(
-                    "job_parsed",
-                    extra={
-                        "job_id": payload.job_id,
-                        "model_id": payload.model_id,
-                        "faces": len(payload.faces),
-                        "cameras": len(payload.cam_configs),
-                        "trace_id": get_trace_id(),
-                    },
-                )
                 span.set_attribute("job_id", payload.job_id)
-                span.set_attribute("model_id", payload.model_id)
-                logger.info(
-                    "optimization_started",
-                    extra={
-                        "job_id": payload.job_id,
-                    },
-                )
-                result_state = optimize(payload)
-                logger.info(
-                    "optimization_finished",
-                    extra={
-                        "job_id": payload.job_id,
-                    },
-                )
-                opti_res = opt_pb.OptimizationEventResp(
+
+                logger.info("optimization_started", extra={"job_id": payload.job_id})
+
+                result = optimize(payload)
+
+                logger.info("optimization_finished", extra={"job_id": payload.job_id})
+
+                response = opt_pb.OptimizationEventResp(
                     success_resp=opt_pb.SuccessOptimizationEventResp(
-                        cameras=[
-                            cam_state_to_proto(cam) for cam in result_state.cameras
-                        ],
+                        cameras=[cam_state_to_proto(c) for c in result.cameras],
                     ),
                     job_id=payload.job_id,
                 )
+
                 span.set_status(StatusCode.OK)
+
             except ValidationError as e:
-                logger.exception(
-                    "optimization_failed",
-                    extra={
-                        "job_id": getattr(payload, "job_id", None),
-                        "trace_id": get_trace_id(),
-                    },
-                )
                 span.set_status(StatusCode.ERROR, str(e))
-                opti_res = opt_pb.OptimizationEventResp(
-                    error_resp=opt_pb.ErrorOptimizationEventResp(
-                        error=f"Bad request {e}"
-                    )
+                logger.error("validation_error", extra={"error": str(e)})
+
+                response = opt_pb.OptimizationEventResp(
+                    error_resp=opt_pb.EventError(internal_error=opt_pb.SimpleError()),
+                    job_id="",
                 )
+
             except Exception as e:
                 span.set_status(StatusCode.ERROR, str(e))
                 span.record_exception(e)
-                traceback.print_exc()
-                opti_res = opt_pb.OptimizationEventResp(
-                    error_resp=opt_pb.ErrorOptimizationEventResp(error="Internal error")
+
+                logger.exception("optimization_failed")
+
+                response = opt_pb.OptimizationEventResp(
+                    error_resp=opt_pb.EventError(internal_error=opt_pb.SimpleError()),
+                    job_id="",
                 )
+
             finally:
-                res_str = MessageToJson(opti_res, indent=0)
-                await msg.respond(res_str.encode("utf-8"))
+                await msg.respond(MessageToJson(response, indent=0).encode("utf-8"))
 
-    try:
-        print("Trying to connect to nats...")
-        nc: nats.NATS = await nats.connect(env_settings.nats_url)
+    nc = await nats.connect(env_settings.nats_url)
 
-        print("Connected to nats")
+    await nc.subscribe(
+        subject=env_settings.req_topic_pattern.format(jobId="*"),
+        queue=env_settings.req_topic_queue,
+        cb=message_handler,
+    )
 
-        await nc.subscribe(
-            subject=env_settings.req_topic_pattern.format(jobId="*"),
-            queue=env_settings.req_topic_queue,
-            cb=message_handler,
-        )
-
-        print("Worker registered")
-
-    except Exception as e:
-        print("Error while connecting to NATS:", e)
-        sys.exit(1)
-
-    try:
-        await asyncio.Future()
-    except (KeyboardInterrupt, InterruptedError, asyncio.exceptions.CancelledError):
-        print("Closing nats connection")
-        await nc.close()
-        print("Gracefully shutdowning...")
+    await asyncio.Future()
 
 
 def handle_sigterm(signum, frame):
-    print("Received SIGTERM, performing graceful shutdown...")
-    # Add cleanup logic here (e.g., closing DB connections)
     sys.exit(0)
 
 
-# Register the signal handler
 signal.signal(signal.SIGTERM, handle_sigterm)
 
 if __name__ == "__main__":

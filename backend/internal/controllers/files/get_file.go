@@ -49,7 +49,7 @@ func (t *FileRoute) serveFile(c *gin.Context, pathSegments ...string) {
 	filePath := filepath.Join(pathSegments...)
 
 	if _, err := os.Stat(filePath); os.IsNotExist(err) {
-		logger.WithTraceID(c.Request.Context(), t.Logger).Error(
+		logger.WithTraceID(c.Request.Context(), t.Logger).Debug(
 			"file not found",
 			zap.String("filePath", filePath),
 		)
@@ -73,7 +73,7 @@ func (t *FileRoute) getProjectFile(c *gin.Context) {
 
 	projectId, err := utils.ParseUuidBase64(projectIdStr)
 	if err != nil {
-		logger.WithTraceID(c.Request.Context(), t.Logger).Error(
+		logger.WithTraceID(c.Request.Context(), t.Logger).Debug(
 			"invalid projectId",
 			zap.String("projectId", projectIdStr),
 			zap.Error(err),
@@ -86,7 +86,7 @@ func (t *FileRoute) getProjectFile(c *gin.Context) {
 
 	userId, err := utils.GetUuidFromCtx(c, "userId")
 	if err != nil {
-		logger.WithTraceID(c.Request.Context(), t.Logger).Error(
+		logger.WithTraceID(c.Request.Context(), t.Logger).Debug(
 			"failed to get userId from context",
 			zap.Error(err),
 		)

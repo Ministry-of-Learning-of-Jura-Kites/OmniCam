@@ -49,13 +49,13 @@ func (t *PostProjectRoute) post(c *gin.Context) {
 
 	_, err = utils.GetUuidFromCtx(c, "userId")
 	if err != nil {
-		logger.WithTraceID(c.Request.Context(), t.Logger).Error("error while getting userId form", zap.Error(err))
+		logger.WithTraceID(c.Request.Context(), t.Logger).Debug("error while getting userId form", zap.Error(err))
 		c.JSON(http.StatusInternalServerError, gin.H{})
 		return
 	}
 
 	if err := c.ShouldBind(&req); err != nil {
-		logger.WithTraceID(c.Request.Context(), t.Logger).Error("error while validating form", zap.Error(err))
+		logger.WithTraceID(c.Request.Context(), t.Logger).Debug("error while validating form", zap.Error(err))
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid form data"})
 		return
 	}
@@ -106,7 +106,7 @@ func (t *PostProjectRoute) post(c *gin.Context) {
 	if err != nil {
 		var pgErr *pgconn.PgError
 		if errors.As(err, &pgErr) && pgErr.Code == pgerrcode.UniqueViolation {
-			logger.WithTraceID(c.Request.Context(), t.Logger).Error("project name cannot be duplicate")
+			logger.WithTraceID(c.Request.Context(), t.Logger).Warn("project name cannot be duplicate")
 			c.JSON(http.StatusBadRequest, gin.H{
 				"error": "project with this name already exists",
 			})

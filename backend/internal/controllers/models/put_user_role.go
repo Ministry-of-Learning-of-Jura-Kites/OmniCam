@@ -28,21 +28,21 @@ func (t *PutUserRoleRoute) updateMemberRole(c *gin.Context) {
 
 	projectID, err := utils.ParseUuidBase64(projectParam)
 	if err != nil {
-		logger.WithTraceID(c.Request.Context(), t.Logger).Error("invalid project Id", zap.Error(err))
+		logger.WithTraceID(c.Request.Context(), t.Logger).Debug("invalid project Id", zap.Error(err))
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid project ID"})
 		return
 	}
 
 	userID, err := utils.ParseUuidBase64(userParam)
 	if err != nil {
-		logger.WithTraceID(c.Request.Context(), t.Logger).Error("invalid user Id", zap.Error(err))
+		logger.WithTraceID(c.Request.Context(), t.Logger).Debug("invalid user Id", zap.Error(err))
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid user ID"})
 		return
 	}
 
 	var req UpdateMemberRoleRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		logger.WithTraceID(c.Request.Context(), t.Logger).Error("invalid user Id", zap.Error(err))
+		logger.WithTraceID(c.Request.Context(), t.Logger).Debug("invalid user Id", zap.Error(err))
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request"})
 		return
 	}

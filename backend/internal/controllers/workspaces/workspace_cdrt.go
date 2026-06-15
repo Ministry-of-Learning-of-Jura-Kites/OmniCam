@@ -220,7 +220,7 @@ func (t *WorkspaceRoute) postResolveWorkspaceMe(c *gin.Context) {
 	modelId, err := utils.ParseUuidBase64(strModelId)
 	if err != nil {
 		logger.WithTraceID(c.Request.Context(), t.Logger).
-			Error("error while converting str to uuid", zap.Error(err), zap.String("modelId", strModelId))
+			Debug("error while converting str to uuid", zap.Error(err), zap.String("modelId", strModelId))
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid model ID"})
 		return
 	}
@@ -228,7 +228,7 @@ func (t *WorkspaceRoute) postResolveWorkspaceMe(c *gin.Context) {
 	userId, err := utils.GetUuidFromCtx(c, "userId")
 	if err != nil {
 		logger.WithTraceID(c.Request.Context(), t.Logger).
-			Error("error while getting user id from context", zap.Error(err))
+			Debug("error while getting user id from context", zap.Error(err))
 		c.JSON(http.StatusInternalServerError, gin.H{})
 		return
 	}
@@ -401,7 +401,7 @@ func (t *WorkspaceRoute) postMergeWorkspace(c *gin.Context) {
 	userId, err := utils.GetUuidFromCtx(c, "userId")
 	if err != nil {
 		logger.WithTraceID(c.Request.Context(), t.Logger).
-			Error("error while getting userId from context", zap.Error(err))
+			Debug("error while getting userId from context", zap.Error(err))
 		c.JSON(http.StatusInternalServerError, gin.H{})
 		return
 	}
@@ -410,7 +410,7 @@ func (t *WorkspaceRoute) postMergeWorkspace(c *gin.Context) {
 	modelId, err := utils.ParseUuidBase64(strModelId)
 	if err != nil {
 		logger.WithTraceID(c.Request.Context(), t.Logger).
-			Error("error while converting model id from string", zap.Error(err))
+			Debug("error while converting model id from string", zap.Error(err))
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid project ID"})
 		return
 	}

@@ -21,7 +21,7 @@ func (t *GetProjectMembersRoute) getProjectMembers(c *gin.Context) {
 	strId := c.Param("projectId")
 	projectID, err := utils.ParseUuidBase64(strId)
 	if err != nil {
-		logger.WithTraceID(c.Request.Context(), t.Logger).Error("error decoding Base64", zap.Error(err))
+		logger.WithTraceID(c.Request.Context(), t.Logger).Debug("error decoding Base64", zap.Error(err))
 		t.Logger.Error("error decoding Base64", zap.Error(err))
 		return
 	}

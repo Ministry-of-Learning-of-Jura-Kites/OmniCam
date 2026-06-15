@@ -22,7 +22,7 @@ func (t *WorkspaceRoute) postWorkspaceMe(c *gin.Context) {
 	modelId, err := utils.ParseUuidBase64(strModelId)
 	if err != nil {
 		logger.WithTraceID(c.Request.Context(), t.Logger).
-			Error("error while converting str id to uuid", zap.Error(err))
+			Debug("error while converting str id to uuid", zap.Error(err))
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid model ID"})
 		return
 	}
@@ -30,7 +30,7 @@ func (t *WorkspaceRoute) postWorkspaceMe(c *gin.Context) {
 	userId, err := utils.GetUuidFromCtx(c, "userId")
 	if err != nil {
 		logger.WithTraceID(c.Request.Context(), t.Logger).
-			Error("error while getting userId from context", zap.Error(err))
+			Debug("error while getting userId from context", zap.Error(err))
 		c.JSON(http.StatusInternalServerError, gin.H{})
 		return
 	}
