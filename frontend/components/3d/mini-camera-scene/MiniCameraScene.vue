@@ -156,9 +156,7 @@ function renderDistortionView(
 
 function renderLoop() {
   const tresContext = sceneStates!.value?.tresContext?.value;
-  console.log("previewCamera", previewCamera.value);
-  console.log("distortion enabled", previewCamera.value?.distortion?.enabled);
-  console.log("fisheye", previewCamera.value?.distortion?.isFisheye);
+
   if (
     !renderer ||
     !rendererContainerRef.value ||

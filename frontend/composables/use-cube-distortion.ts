@@ -53,7 +53,7 @@ export const FisheyeCubeShader = {
 
       float halfAngle = radians(uFov * 0.5);
       vec2 dir2D = (r > 0.0001) ? normalize(pAspect) : vec2(0.0, 0.0);
-      float theta = 2.0 * atan(r * tan(halfAngle / 2.0));
+      float theta = r * halfAngle;
 
       vec3 dir = vec3(
         sin(theta) * dir2D.x,
