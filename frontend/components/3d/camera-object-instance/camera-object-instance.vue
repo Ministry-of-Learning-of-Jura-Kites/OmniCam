@@ -81,6 +81,40 @@ watch(
   { immediate: true },
 );
 
+const cameraTransforms = computed(() =>
+  Object.values(props.cameras).map((cam) => ({
+    px: cam.position.x,
+    py: cam.position.y,
+    pz: cam.position.z,
+    rx: cam.rotation.x,
+    ry: cam.rotation.y,
+    rz: cam.rotation.z,
+  })),
+);
+
+watch(
+  cameraTransforms,
+  () => {
+    const cams = Object.values(props.cameras);
+    bodyInstancedMesh.count = cams.length;
+    lensInstancedMesh.count = cams.length;
+
+    for (let i = 0; i < cams.length; i++) {
+      const cam = cams[i]!;
+      dummy.position.copy(cam.position);
+      dummy.quaternion.setFromEuler(cam.rotation);
+      dummy.updateMatrix();
+
+      bodyInstancedMesh.setMatrixAt(i, dummy.matrix);
+      lensInstancedMesh.setMatrixAt(i, dummy.matrix);
+    }
+
+    bodyInstancedMesh.instanceMatrix.needsUpdate = true;
+    lensInstancedMesh.instanceMatrix.needsUpdate = true;
+  },
+  { immediate: true },
+);
+
 onMounted(() => {
   sceneStates.value!.clickableObjects.add(
     bodyInstancedMesh as unknown as Obj3DWithUserData,
