@@ -63,14 +63,23 @@ defineExpose({ cameraIds, updateCameraMatrix });
 
 watch(
   () => Object.keys(props.cameras),
-  (ids) => {
+  (ids, oldIds) => {
+    const oldSet = new Set(oldIds ?? []);
+
+    const hasStructuralChange =
+      ids.length !== (oldIds?.length ?? 0) || ids.some((id) => !oldSet.has(id));
+
+    if (!hasStructuralChange) return;
+
     camIndexMap.clear();
     bodyInstancedMesh.count = ids.length;
     lensInstancedMesh.count = ids.length;
 
     ids.forEach((id, i) => {
       camIndexMap.set(id, i);
-      updateInstance(props.cameras[id]!, i);
+      if (!oldSet.has(id)) {
+        updateInstance(props.cameras[id]!, i);
+      }
     });
 
     flushMatrices();
