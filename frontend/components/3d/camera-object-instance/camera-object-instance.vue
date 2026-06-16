@@ -39,6 +39,7 @@ const bodyInstancedMesh = new InstancedMesh(
   MAX_CAMERAS,
 );
 bodyInstancedMesh.layers.set(CAMERA_UTILS_LAYER);
+bodyInstancedMesh.frustumCulled = false;
 
 const lensInstancedMesh = new InstancedMesh(
   cameraLensGeo,
@@ -46,6 +47,7 @@ const lensInstancedMesh = new InstancedMesh(
   MAX_CAMERAS,
 );
 lensInstancedMesh.layers.set(CAMERA_UTILS_LAYER);
+lensInstancedMesh.frustumCulled = false;
 
 const dummy = new Object3D();
 
