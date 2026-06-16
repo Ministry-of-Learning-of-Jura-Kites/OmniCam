@@ -6,6 +6,7 @@ import type { ICamera } from "~/types/camera";
 import { useCamObjGeoCache } from "./use-cam-obj-geo-cache";
 import type { Obj3DWithUserData } from "~/types/obj-3d-user-data";
 import { SCENE_STATES_KEY } from "~/constants/state-keys";
+import { CAMERA_UTILS_LAYER } from "~/constants";
 
 const props = defineProps<{
   cameras: Record<string, ICamera>;
@@ -37,12 +38,14 @@ const bodyInstancedMesh = new InstancedMesh(
   bodyMaterial,
   MAX_CAMERAS,
 );
+bodyInstancedMesh.layers.set(CAMERA_UTILS_LAYER);
 
 const lensInstancedMesh = new InstancedMesh(
   cameraLensGeo,
   lensMaterial,
   MAX_CAMERAS,
 );
+lensInstancedMesh.layers.set(CAMERA_UTILS_LAYER);
 
 const dummy = new Object3D();
 

@@ -12,6 +12,7 @@ import {
   DoubleSide,
   Vector3,
   Matrix3,
+  type WebGLRenderer,
 } from "three";
 import { MAP_KEY, PANEL_KEY, SCENE_STATES_KEY } from "@/constants/state-keys";
 import Stats from "stats.js";
@@ -844,6 +845,37 @@ onMounted(() => {
           );
         },
       );
+
+      const distortionRenderer = createCubeDistortionRenderer(
+        renderer.instance as unknown as WebGLRenderer,
+        context.scene.value,
+      );
+
+      renderer.loop.onLoop(() => {
+        const camId = sceneStates.value!.currentCamId.value;
+        if (!camId) return;
+
+        const cam = sceneStates.value!.cameras[camId];
+        if (!cam?.distortion?.enabled) return;
+
+        const width = renderer.instance.domElement.width;
+        const height = renderer.instance.domElement.height;
+
+        distortionRenderer.render({
+          position: cam.position,
+          rotation: cam.rotation,
+          fov: cam.fov,
+          aspectRatio: cam.widthRes / (cam.heightRes || 1),
+          width,
+          height,
+          isFisheye: cam.distortion.isFisheye,
+          activeCamera: perspectiveCamera.value!,
+        });
+      });
+
+      onUnmounted(() => {
+        distortionRenderer.dispose();
+      });
     },
     { once: true },
   );
