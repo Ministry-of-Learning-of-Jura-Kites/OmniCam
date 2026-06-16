@@ -1,9 +1,5 @@
 <script setup lang="ts">
-import {
-  PANEL_KEY,
-  SCENE_STATES_KEY,
-  CAMERA_INSTANCE_KEY,
-} from "@/constants/state-keys";
+import { PANEL_KEY, SCENE_STATES_KEY } from "@/constants/state-keys";
 import MovableArrow from "../movable-arrow/MovableArrow.vue";
 import RotationWheel from "../rotation-wheel/RotationWheel.vue";
 import CameraFrustum from "../camera-frustum/CameraFrustum.vue";
@@ -32,7 +28,6 @@ const { camPanelInfo } = inject(PANEL_KEY)!;
 const { selectedCamId } = camPanelInfo;
 
 const sceneStates = inject(SCENE_STATES_KEY)!;
-const cameraInstance = inject(CAMERA_INSTANCE_KEY);
 
 const group = ref<Group>();
 const lensMesh = ref<Mesh>();
@@ -44,21 +39,6 @@ if (props.instance == undefined) {
 } else {
   cam = ref(props.instance);
 }
-
-// notify instanced mesh when this camera moves
-watch(
-  () => ({
-    px: cam.value.position.x,
-    py: cam.value.position.y,
-    pz: cam.value.position.z,
-    rx: cam.value.rotation.x,
-    ry: cam.value.rotation.y,
-    rz: cam.value.rotation.z,
-  }),
-  () => {
-    cameraInstance?.updateCameraMatrix(props.camId);
-  },
-);
 
 watch([lensMesh, bodyMesh], (meshes) => {
   for (const obj of meshes) {
