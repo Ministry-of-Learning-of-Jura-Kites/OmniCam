@@ -122,10 +122,9 @@ export function createCubeDistortionRenderer(
     fisheyePass.uniforms.uIsFisheye!.value = isFisheye;
 
     activeCamera.updateMatrixWorld();
-
-    const m = activeCamera.matrixWorld.clone();
-    m.invert();
-    fisheyePass.uniforms.uCameraRotation!.value.setFromMatrix4(m);
+    fisheyePass.uniforms
+      .uCameraRotation!.value.setFromMatrix4(activeCamera.matrixWorld)
+      .invert();
 
     composer.setSize(width, height);
     composer.render();
