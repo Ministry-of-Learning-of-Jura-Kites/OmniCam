@@ -3,7 +3,7 @@ import { TresCanvas } from "@tresjs/core";
 import { Grid, Environment } from "@tresjs/cientos";
 import AdjustableInput from "../../adjustable-input/AdjustableInput.vue";
 import { CAMERA_UTILS_LAYER, SPECTATOR_ADJ_INPUT_SENTIVITY } from "~/constants";
-import CameraObjectInstances from "../camera-object-instance/camera-object-instance.vue";
+import CameraObjectInstances from "../camera-object-instance/CameraObjectInstance.vue";
 import CameraOverlay from "../camera-overlay/CameraOverlay.vue";
 import {
   type PerspectiveCamera,
@@ -12,6 +12,7 @@ import {
   DoubleSide,
   Vector3,
   Matrix3,
+  Euler,
 } from "three";
 import { MAP_KEY, PANEL_KEY, SCENE_STATES_KEY } from "@/constants/state-keys";
 import Stats from "stats.js";
@@ -967,24 +968,69 @@ function selectCurrentCamShortcut() {
 //   };
 // }
 
-// onMounted(() => {
-//   setInterval(() => {
-//     (window as any).memcheck = logRendererMemory;
-//     // // (window as any).patchtex = patchRendererTextureTracking; // ← add this
-//     (window as any).dumpScene = () => {
-//       const geometries = new Map();
-//       const scene = sceneStates.value?.tresContext.value?.scene as any;
-//       scene.traverse((obj) => {
-//         if (obj.geometry) {
-//           const key = obj.geometry.type;
-//           geometries.set(key, (geometries.get(key) || 0) + 1);
-//         }
-//       });
+onMounted(() => {
+  setInterval(() => {
+    // (window as any).memcheck = logRendererMemory;
+    // // (window as any).patchtex = patchRendererTextureTracking; // ← add this
+    (window as any).dumpScene = () => {
+      const geometries = new Map();
+      const scene = sceneStates.value?.tresContext.value?.scene as any;
+      scene.traverse((obj) => {
+        if (obj.geometry) {
+          const key = obj.geometry.type;
+          geometries.set(key, (geometries.get(key) || 0) + 1);
+        }
+      });
 
-//       console.table([...geometries.entries()]);
-//     };
-//   }, 100);
-// });
+      console.table([...geometries.entries()]);
+    };
+  }, 100);
+  (window as any)["addCams"] = (n: number = 1) => {
+    const radius = 10;
+
+    for (let i = 0; i < n; i++) {
+      const id = uuidv4();
+
+      // 1. Position: Random point on the surface of a sphere
+      // This distributes them evenly at 'radius' distance from center
+      const phi = Math.acos(1 - 2 * Math.random());
+      const theta = 2 * Math.PI * Math.random();
+
+      const x = radius * Math.sin(phi) * Math.cos(theta);
+      const y = radius * Math.sin(phi) * Math.sin(theta);
+      const z = radius * Math.cos(phi);
+
+      // 2. Rotation: Random Euler angles (0 to 2*PI)
+      const rx = Math.random() * Math.PI * 2;
+      const ry = Math.random() * Math.PI * 2;
+      const rz = Math.random() * Math.PI * 2;
+
+      sceneStates.value!.cameras[id] = {
+        name: `cam_${Object.keys(sceneStates.value!.cameras).length}`,
+
+        // Using new Class instances
+        position: new Vector3(x, y, z),
+        rotation: new Euler(rx, ry, rz),
+
+        fov: 75,
+        widthRes: 1920,
+        heightRes: 1080,
+        frustumColor: { r: 0.5, g: 0.5, b: 0.5, a: 0.5 }, // Assuming ColorRGBA also needs 'new'
+        frustumLength: 5,
+        distortion: {
+          enabled: false,
+          isFisheye: false,
+        },
+        isHidingArrows: false,
+        isHidingWheels: false,
+        isHidingFrustum: true,
+        isLockingPosition: false,
+        isLockingRotation: false,
+        controlling: undefined,
+      };
+    }
+  };
+});
 
 watch(
   () => sceneStates.value?.errorLivestreamMessage.value,

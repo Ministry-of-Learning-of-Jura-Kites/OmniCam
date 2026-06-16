@@ -12,6 +12,10 @@ export interface MiniMapInfo {
 
 export const MAP_KEY: InjectionKey<MiniMapInfo> = Symbol("map");
 
+export const CAMERA_INSTANCE_KEY = Symbol("cameraInstance") as InjectionKey<{
+  updateCameraMatrix: (id: string) => void;
+}>;
+
 export interface CamPanelInfo {
   selectedCamId: Ref<string | null>;
 }
