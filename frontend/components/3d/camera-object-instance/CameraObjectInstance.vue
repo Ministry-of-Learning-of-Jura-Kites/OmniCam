@@ -5,6 +5,7 @@ import { useCamObjGeoCache } from "./use-cam-obj-geo-cache";
 import type { Obj3DWithUserData } from "~/types/obj-3d-user-data";
 import { SCENE_STATES_KEY } from "~/constants/state-keys";
 import { CAMERA_UTILS_LAYER } from "~/constants";
+import CameraInstanceTracker from "../camera-instance-tracker/CameraInstanceTracker.vue";
 
 const props = defineProps<{
   cameras: Record<string, ICamera>;
@@ -12,7 +13,6 @@ const props = defineProps<{
 }>();
 
 const cameraIds = computed(() => Object.keys(props.cameras));
-defineExpose({ cameraIds });
 
 const MAX_CAMERAS = 1000;
 const sceneStates = inject(SCENE_STATES_KEY)!;
@@ -51,6 +51,15 @@ function flushMatrices() {
   bodyInstancedMesh.instanceMatrix.needsUpdate = true;
   lensInstancedMesh.instanceMatrix.needsUpdate = true;
 }
+
+function updateCameraMatrix(id: string) {
+  const i = camIndexMap.get(id);
+  if (i === undefined) return;
+  updateInstance(props.cameras[id]!, i);
+  flushMatrices();
+}
+
+defineExpose({ cameraIds, updateCameraMatrix });
 
 watch(
   () => Object.keys(props.cameras),
@@ -94,7 +103,8 @@ onUnmounted(() => {
   <CameraInstanceTracker
     v-for="(cam, id) in cameras"
     :key="id"
-    :cam-id="id"
+    :cam-id="String(id)"
     :cam="cam"
+    :on-update="updateCameraMatrix"
   />
 </template>
