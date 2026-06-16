@@ -3,7 +3,8 @@ import { TresCanvas } from "@tresjs/core";
 import { Grid, Environment } from "@tresjs/cientos";
 import AdjustableInput from "../../adjustable-input/AdjustableInput.vue";
 import { CAMERA_UTILS_LAYER, SPECTATOR_ADJ_INPUT_SENTIVITY } from "~/constants";
-import CameraObject from "../camera-object/CameraObject.vue";
+import CameraObjectInstances from "../camera-object-instance/camera-object-instance.vue";
+import CameraOverlay from "../camera-overlay/CameraOverlay.vue";
 import {
   type PerspectiveCamera,
   Raycaster,
@@ -759,6 +760,16 @@ function onCanvasPointer(event: PointerEvent) {
 
   if (intersects.length > 0) {
     const foundObj = intersects[0];
+    if (foundObj!.instanceId != null) {
+      const mesh = foundObj!.object;
+
+      if (mesh.userData.type === "camera-instanced") {
+        const camId = mesh.userData.cameraIds.value[foundObj!.instanceId];
+
+        selectedCamId.value = camId;
+        return;
+      }
+    }
     const userData = foundObj?.object.userData as IUserData;
     userData.handleEvent.call(userData, event.type, event);
   } else if (
@@ -959,7 +970,7 @@ function selectCurrentCamShortcut() {
 // onMounted(() => {
 //   setInterval(() => {
 //     (window as any).memcheck = logRendererMemory;
-//     // (window as any).patchtex = patchRendererTextureTracking; // ← add this
+//     // // (window as any).patchtex = patchRendererTextureTracking; // ← add this
 //     (window as any).dumpScene = () => {
 //       const geometries = new Map();
 //       const scene = sceneStates.value?.tresContext.value?.scene as any;
@@ -1193,23 +1204,17 @@ const isShowingCamDirection = computed(() => {
             </TresMesh>
           </template>
 
-          <CameraObject
-            v-for="[camId, cam] in Object.entries(
-              sceneStates!.optimization?.candidateCameras ?? {},
-            )"
-            :key="camId"
-            :cam-id="camId"
-            :name="cam.name"
-            :instance="cam"
-            :workspace="props.workspace"
+          <CameraObjectInstances
+            :cameras="sceneStates!.optimization?.candidateCameras ?? {}"
             color="#62B2F5"
           />
 
-          <CameraObject
-            v-for="[camId, cam] in Object.entries(sceneStates!.cameras)"
+          <CameraObjectInstances :cameras="sceneStates!.cameras" />
+
+          <CameraOverlay
+            v-for="[camId] in Object.entries(sceneStates!.cameras)"
             :key="camId"
             :cam-id="camId"
-            :name="cam.name"
             :workspace="props.workspace"
           />
 

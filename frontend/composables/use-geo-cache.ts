@@ -1,7 +1,7 @@
 import {
   useCamObjGeoCache,
   type CameraObjectGeo,
-} from "~/components/3d/camera-object/use-cam-obj-geo-cache";
+} from "~/components/3d/camera-object-instance/use-cam-obj-geo-cache";
 
 export type ModuleName = "CAMERA_OBJECT";
 

@@ -24,13 +24,7 @@ const measurementLines = sceneStates.value!.measurement.lines;
 const pendingPoint = computed(
   () => sceneStates.value!.measurement.draftStartPoint,
 );
-watch(
-  () => measurementLines.length,
-  (newLength) => {
-    console.log("Measurement lines count:", newLength);
-    console.log("Current lines:", measurementLines);
-  },
-);
+
 const totalMeasurements = computed(() => measurementLines.length);
 
 function clearMeasurements() {
