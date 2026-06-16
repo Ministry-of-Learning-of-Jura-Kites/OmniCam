@@ -5,7 +5,7 @@ RUN mkdir -p ./backend/pkg/messages
 
 RUN apt-get update \
  && apt-get install -y --no-install-recommends protobuf-compiler \
- && && rm -rf /var/lib/apt/lists/* \
+ && rm -rf /var/lib/apt/lists/* \
  && go install google.golang.org/protobuf/cmd/protoc-gen-go@v1.36.10 \
  && go install github.com/sqlc-dev/sqlc/cmd/sqlc@v1.30.0
 
