@@ -46,41 +46,28 @@ export const FisheyeCubeShader = {
 
     void main() {
       vec2 p = vUv * 2.0 - 1.0;
-      vec2 aspectP = vec2(
-        p.x * uAspectRatio,
-        p.y
+
+      // same projection always
+      vec2 pAspect = vec2(p.x * uAspectRatio, p.y);
+      float r = length(pAspect);
+
+      float halfAngle = radians(uFov * 0.5);
+      vec2 dir2D = (r > 0.0001) ? normalize(pAspect) : vec2(0.0, 0.0);
+      float theta = r * halfAngle;
+
+      vec3 dir = vec3(
+        sin(theta) * dir2D.x,
+        sin(theta) * dir2D.y,
+        -cos(theta)
       );
-
-      float r = length(aspectP);
-
-      if (uIsFisheye && r > 1.0) {
-        gl_FragColor = vec4(0.0, 0.0, 0.0, 1.0);
-
-        return;
-      }
-
-      float halfAngle = (uFov * PI) / 360.0;
-      float phi = atan(aspectP.y, aspectP.x);
-      vec3 dir;
-
-      if (uIsFisheye) {
-        float theta = r * halfAngle;
-        dir = vec3(
-          sin(theta) * cos(phi),
-          sin(theta) * sin(phi),
-          -cos(theta)
-        );
-
-      } else {
-        dir = normalize(vec3(
-          aspectP.x * tan(halfAngle),
-          aspectP.y * tan(halfAngle),
-          -1.0
-        ));
-      }
 
       vec3 worldDir = uCameraRotation * dir;
       gl_FragColor = textureCube(tCube, worldDir);
+
+      // fisheye: just black out outside the circle in screen center
+      if (uIsFisheye && length(vec2(p.x * uAspectRatio, p.y)) > 1.0) {
+        gl_FragColor = vec4(0.0, 0.0, 0.0, 1.0);
+      }
     }
   `,
 };
@@ -135,10 +122,9 @@ export function createCubeDistortionRenderer(
     fisheyePass.uniforms.uIsFisheye!.value = isFisheye;
 
     activeCamera.updateMatrixWorld();
-
-    fisheyePass.uniforms.uCameraRotation!.value.setFromMatrix4(
-      activeCamera.matrixWorld,
-    );
+    fisheyePass.uniforms
+      .uCameraRotation!.value.setFromMatrix4(activeCamera.matrixWorld)
+      .invert();
 
     composer.setSize(width, height);
     composer.render();

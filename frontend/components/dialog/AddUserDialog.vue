@@ -119,13 +119,9 @@ async function fetchUsers() {
   }
 }
 async function addMembers(out: { userId: string; role: string }[]) {
-  console.log("Submitting selected users:", out);
   try {
-    const res = await projectApi.addProjectMembers(props.projectId, out);
+    await projectApi.addProjectMembers(props.projectId, out);
 
-    console.log("Add members response:", res);
-
-    // success feedback
     successMessage.value = "Add Member Success.";
     isSuccessDialogOpen.value = true;
     emit("members-added");
