@@ -959,7 +959,19 @@ function selectCurrentCamShortcut() {
 // onMounted(() => {
 //   setInterval(() => {
 //     (window as any).memcheck = logRendererMemory;
-//     (window as any).patchtex = patchRendererTextureTracking; // ← add this
+//     // (window as any).patchtex = patchRendererTextureTracking; // ← add this
+//     (window as any).dumpScene = () => {
+//       const geometries = new Map();
+//       const scene = sceneStates.value?.tresContext.value?.scene as any;
+//       scene.traverse((obj) => {
+//         if (obj.geometry) {
+//           const key = obj.geometry.type;
+//           geometries.set(key, (geometries.get(key) || 0) + 1);
+//         }
+//       });
+
+//       console.table([...geometries.entries()]);
+//     };
 //   }, 100);
 // });
 

@@ -22,6 +22,8 @@ const movableObject = reactive<MovableObject>({
   rotation: new Euler(0, 0, 0),
   controlling: undefined,
 });
+const gridHelper = markRaw(new GridHelper(1, 10, 0x00ff66, 0xdb6060));
+
 const triggerUpdate = () => {
   movableObject.position = movableObject.position.clone();
   movableObject.rotation = movableObject.rotation.clone();
@@ -29,6 +31,16 @@ const triggerUpdate = () => {
 const rotationQuat = computed(() => {
   const quaternion = new Quaternion().setFromEuler(movableObject!.rotation);
   return quaternion;
+});
+
+onUnmounted(() => {
+  gridHelper.geometry.dispose();
+
+  if (Array.isArray(gridHelper.material)) {
+    gridHelper.material.forEach((m) => m.dispose());
+  } else {
+    gridHelper.material.dispose();
+  }
 });
 </script>
 
@@ -42,7 +54,7 @@ const rotationQuat = computed(() => {
     <TresObject3D :quaternion="rotationQuat">
       <primitive
         ref="gridRef"
-        :object="new GridHelper(1, 10, 0x00ff66, 0xdb6060)"
+        :object="gridHelper"
         :scale="[calibrationGridScale, 1, calibrationGridScale]"
       />
     </TresObject3D>
