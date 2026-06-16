@@ -1,15 +1,12 @@
 <script setup lang="ts">
 import { PANEL_KEY, SCENE_STATES_KEY } from "@/constants/state-keys";
-
 import MovableArrow from "../movable-arrow/MovableArrow.vue";
-import TresMesh from "@tresjs/core";
 import RotationWheel from "../rotation-wheel/RotationWheel.vue";
 import CameraFrustum from "../camera-frustum/CameraFrustum.vue";
 import type { Color, Group, Mesh } from "three";
 import { Quaternion } from "three";
 import { safeGetAspectRatio } from "~/utils/aspect-ratio";
 import type { ICamera } from "~/types/camera";
-import { useCamObjGeoCache } from "./use-cam-obj-geo-cache";
 import type { Obj3DWithUserData } from "~/types/obj-3d-user-data";
 
 const props = withDefaults(
@@ -29,11 +26,6 @@ const props = withDefaults(
 
 const { camPanelInfo } = inject(PANEL_KEY)!;
 const { selectedCamId } = camPanelInfo;
-
-const { get: getGeo } = useCamObjGeoCache();
-
-const cameraBodyGeo = getGeo("body");
-const cameraLensGeo = getGeo("lens");
 
 const sceneStates = inject(SCENE_STATES_KEY)!;
 
@@ -61,7 +53,9 @@ watch([lensMesh, bodyMesh], (meshes) => {
         if (event.type == "pointerup") {
           const upTime = performance.now();
           if (upTime - downTime < 100) {
-            selectedCamId.value = props.camId;
+            if (sceneStates.value!.currentCamId.value !== props.camId) {
+              selectedCamId.value = props.camId;
+            }
           }
         }
       },
@@ -99,12 +93,6 @@ watch(group, (group) => {
     :position="[cam!.position.x, cam!.position.y, cam!.position.z]"
   >
     <TresObject3D :quaternion="camQuat">
-      <TresMesh ref="bodyMesh" :geometry="cameraBodyGeo">
-        <TresMeshBasicMaterial :color="props.color" />
-      </TresMesh>
-      <TresMesh ref="lensMesh" :geometry="cameraLensGeo">
-        <TresMeshBasicMaterial :color="'black'" />
-      </TresMesh>
       <CameraFrustum
         :id="camId"
         :fov="cam!.fov"
@@ -116,7 +104,7 @@ watch(group, (group) => {
         "
       />
     </TresObject3D>
-    <template v-if="cam != null">
+    <template v-if="selectedCamId === props.camId">
       <MovableArrow
         v-model="cam"
         :is-hiding="

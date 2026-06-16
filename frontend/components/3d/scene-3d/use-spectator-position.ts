@@ -33,7 +33,6 @@ export function useSpectatorPosition(
 
     sceneStates.tresCanvasParent?.value?.focus();
 
-    // console.log("press", e.code);
     if (e.code == "ShiftLeft" || e.code == "ShiftRight") {
       isKeyDown["Shift"] = true;
     }
@@ -47,7 +46,6 @@ export function useSpectatorPosition(
       return;
     }
 
-    // console.log("release", e.code);
     if (e.code == "ShiftLeft" || e.code == "ShiftRight") {
       isKeyDown["Shift"] = false;
     }
