@@ -73,6 +73,7 @@ export default defineNuxtConfig({
   },
   runtimeConfig: {
     internalBackendUrl: "error",
+    internalOtelProxyEndpoint: "",
     public: {
       nuxtHost: "localhost",
       nuxtPort: 3000,
@@ -81,7 +82,7 @@ export default defineNuxtConfig({
       externalWsBackendUrl: "error",
       devMode: false,
 
-      otelEndpoint: "",
+      otelProxyPath: "",
       otelServiceName: "",
       otelServiceVersion: "",
       deployEnv: "",

@@ -127,7 +127,7 @@ export default defineNuxtPlugin(() => {
       const config = useRuntimeConfig();
 
       const exporter = new OTLPTraceExporter({
-        url: `${config.public.otelEndpoint}/v1/traces`,
+        url: `${config.public.otelProxyPath}/v1/traces`,
       });
 
       const provider = new WebTracerProvider({
