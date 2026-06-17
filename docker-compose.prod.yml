@@ -129,6 +129,17 @@ services:
     networks:
       - private_net
 
+  otelcol:
+    image: otel/opentelemetry-collector-contrib:0.104.0
+    container_name: omnicam_otelcol
+    command: ["--config=/etc/otelcol/config.yaml"]
+    volumes:
+      - ./otel-config.yaml:/etc/otelcol/config.yaml:ro
+    networks:
+      - private_net
+      - app_net
+    restart: unless-stopped
+
 networks:
   private_net:
   app_net:
