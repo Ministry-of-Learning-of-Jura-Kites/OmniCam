@@ -1,16 +1,5 @@
 import type { RuntimeConfig } from "nuxt/schema";
-
-export function getApiProtocol(
-  type: "http" | "websocket",
-  config: RuntimeConfig,
-) {
-  switch (type) {
-    case "http":
-      return config.public.backendSecure ? "https" : "http";
-    case "websocket":
-      return config.public.backendSecure ? "wss" : "ws";
-  }
-}
+import { getUrlFromRuntime } from "./get-host";
 
 export function addTrailingSlash(host: string | URL) {
   const urlString = host instanceof URL ? host.href : host;
@@ -26,8 +15,12 @@ export function getApiBaseUrlWithProtocol(
   type: "http" | "websocket",
   config: RuntimeConfig,
 ) {
-  const protocol = getApiProtocol(type, config);
-  const host = getHostFromRuntime(config, import.meta.client);
-  const apiBase = addTrailingSlash(host);
-  return new URL(`${protocol}://${apiBase}`);
+  let baseUrl: string;
+  if (type == "http") {
+    baseUrl = getUrlFromRuntime(config, import.meta.client);
+  } else {
+    baseUrl = config.public.externalWsBackendUrl;
+  }
+  const apiBase = addTrailingSlash(baseUrl);
+  return new URL(apiBase);
 }

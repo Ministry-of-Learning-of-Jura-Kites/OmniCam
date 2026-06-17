@@ -12,7 +12,7 @@ func SetCookie(c *gin.Context, jwtToken string, env *config_env.AppEnv) {
 		int(env.JWTExpireTime.Seconds()),
 		"/",
 		env.CookieHost,
-		env.Secure,
+		env.CookieSecure,
 		true,
 	)
 }
@@ -24,7 +24,7 @@ func DeleteCookie(c *gin.Context, env *config_env.AppEnv) {
 		-1,
 		"/",
 		env.CookieHost,
-		env.Secure,
+		env.CookieSecure,
 		true,
 	)
 }

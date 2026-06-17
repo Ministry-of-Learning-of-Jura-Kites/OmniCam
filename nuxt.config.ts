@@ -72,13 +72,13 @@ export default defineNuxtConfig({
     "/projects": { redirect: "/" },
   },
   runtimeConfig: {
-    internalBackendHost: "error",
+    internalBackendUrl: "error",
     public: {
       nuxtHost: "localhost",
       nuxtPort: 3000,
       cookieName: "omnicam_token",
-      backendSecure: true,
-      externalBackendHost: "error",
+      externalBackendUrl: "error",
+      externalWsBackendUrl: "error",
       devMode: false,
 
       otelEndpoint: "",
