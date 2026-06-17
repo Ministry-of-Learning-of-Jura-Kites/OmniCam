@@ -23,6 +23,7 @@ const bodyInstancedMesh = new InstancedMesh(
   new MeshBasicMaterial({ color: props.color ?? "white" }),
   MAX_CAMERAS,
 );
+bodyInstancedMesh.count = 0;
 bodyInstancedMesh.layers.set(CAMERA_UTILS_LAYER);
 bodyInstancedMesh.frustumCulled = false;
 bodyInstancedMesh.userData = { type: "camera-instanced", cameraIds };
@@ -32,6 +33,7 @@ const lensInstancedMesh = new InstancedMesh(
   new MeshBasicMaterial({ color: "black" }),
   MAX_CAMERAS,
 );
+lensInstancedMesh.count = 0;
 lensInstancedMesh.layers.set(CAMERA_UTILS_LAYER);
 lensInstancedMesh.frustumCulled = false;
 lensInstancedMesh.userData = { type: "camera-instanced", cameraIds };
