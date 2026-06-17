@@ -18,7 +18,7 @@ type AppEnv struct {
 	FrontendHost  string `env:"FRONTEND_HOST"`
 	CookieHost    string `env:"COOKIE_HOST"`
 	CookieName    string `env:"COOKIE_NAME"`
-	Secure        bool   `env:"SECURE"`
+	CookieSecure  bool   `env:"COOKIE_SECURE"`
 
 	// JWT
 	JWTSecret        string `env:"JWT_SECRET"`

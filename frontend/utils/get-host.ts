@@ -1,8 +1,8 @@
 import type { RuntimeConfig } from "nuxt/schema";
 
-export function getHostFromRuntime(runtime: RuntimeConfig, isClient: boolean) {
+export function getUrlFromRuntime(runtime: RuntimeConfig, isClient: boolean) {
   if (isClient) {
-    return runtime.public.externalBackendHost;
+    return runtime.public.externalBackendUrl;
   }
-  return runtime.internalBackendHost;
+  return runtime.internalBackendUrl;
 }
